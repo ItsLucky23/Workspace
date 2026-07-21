@@ -87,6 +87,9 @@ const config = {
     defaultApiLimit: 60 as number | false,
     defaultIpLimit: 100 as number | false,
     windowMs: 60_000,
+    //? Local browser/test traffic shares the Vite proxy's loopback IP; keep per-route limits active
+    //? while avoiding a false global-IP denial. Production never skips this boundary.
+    skipLoopbackInDev: true,
   },
   //? Optional @luckystack/secret-manager (opt-in). Uncomment + set
   //? LUCKYSTACK_SECRET_MANAGER_URL to resolve `.env` pointers (NAME=BASE_V<n>)

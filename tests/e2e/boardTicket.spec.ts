@@ -120,7 +120,10 @@ test.describe('ticket page', () => {
     await expect(page.getByText('No branch yet')).toBeVisible();
 
     await tabs.getByRole('button', { name: 'Activity', exact: true }).click();
-    await expect(page.getByText('No activity yet')).toBeVisible();
+    // The create event may arrive in the snapshot before or after navigation; these disclosures are
+    // the stable Activity-panel contract regardless of whether its feed is empty or already populated.
+    await expect(page.getByRole('button', { name: 'Related tickets' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Stage history' })).toBeVisible();
 
     await tabs.getByRole('button', { name: 'Overview', exact: true }).click();
     await expect(page.getByText('Description', { exact: true })).toBeVisible();

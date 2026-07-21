@@ -159,7 +159,13 @@ test.describe('settingsShell', () => {
     // Sign-out lives in the user dropdown at the bottom of the (collapsed) nav rail, opened via
     // the avatar button's title (`"<name> · settings"`, the only accessible handle while collapsed).
     await page.getByTitle(/settings$/i).click();
-    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
-    await expect(page).toHaveURL(/\/login$/);
+    const signOut = page.getByRole('button', { name: 'Sign out', exact: true });
+    await expect(signOut).toBeVisible();
+    // The snapshot refresh can re-render the open user menu between Playwright's stability check and
+    // pointer dispatch. Force skips only that transient animation check; the URL assertion proves effect.
+    await Promise.all([
+      page.waitForURL(/\/login$/),
+      signOut.click({ force: true }),
+    ]);
   });
 });

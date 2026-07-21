@@ -23,12 +23,13 @@ if (!available) {
 } else {
   mkdirSync(MEDIA_DIR, { recursive: true });
   const stamp = String(Date.now());
+  const workspaceId = Date.now().toString(16).padStart(24, '0');
 
   /* ------------------------------------------------------------ F1: a REAL thumbnail render */
 
   //? No background asset → the free template path (solid colour + headline). This is the variant a user
   //? gets with no key and no spend, so it is the one that must always work.
-  const thumb = await renderThumbnail({} as never, `ws-${stamp}`, { headline: 'Ship it: 3 hard lessons' })
+  const thumb = await renderThumbnail({} as never, workspaceId, { headline: 'Ship it: 3 hard lessons' })
     .catch(() => ({ ok: false, url: undefined, costCents: 0, aiBackground: false, error: 'threw' }));
 
   assert(thumb.ok, `the template thumbnail renders in a real ffmpeg container (${thumb.error ?? ''})`);
@@ -48,7 +49,7 @@ if (!available) {
 
   //? A headline full of filtergraph metacharacters must not break the render — this is the escaping
   //? contract (`escapeDrawText`) meeting real ffmpeg for the first time.
-  const nasty = await renderThumbnail({} as never, `ws-${stamp}`, { headline: "Time: 10:30 — 100% 'done' \\ x" })
+  const nasty = await renderThumbnail({} as never, workspaceId, { headline: "Time: 10:30 — 100% 'done' \\ x" })
     .catch(() => ({ ok: false, url: undefined, costCents: 0, aiBackground: false, error: 'threw' }));
   assert(nasty.ok, `a headline with colons/quotes/percent/backslash still renders (${nasty.error ?? ''})`);
 
@@ -82,4 +83,5 @@ if (!available) {
   const outPath = path.join(MEDIA_DIR, `cc-out-${stamp}.mp4`);
   assert(existsSync(outPath), 'the captioned mp4 exists');
   assert(readFileSync(outPath).length > 5000, 'and carries real video data');
+  report('dockerMediaE2E');
 }

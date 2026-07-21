@@ -4547,3 +4547,13 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Files touched:** `scripts/generateAiCapabilities.mjs`, `docs/AI_CAPABILITIES.md` en branchlogs.
 
 **Verify:** capabilityindex bevat opnieuw **64 API-routes en 66 sync-routes** (o.a. `workspaces/createWorkspace/v1` en `workspaces/contentPieceDelta/v1`); `node --check`, lint, build en `ai:lint` groen.
+
+## 2026-07-21 22:03 — Audit-eindbewijs: browser, Docker en multi-instance
+
+**User prompt:** voer na de auditremediatie de toegestane runtime-, E2E-, Docker- en infrastructuurproeven uit en rond de fase warningvrij af; externe blokkades blijven apart.
+
+**Wat ik deed:** de lokale test-runtime geïsoleerd van parallelle supervisors en de development-only loopback-IP-bypass expliciet geconfigureerd (LuckyStack blokkeert die bypass zelf in production). De twee durable-runtimefoutcontracten uit de HTTP-sweep zijn via de parallelle fixes behouden. Playwright-flakiness is bij de bron gestabiliseerd: sign-out wacht atomair op de navigatie en forceert alleen de instabiele menupointercheck; de Activity-tabtest bewaakt de stabiele paneldisclosures in plaats van een racegevoelige lege/feedstatus. De Docker-media-liveproef gebruikt nu een geldige tenant-ID; beide live scripts hebben harde assertions en sluiten expliciet af. Daarna echte lokale containerisolatie, Mailpit-provision/teardown en een tweevoudige backendproef met leader-failover uitgevoerd.
+
+**Files touched:** `config.ts`, `tests/e2e/{boardTicket,settingsShell}.spec.ts`, `tests/integration/dockerMediaE2E.test.mts`, `tests/live/_liveSvcProof.mts` en branchlogs. Parallelle `.tmp-*`-logs bleven onaangeraakt.
+
+**Verify:** HTTP **433/433** · Playwright Chromium **24/24 in één seriële run** · unitlaag **107/107 bestanden** · Docker-media **18/18** · echte Mailpit Compose/env/teardown **5/5** · geharde toolcontainer live: network `none`, read-only root, uid/gid 65534, cap-drop ALL, no-new-privileges en resourcecaps · twee appinstances 30s gelijktijdig ready op gedeelde Mongo/Redis; één leader, follower nam binnen 11s over · typecheck/lint/`ai:lint`/build warningvrij. Extern geblokkeerd: VM/microVM Compose-runner, wildcard-DNS en GitHub/GitLab OAuth ontbreken in env; de open SSH-tunnel heeft geen afzonderlijk geconfigureerd testtarget.

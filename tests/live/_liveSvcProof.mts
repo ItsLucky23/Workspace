@@ -2,7 +2,7 @@
 //? verify: the connection-string EnvVars were published, resolveWorkspaceEnv would inject them, the compose
 //? stack is actually up, and teardown removes both the stack and the EnvVars. Throwaway (job tmp).
 
-import { db, cleanupWorkspace } from '../../../../../code/Workspace/tests/_helpers.mts';
+import { db, cleanupWorkspace, assert, eq, report } from '../../../../../code/Workspace/tests/_helpers.mts';
 
 const prisma = await db();
 const { enqueueControlAction } = await import('../../../../../code/Workspace/server/orchestrator/conductor.ts');
@@ -31,28 +31,36 @@ try {
     await new Promise((r) => setTimeout(r, 1000));
   }
   log(`ServiceStack status: ${stack?.status ?? 'MISSING'}`);
+  eq(stack?.status, 'running', 'the real Compose stack reaches running');
 
   //? K3 — the connection-string EnvVars were published + are what a container gets injected.
   const env = await resolveWorkspaceEnv(prisma, wsId);
   log(`SMTP_HOST=${env.SMTP_HOST ?? '(none)'} SMTP_PORT=${env.SMTP_PORT ?? '(none)'} MAILPIT_WEB=${env.MAILPIT_WEB ?? '(none)'}`);
   const published = env.SMTP_HOST === 'mailpit' && env.SMTP_PORT === '1025';
   log(published ? 'PASS: connection-string env published + injectable' : 'FAIL: env not published');
+  assert(published, 'connection-string env is published and injectable');
 
   //? The compose project is really up (docker ps for the namespaced project).
   const ps = await docker(['ps', '--filter', `name=ws-${wsId}-mail`, '--format', '{{.Names}} {{.Status}}']);
   log(`docker ps: ${ps.out.trim() || '(none)'}`);
+  assert(ps.code === 0 && ps.out.includes(`ws-${wsId}-mail`), 'the namespaced service container is really running');
 
   log('tearing down…');
   await enqueueControlAction({ workspaceId: wsId, op: 'service-teardown', target: {}, payload: { name: 'mail' }, userId: owner.id, clientRequestId: `live-tear-${String(stamp)}` });
   await new Promise((r) => setTimeout(r, 2000));
   const envAfter = await resolveWorkspaceEnv(prisma, wsId);
   log(envAfter.SMTP_HOST === undefined ? 'PASS: teardown removed the connection-string EnvVars' : 'FAIL: env survived teardown');
+  eq(envAfter.SMTP_HOST, undefined, 'teardown removes the connection-string EnvVars');
   const psAfter = await docker(['ps', '--filter', `name=ws-${wsId}-mail`, '--format', '{{.Names}}']);
   log(`docker ps after teardown: ${psAfter.out.trim() || '(empty — good)'}`);
+  eq(psAfter.out.trim(), '', 'teardown removes the namespaced service container');
 } catch (e) {
   log(`ERROR: ${String(e)}`);
+  assert(false, `unexpected live service error: ${String(e)}`);
 } finally {
   if (wsId) await cleanupWorkspace(prisma, wsId, [owner.id]).catch(() => undefined);
   else await prisma.user.delete({ where: { id: owner.id } }).catch(() => undefined);
   log('done');
 }
+
+report('tests/live/_liveSvcProof.mts');
