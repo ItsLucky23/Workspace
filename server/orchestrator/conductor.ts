@@ -1722,6 +1722,7 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const invitedRole = await prisma.workspaceRole.findFirst({ where: { workspaceId: inv.workspaceId, key: inv.roleKey }, select: { key: true } });
       if (!invitedRole || invitedRole.key === 'owner') return { ok: false, error: 'role.unknown' };
       const [existingMembership, inviteWorkspace] = await Promise.all([
+        // luckystack-allow tenant-scope: the compound unique lookup contains the invite-owned workspaceId and exact accepting userId.
         prisma.workspaceMember.findUnique({
           where: { workspaceId_userId: { workspaceId: inv.workspaceId, userId } },
           select: { roleKey: true },
