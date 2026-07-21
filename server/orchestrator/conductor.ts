@@ -1247,6 +1247,7 @@ const ROUTE_JOB_STALE_MS = 30_000;
 //? This leader-only sweep reconstructs an action after a process crash and replays it under the normal
 //? tenant lease/writer context. Every allow-listed handler is idempotent (deterministic create, CAS or upsert).
 export async function runRouteJobRecovery(now = Date.now()): Promise<{ replayed: number; superseded: number; failed: number }> {
+  // luckystack-allow tenant-scope: leader discovery intentionally scans pending signals across workspaces; every row re-enters its own tenant lease before apply.
   const rows = await prisma.workspaceSignal.findMany({
     where: {
       OR: [{ processedAt: null }, { processedAt: { isSet: false } }],
@@ -1270,6 +1271,7 @@ export async function runRouteJobRecovery(now = Date.now()): Promise<{ replayed:
     const previous = wsChains.get(row.workspaceId) ?? Promise.resolve();
     const replay = previous.then(() => withWorkspaceLease(row.workspaceId, async (lease) => {
       await runInTenant(row.workspaceId, async () => {
+        // luckystack-allow tenant-scope: this plain query explicitly binds both the signal id and row.workspaceId inside that tenant's runInTenant boundary.
         const pending = await prisma.workspaceSignal.findFirst({
           where: { id: row.id, workspaceId: row.workspaceId, OR: [{ processedAt: null }, { processedAt: { isSet: false } }] },
           select: { id: true },
@@ -1278,6 +1280,7 @@ export async function runRouteJobRecovery(now = Date.now()): Promise<{ replayed:
         //? A process can restart, accept a newer write, and only then reach this sweep. Never let the old
         //? completion overwrite that newer state. Read the earliest bounded window of later processed
         //? internal signals; if the window overflows, fail conservatively by treating the old job as stale.
+        // luckystack-allow tenant-scope: the supersession scan explicitly constrains row.workspaceId inside runInTenant and the renewable workspace lease.
         const later = await prisma.workspaceSignal.findMany({
           where: { workspaceId: row.workspaceId, seq: { gt: row.seq }, kind: { in: [...INTERNAL_OP_NAMES] }, processedAt: { not: null } },
           select: { workspaceId: true, kind: true, payload: true },
@@ -1378,6 +1381,7 @@ async function executeAction(action: WriterAction): Promise<unknown> {
     return { applied: true };
   }
   if (action.op === 'project-image-complete') {
+    // luckystack-allow tenant-scope: executeAction already asserted matching tenant/writer context and this mutation also includes action.workspaceId in where.
     const updated = await prisma.project.updateMany({
       where: { workspaceId: action.workspaceId, id: action.target.projectId },
       data: { baseImageRef: action.payload.tag },
@@ -1455,6 +1459,7 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const updated = await prisma.studioBrief.updateMany({ where: { workspaceId: action.workspaceId, id: action.target.briefId }, data: fields });
       return updated.count === 1 ? { applied: true, keys: [action.target.briefId] } : { ok: false, error: 'studio.briefNotFound' };
     }
+    // luckystack-allow tenant-scope: deterministic-id collision detection must query globally, then explicitly rejects a row owned by another workspace.
     const existing = await prisma.studioBrief.findUnique({ where: { id: action.target.briefId } });
     if (existing) {
       return existing.workspaceId === action.workspaceId
@@ -1500,6 +1505,7 @@ async function executeAction(action: WriterAction): Promise<unknown> {
     return { applied: true, keys: [created.id] };
   }
   if (action.op === 'runtime-launch-prepare') {
+    // luckystack-allow tenant-scope: executeAction asserted the active tenant and the query explicitly includes action.workspaceId.
     const ticket = await prisma.ticket.findFirst({
       where: { workspaceId: action.workspaceId, projectId: action.target.projectId, key: action.target.ticketKey, archived: false },
       select: { branch: true },
@@ -1514,6 +1520,7 @@ async function executeAction(action: WriterAction): Promise<unknown> {
     return { applied: true, keys: [action.target.ticketKey] };
   }
   if (action.op === 'runtime-launch-complete') {
+    // luckystack-allow tenant-scope: executeAction asserted the active tenant and the completion check explicitly includes action.workspaceId.
     const prepared = await prisma.workspaceSignal.findFirst({
       where: { id: action.target.intentId, workspaceId: action.workspaceId, kind: 'runtime-launch-prepare', processedAt: { not: null } },
       select: { id: true },

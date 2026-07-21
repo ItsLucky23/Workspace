@@ -227,6 +227,7 @@ export async function beginArtifact(
     await dependencies.afterBriefCheck?.();
     const meta = KIND_META[input.kind];
     if (dependencies.artifactId) {
+      // luckystack-allow tenant-scope: deterministic-id collision detection is global, followed by exact workspace/brief/kind ownership verification.
       const existing = await prisma.studioArtifact.findUnique({ where: { id: dependencies.artifactId } });
       if (existing) {
         return existing.workspaceId === input.workspaceId && existing.briefId === input.briefId && existing.kind === input.kind

@@ -105,6 +105,7 @@ export async function runPreparedRuntimeLaunch(action: RuntimeLaunchPrepareInter
 }
 
 export async function runRuntimeJobRecovery(now = Date.now(), dependencies: RuntimeJobDependencies = {}): Promise<{ replayed: number; failed: number }> {
+  // luckystack-allow tenant-scope: leader discovery scans prepared intents globally, then executeRuntimeLaunch enters runInTenant for the row workspace.
   const prepared = await prisma.workspaceSignal.findMany({
     where: {
       kind: 'runtime-launch-prepare',
@@ -122,7 +123,7 @@ export async function runRuntimeJobRecovery(now = Date.now(), dependencies: Runt
     //? Presence of the deterministic completion signal proves external execution already returned. Even if
     //? its short DB apply crashed before processedAt, route-job recovery owns that typed completion; never
     //? duplicate Docker/proxy work merely because the acknowledgement is still pending.
-    const completed = await prisma.workspaceSignal.findUnique({ where: { id: completionId }, select: { id: true } });
+    const completed = await prisma.workspaceSignal.findFirst({ where: { id: completionId, workspaceId: row.workspaceId }, select: { id: true } });
     if (completed) continue;
     const action = internalActionFromSignal(row);
     if (action?.op !== 'runtime-launch-prepare') {
