@@ -4587,3 +4587,13 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Files touched:** `package.json`, `package-lock.json`, `src/_components/editor/monacoSetup.ts`, `vite.config.ts` en branchlogs.
 
 **Verify:** `npm audit` van 8 naar **3 moderate** (drie namen, één Hono→MCP-keten), **0 high/low/critical**; `npm audit --omit=dev` **0 advisories**. Sharp 0.35.3/libvips 8.18.3 verwerkte live een PNG. Unit **108/108 bestanden**, HTTP **433/433**, Playwright Chromium **24/24**, beide typechecks, lint, `ai:lint` en build warningvrij groen; backend ready inclusief `devTools:true`, frontend 200.
+
+## 2026-07-22 22:19 — LuckyStack 0.7.5-upgrade
+
+**User prompt:** upgrade het project naar LuckyStack 0.7.5.
+
+**Wat ik deed:** alle zestien directe `@luckystack/*` runtime- en devpackages plus lockfile van 0.7.4 naar 0.7.5 bijgewerkt en de capabilityindex opnieuw gegenereerd. De bestaande 0.7.4 consumerintegratie voor native env-/secretresolution en live-portdetectie bleef intact. Npm-diffs van core/server/test-runner bevestigen dat 0.7.5 voor deze kernpakketten alleen release-metadata wijzigt; er is geen consumer-API- of datamigratie nodig. Backend en frontend zijn volledig vers op 0.7.5 gestart met Docker actief.
+
+**Files touched:** `package.json`, `package-lock.json`, `docs/AI_CAPABILITIES.md` en branchlogs.
+
+**Verify:** alle 16 packages exact **0.7.5** · standalone **307/307 testbestanden** · HTTP **433/433** · Playwright Chromium **24/24** · typecheck/lint/`ai:lint`/build groen · backend health/ready en frontend **200**. De dev-only MCP/Hono-keten blijft de al bekende **3 moderate** auditlabels geven; production audit blijft schoon. Het afzonderlijk gevonden upstream boot-UUID-TTL-probleem is nog niet vernieuwd in 0.7.5 en blijft dus een frameworkfollow-up.
