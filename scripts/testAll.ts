@@ -14,27 +14,14 @@
 //?   TEST_ONLY_CUSTOM=1     — alias for TEST_NO_SWEEP
 //?   TEST_NO_CUSTOM=1       — skip per-route custom tests
 
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
-
-import { logRunAllSummary, runAllTests } from '@luckystack/test-runner';
+import { logRunAllSummary, resolveTestBaseUrl, runAllTests } from '@luckystack/test-runner';
 import { apiInputSchemas } from '../src/_sockets/apiInputSchemas.generated';
 import { apiMetaMap, apiMethodMap } from '../src/_sockets/apiTypes.generated';
 import { ports } from '../config.ports';
 
-//? Default target: the ACTUAL bound backend port — the dev server hops off a busy port and records
-//? the real one in dev-server.json (lesson 0015; same pattern as vite.config.ts). 127.0.0.1 instead
-//? of localhost: the latter intermittently fails DNS resolution on this platform.
-const readBackendPort = (fallback: string): string => {
-  try {
-    const raw = readFileSync(path.join(process.cwd(), 'node_modules', '.luckystack', 'dev-server.json'), 'utf8');
-    const info = JSON.parse(raw) as { port?: number };
-    return info.port ? String(info.port) : fallback;
-  } catch {
-    return fallback;
-  }
-};
-const baseUrl = process.env.TEST_BASE_URL ?? `http://127.0.0.1:${readBackendPort(String(ports.backend))}`;
+//? 0.7.4 resolves an explicit TEST_BASE_URL first, then a live PID-owned dev-port advertisement,
+//? then this project fallback. This avoids targeting a stale auto-incremented backend.
+const baseUrl = resolveTestBaseUrl({ fallbackUrl: `http://127.0.0.1:${String(ports.backend)}` });
 const skip = (process.env.TEST_SKIP ?? '').split(',').map(s => s.trim()).filter(Boolean);
 const authToken = process.env.TEST_AUTH_TOKEN || undefined;
 const filter = process.env.TEST_FILTER || undefined;
@@ -58,6 +45,9 @@ const summary = await runAllTests({
   noFuzz,
   noRateLimit,
   noCustom,
+  //? Lazy by contract: the runner loads env layers before config.ts reads secret-manager settings,
+  //? then resolves pointers before importing DB/Redis-backed Layer-5 tests.
+  loadProjectConfig: async () => (await import('../config')).default,
 });
 
 logRunAllSummary(summary);

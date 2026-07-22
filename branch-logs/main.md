@@ -4567,3 +4567,23 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Files touched:** `config.ts`, `tests/unit/devRateLimitConfig.test.mts` en branchlogs.
 
 **Verify:** schema in sync · Prisma generate groen · data-upgrade verified · runtimes health/ready 200 · standalone **108/108 testbestanden** · HTTP **433/433** · Playwright Chromium **24/24** in één seriële run · lint/build/typecheck/`ai:lint` groen · providerfallbacks 4/4 aanwezig zonder secretwaarden te loggen.
+
+## 2026-07-22 11:26 — LuckyStack 0.7.4-upgrade en native testbootstrap
+
+**User prompt:** werk alle zestien geïnstalleerde `@luckystack/*`-packages bij van 0.7.0 naar de nieuwste frameworkversie en verwerk de changelogimpact.
+
+**Wat ik deed:** alle zestien directe LuckyStack dependencies/devDependencies en de lockfile naar 0.7.4 bijgewerkt; de capabilityindex opnieuw gegenereerd. De 0.7.4 test-runner vereist een lazy consumer-configloader en bezit nu zelf env-/secret-managerbootstrap plus live-portresolutie. `scripts/testAll.ts` gebruikt daarom `resolveTestBaseUrl` en `loadProjectConfig`; de oude `testWithSecrets`-wrapper is een dunne compatibility-entrypoint geworden zonder dubbele secretresolution. Backend en Vite zijn vers gestart; `/readyz` bewijst de nieuwe `devTools:true`-check. `trustedProxyCidrs` is bewust niet ingesteld: de huidige deployment gebruikt geen LuckyStack-routerpad en de nieuwe veilige default vertrouwt geen peer.
+
+**Files touched:** `package.json`, `package-lock.json`, `scripts/testAll.ts`, `scripts/testWithSecrets.ts`, `docs/AI_CAPABILITIES.md` en branchlogs.
+
+**Verify:** alle 16 packages exact **0.7.4** · native testbootstrap-smoke groen · unit **108/108 testbestanden** · Playwright Chromium **24/24** · lint, `ai:lint` en build groen · backend ready met DB/Redis/Prisma/devTools. HTTP **431/433**: de twee rode customcases delen één externe oorzaak, Docker Desktop staat uit; delete-workspace faalt terecht dicht omdat containerteardown niet bewezen kan worden en de ffmpeg-test kan geen Dockerverbinding openen. Na Docker-start moeten exact die twee routes worden herhaald. `npm audit` rapporteert daarnaast 8 bestaande dependency-advisories (1 low, 4 moderate, 3 high), buiten deze frameworkversiebump.
+
+## 2026-07-22 20:26 — Oplosbare dependency-advisories gesloten
+
+**User prompt:** fix alle logische advisories zonder self-hosted teamgebruik te hinderen; forceer geen incompatibele security-upgrade die tooling breekt.
+
+**Wat ik deed:** `brace-expansion` 1.1.16 en `fast-uri` 3.1.4 via veilige patches bijgewerkt; Sharp naar 0.35.3 en Monaco naar 0.56.0 gebracht. Monaco levert nog DOMPurify 3.4.8, daarom wordt uitsluitend die transitieve patch via npm override naar 3.4.12 gezet. Monaco 0.56 heeft package-exports ingevoerd; de vijf Vite-workerimports gebruiken nu de ondersteunde exportpaden. De reeds lazy Monacochunk groeide van 3.8 naar 4.02 MB; de bestaande waarschuwingsgrens is nauw verhoogd van 4.0 naar 4.1 MB zodat de bekende chunk warningvrij blijft en verdere groei opnieuw waarschuwt. De Hono-path-traversal is bewust niet met een major override geforceerd: MCP SDK 1.29 declareert Hono-server ^1.19.9, terwijl de fix pas in 2.0.5 zit. Dit is alleen een lokale devDependency/MCP-keten en ontbreekt volledig uit de production dependency-audit.
+
+**Files touched:** `package.json`, `package-lock.json`, `src/_components/editor/monacoSetup.ts`, `vite.config.ts` en branchlogs.
+
+**Verify:** `npm audit` van 8 naar **3 moderate** (drie namen, één Hono→MCP-keten), **0 high/low/critical**; `npm audit --omit=dev` **0 advisories**. Sharp 0.35.3/libvips 8.18.3 verwerkte live een PNG. Unit **108/108 bestanden**, HTTP **433/433**, Playwright Chromium **24/24**, beide typechecks, lint, `ai:lint` en build warningvrij groen; backend ready inclusief `devTools:true`, frontend 200.
