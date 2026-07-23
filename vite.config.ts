@@ -25,7 +25,7 @@ const readBackendPort = (fallback: string): string => {
   }
 };
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const ip = env.SERVER_IP || '127.0.0.1';
   //? Proxy target resolution (config-driven, single source = config.ports.ts):
@@ -70,6 +70,14 @@ export default defineConfig(({ mode }) => {
   });
 
   return {
+    // Production builds must never inherit an ambient development condition. Besides enabling
+    // React's production runtime, this keeps shared config.ts on its production branch in-browser.
+    define: command === 'build' ? {
+      'import.meta.env.DEV': 'false',
+      'import.meta.env.PROD': 'true',
+      'process.env.NODE_ENV': JSON.stringify('production'),
+    } : undefined,
+    esbuild: command === 'build' ? { jsxDev: false } : undefined,
     plugins: [
       react(),
       tsconfigPaths({ projects: ['tsconfig.json'] }),

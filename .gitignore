@@ -25,6 +25,7 @@ server/prod/generatedApis*.ts
 dump/
 
 # AI browser-testing artifacts (agent-browser / Playwright / Chrome DevTools MCP).
+artifacts/
 .agent-browser/
 .playwright-mcp/
 test-results/

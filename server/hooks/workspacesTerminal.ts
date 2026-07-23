@@ -105,8 +105,10 @@ export const registerWorkspacesTerminalHooks = (): void => {
     void (async () => {
       const token = extractTokenFromSocket(socket);
       const [sessionError, session] = token ? await tryCatch(() => readSession(token)) : [null, null];
+      // Anonymous sockets are required for login/register API traffic. They receive no terminal
+      // listeners; terminal authorization still requires a valid session before handlers exist.
       if (sessionError || !session) {
-        next(new Error('terminal authentication required'));
+        next();
         return;
       }
 

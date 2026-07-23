@@ -1,5 +1,5 @@
 //? Services topology — added by `npx luckystack add router`. A single-service app
-//? maps `system` -> 'root' (the project's `src/_api` + `src/_sync`) and bundles it
+//? maps `system` -> 'root' plus every top-level route service and bundles them
 //? into one `default` preset, so a bare `npm run server` (prod) keeps working.
 //? Scale to multi-instance by adding services + a preset per backend bundle, then
 //? run `npm run server -- <preset>`:
@@ -28,11 +28,14 @@ export interface ServicesConfig {
 const servicesConfig: ServicesConfig = {
   services: {
     system: { source: 'root' },
+    'reset-password': { source: 'reset-password' },
+    settings: { source: 'settings' },
+    workspaces: { source: 'workspaces' },
   },
   presets: {
     default: {
-      description: 'Default bundle — every API/sync route in src/_api and src/_sync.',
-      services: ['system'],
+      description: 'Default bundle — every production API/sync route in this application.',
+      services: ['system', 'reset-password', 'settings', 'workspaces'],
     },
   },
 };

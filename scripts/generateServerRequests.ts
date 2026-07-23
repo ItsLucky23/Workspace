@@ -11,6 +11,7 @@ import {
   assertValidRouteNaming,
 } from '@luckystack/devkit';
 import { ROOT_DIR, getSrcDir, getServerDir } from '@luckystack/core';
+import { collectServerRequestFunctionFiles } from './serverRequestFunctions';
 
 const normalizePath = (p: string) => p.split(path.sep).join("/");
 
@@ -47,25 +48,6 @@ const walkSrcFiles = (dir: string, results: string[] = []) => {
       results.push(fullPath);
     }
   }
-  return results;
-};
-
-// Collect function files recursively
-const walkFunctionFiles = (dir: string, results: string[] = []) => {
-  if (!fs.existsSync(dir)) return results;
-
-  const entries = fs.readdirSync(dir);
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry);
-    const stat = fs.statSync(fullPath);
-
-    if (stat.isDirectory()) {
-      walkFunctionFiles(fullPath, results);
-    } else if (entry.endsWith(".ts")) {
-      results.push(normalizePath(fullPath));
-    }
-  }
-
   return results;
 };
 
@@ -138,20 +120,10 @@ const run = async () => {
 
   const rawSrcFiles = walkSrcFiles(srcDir).map(normalizePath).sort();
 
-  // Collect functions: project-level functions/ overrides server/functions/ by module name.
-  // This establishes the merge contract for Phase 1 (full registry, no pruning).
-  const serverFunctionFiles = walkFunctionFiles("./server/functions");
-  const projectFunctionFiles = walkFunctionFiles("./functions");
-
-  const functionFilesByName = new Map<string, string>();
-  for (const filePath of serverFunctionFiles) {
-    functionFilesByName.set(path.basename(filePath, ".ts"), filePath);
-  }
-  // Project functions win on name collision — same key replaces the server default.
-  for (const filePath of projectFunctionFiles) {
-    functionFilesByName.set(path.basename(filePath, ".ts"), filePath);
-  }
-  const functionFiles = Array.from(functionFilesByName.values()).sort();
+  // Collect every default injection root used by the dev loader and type-map generator. Omitting
+  // shared/ here leaves production handlers without functions.tryCatch/functions.sleep even though
+  // development and generated types expose both.
+  const functionFiles = collectServerRequestFunctionFiles();
 
   // --------------------
   // Iterate over each preset and build maps

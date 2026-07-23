@@ -102,6 +102,11 @@ enable `workspaces-app`. The production host must set both `PUBLIC_URL` (LuckySt
 `WS_PUBLIC_URL` (publishing/media URLs). The deployed public origin is `https://app.workspace.keetlerop.nl`; the
 wildcard parent remains `workspace.keetlerop.nl` for previews and cookies.
 
+Always run `npm run build` on the release source before deployment. Its `prebuild` regenerates the production
+API/sync/function maps; `services.config.ts` keeps the `default` preset aligned with every top-level route service,
+and production function injection includes both consumer `functions/` shims and shared `tryCatch`/`sleep` helpers.
+Generated imports are workspace-relative so an artifact built on another OS remains portable to the Linux host.
+
 ---
 
 ## 3. Wildcard TLS (both backends)

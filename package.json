@@ -10,6 +10,7 @@
     "client": "vite --host",
     "server": "luckystack-dev",
     "server:once": "tsx --tsconfig tsconfig.server.json server/server.ts",
+    "prebuild": "npm run generateArtifacts",
     "build": "vite build && npm run compose-runner:build",
     "prod": "node dist/server.js",
     "compose-runner:build": "tsc -p services/compose-runner/tsconfig.json",

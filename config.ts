@@ -19,7 +19,16 @@ const env = (key: string): string | undefined =>
 //? Honors LUCKYSTACK_ENV first (the framework canonical, mirroring core's
 //? `resolveEnvKey()`), then NODE_ENV — via the browser-safe `env()` helper so
 //? this dual-bundle file never references `process` directly in the client.
-export const dev = (env('LUCKYSTACK_ENV') ?? env('NODE_ENV')) !== 'production';
+export const resolveDev = (input: { viteProduction: boolean; runtimeEnvironment?: string }): boolean =>
+  !input.viteProduction && input.runtimeEnvironment !== 'production';
+
+// Vite replaces import.meta.env.PROD in the browser bundle. Falling back only to process.env made
+// every browser build look like development because `process` intentionally does not exist there.
+const viteProduction = typeof import.meta.env !== 'undefined' && import.meta.env.PROD === true;
+export const dev = resolveDev({
+  viteProduction,
+  runtimeEnvironment: env('LUCKYSTACK_ENV') ?? env('NODE_ENV'),
+});
 
 //? Backend HTTP origin as the BROWSER reaches it — where the framework's own
 //? routes live (notably the OAuth `/auth/callback/<provider>` handler). We use
