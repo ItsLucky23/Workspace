@@ -18,6 +18,8 @@ eq(resolveIsolatedComposeRunnerUrl('http://compose.example/{workspaceId}/', wsA,
 eq(resolveIsolatedComposeRunnerUrl('https://compose.example/shared/', wsA, 'up'), null, 'a shared URL without workspace identity is refused');
 eq(resolveIsolatedComposeRunnerUrl('https://user:secret@compose.example/{workspaceId}/', wsA, 'up'), null, 'credentials in runner URLs are refused');
 eq(isolatedComposeRunnerConfig({ WS_COMPOSE_RUNNER_URL_TEMPLATE: template }), null, 'a runner without bearer token is disabled');
+eq(isolatedComposeRunnerConfig({ WS_COMPOSE_RUNNER_URL_TEMPLATE: template, WS_COMPOSE_RUNNER_TOKEN: 'token' })?.timeoutMs, 600_000, 'cold VM provisioning gets a bounded ten-minute default');
+eq(isolatedComposeRunnerConfig({ WS_COMPOSE_RUNNER_URL_TEMPLATE: template, WS_COMPOSE_RUNNER_TOKEN: 'token', WS_COMPOSE_RUNNER_TIMEOUT_MS: '900000' })?.timeoutMs, 900_000, 'operators can tune the cold-provision timeout');
 
 let calledUrl = '';
 let authorization = '';

@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${EUID}" -ne 0 ]]; then
+  echo "must run as root" >&2
+  exit 1
+fi
+
+payload="$(head -c 4096)"
+if [[ "${#payload}" -ge 4096 ]]; then
+  echo "configuration too large" >&2
+  exit 1
+fi
+
+declare -A values=()
+while IFS='=' read -r key value; do
+  [[ -z "${key}" ]] && continue
+  case "${key}" in
+    AGENT_WORKSPACE_ID|AGENT_BEARER_TOKEN|AGENT_PORT|AGENT_GATEWAY_HOST) ;;
+    *) echo "unexpected key: ${key}" >&2; exit 1 ;;
+  esac
+  [[ -n "${values[${key}]+set}" ]] && { echo "duplicate key: ${key}" >&2; exit 1; }
+  values["${key}"]="${value}"
+done <<< "${payload}"
+
+[[ "${values[AGENT_WORKSPACE_ID]:-}" =~ ^[a-f0-9]{24}$ ]] || { echo "invalid workspace id" >&2; exit 1; }
+[[ "${values[AGENT_BEARER_TOKEN]:-}" =~ ^[A-Za-z0-9_-]{43}$ ]] || { echo "invalid bearer token" >&2; exit 1; }
+[[ "${values[AGENT_PORT]:-}" =~ ^[0-9]{1,5}$ ]] || { echo "invalid agent port" >&2; exit 1; }
+port="${values[AGENT_PORT]}"
+(( port >= 1 && port <= 65535 )) || { echo "agent port out of range" >&2; exit 1; }
+[[ "${values[AGENT_GATEWAY_HOST]:-}" =~ ^[A-Za-z0-9.-]{1,253}$ ]] || { echo "invalid gateway host" >&2; exit 1; }
+
+install -d -m 0700 /var/lib/workspaces-compose-agent
+config="$(mktemp)"
+trap 'rm -f "${config}"' EXIT
+{
+  printf 'AGENT_BIND_HOST=0.0.0.0\n'
+  printf 'AGENT_DATA_DIR=/var/lib/workspaces-compose-agent\n'
+  printf 'AGENT_DOCKER_BIN=/usr/bin/docker\n'
+  printf 'AGENT_OPERATION_TIMEOUT_MS=300000\n'
+  printf 'AGENT_WORKSPACE_ID=%s\n' "${values[AGENT_WORKSPACE_ID]}"
+  printf 'AGENT_BEARER_TOKEN=%s\n' "${values[AGENT_BEARER_TOKEN]}"
+  printf 'AGENT_PORT=%s\n' "${values[AGENT_PORT]}"
+  printf 'AGENT_GATEWAY_HOST=%s\n' "${values[AGENT_GATEWAY_HOST]}"
+} > "${config}"
+install -m 0600 -o root -g root "${config}" /etc/workspaces-compose-agent.env
+systemctl restart workspaces-compose-agent.service

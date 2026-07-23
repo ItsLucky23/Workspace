@@ -4139,9 +4139,12 @@ async function executeAction(action: WriterAction): Promise<unknown> {
         const env = result.executionMode === 'isolated-v1' ? (result.env ?? {}) : (presetKey ? presetEnv(presetKey) : {});
         for (const [key, v] of Object.entries(env)) {
           const existing = await prisma.envVar.findFirst({ where: { workspaceId: action.workspaceId, key }, select: { id: true } });
+          //? Connection strings may contain database credentials. Runner metadata is workspace-controlled, but
+          //? persistence remains encrypted-at-rest exactly like manually entered secret EnvVars.
+          const encrypted = encryptSecret(v);
           await (existing
-            ? prisma.envVar.update({ where: { id: existing.id }, data: { value: v, secret: false, serviceName: name } })
-            : prisma.envVar.create({ data: { workspaceId: action.workspaceId, key, value: v, secret: false, serviceName: name } }));
+            ? prisma.envVar.updateMany({ where: { id: existing.id, workspaceId: action.workspaceId }, data: { value: encrypted, secret: true, serviceName: name } })
+            : prisma.envVar.create({ data: { workspaceId: action.workspaceId, key, value: encrypted, secret: true, serviceName: name } }));
         }
       }
       return result;

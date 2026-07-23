@@ -3,6 +3,8 @@
 > **Read this FIRST, before any other `_docs` file, when you are building V1.** The broader doc set (01–08, 04b, the all-in-one layer, the 24 feature docs) describes a **bigger system than V1 ships** — a pluggable multi-forge, multi-provider, built-in-MR/CI, preview-deploy, analytics platform. That is the *design horizon*, not the build. **V1 is the deliberate subset locked by the user on 2026-06-04**, captured here. Where any other doc over-describes beyond this file, **V1_SCOPE wins** (§5). This doc adds no new design — it *selects* from the decided scope ([REVIEW_AND_OPEN_QUESTIONS], [REVIEW_AND_OPEN_QUESTIONS_2_ALLINONE]) and cites the owning build-docs for each included piece. Codes resolve via [REFERENCE_CODES]. Last updated: 2026-06-04.
 >
 > **No new verbs. No new scope.** This file introduces zero structured-channel verbs and zero new entities. It is a *scoping* document over the frozen 7+6 verb surface ([02 §2], all `read|propose`, none write), the single-writer Conductor ([01 §3.3]), the FROZEN [CONTROL_API] verb-free write path, `runInTenant` multi-tenancy ([04b §11c]), and the LuckyStack file-based `_api`/`_sync` + function-injection conventions (root `CLAUDE.md`).
+>
+> **Post-V1 security expansion (2026-07-22):** the old “all per-ticket containers on one host” statement remains the curated V1 runtime, but no longer authorizes **unrestricted user Compose** on that daemon. ADR 0288 requires a dedicated external sandbox per workspace; ADR 0297 implements it with Proxmox QEMU VMs. This narrow later decision supersedes the single-host wording only for unrestricted Compose and adds no structured-channel verb.
 
 ---
 

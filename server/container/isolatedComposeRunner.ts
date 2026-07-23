@@ -25,13 +25,18 @@ export interface IsolatedComposeRunner {
 export interface IsolatedComposeRunnerConfig {
   urlTemplate: string;
   token: string;
+  timeoutMs?: number;
 }
 
 export function isolatedComposeRunnerConfig(env: NodeJS.ProcessEnv = process.env): IsolatedComposeRunnerConfig | null {
   const urlTemplate = (env.WS_COMPOSE_RUNNER_URL_TEMPLATE ?? '').trim();
   const token = (env.WS_COMPOSE_RUNNER_TOKEN ?? '').trim();
   if (!urlTemplate || !token || !urlTemplate.includes('{workspaceId}')) return null;
-  return { urlTemplate, token };
+  const requestedTimeout = Number(env.WS_COMPOSE_RUNNER_TIMEOUT_MS ?? '600000');
+  const timeoutMs = Number.isInteger(requestedTimeout) && requestedTimeout >= 5000 && requestedTimeout <= 1_800_000
+    ? requestedTimeout
+    : 600_000;
+  return { urlTemplate, token, timeoutMs };
 }
 
 export function resolveIsolatedComposeRunnerUrl(template: string, workspaceId: string, action: 'up' | 'down'): URL | null {
@@ -76,7 +81,9 @@ export function createIsolatedComposeRunner(
       method: 'POST',
       headers: { authorization: `Bearer ${config.token}`, 'content-type': 'application/json' },
       body: JSON.stringify({ workspaceId: input.workspaceId, project: input.project, ...(input.compose === undefined ? {} : { compose: input.compose }) }),
-      signal: AbortSignal.timeout(60_000),
+      //? A cold full-clone VM provision legitimately takes minutes. The Conductor job is durable; this timeout
+      //? bounds one attempt without cutting the controller off at the old 60-second in-process Docker budget.
+      signal: AbortSignal.timeout(config.timeoutMs ?? 600_000),
     }));
     if (transportError || !response) return { ok: false, services: [], env: {}, error: 'runner.unavailable' };
     const announcedLength = Number(response.headers.get('content-length') ?? '0');

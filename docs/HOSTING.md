@@ -1,5 +1,8 @@
 # Hosting & the preview reverse-proxy
 
+> Unrestricted user Docker Compose runs outside this app stack in one Proxmox QEMU VM per workspace. Deploy that
+> control-plane separately via `docs/COMPOSE_RUNNER_DEPLOYMENT.md`; never mount the app host Docker socket into it.
+
 How to host Workspaces and expose each ticket's running app at a preview URL. The reverse
 proxy is **pluggable — Caddy or nginx**, your choice; both are zero-downtime.
 

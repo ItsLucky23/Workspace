@@ -12,3 +12,6 @@ backups
 .eslintcache
 .env
 .env.local
+services/compose-runner/.env
+services/compose-runner/secrets
+services/compose-runner/certs

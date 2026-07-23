@@ -18,7 +18,7 @@ import i18next from 'eslint-plugin-i18next'
 import eslintPluginComments from 'eslint-plugin-eslint-comments'
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules', '**/*.generated.*'] },
+  { ignores: ['dist', '**/dist/**', 'node_modules', '**/*.generated.*'] },
   {
     files: ['**/*.{ts,tsx}'],
     linterOptions: {
@@ -39,7 +39,7 @@ export default tseslint.config(
       ecmaVersion: 'latest',
       globals: globals.browser,
       parserOptions: {
-        project: ['./tsconfig.json', './tsconfig.server.json'],
+        project: ['./tsconfig.json', './tsconfig.server.json', './services/compose-runner/tsconfig.json'],
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -48,7 +48,7 @@ export default tseslint.config(
         typescript: {
           alwaysTryTypes: true,
           noWarnOnMultipleProjects: true,
-          project: ['./tsconfig.json', './tsconfig.server.json'],
+          project: ['./tsconfig.json', './tsconfig.server.json', './services/compose-runner/tsconfig.json'],
         },
       },
     },
@@ -102,7 +102,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['server/**/*.ts', 'shared/**/*.ts', 'scripts/**/*.ts', 'config.ts'],
+    files: ['server/**/*.ts', 'services/**/*.ts', 'shared/**/*.ts', 'scripts/**/*.ts', 'config.ts'],
     languageOptions: {
       globals: globals.node,
     },

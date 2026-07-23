@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (214)
+## Decisions (215)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -227,6 +227,7 @@
 | 0294 | Move cheap-mode, scene-continuity and default TTS voice from host env to per-workspace media prefs | 🟢 accepted | multi-tenancy, content, media, secrets, config | — | `docs/decisions/0294-per-workspace-media-generation-defaults.md` |
 | 0295 | Consolidate semantic duplicates, not domain history | 🟢 accepted | data-model, skills, rag, artifacts, migration | — | `docs/decisions/0295-consolidate-semantic-duplicates-not-domain-history.md` |
 | 0296 | Global writes use encrypted durable Conductor jobs | 🟢 accepted | conductor, reliability, security, multi-instance | — | `docs/decisions/0296-global-writes-use-encrypted-durable-conductor-jobs.md` |
+| 0297 | Compose runner uses one Proxmox QEMU sandbox per workspace | 🟢 accepted | compose, proxmox, qemu, isolation, runner, self-hosting | — | `docs/decisions/0297-compose-runner-uses-proxmox-qemu-sandboxes.md` |
 
 ## Summaries
 
@@ -1957,6 +1958,14 @@ Store the three as workspace-wide plaintext `EnvVar` rows in the same `__`-names
 Global route writes use the closed `GlobalAction` union and `GlobalJob` collection. The full validated payload is AES-256-GCM encrypted with `WORKSPACES_ENC_KEY`; searchable columns contain only job identity, kind, owner, status and retry metadata. Deterministic action hashing supplies the job ID and dedup key. Recovery replays only the typed union, with five bounded attempts.
 
 → `docs/decisions/0296-global-writes-use-encrypted-durable-conductor-jobs.md`
+
+### 0297 — Compose runner uses one Proxmox QEMU sandbox per workspace
+
+**0297** · accepted · tags: compose, proxmox, qemu, isolation, runner, self-hosting · 2026-07-22
+
+The first production runner backend is **Proxmox VE with a full-cloned QEMU VM per workspace**. Proxmox VM configuration is the durable identity/state source; the runner remains stateless and reconstructs ownership from a marker plus the exact workspace id in the VM description. A separately deployed HTTPS control-plane authenticates the Workspaces bearer token, verifies URL/body workspace equality, serializes operations per workspace, provisions/reuses the VM and forwards only to that VM's agent. A host-level systemd agent inside the disposable VM executes raw Compose. Its bearer token is HMAC-derived per workspace and injected after clone over a restricted cloud-init SSH principal; the public runner token is never forwarded into a sandbox. Isolation is enforced outside the guest by Proxmox firewall rules: deny-by-default ingress, agent access only from controller CIDRs, explicitly labelled gateway ports only from Workspaces app CIDRs, and private/metadata egress denial before public egress. A guest compromise may own its VM but not change hypervisor rules. CPU, RAM and disk quotas are VM limits. Compose command timeouts, request/response caps, project serialization, idle garbage collection and an explicit reset endpoint bound lifecycle/DoS impact. Cross-daemon service endpoints are opt-in Compose labels. The agent substitutes `{gatewayHost}`, returns bounded env values and the controller opens only the declared ports; Workspaces never assumes same-daemon DNS.
+
+→ `docs/decisions/0297-compose-runner-uses-proxmox-qemu-sandboxes.md`
 
 ## Code governed by decisions
 

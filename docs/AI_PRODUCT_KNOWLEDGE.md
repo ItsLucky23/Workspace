@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `1eaa9caf71a737d8` · 17 capabilities · 214 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `736f351a14d83b62` · 17 capabilities · 215 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -240,3 +240,4 @@
 - `adr-0294` Move cheap-mode, scene-continuity and default TTS voice from host env to per-workspace media prefs
 - `adr-0295` Consolidate semantic duplicates, not domain history
 - `adr-0296` Global writes use encrypted durable Conductor jobs
+- `adr-0297` Compose runner uses one Proxmox QEMU sandbox per workspace

@@ -1,6 +1,6 @@
 # Isolated unrestricted Docker Compose
 
-<!-- @covers server/container/{composeEngine,isolatedComposeRunner}.ts -->
+<!-- @covers server/container/{composeEngine,isolatedComposeRunner}.ts services/compose-runner/** -->
 
 ## Contract
 
@@ -59,8 +59,23 @@ fast development. It rejects host binds, privileged/capability/device/host-names
 published ports. This fallback is intentionally **not** “free Compose”. In production, missing runner config
 fails closed with `service.isolatedRunnerRequired` and never touches `/var/run/docker.sock`.
 
+## Selected production implementation
+
+ADR 0297 selects **Proxmox VE + one full-cloned QEMU VM per workspace**. The deployable implementation lives in
+`services/compose-runner/`:
+
+- public Caddy-terminated controller implementing the API above;
+- Proxmox lifecycle/metadata/firewall driver;
+- host-level systemd guest agent that executes raw Compose inside the disposable VM;
+- per-workspace HMAC guest tokens injected after clone (the public bearer never enters a sandbox);
+- VM CPU/RAM/disk quotas, operation caps, idle GC and confirmed reset;
+- explicit gateway labels whose ports are opened outside the guest only for configured app CIDRs.
+
+Full operator setup, least-privilege permissions and acceptance tests: `docs/COMPOSE_RUNNER_DEPLOYMENT.md`.
+
 ## Verification boundary
 
 Unit/integration tests prove URL separation, TLS/token handling, raw Compose preservation, explicit gateway env,
-persistence markers and teardown routing. A release still needs a live infrastructure test against the chosen
-VM/microVM runner to prove host escape, cross-workspace isolation, quotas, DNS/gateway connectivity and cleanup.
+persistence markers, Proxmox firewall plans, teardown routing and a real Docker agent lifecycle. A release still
+needs a live infrastructure test against the operator's Proxmox bridge to prove host escape, cross-workspace
+isolation, quotas, DNS/gateway connectivity and cleanup.

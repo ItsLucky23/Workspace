@@ -38,3 +38,6 @@ data/
 # #7 self-host stack: secrets + local backups (never commit)
 deploy/.env
 deploy/backups/
+services/compose-runner/.env
+services/compose-runner/secrets/
+services/compose-runner/certs/
