@@ -40,9 +40,10 @@ import './utils/responseNormalizer';
 import { ports } from '../config.ports';
 
 import { bootstrapLuckyStack } from '@luckystack/server';
-import { attachSocketRedisAdapter, getIoInstance } from '@luckystack/core';
+import { attachSocketRedisAdapter, getIoInstance, getProjectConfig } from '@luckystack/core';
 
 import { registerEditorAuthCheck } from './http/editorAuthCheck';
+import { registerSessionCookieDomainBridge } from './http/sessionCookieDomain';
 import { registerTlsAsk } from './proxy/tlsAsk';
 import { registerShortLinkRedirect } from './content/shortlinkRoute';
 import { registerPublishedSiteRoute } from './deploy/siteRoute';
@@ -150,6 +151,11 @@ import { serveFavicon, serveFile } from './prod/serveFile';
     loadGeneratedMaps: (preset: string) => import(`./prod/generatedApis.${preset}`),
   });
 
+  const runtimeProjectConfig = getProjectConfig();
+  registerSessionCookieDomainBridge(server.httpServer, {
+    cookieName: runtimeProjectConfig.http.sessionCookieName,
+    domain: runtimeProjectConfig.http.sessionCookieDomain,
+  });
   await server.listen();
 
   //? Multi-instance coordination (Deel A): maintain the leadership lease so exactly one instance

@@ -305,9 +305,13 @@ export class IncusSandboxProvider {
     const deadline = Date.now() + this.config.provisionTimeoutMs;
     let lastError = 'Incus VM agent unavailable';
     while (Date.now() < deadline) {
+      // An earlier configure attempt can successfully restart the authenticated agent while the Incus exec
+      // transport itself exits non-zero or times out. The health contract is authoritative; retrying the exec
+      // for the full provision deadline would report a false failure for an already-correct sandbox.
+      if (await this.agentClient.health(sandbox, this.guestToken(sandbox.workspaceId))) return;
       const configured = await this.transport.run(['exec', this.target(sandbox.workspaceId), '--',
         '/usr/local/sbin/workspaces-compose-agent-configure'], { stdin: body, timeoutMs: 30_000 });
-      if (configured.code === 0 && await this.agentClient.health(sandbox, this.guestToken(sandbox.workspaceId))) return;
+      if (await this.agentClient.health(sandbox, this.guestToken(sandbox.workspaceId))) return;
       lastError = (configured.stderr || 'agent health check failed').slice(-300);
       await new Promise((resolve) => setTimeout(resolve, 3000));
     }

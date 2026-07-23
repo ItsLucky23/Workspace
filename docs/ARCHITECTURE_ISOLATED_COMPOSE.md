@@ -61,21 +61,22 @@ fails closed with `service.isolatedRunnerRequired` and never touches `/var/run/d
 
 ## Selected production implementation
 
-ADR 0297 selects **Proxmox VE + one full-cloned QEMU VM per workspace**. The deployable implementation lives in
-`services/compose-runner/`:
+ADR 0298 selects **one full-cloned QEMU VM per workspace**, with Proxmox VE on supported x64 hosts and Incus/QEMU
+on the deployed ARM64 host. The deployable implementation lives in `services/compose-runner/`:
 
-- public Caddy-terminated controller implementing the API above;
-- Proxmox lifecycle/metadata/firewall driver;
+- public nginx- or Caddy-terminated controller implementing the API above;
+- Proxmox and Incus lifecycle/metadata/firewall drivers;
 - host-level systemd guest agent that executes raw Compose inside the disposable VM;
 - per-workspace HMAC guest tokens injected after clone (the public bearer never enters a sandbox);
 - VM CPU/RAM/disk quotas, operation caps, idle GC and confirmed reset;
-- explicit gateway labels whose ports are opened outside the guest only for configured app CIDRs.
+- explicit gateway labels whose ports are opened outside the guest only for configured app CIDRs;
+- a narrow root-only nftables socket helper for Incus hosts while the controller remains non-root.
 
 Full operator setup, least-privilege permissions and acceptance tests: `docs/COMPOSE_RUNNER_DEPLOYMENT.md`.
 
 ## Verification boundary
 
 Unit/integration tests prove URL separation, TLS/token handling, raw Compose preservation, explicit gateway env,
-persistence markers, Proxmox firewall plans, teardown routing and a real Docker agent lifecycle. A release still
-needs a live infrastructure test against the operator's Proxmox bridge to prove host escape, cross-workspace
-isolation, quotas, DNS/gateway connectivity and cleanup.
+persistence markers, both provider firewall plans, teardown routing and a real Docker agent lifecycle. Each target
+host still needs the seven live checks in `docs/COMPOSE_RUNNER_DEPLOYMENT.md`; the deployed Incus/Pi topology passed
+all seven on 2026-07-23, including two-workspace isolation and controller-restart reconstruction.

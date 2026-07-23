@@ -9,7 +9,7 @@
 > and the private per-dev `~/.claude` memory. The AI records these automatically — see
 > `docs/LESSONS_PROTOCOL.md`.
 
-## Lessons (17)
+## Lessons (19)
 
 | # | Lesson | Severity | Area | Tags | File |
 | --- | --- | --- | --- | --- | --- |
@@ -30,6 +30,8 @@
 | 0015 | The dev backend hops ports and records the real one in dev-server.json — restarting "the" configured port leaves the browser on a stale backend | 🟠 high | dev-server, browser-testing, windows | — | `docs/lessons/0015-dev-server-port-hops-stale-backend.md` |
 | 0016 | Killing the PID on the port resurrects the server — luckystack-dev is a supervisor; kill the process TREE | 🟠 high | dev-server, windows, process-management | — | `docs/lessons/0016-supervisor-respawns-killed-port-pid.md` |
 | 0017 | surfaceReachability pins op ENTRY points, not op EFFECTS — an op's promised UI behavior can be pure prose | 🟡 medium | testing, op-catalog, ui-contracts | — | `docs/lessons/0017-op-contract-ui-effect-never-existed.md` |
+| 0018 | A shorter reverse-proxy timeout can report failed provisioning while the runner is still creating the VM | 🟠 high | compose-runner, nginx, incus, operations | — | `docs/lessons/0018-reverse-proxy-timeout-can-mask-live-provisioning.md` |
+| 0019 | Authenticated agent health can succeed even when the Incus configure exec reports failure | 🟠 high | compose-runner, incus, agent-bootstrap | — | `docs/lessons/0019-agent-health-is-authoritative-after-incus-exec-transport-failure.md` |
 
 ## Takeaways
 
@@ -168,3 +170,19 @@ Restart by killing the supervisor TREE, not the port PID: find the `luckystack-d
 When enabling an op (assistant or UI), verify its promised EFFECT once in the browser — not just that the dispatch fires. The op summary text is a checklist: every claim in it must be observable. Comments that say "X derives from Y" are hypotheses: grep for the derivation before trusting them (here: zero `archived` references in board/backlog across all of git history). When a soft-delete flag ships in a snapshot "so the client can filter", add the client filter in the same change — a flag without a consumer is the exact pattern the hardening sessions kept finding.
 
 → `docs/lessons/0017-op-contract-ui-effect-never-existed.md`
+
+### 0018 — A shorter reverse-proxy timeout can report failed provisioning while the runner is still creating the VM
+
+**0018** · high · compose-runner, nginx, incus, operations · 2026-07-23
+
+Keep every layered deadline strictly outside its callee: VM provision < controller request < app request < public reverse proxy. Verify the deployed proxy file, not only application env. For long acceptance work, monitor the hypervisor/agent independently from the public HTTP client. A 504 proves only that one outer layer stopped waiting. Do not trigger destructive cleanup immediately after an outer timeout until the controller request has settled; otherwise cleanup races a still-running provision operation. Treat host-allocation serialization as intentional safety when calculating a multi-workspace test budget.
+
+→ `docs/lessons/0018-reverse-proxy-timeout-can-mask-live-provisioning.md`
+
+### 0019 — Authenticated agent health can succeed even when the Incus configure exec reports failure
+
+**0019** · high · compose-runner, incus, agent-bootstrap · 2026-07-23
+
+Treat an authenticated health response using the expected workspace-specific token as the authoritative post-condition. Probe health before and after each configure attempt; only retry when the desired end state is still absent. Keep the exec error as diagnostic context, not as a reason to reject a sandbox whose identity-bound agent is live. Test the partial-success shape explicitly: configure transport fails, authenticated health succeeds, provisioning returns the sandbox without waiting for the deadline.
+
+→ `docs/lessons/0019-agent-health-is-authoritative-after-incus-exec-transport-failure.md`

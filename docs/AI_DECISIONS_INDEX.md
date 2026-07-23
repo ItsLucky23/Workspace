@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (216)
+## Decisions (218)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -229,6 +229,8 @@
 | 0296 | Global writes use encrypted durable Conductor jobs | 🟢 accepted | conductor, reliability, security, multi-instance | — | `docs/decisions/0296-global-writes-use-encrypted-durable-conductor-jobs.md` |
 | 0297 | Compose runner uses one Proxmox QEMU sandbox per workspace | ⚪ superseded | compose, proxmox, qemu, isolation, runner, self-hosting | — | `docs/decisions/0297-compose-runner-uses-proxmox-qemu-sandboxes.md` |
 | 0298 | Compose runner supports Incus QEMU sandboxes on ARM64 | 🟢 accepted | compose, incus, qemu, arm64, isolation, runner, self-hosting | 0297 | `docs/decisions/0298-compose-runner-supports-incus-qemu-on-arm64.md` |
+| 0299 | Compose-runner deadlines include the public reverse proxy | 🟢 accepted | compose, incus, nginx, timeout, operations | — | `docs/decisions/0299-compose-runner-deadlines-include-the-public-proxy.md` |
+| 0300 | Session cookie domain bridge is narrow and temporary | 🟢 accepted | auth, cookies, edge-auth, nginx, luckystack | — | `docs/decisions/0300-session-cookie-domain-bridge-is-narrow-and-temporary.md` |
 
 ## Summaries
 
@@ -1975,6 +1977,22 @@ The first production runner backend is **Proxmox VE with a full-cloned QEMU VM p
 Keep the provider boundary and the Proxmox implementation, and add **Incus full KVM VMs** as an equal controller backend selected with `RUNNER_PROVIDER=incus`. Use one restricted Incus project, one dedicated bridge/subnet and one full VM per workspace. Incus metadata is the durable ownership/last-used source; controller restarts reconstruct state from it. Enforce ingress, anti-spoofing, cross-workspace denial, private/LAN/metadata egress denial and explicit gateway ports outside the guest. On this host a minimal root-only nftables helper accepts bounded operations over a Unix socket; the non-root controller never receives nftables privileges. Preserve the same workspace-derived HMAC guest token and in-VM Compose agent contract used by Proxmox. Public bearer credentials never enter guest Compose interpolation. Run exactly one controller replica because allocation and workspace locks remain in-process. Build the ticket image architecture-aware (`amd64 → x64`, `arm64 → arm64`) so openvscode-server and native `node-pty` match the host. Size cold-provision timeouts from measured hardware. The Pi deployment uses 14 minutes for provisioning, 15 minutes for the controller request and 16 minutes for the app client.
 
 → `docs/decisions/0298-compose-runner-supports-incus-qemu-on-arm64.md`
+
+### 0299 — Compose-runner deadlines include the public reverse proxy
+
+**0299** · accepted · tags: compose, incus, nginx, timeout, operations · 2026-07-23
+
+Use measured Pi deadlines of 25 minutes for VM provisioning, 27 minutes for the controller request, and 29 minutes for the app client. Keep the public runner proxy outside that ladder at 1900 seconds. Treat the order `provision < controller < app < public proxy` as an operational invariant. Keep new-VM host allocation serialized; parallel API acceptance does not bypass the allocation lock.
+
+→ `docs/decisions/0299-compose-runner-deadlines-include-the-public-proxy.md`
+
+### 0300 — Session cookie domain bridge is narrow and temporary
+
+**0300** · accepted · tags: auth, cookies, edge-auth, nginx, luckystack · 2026-07-23
+
+Until the framework serializer consumes `sessionCookieDomain`, prepend a Node request listener that wraps `ServerResponse.setHeader` and adds the configured Domain only to the named session cookie. OAuth-state, CSRF and all unrelated cookies remain unchanged. Keep the existing Secure, HttpOnly and SameSite attributes and retain workspace membership edge-auth plus the separate openvscode connection token.
+
+→ `docs/decisions/0300-session-cookie-domain-bridge-is-narrow-and-temporary.md`
 
 ## Code governed by decisions
 

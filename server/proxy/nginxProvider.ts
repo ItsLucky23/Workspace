@@ -15,6 +15,7 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { tryCatchSync } from '@luckystack/core';
+import { docker } from '../container/runtime';
 import { setRouteWorkspace } from './routeOwnership';
 import type { ProxyProvider, ProxyResult, ProxyRoute } from './types';
 
@@ -24,6 +25,8 @@ const SSL_KEY = process.env.WS_NGINX_SSL_KEY ?? '/etc/nginx/ssl/workspaces-wildc
 const RELOAD_CMD = process.env.WS_NGINX_RELOAD_CMD ?? 'nginx -s reload';
 const TEST_CMD = process.env.WS_NGINX_TEST_CMD ?? 'nginx -t';
 const DEBOUNCE_MS = Number(process.env.WS_NGINX_DEBOUNCE_MS ?? '1000');
+const PROXY_NETWORK = process.env.WS_NET ?? 'workspaces-net';
+const CONTAINER_TARGET = /^([a-zA-Z0-9][a-zA-Z0-9_.-]*):(\d{1,5})$/;
 
 //? The desired route set (id → route). The include file is regenerated from this on flush.
 const routes = new Map<string, ProxyRoute>();
@@ -45,7 +48,7 @@ function run(cmd: string): Promise<{ ok: boolean; out: string }> {
 //? (Upgrade/Connection) so dev-server previews + HMR proxy correctly. Edge-auth (Track B5): when
 //? `forwardAuth` is set, gate `location /` behind an `auth_request` subrequest to the
 //? /editor-auth-check endpoint (2xx proceeds, else 401).
-function renderRoute(r: ProxyRoute): string {
+export function renderRoute(r: ProxyRoute): string {
   const target = r.target.startsWith('http') ? r.target : `http://${r.target}`;
   const authLoc = r.forwardAuth === undefined ? '' : `
     location = /editor-auth-check {
@@ -56,6 +59,10 @@ function renderRoute(r: ProxyRoute): string {
         proxy_set_header X-Original-URI $request_uri;
         proxy_set_header X-Forwarded-Host $host;
         proxy_set_header Cookie $http_cookie;
+        # This is an internal trusted subrequest, not a browser CORS request. Forwarding the
+        # preview Referer makes LuckyStack reject asset loads before edge-auth can evaluate them.
+        proxy_set_header Origin "";
+        proxy_set_header Referer "";
     }`;
   const authReq = r.forwardAuth === undefined ? '' : '\n        auth_request /editor-auth-check;';
   return `server {
@@ -74,6 +81,24 @@ function renderRoute(r: ProxyRoute): string {
         proxy_set_header Connection "upgrade";
     }
 }`;
+}
+
+export async function resolveNginxRouteTarget(
+  route: ProxyRoute,
+  lookup: (container: string, network: string) => Promise<string | null> = async (container, network) => {
+    const result = await docker(['inspect', '-f', `{{with index .NetworkSettings.Networks "${network}"}}{{.IPAddress}}{{end}}`, container]);
+    return result.code === 0 && result.out.length > 0 ? result.out : null;
+  },
+): Promise<ProxyRoute | null> {
+  if (route.target.startsWith('http://') || route.target.startsWith('https://')) return route;
+  const match = CONTAINER_TARGET.exec(route.target);
+  if (!match) return route;
+  const host = match[1] ?? '';
+  const port = Number(match[2]);
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(host) || host === 'localhost' || host === '127.0.0.1') return route;
+  if (!Number.isInteger(port) || port < 1 || port > 65_535) return null;
+  const ip = await lookup(host, PROXY_NETWORK);
+  return ip ? { ...route, target: `${ip}:${String(port)}` } : null;
 }
 
 function renderConf(): string {
@@ -121,11 +146,13 @@ export const nginxProvider: ProxyProvider = {
 
   //? Optimistic: mutate the desired set + schedule the coalesced reload. The route is live
   //? after the debounce window (≤~1s); callers needing a hard barrier call `reconcile`.
-  upsertRoute(route: ProxyRoute): Promise<ProxyResult> {
-    if (route.workspaceId !== undefined) void setRouteWorkspace(route.host, route.workspaceId);
-    routes.set(route.id, route);
+  async upsertRoute(route: ProxyRoute): Promise<ProxyResult> {
+    const resolved = await resolveNginxRouteTarget(route);
+    if (!resolved) return { ok: false, error: 'nginx.containerTargetUnavailable' };
+    if (resolved.workspaceId !== undefined) await setRouteWorkspace(resolved.host, resolved.workspaceId);
+    routes.set(resolved.id, resolved);
     scheduleFlush();
-    return Promise.resolve({ ok: true });
+    return { ok: true };
   },
 
   removeRoute(id: string): Promise<ProxyResult> {
@@ -137,10 +164,19 @@ export const nginxProvider: ProxyProvider = {
   //? Boot self-heal: make the desired set EXACTLY `live` and flush immediately (no debounce).
   //? Everything previously in our include file that isn't live is dropped by the regenerate.
   async reconcile(live: ProxyRoute[]): Promise<{ ok: boolean; pruned: string[] }> {
+    const resolvedRoutes: ProxyRoute[] = [];
+    for (const route of live) {
+      const resolved = await resolveNginxRouteTarget(route);
+      if (!resolved) return { ok: false, pruned: [] };
+      resolvedRoutes.push(resolved);
+    }
     const prevIds = new Set(routes.keys());
     routes.clear();
-    for (const r of live) routes.set(r.id, r);
-    const liveIds = new Set(live.map((r) => r.id));
+    for (const resolved of resolvedRoutes) {
+      routes.set(resolved.id, resolved);
+      if (resolved.workspaceId !== undefined) await setRouteWorkspace(resolved.host, resolved.workspaceId);
+    }
+    const liveIds = new Set(resolvedRoutes.map((route) => route.id));
     const pruned = [...prevIds].filter((id) => !liveIds.has(id));
     const res = await flushNow();
     return { ok: res.ok, pruned };

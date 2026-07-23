@@ -148,13 +148,18 @@ The installer/configuration must provide:
 - root firewall helper socket `/run/workspaces-compose-runner/firewall.sock`;
 - exactly one `workspaces-compose-runner` replica.
 
-The deployed Pi uses `RUNNER_PROVISION_TIMEOUT_MS=840000` and `RUNNER_REQUEST_TIMEOUT_MS=900000`. Its directory
-storage made a first full clone approach ten minutes; shorter values produced a false timeout seconds before the
-agent became healthy. The app uses `WS_COMPOSE_RUNNER_TIMEOUT_MS=960000`.
+The deployed Pi uses `RUNNER_PROVISION_TIMEOUT_MS=1500000` and `RUNNER_REQUEST_TIMEOUT_MS=1620000`. Early
+end-to-end provisioning attempts appeared to cross twenty minutes because both the public proxy and an Incus-exec
+partial-success case reported false failures; those bugs are fixed, while the conservative cold-provision budget is
+retained for contended directory storage. The app uses `WS_COMPOSE_RUNNER_TIMEOUT_MS=1740000`; keep the ordering
+provision < controller request < app request so an inner timeout returns before its caller gives up.
 
 Use nginx or Caddy for public TLS; the deployed endpoint is
-`https://runner.workspace.keetlerop.nl`. The controller itself remains loopback-only. Do not expose agent `:8788`
-or the Incus API publicly.
+`https://runner.workspace.keetlerop.nl`. The canonical nginx vhost is
+`deploy/nginx/workspaces-compose-runner.conf`; its read/send timeout must remain above the app's longest runner
+request (1900 seconds for the deployed 29-minute client deadline). A shorter reverse-proxy timeout returns a false
+504 while the controller is still provisioning the VM. The controller itself remains loopback-only. Do not expose
+agent `:8788` or the Incus API publicly.
 
 ## 7. Connect Workspaces
 
@@ -171,7 +176,7 @@ The existing application calls:
 - `POST /workspaces/<id>/v1/compose/down`
 
 The URL workspace id and JSON body must match exactly. Requests are capped at 1 MiB, responses at 64 KiB and
-operations are serialized per workspace. `WS_COMPOSE_RUNNER_TIMEOUT_MS` defaults to ten minutes so a cold full
+operations are serialized per workspace. `WS_COMPOSE_RUNNER_TIMEOUT_MS` is operator-tunable so a cold full
 clone is not cut off by the old one-minute local-Docker timeout; it remains bounded to at most thirty minutes. Reset is operator-only and requires an exact confirmation header:
 
 ```bash
@@ -226,3 +231,13 @@ Required live acceptance on the actual Proxmox or Incus host:
 7. Controller restart reconstructs workspace ownership from Proxmox metadata without a local database.
 
 Do not claim production isolation before all seven pass against the chosen bridge/firewall topology.
+
+### Deployed Pi acceptance (2026-07-23)
+
+All seven checks pass on the Incus/QEMU deployment. The final two-workspace run kept two full VMs active at once,
+served distinct labelled gateways, exposed distinct VM kernel boot IDs, returned 401 for a valid token used against
+the other agent, and blocked A→B/B→A traffic to both gateway and agent ports. Earlier host-topology probes confirmed
+public egress while denying app/LAN/private/metadata destinations and undeclared ingress. The controller was then
+restarted while a Compose project remained active; the guest project survived, ownership was recovered from Incus
+metadata, and a subsequent public up returned 200. Public down/reset returned 200 for both workspaces and left zero
+managed VMs and zero workspace firewall rules.

@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `c59270bf4d2424f5` · 17 capabilities · 216 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `661147c8960bf6cf` · 17 capabilities · 218 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -242,3 +242,5 @@
 - `adr-0296` Global writes use encrypted durable Conductor jobs
 - `adr-0297` Compose runner uses one Proxmox QEMU sandbox per workspace
 - `adr-0298` Compose runner supports Incus QEMU sandboxes on ARM64
+- `adr-0299` Compose-runner deadlines include the public reverse proxy
+- `adr-0300` Session cookie domain bridge is narrow and temporary

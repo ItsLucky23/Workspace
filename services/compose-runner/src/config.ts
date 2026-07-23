@@ -101,7 +101,7 @@ export function readControllerConfig(env: NodeJS.ProcessEnv = process.env): Cont
     bearerToken: requiredString(env, 'RUNNER_BEARER_TOKEN'),
     guestTokenSecret: requiredString(env, 'RUNNER_GUEST_TOKEN_SECRET'),
     maxConcurrent: optionalInt(env, 'RUNNER_MAX_CONCURRENT', 8, 1, 128),
-    requestTimeoutMs: optionalInt(env, 'RUNNER_REQUEST_TIMEOUT_MS', 120_000, 5000, 900_000),
+    requestTimeoutMs: optionalInt(env, 'RUNNER_REQUEST_TIMEOUT_MS', 120_000, 5000, 1_800_000),
     provisionTimeoutMs: optionalInt(env, 'RUNNER_PROVISION_TIMEOUT_MS', 600_000, 30_000, 3_600_000),
     idleGcHours: optionalInt(env, 'RUNNER_IDLE_GC_HOURS', 24, 1, 8760),
     gcIntervalMs: optionalInt(env, 'RUNNER_GC_INTERVAL_MS', 900_000, 60_000, 86_400_000),

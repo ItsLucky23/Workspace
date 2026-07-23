@@ -4,7 +4,8 @@
     "127.0.0.1",
     "*.localhost",
     "vscode-dev-demo.localhost",
-    "app.workspace.keetlerop.nl"
+    "app.workspace.keetlerop.nl",
+    "*.workspace.keetlerop.nl"
   ],
   "ignoreHttpsErrors": true
 }

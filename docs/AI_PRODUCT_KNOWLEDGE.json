@@ -1,6 +1,6 @@
 {
-  "hash": "c59270bf4d2424f5",
-  "chunkCount": 233,
+  "hash": "661147c8960bf6cf",
+  "chunkCount": 235,
   "chunks": [
     {
       "id": "cap-001",
@@ -1399,6 +1399,18 @@
       "kind": "decision",
       "title": "Compose runner supports Incus QEMU sandboxes on ARM64",
       "text": "ADR 0298: Compose runner supports Incus QEMU sandboxes on ARM64. ADR 0297 selected Proxmox VE as the first hypervisor implementation for ADR 0288's mandatory one-full-VM-per-workspace boundary. The deployment host is a Raspberry Pi 5 with ARM64 and hardware KVM. Proxmox VE does not provide a supported ARM64 distribution, so that implementation cannot run on the selected host. Falling back to containers, a shared Docker daemon or guest-controlled firewalling would violate ADR 0288. The Pi kernel also lacks `nf_conntrack_bridge`, so Incus bridge filtering cannot be the only external isolation control. Cold full-VM creation on the Pi's directory storage can approach ten minutes. Decision: - Keep the provider boundary and the Proxmox implementation, and add **Incus full KVM VMs** as an equal controller backend selected with `RUNNER_PROVIDER=incus`. - Use one restricted Incus project, one dedicated bridge/subnet and one full VM per workspace. Incus metadata is the durable ownership/last-used source; controller restarts reconstruct state from it. - Enforce ingress, anti-spoofing, cross-workspace denial, private/LAN/metadata egress denial and explicit gateway ports outside the guest. On this host a minimal root-only nftables helper accepts bounded operations over a Unix socket; the non-root controller never receives nftables privileges. - Preserve the same workspace-derived HMAC guest token and in-VM Compose agent contract used by Proxmox. Public bearer credentials never enter guest"
+    },
+    {
+      "id": "adr-0299",
+      "kind": "decision",
+      "title": "Compose-runner deadlines include the public reverse proxy",
+      "text": "ADR 0299: Compose-runner deadlines include the public reverse proxy. ADR 0298 sized the Pi's first timeout ladder from an early cold-provision observation. Repeated acceptance runs appeared to cross twenty minutes and exposed two omitted failure modes: nginx stopped waiting after 700 seconds, and an authenticated healthy agent could be ignored when the preceding Incus exec transport reported non-zero. The controller continued working after the caller had already received 504. Both defects are fixed; the wider ladder remains a conservative budget for contended directory storage. Decision: - Use measured Pi deadlines of 25 minutes for VM provisioning, 27 minutes for the controller request, and 29 minutes for the app client. - Keep the public runner proxy outside that ladder at 1900 seconds. - Treat the order `provision < controller < app < public proxy` as an operational invariant. - Keep new-VM host allocation serialized; parallel API acceptance does not bypass the allocation lock."
+    },
+    {
+      "id": "adr-0300",
+      "kind": "decision",
+      "title": "Session cookie domain bridge is narrow and temporary",
+      "text": "ADR 0300: Session cookie domain bridge is narrow and temporary. Authenticated preview/editor subdomains require the HttpOnly session cookie on `*.workspace.keetlerop.nl`. LuckyStack 0.7.5 exposes and correctly stores `http.sessionCookieDomain`, but its HTTP cookie serializer does not emit the `Domain` attribute. Production therefore produced host-only cookies and edge-auth always returned 401. Editing `node_modules` is not durable, while rewriting every upstream cookie in nginx would unnecessarily share OAuth-state and CSRF cookies with subdomains. Decision: Until the framework serializer consumes `sessionCookieDomain`, prepend a Node request listener that wraps `ServerResponse.setHeader` and adds the configured Domain only to the named session cookie. OAuth-state, CSRF and all unrelated cookies remain unchanged. Keep the existing Secure, HttpOnly and SameSite attributes and retain workspace membership edge-auth plus the separate openvscode connection token."
     }
   ]
 }

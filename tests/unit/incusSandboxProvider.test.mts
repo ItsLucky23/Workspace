@@ -27,9 +27,12 @@ const config: ControllerConfig = {
 };
 const parsedConfig = readControllerConfig({
   RUNNER_PROVIDER: 'incus', RUNNER_BEARER_TOKEN: 'public', RUNNER_GUEST_TOKEN_SECRET: 'guest',
+  RUNNER_REQUEST_TIMEOUT_MS: '1620000', RUNNER_PROVISION_TIMEOUT_MS: '1500000',
 });
 eq(parsedConfig.provider, 'incus', 'Incus configuration does not require fake Proxmox credentials');
 eq(parsedConfig.incus.sandboxCidr, '10.78.0.0/17', 'the Pi-safe static address range is bounded away from DHCP');
+eq(parsedConfig.requestTimeoutMs, 1_620_000, 'cold-clone request deadlines may exceed the old fifteen-minute cap');
+eq(parsedConfig.provisionTimeoutMs, 1_500_000, 'operators can allow twenty-five minutes for contended directory-storage clones');
 
 const probe: SandboxAgentProbe = {
   health: async () => true,
@@ -72,6 +75,14 @@ eq(firewalls.at(-1)?.ports, [5432], 'only agent-declared gateway ports reach the
 assert(calls.some((args) => args[0] === 'config' && args[1] === 'set'), 'using a sandbox refreshes durable last-used metadata');
 
 let listCalls = 0;
+let createHealthCalls = 0;
+const creatingProbe: SandboxAgentProbe = {
+  health: async () => {
+    createHealthCalls += 1;
+    return createHealthCalls > 1;
+  },
+  activeProjects: async () => ({ ok: true, value: [] }),
+};
 const createCalls: Array<{ args: string[]; stdin?: string }> = [];
 const createFirewalls: Array<{ remove: boolean; ports: number[] }> = [];
 const creatingTransport: IncusCommandTransport = {
@@ -81,6 +92,7 @@ const creatingTransport: IncusCommandTransport = {
       listCalls += 1;
       return ok(listCalls <= 3 ? '[]' : existingJson);
     }
+    if (args[0] === 'exec') return { code: 1, stdout: '', stderr: 'transport closed after restart', timedOut: true };
     return ok();
   },
   firewall: async (_id, _ip, _agentPort, ports, remove = false) => {
@@ -88,8 +100,9 @@ const creatingTransport: IncusCommandTransport = {
     return ok();
   },
 };
-const creating = new IncusSandboxProvider(config, probe, creatingTransport);
+const creating = new IncusSandboxProvider(config, creatingProbe, creatingTransport);
 const created = await creating.ensureSandbox(workspaceId);
+assert(createHealthCalls === 2, 'authenticated agent health wins when Incus exec reports a false transport failure');
 eq(created.ip, '10.78.0.10', 'new VM allocation starts at the bounded static address range');
 const init = createCalls.find((call) => call.args[0] === 'init');
 assert(Boolean(init?.args.includes('--vm')), 'Incus always provisions a full KVM virtual machine');
