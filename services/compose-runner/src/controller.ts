@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { AgentClient } from './agentClient.js';
 import { readControllerConfig, shouldDestroyOnLastDown, type ControllerConfig } from './config.js';
 import { readJsonRequest, requestBearer, sendJson } from './http.js';
+import { IncusSandboxProvider } from './incus.js';
 import { ProxmoxSandboxProvider } from './proxmox.js';
 import { asRecord, KeyedLock, MAX_COMPOSE_BYTES, PROJECT_PATTERN, safeEqual, WORKSPACE_ID_PATTERN } from './runtime.js';
 import type { AgentComposeResponse, ComposeDownRequest, ComposeUpRequest, ManagedVm, PublicRunnerResponse, Result, SandboxDescriptor } from './types.js';
@@ -59,7 +60,10 @@ function parseRoute(pathname: string): { workspaceId: string; action: 'up' | 'do
 
 export function createControllerDependencies(config: ControllerConfig): ControllerDependencies {
   const agentClient = new AgentClient(fetch, config.requestTimeoutMs);
-  return { agentClient, provider: new ProxmoxSandboxProvider(config, agentClient), workspaceLocks: new KeyedLock() };
+  const provider = config.provider === 'incus'
+    ? new IncusSandboxProvider(config, agentClient)
+    : new ProxmoxSandboxProvider(config, agentClient);
+  return { agentClient, provider, workspaceLocks: new KeyedLock() };
 }
 
 export function createControllerServer(
@@ -71,8 +75,8 @@ export function createControllerServer(
     const handle = async (): Promise<void> => {
       const url = new URL(request.url ?? '/', 'http://runner.internal');
       if (request.method === 'GET' && url.pathname === '/healthz') {
-        const proxmox = await dependencies.provider.health();
-        sendJson(response, proxmox ? 200 : 503, { status: proxmox ? 'ready' : 'not-ready', proxmox });
+        const hypervisor = await dependencies.provider.health();
+        sendJson(response, hypervisor ? 200 : 503, { status: hypervisor ? 'ready' : 'not-ready', hypervisor, provider: config.provider });
         return;
       }
       const route = parseRoute(url.pathname);
@@ -141,7 +145,7 @@ export async function runGarbageCollection(config: ControllerConfig, provider: S
   const candidates = await provider.listManagedVms();
   for (const candidate of candidates) {
     await workspaceLocks.run(candidate.workspaceId, async () => {
-      //? A request may have touched the VM while GC waited for the workspace lock. Re-read durable Proxmox
+      //? A request may have touched the VM while GC waited for the workspace lock. Re-read durable hypervisor
       //? metadata inside the lock before deciding; stale pre-lock timestamps may never destroy active work.
       const refreshed = await provider.listManagedVms();
       const current = refreshed.find((vm) => vm.workspaceId === candidate.workspaceId);

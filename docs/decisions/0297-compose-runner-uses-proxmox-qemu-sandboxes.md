@@ -1,7 +1,7 @@
 ---
 id: 0297
 title: Compose runner uses one Proxmox QEMU sandbox per workspace
-status: accepted
+status: superseded
 date: 2026-07-22
 tags: [compose, proxmox, qemu, isolation, runner, self-hosting]
 supersedes: []

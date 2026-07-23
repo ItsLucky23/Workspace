@@ -1,26 +1,28 @@
-# Proxmox Compose runner deployment
+# Isolated Compose runner deployment
 
 <!-- @covers services/compose-runner/** server/container/isolatedComposeRunner.ts -->
 
-This runbook deploys the ADR 0288/0297 boundary: Workspaces sends unrestricted Compose over HTTPS to a
-control-plane; that control-plane runs it in one full-cloned Proxmox QEMU VM per workspace. Nothing in this
-service mounts the Workspaces host Docker socket.
+This runbook deploys the ADR 0288/0298 boundary: Workspaces sends unrestricted Compose over HTTPS to a
+control-plane; that control-plane runs it in one full QEMU VM per workspace. Proxmox VE is supported on x64;
+Incus is the supported KVM backend for the deployed ARM64 Raspberry Pi 5. Nothing in this service mounts the
+Workspaces host Docker socket.
 
 ## Topology
 
 ```text
-Workspaces app -- HTTPS/Bearer --> Caddy --> runner controller --> Proxmox API
-                                                    |                    |
-                                                    | SSH bootstrap      | QEMU + external firewall
-                                                    v                    v
-                                          workspace A VM          workspace B VM
-                                          systemd agent            systemd agent
-                                          Docker daemon            Docker daemon
+Workspaces app -- HTTPS/Bearer --> nginx/Caddy --> runner controller --> Proxmox or Incus
+                                                          |                      |
+                                                          | bounded bootstrap    | QEMU + external firewall
+                                                          v                      v
+                                                workspace A VM            workspace B VM
+                                                systemd agent              systemd agent
+                                                Docker daemon              Docker daemon
 ```
 
-A compromised Compose stack may own its disposable VM. Proxmox firewall rules, not guest iptables, prevent it
-from initiating traffic to the app/operator/private networks or another sandbox. Sandbox VM firewalls are wholly
-runner-owned: any unexpected/manual VM rule fails provisioning because an earlier ACCEPT could bypass isolation.
+A compromised Compose stack may own its disposable VM. Hypervisor/host firewall rules, not guest iptables,
+prevent it from initiating traffic to the app/operator/private networks or another sandbox. Proxmox rules are
+wholly runner-owned. The Incus deployment uses a bounded root nftables helper over a root-owned Unix socket while
+the Node controller remains non-root with `NoNewPrivileges=true`.
 
 ## 1. Required hosts and networks
 
@@ -126,7 +128,35 @@ The controller container is read-only, drops Linux capabilities, has no Docker s
 Proxmox remains the durable state source, but this first implementation does not claim HA control-plane scheduling.
 Caddy terminates public TLS. The public health check is `GET /healthz`.
 
-## 6. Connect Workspaces
+## 6. Incus/QEMU on ARM64 (deployed Pi 5 path)
+
+Proxmox VE is not supported on ARM64. On a KVM-capable Debian 12 ARM64 host, use the Incus provider while preserving
+one full VM and one Docker daemon per workspace:
+
+```bash
+npm run compose-runner:build
+sudo services/compose-runner/scripts/install-incus-controller.sh
+```
+
+The installer/configuration must provide:
+
+- `RUNNER_PROVIDER=incus`;
+- restricted project `workspaces-sandboxes`;
+- dedicated bridge/subnet (deployed: `workspaces0`, `10.78.0.0/16`);
+- a golden ARM64 VM image with Docker, Compose, Node 22 and `workspaces-compose-agent`;
+- `/etc/workspaces-compose-runner.env` mode `0600`;
+- root firewall helper socket `/run/workspaces-compose-runner/firewall.sock`;
+- exactly one `workspaces-compose-runner` replica.
+
+The deployed Pi uses `RUNNER_PROVISION_TIMEOUT_MS=840000` and `RUNNER_REQUEST_TIMEOUT_MS=900000`. Its directory
+storage made a first full clone approach ten minutes; shorter values produced a false timeout seconds before the
+agent became healthy. The app uses `WS_COMPOSE_RUNNER_TIMEOUT_MS=960000`.
+
+Use nginx or Caddy for public TLS; the deployed endpoint is
+`https://runner.workspace.keetlerop.nl`. The controller itself remains loopback-only. Do not expose agent `:8788`
+or the Incus API publicly.
+
+## 7. Connect Workspaces
 
 Set these on the Workspaces deployment and restart it:
 
@@ -151,7 +181,7 @@ curl -X POST \
   "https://runner.example/workspaces/<workspaceId>/v1/sandbox/reset"
 ```
 
-## 7. Exposing services back to Workspaces
+## 8. Exposing services back to Workspaces
 
 Same-daemon service DNS does not exist across the VM boundary. A Compose service explicitly opts into a gateway
 using labels:
@@ -173,7 +203,7 @@ environment, so `${AGENT_BEARER_TOKEN}` and unrelated host secrets cannot be int
 firewall only for `PVE_APP_SOURCE_CIDRS`. User-provided values remain workspace-controlled data; do not place host
 or cross-tenant credentials in these labels.
 
-## 8. Verification
+## 9. Verification
 
 Repository-verifiable:
 
@@ -181,10 +211,11 @@ Repository-verifiable:
 npm run compose-runner:build
 npx tsx tests/unit/composeRunnerService.test.mts
 npx tsx tests/unit/proxmoxSandboxProvider.test.mts
+npx tsx tests/unit/incusSandboxProvider.test.mts
 npx tsx tests/integration/composeSandboxAgent.test.mts
 ```
 
-Required live acceptance on the actual Proxmox host:
+Required live acceptance on the actual Proxmox or Incus host:
 
 1. Up creates exactly one full-cloned QEMU VM with configured CPU/RAM/disk limits.
 2. Privileged Compose and `/` bind mounts can own only that VM.

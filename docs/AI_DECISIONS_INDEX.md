@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (215)
+## Decisions (216)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -227,7 +227,8 @@
 | 0294 | Move cheap-mode, scene-continuity and default TTS voice from host env to per-workspace media prefs | 🟢 accepted | multi-tenancy, content, media, secrets, config | — | `docs/decisions/0294-per-workspace-media-generation-defaults.md` |
 | 0295 | Consolidate semantic duplicates, not domain history | 🟢 accepted | data-model, skills, rag, artifacts, migration | — | `docs/decisions/0295-consolidate-semantic-duplicates-not-domain-history.md` |
 | 0296 | Global writes use encrypted durable Conductor jobs | 🟢 accepted | conductor, reliability, security, multi-instance | — | `docs/decisions/0296-global-writes-use-encrypted-durable-conductor-jobs.md` |
-| 0297 | Compose runner uses one Proxmox QEMU sandbox per workspace | 🟢 accepted | compose, proxmox, qemu, isolation, runner, self-hosting | — | `docs/decisions/0297-compose-runner-uses-proxmox-qemu-sandboxes.md` |
+| 0297 | Compose runner uses one Proxmox QEMU sandbox per workspace | ⚪ superseded | compose, proxmox, qemu, isolation, runner, self-hosting | — | `docs/decisions/0297-compose-runner-uses-proxmox-qemu-sandboxes.md` |
+| 0298 | Compose runner supports Incus QEMU sandboxes on ARM64 | 🟢 accepted | compose, incus, qemu, arm64, isolation, runner, self-hosting | 0297 | `docs/decisions/0298-compose-runner-supports-incus-qemu-on-arm64.md` |
 
 ## Summaries
 
@@ -1961,11 +1962,19 @@ Global route writes use the closed `GlobalAction` union and `GlobalJob` collecti
 
 ### 0297 — Compose runner uses one Proxmox QEMU sandbox per workspace
 
-**0297** · accepted · tags: compose, proxmox, qemu, isolation, runner, self-hosting · 2026-07-22
+**0297** · superseded · tags: compose, proxmox, qemu, isolation, runner, self-hosting · 2026-07-22
 
 The first production runner backend is **Proxmox VE with a full-cloned QEMU VM per workspace**. Proxmox VM configuration is the durable identity/state source; the runner remains stateless and reconstructs ownership from a marker plus the exact workspace id in the VM description. A separately deployed HTTPS control-plane authenticates the Workspaces bearer token, verifies URL/body workspace equality, serializes operations per workspace, provisions/reuses the VM and forwards only to that VM's agent. A host-level systemd agent inside the disposable VM executes raw Compose. Its bearer token is HMAC-derived per workspace and injected after clone over a restricted cloud-init SSH principal; the public runner token is never forwarded into a sandbox. Isolation is enforced outside the guest by Proxmox firewall rules: deny-by-default ingress, agent access only from controller CIDRs, explicitly labelled gateway ports only from Workspaces app CIDRs, and private/metadata egress denial before public egress. A guest compromise may own its VM but not change hypervisor rules. CPU, RAM and disk quotas are VM limits. Compose command timeouts, request/response caps, project serialization, idle garbage collection and an explicit reset endpoint bound lifecycle/DoS impact. Cross-daemon service endpoints are opt-in Compose labels. The agent substitutes `{gatewayHost}`, returns bounded env values and the controller opens only the declared ports; Workspaces never assumes same-daemon DNS.
 
 → `docs/decisions/0297-compose-runner-uses-proxmox-qemu-sandboxes.md`
+
+### 0298 — Compose runner supports Incus QEMU sandboxes on ARM64
+
+**0298** · accepted · tags: compose, incus, qemu, arm64, isolation, runner, self-hosting · 2026-07-23
+
+Keep the provider boundary and the Proxmox implementation, and add **Incus full KVM VMs** as an equal controller backend selected with `RUNNER_PROVIDER=incus`. Use one restricted Incus project, one dedicated bridge/subnet and one full VM per workspace. Incus metadata is the durable ownership/last-used source; controller restarts reconstruct state from it. Enforce ingress, anti-spoofing, cross-workspace denial, private/LAN/metadata egress denial and explicit gateway ports outside the guest. On this host a minimal root-only nftables helper accepts bounded operations over a Unix socket; the non-root controller never receives nftables privileges. Preserve the same workspace-derived HMAC guest token and in-VM Compose agent contract used by Proxmox. Public bearer credentials never enter guest Compose interpolation. Run exactly one controller replica because allocation and workspace locks remain in-process. Build the ticket image architecture-aware (`amd64 → x64`, `arm64 → arm64`) so openvscode-server and native `node-pty` match the host. Size cold-provision timeouts from measured hardware. The Pi deployment uses 14 minutes for provisioning, 15 minutes for the controller request and 16 minutes for the app client.
+
+→ `docs/decisions/0298-compose-runner-supports-incus-qemu-on-arm64.md`
 
 ## Code governed by decisions
 

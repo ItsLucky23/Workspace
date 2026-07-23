@@ -1,0 +1,37 @@
+[Unit]
+Description=Workspaces isolated Compose runner control-plane
+After=network-online.target incus.service workspaces-incus-firewall.service
+Wants=network-online.target
+Requires=incus.service workspaces-incus-firewall.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/workspaces-compose-runner.env
+ExecStart=/usr/bin/node /opt/workspaces-compose-runner/controller.js
+Restart=always
+RestartSec=3
+TimeoutStopSec=30
+User=workspaces-runner
+Group=workspaces-runner
+UMask=0077
+PrivateTmp=true
+PrivateDevices=true
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/workspaces-compose-runner
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+MemoryMax=512M
+TasksMax=128
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

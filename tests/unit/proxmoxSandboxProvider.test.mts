@@ -43,8 +43,14 @@ const probe: SandboxAgentProbe = {
   activeProjects: async () => ({ ok: true, value: [] }),
 };
 const config: ControllerConfig = {
-  bindHost: '127.0.0.1', port: 8787, bearerToken: 'public', guestTokenSecret: 'guest-secret', maxConcurrent: 4,
+  provider: 'proxmox', bindHost: '127.0.0.1', port: 8787, bearerToken: 'public', guestTokenSecret: 'guest-secret', maxConcurrent: 4,
   requestTimeoutMs: 30_000, provisionTimeoutMs: 60_000, idleGcHours: 24, gcIntervalMs: 900_000,
+  incus: {
+    binary: '/usr/bin/incus', clientDir: '/var/lib/workspaces-compose-runner', remote: 'workspaces', project: 'workspaces-sandboxes',
+    image: 'workspaces-compose-golden', network: 'workspaces0', sandboxCidr: '10.78.0.0/17', networkPrefix: 16, gateway: '10.78.0.1',
+    cores: 2, memoryMb: 3072, diskGb: 40, agentPort: 8788, agentScheme: 'http',
+    firewallSocket: '/run/workspaces-compose-runner/firewall.sock',
+  },
   proxmox: {
     baseUrl: new URL('https://pve.example:8006/'), apiTokenId: 'runner@pve!runner', apiTokenSecret: 'secret', ca: undefined,
     node: 'pve', pool: 'workspaces-sandboxes', templateVmid: 9000, bridge: 'vmbr1', storage: 'local-lvm', sandboxCidr: '10.77.0.0/16',

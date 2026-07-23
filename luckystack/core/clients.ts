@@ -12,4 +12,9 @@
 //?   import Redis from 'ioredis';
 //?   registerRedisClient(new Redis({ host: '...', tls: {} }));
 
-export {};
+import { getPrismaClient, registerDbHealthCheck } from '@luckystack/core';
+
+registerDbHealthCheck(async () => {
+  const result = await getPrismaClient().$runCommandRaw({ ping: 1 });
+  return (result as { ok?: number }).ok === 1;
+});

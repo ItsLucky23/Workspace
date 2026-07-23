@@ -43,12 +43,14 @@ RUN git config --system --add safe.directory '*'
 #? openvscode-server (real browser VS Code) baked in (Track B1 / ADR 0010) so the per-ticket
 #? editor starts instantly — no on-demand download. Pinned version; open-vsx marketplace.
 ARG OVS_VERSION=openvscode-server-v1.109.5
-RUN curl -fsSL "https://github.com/gitpod-io/openvscode-server/releases/download/${OVS_VERSION}/${OVS_VERSION}-linux-x64.tar.gz" -o /tmp/ovs.tar.gz \
+# Docker's architecture is amd64 while the upstream asset calls it x64; ARM64 is named arm64.
+ARG OVS_ARCH=x64
+RUN curl -fsSL "https://github.com/gitpod-io/openvscode-server/releases/download/${OVS_VERSION}/${OVS_VERSION}-linux-${OVS_ARCH}.tar.gz" -o /tmp/ovs.tar.gz \
     && mkdir -p /opt/openvscode \
     && tar -xzf /tmp/ovs.tar.gz -C /opt/openvscode --strip-components=1 \
     && rm -f /tmp/ovs.tar.gz \
     && ln -s /opt/openvscode/bin/openvscode-server /usr/local/bin/openvscode-server
-LABEL org.workspaces.openvscode-version="${OVS_VERSION}"
+LABEL org.workspaces.openvscode-version="${OVS_VERSION}" org.workspaces.openvscode-arch="${OVS_ARCH}"
 
 #? The in-container pty-agent (07b §9, #11): owns a shell PTY + a DURABLE scrollback ring persisted
 #? to the /work volume, so a terminal survives an orchestrator restart + reseeds on reconnect. Baked

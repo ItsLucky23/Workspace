@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+config=/etc/workspaces-compose-runner-firewall.env
+[[ -r "${config}" ]] || { echo "missing ${config}" >&2; exit 1; }
+set -a
+# shellcheck disable=SC1090
+source "${config}"
+set +a
+exec /usr/bin/node /opt/workspaces-compose-runner/incusFirewallHelper.js "$@"

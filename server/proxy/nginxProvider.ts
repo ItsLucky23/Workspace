@@ -59,8 +59,7 @@ function renderRoute(r: ProxyRoute): string {
     }`;
   const authReq = r.forwardAuth === undefined ? '' : '\n        auth_request /editor-auth-check;';
   return `server {
-    listen 443 ssl;
-    http2 on;
+    listen 443 ssl http2;
     server_name ${r.host};
     ssl_certificate ${SSL_CERT};
     ssl_certificate_key ${SSL_KEY};${authLoc}

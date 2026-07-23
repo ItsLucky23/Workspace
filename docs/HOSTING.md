@@ -1,7 +1,8 @@
 # Hosting & the preview reverse-proxy
 
-> Unrestricted user Docker Compose runs outside this app stack in one Proxmox QEMU VM per workspace. Deploy that
-> control-plane separately via `docs/COMPOSE_RUNNER_DEPLOYMENT.md`; never mount the app host Docker socket into it.
+> Unrestricted user Docker Compose runs outside this app stack in one Proxmox or Incus QEMU VM per workspace.
+> Deploy that control-plane separately via `docs/COMPOSE_RUNNER_DEPLOYMENT.md`; never mount the app host Docker
+> socket into it.
 
 How to host Workspaces and expose each ticket's running app at a preview URL. The reverse
 proxy is **pluggable — Caddy or nginx**, your choice; both are zero-downtime.
@@ -86,6 +87,20 @@ WS_NGINX_DEBOUNCE_MS=1000                # coalesce window
 
 Workspaces regenerates ONLY `WS_NGINX_CONF` (marked "DO NOT EDIT BY HAND"), validates it with
 `nginx -t`, and reloads only if valid — a bad route can never take the proxy down.
+
+### Native systemd + nginx deployment
+
+The deployed Pi path keeps the application checkout at `/var/www/workspace.keetlerop.nl`, runs the backend and
+built Vite SPA as `lucky23`, and leaves public TLS/WebSocket handling to host nginx. Canonical host artifacts:
+
+- `deploy/systemd/workspaces-app.service`;
+- `deploy/nginx/workspaces-app.conf`;
+- generated route include `/var/lib/workspaces/nginx-routes.conf`.
+
+Install them with root ownership, create the include as writable by the application user, run `nginx -t`, then
+enable `workspaces-app`. The production host must set both `PUBLIC_URL` (LuckyStack auth/email/CORS) and
+`WS_PUBLIC_URL` (publishing/media URLs). The deployed public origin is `https://app.workspace.keetlerop.nl`; the
+wildcard parent remains `workspace.keetlerop.nl` for previews and cookies.
 
 ---
 

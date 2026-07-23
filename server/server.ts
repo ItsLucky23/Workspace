@@ -36,9 +36,9 @@ loadEnvFiles();
 import '../config';
 import '../deploy.config';
 import '../services.config';
+import './utils/responseNormalizer';
 import { ports } from '../config.ports';
 
-import type { IncomingMessage, ServerResponse } from 'node:http';
 import { bootstrapLuckyStack } from '@luckystack/server';
 import { attachSocketRedisAdapter, getIoInstance } from '@luckystack/core';
 
@@ -60,6 +60,7 @@ import { registerMrReviewRole } from './mr/reviewRole';
 import { registerRootCauseRole } from './mr/rootCauseRole';
 import { registerPlanCritiqueRole } from './reasoning/planCritiqueRole';
 import { startLeaderElection } from './orchestrator/cluster';
+import { serveFavicon, serveFile } from './prod/serveFile';
 
 (async () => {
   //? Optional @luckystack/secret-manager (opt-in). Resolve `.env` pointers
@@ -92,18 +93,6 @@ import { startLeaderElection } from './orchestrator/cluster';
     registerErrorTracker(createSentryAdapter());
     console.log('[server] Sentry error-tracking active.');
   }
-
-  //? Minimal static-file fallbacks. Most apps will swap these out for
-  //? Vite-built static handlers in production; the server just needs SOME
-  //? handler if you serve any static asset alongside `/api` and `/sync`.
-  const noopServeFile = (_req: IncomingMessage, res: ServerResponse) => {
-    res.writeHead(404, { 'Content-Type': 'text/plain' });
-    res.end('Not Found');
-  };
-  const noopServeFavicon = (res: ServerResponse) => {
-    res.writeHead(204);
-    res.end();
-  };
 
   //? `loadGeneratedMaps` lets the framework wire production runtime maps
   //? without you having to maintain `server/prod/runtimeMaps.ts`. The first
@@ -156,8 +145,8 @@ import { startLeaderElection } from './orchestrator/cluster';
     //? argv port, so `npm run server -- <preset> <port>` still wins for a
     //? multi-instance boot behind the router.
     defaultPort: ports.backend,
-    serveFile: noopServeFile,
-    serveFavicon: noopServeFavicon,
+    serveFile,
+    serveFavicon,
     loadGeneratedMaps: (preset: string) => import(`./prod/generatedApis.${preset}`),
   });
 

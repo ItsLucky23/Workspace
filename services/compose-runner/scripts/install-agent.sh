@@ -5,7 +5,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 dist="${root}/services/compose-runner/dist"
 
 if [[ "${EUID}" -ne 0 ]]; then
-  echo "run as root inside the Proxmox golden VM" >&2
+  echo "run as root inside the golden sandbox VM" >&2
   exit 1
 fi
 if [[ ! -f "${dist}/agent.js" ]]; then
@@ -29,4 +29,4 @@ chmod 0440 /etc/sudoers.d/workspaces-compose-agent
 systemctl daemon-reload
 systemctl enable workspaces-compose-agent.service
 
-echo "Agent installed. Shut down this VM and convert it to Proxmox template VMID 9000."
+echo "Agent installed. Shut down this VM and publish/convert it as the selected hypervisor's golden image."

@@ -1,6 +1,6 @@
 {
-  "hash": "736f351a14d83b62",
-  "chunkCount": 232,
+  "hash": "c59270bf4d2424f5",
+  "chunkCount": 233,
   "chunks": [
     {
       "id": "cap-001",
@@ -1393,6 +1393,12 @@
       "kind": "decision",
       "title": "Compose runner uses one Proxmox QEMU sandbox per workspace",
       "text": "ADR 0297: Compose runner uses one Proxmox QEMU sandbox per workspace. ADR 0288 requires unrestricted user-supplied Docker Compose to leave the Workspaces application daemon and run inside a dedicated VM/microVM/physical sandbox per workspace. The application-side HTTPS contract existed, but there was no deployable control-plane, sandbox lifecycle or selected hypervisor. A Docker sidecar or shared remote daemon would still give one tenant root-equivalent access to other tenants. Decision: - The first production runner backend is **Proxmox VE with a full-cloned QEMU VM per workspace**. Proxmox VM configuration is the durable identity/state source; the runner remains stateless and reconstructs ownership from a marker plus the exact workspace id in the VM description. - A separately deployed HTTPS control-plane authenticates the Workspaces bearer token, verifies URL/body workspace equality, serializes operations per workspace, provisions/reuses the VM and forwards only to that VM's agent. - A host-level systemd agent inside the disposable VM executes raw Compose. Its bearer token is HMAC-derived per workspace and injected after clone over a restricted cloud-init SSH principal; the public runner token is never forwarded into a sandbox. - Isolation is enforced outside the guest by Proxmox firewall rules: deny-by-default ingress, agent access only from controller CIDRs, explicitly labelled gateway ports only from Workspaces app CIDRs, and private/metadata egress denial before public"
+    },
+    {
+      "id": "adr-0298",
+      "kind": "decision",
+      "title": "Compose runner supports Incus QEMU sandboxes on ARM64",
+      "text": "ADR 0298: Compose runner supports Incus QEMU sandboxes on ARM64. ADR 0297 selected Proxmox VE as the first hypervisor implementation for ADR 0288's mandatory one-full-VM-per-workspace boundary. The deployment host is a Raspberry Pi 5 with ARM64 and hardware KVM. Proxmox VE does not provide a supported ARM64 distribution, so that implementation cannot run on the selected host. Falling back to containers, a shared Docker daemon or guest-controlled firewalling would violate ADR 0288. The Pi kernel also lacks `nf_conntrack_bridge`, so Incus bridge filtering cannot be the only external isolation control. Cold full-VM creation on the Pi's directory storage can approach ten minutes. Decision: - Keep the provider boundary and the Proxmox implementation, and add **Incus full KVM VMs** as an equal controller backend selected with `RUNNER_PROVIDER=incus`. - Use one restricted Incus project, one dedicated bridge/subnet and one full VM per workspace. Incus metadata is the durable ownership/last-used source; controller restarts reconstruct state from it. - Enforce ingress, anti-spoofing, cross-workspace denial, private/LAN/metadata egress denial and explicit gateway ports outside the guest. On this host a minimal root-only nftables helper accepts bounded operations over a Unix socket; the non-root controller never receives nftables privileges. - Preserve the same workspace-derived HMAC guest token and in-VM Compose agent contract used by Proxmox. Public bearer credentials never enter guest"
     }
   ]
 }

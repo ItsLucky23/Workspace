@@ -80,7 +80,12 @@ fi
 # --- 3. build the base image the app uses for ticket containers (if the Dockerfile is present) ---
 if [ -f "../docker/base.Dockerfile" ]; then
   log "building the ticket base image (workspaces/base:0.1.0)…"
-  docker build -f ../docker/base.Dockerfile -t "${WS_BASE_IMAGE:-workspaces/base:0.1.0}" ../docker || die "base image build failed"
+  case "$(docker version --format '{{.Server.Arch}}')" in
+    amd64) OVS_ARCH=x64 ;;
+    arm64) OVS_ARCH=arm64 ;;
+    *) die "unsupported openvscode-server architecture: $(docker version --format '{{.Server.Arch}}')" ;;
+  esac
+  docker build --build-arg "OVS_ARCH=${OVS_ARCH}" -f ../docker/base.Dockerfile -t "${WS_BASE_IMAGE:-workspaces/base:0.1.0}" .. || die "base image build failed"
 fi
 
 # --- 4. the shared ticket-container network (external in compose; the app + ticket containers use it) ---

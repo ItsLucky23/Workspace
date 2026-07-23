@@ -1,0 +1,40 @@
+[Unit]
+Description=Workspaces Incus ACL helper
+After=incus.service
+Requires=incus.service
+Before=workspaces-compose-runner.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/workspaces-compose-runner-firewall.env
+Environment=INCUS_FIREWALL_SOCKET=/run/workspaces-compose-runner/firewall.sock
+ExecStart=/usr/bin/node --jitless /opt/workspaces-compose-runner/incusFirewallDaemon.js
+Restart=always
+RestartSec=3
+User=root
+Group=workspaces-runner
+UMask=0007
+RuntimeDirectory=workspaces-compose-runner
+RuntimeDirectoryMode=0750
+PrivateTmp=true
+PrivateDevices=true
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectSystem=strict
+ReadWritePaths=/run/workspaces-compose-runner /var/lib/workspaces-compose-runner/firewall
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+CapabilityBoundingSet=CAP_NET_ADMIN
+MemoryMax=128M
+TasksMax=32
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

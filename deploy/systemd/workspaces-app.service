@@ -1,0 +1,32 @@
+[Unit]
+Description=Workspaces production application
+After=network-online.target docker.service mongod.service redis-server.service
+Wants=network-online.target docker.service mongod.service redis-server.service
+
+[Service]
+Type=simple
+User=lucky23
+Group=lucky23
+SupplementaryGroups=docker www-data
+WorkingDirectory=/var/www/workspace.keetlerop.nl
+Environment=NODE_ENV=production
+Environment=LUCKYSTACK_ENV=production
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/node node_modules/tsx/dist/cli.mjs --tsconfig tsconfig.server.json server/server.ts default 3003
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=180
+TimeoutStopSec=45
+KillSignal=SIGTERM
+LimitNOFILE=65536
+UMask=0027
+PrivateTmp=true
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target
