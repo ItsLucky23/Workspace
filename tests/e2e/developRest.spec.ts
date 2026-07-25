@@ -64,7 +64,7 @@ test.describe('pipeline', () => {
 });
 
 test.describe('terminals / answers / sources / scheduled — teaching empty states', () => {
-  test('terminals renders the SSH-unlock teaching gate for a fresh user', async ({ authedPage }) => {
+  test('terminals names the real repository prerequisite without an SSH gate', async ({ authedPage }) => {
     const page = authedPage;
     await createWorkspace(page, `E2E PW Terminals ${String(Date.now())}`);
     await expect(page.getByText('Welcome to Workspaces')).toBeHidden();
@@ -72,10 +72,11 @@ test.describe('terminals / answers / sources / scheduled — teaching empty stat
     await page.goto('/workspaces/develop/terminals');
     await expect(page.getByRole('heading', { name: 'Terminals' })).toBeVisible();
 
-    // Actual default for a brand-new user: no SSH key is linked yet, so the page teaches the SSH
-    // unlock gate before anything about containers/Docker/repo can even matter.
-    await expect(page.getByText('Terminals locked')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Unlock with SSH key' })).toBeVisible();
+    // ADR 0301: terminal access is session + workspace RBAC + exact container identity. A fresh
+    // workspace has no repository/container yet, so teach that real prerequisite — never a fake SSH lock.
+    await expect(page.getByText('No repository linked')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Link a repository' })).toBeVisible();
+    await expect(page.getByText('Terminals locked')).toBeHidden();
   });
 
   test('answers renders its empty inbox teaching state', async ({ authedPage }) => {

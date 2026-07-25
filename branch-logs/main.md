@@ -4647,3 +4647,13 @@ User-beslissingen na runtime-inventarisatie (Docker 29.6 aan, claude-CLI 2.1.205
 **Files touched:** `package{,-lock}.json`, terminal/settings UI en locales, Workspaces terminal-/authdocs, `docs/decisions/0301-terminal-access-uses-session-rbac-and-exact-container-identity.md`, `tests/unit/terminalAccessContract.test.mts`, afgeleide AI-indexen en branchlogs.
 
 **Verify:** alle 16 lokale én Pi-packages exact **0.7.6** · productie `/readyz` groen met `bootUuid:true` · publieke app 200 · terminalauthregressies groen · unitlaag **118/118 testbestanden** · lint, typecheck, build en `ai:lint` groen. Bewust niet gedaan: `test:all`, push, browsertest en externe GitHub/GitLab/YouTube/TikTok-flows. Nieuw npm-auditbeeld: 20 doorgepropageerde high labels komen uit een optionele ESLint-peer/brace-expansion zonder fix plus React Router RSC-mode; Workspaces gebruikt geen RSC-actions, maar dit blijft een upstream securityfollow-up.
+
+## 2026-07-25 17:01 — Volledige pushgate en productie KISS-terminalsmoke
+
+**User prompt:** start de benodigde lokale runtimes zelf, voer `test:all` uit, gebruik de eerder goedgekeurde `agent-browser` voor de productiesmoke en push uitsluitend wanneer alles groen is.
+
+**Wat ik deed:** de lokale Mongo-/Redisforwards en backend zijn voor de testgate gestart. `test:all` vond één achterhaalde Playwrightverwachting die nog de verwijderde fictieve SSH-lock eiste; de test bewaakt nu ADR 0301 door voor een verse workspace de echte repositoryprerequisite te verwachten en expliciet te controleren dat `Terminals locked` afwezig is. Daarna is de volledige gate opnieuw gedraaid. Met de bestaande versleutelde `agent-browser`-authvault is vervolgens de dedicated productiefixture echt ingelogd en zijn board, Developer-settings en Terminals doorlopen. Settings bevat geen SSH-keymanagement; Terminals toont `No repository linked` en geen SSH-lock. Socket bleef `CONNECTED`; console en paginafouten bleven leeg. App-readiness en runner-health zijn opnieuw publiek gecontroleerd.
+
+**Files touched:** `tests/e2e/developRest.spec.ts` en branchlogs.
+
+**Verify:** standalone **318/318 testbestanden** · HTTP **433/433** · Playwright Chromium **24/24** · productie-login naar het board met drie seedtickets · Developer-settings zonder SSH-copy/keykaart · Terminals met echte repo-prerequisite en zonder SSH-lock · console **0** · paginafouten **0** · app `/readyz` volledig ready · runner `/healthz` ready met provider `incus`.
