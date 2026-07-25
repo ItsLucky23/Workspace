@@ -53,9 +53,8 @@ export interface WorkspacesCtx {
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
   currentUser: Member;   // the account you're using the app as
-  //? SSH keys live on the account (Account settings) and are what unlock + drive
-  //? the terminals. The active SSH identity = the most recent key's mapped user
-  //? (123 → test, 456 → mathijs). No app-level login gate.
+  //? Legacy account SSH-key data remains in the snapshot/API for backward compatibility.
+  //? It is not a login or terminal authorization source (ADR 0301).
   sshKeys: SshKeyEntry[];
   sshUserId: string | null;
   //? #76 — add persists to the account (server sets userId from the session); remove deletes by id.

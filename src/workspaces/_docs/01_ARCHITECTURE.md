@@ -130,7 +130,7 @@ The workspace is a **shared real-time surface**: many clients per workspace (e.g
 
 Inherit the terminal module's posture and extend it:
 - **Host-shell paths stay dev-gated** (`NODE_ENV!=='production' || WORKSPACE_AI_ENABLED==='1'`). Production workers run **only** in containers (egress-allow-listed, resource-limited).
-- **SSH-key challenge** on the agent/PTY namespace before any `ws-ai:chat`/`control`/`attach` (the existing nonce + `crypto.verify` against the stored public key; identity maps key→user). Framework socket auth covers the connection; this adds the per-session capability gate. The Assistant's `userId` comes from this identity.
+- **Session + RBAC + exact-container authorization** on every terminal attach (ADR 0301): LuckyStack authenticates the socket, `workTickets` authorizes the workspace, and the server derives then label-verifies the exact ticket container. SSH keys are not a second gate; production has no host-shell fallback.
 - **RBAC server-side on every mutating action** (promote, accept config-change, kill). The LLM proposing is irrelevant — the Conductor checks the *caller's* role (matrix in 02 §7 / spec §RBAC). A Member cannot edit pipeline/config.
 - **The structured channel is the only write path and is tightly scoped** — per-session token (a worker can't act on another ticket) + per-stage `permissions.allow`. Assistants have no write verbs at all.
 - **No user-supplied command reaches `pty.spawn`** — the orchestrator renders the fixed `claude` invocation + flags from validated config; the browser can *request* a spawn (`ws-ai:control`) but never choose binary/args/cwd.

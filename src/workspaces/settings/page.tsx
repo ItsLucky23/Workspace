@@ -1,10 +1,8 @@
-//? Workspaces — Account settings. Profile, connections, SSH keys, sessions,
-//? web-push, data export. SSH keys live on the account (ctx) and are what
-//? unlock + drive the terminals — there is NO app-load login. The pasted value
-//? (or a dropped ~/.ssh/config containing it) maps to an SSH identity:
-//? 123 → test, 456 → mathijs. Dummy data; desktop-first.
+//? Workspaces — Account settings. Profile, connections, sessions, web-push and data export,
+//? plus workspace-scoped developer operations. Terminal access is authorized independently
+//? through the logged-in session, workspace RBAC and an exact server-derived container identity.
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 
 import { i18nNotify as notify, tryCatch, useSession, useTranslator, useUpdateLanguage } from '@luckystack/core/client';
 
@@ -39,9 +37,6 @@ interface AccountSession {
   expiresInSeconds: number | null;
   isCurrent: boolean;
 }
-
-//? An example file path shown in the SSH drop-zone — code, not translatable copy.
-const SSH_CONFIG_PATH = '~/.ssh/config';
 
 //? Gap-fix — read a workspace-export JSON file and recreate it as a NEW workspace (module-scope:
 //? it touches no component state).
@@ -379,65 +374,11 @@ function PatPanel({ workspaceId }: { workspaceId: string }) {
   );
 }
 
-function AddKeyForm({ onAdd }: { onAdd: (input: { name: string; type: string; fingerprint: string; publicKey: string }) => void }) {
-  const translate = useTranslator();
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [value, setValue] = useState('');
-  const [error, setError] = useState('');
-  const [dragOver, setDragOver] = useState(false);
-  const fileInput = useRef<HTMLInputElement>(null);
-
-  //? #76 — the pasted key authenticates as the LOGGED-IN user (the server sets userId from the session),
-  //? so there is no demo user-resolution; we just persist the key's name + fingerprint.
-  const submit = (raw: string, keyName: string) => {
-    const trimmed = raw.trim();
-    if (trimmed.length === 0) { setError(translate({ key: 'workspaces.account.keyRequired' })); return; }
-    onAdd({ name: keyName.trim() || translate({ key: 'workspaces.account.defaultKeyNameSelf' }), type: 'ed25519', fingerprint: `SHA256:${trimmed.slice(0, 12)}…`, publicKey: trimmed });
-    setOpen(false); setName(''); setValue(''); setError('');
-  };
-
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault(); setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) void file.text().then((t) => { setValue(t); submit(t, name || file.name); });
-  };
-  const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) void file.text().then((t) => { setValue(t); submit(t, name || file.name); });
-  };
-
-  if (!open) return <WsButton variant="secondary" icon="plus" onClick={() => { setOpen(true); }}>{translate({ key: 'workspaces.account.addSshKey' })}</WsButton>;
-  return (
-    <div className="rounded-xl border border-container1-border bg-container2/40 p-4 flex flex-col gap-3 mt-2">
-      <input value={name} onChange={(e) => { setName(e.target.value); }} placeholder={translate({ key: 'workspaces.account.keyNamePlaceholder' })}
-        className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
-      <textarea value={value} onChange={(e) => { setValue(e.target.value); }} placeholder={translate({ key: 'workspaces.account.publicKeyPlaceholder' })} rows={2}
-        className="px-3 py-2 rounded-lg border border-container1-border bg-container1 text-sm font-mono text-title resize-none focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => { setDragOver(false); }}
-        onDrop={onDrop}
-        onClick={() => fileInput.current?.click()}
-        className={`rounded-lg border border-dashed p-3 text-center text-xs cursor-pointer transition-colors ${dragOver ? 'border-primary bg-primary/5 text-primary' : 'border-container2-border text-muted hover:bg-container2/60'}`}
-      >
-        {translate({ key: 'workspaces.account.dropConfigPre' })} <span className="font-mono">{SSH_CONFIG_PATH}</span> {translate({ key: 'workspaces.account.dropConfigPost' })}
-        <input ref={fileInput} type="file" className="hidden" onChange={onPick} />
-      </div>
-      {error && <div className="text-sm text-wrong inline-flex items-center gap-1.5"><Icon name="triangle-exclamation" /> {error}</div>}
-      <div className="flex items-center gap-2">
-        <WsButton icon="check" onClick={() => { submit(value, name); }}>{translate({ key: 'workspaces.account.verifyAndAdd' })}</WsButton>
-        <WsButton variant="ghost" onClick={() => { setOpen(false); setError(''); }}>{translate({ key: 'workspaces.account.cancel' })}</WsButton>
-      </div>
-    </div>
-  );
-}
-
 export const template = 'workspaces';
 
 export default function AccountSettings() {
   const translate = useTranslator();
-  const { currentUser, theme, setTheme, sshKeys, sshUserId, addSshKey, removeSshKey, membersById, activeWorkspace, activeProject, connectForge, environments, deployEnv, teardownEnv, rollbackEnv, promoteEnv, buildArtifacts, exportBuild, services, serviceStacks, provisionServiceStack, teardownServiceStack, dbConnections, migrations, dbConnect, dbMigrateCreate, dbMigrateApply, dbIntrospect } = useWorkspaces();
+  const { currentUser, theme, setTheme, activeWorkspace, activeProject, connectForge, environments, deployEnv, teardownEnv, rollbackEnv, promoteEnv, buildArtifacts, exportBuild, services, serviceStacks, provisionServiceStack, teardownServiceStack, dbConnections, migrations, dbConnect, dbMigrateCreate, dbMigrateApply, dbIntrospect } = useWorkspaces();
   //? K1/K3 — the curated service presets (stable client-side list; each maps to a server preset key).
   const SERVICE_PRESETS = useMemo(() => [
     { key: 'postgres', label: 'PostgreSQL' }, { key: 'redis', label: 'Redis' }, { key: 'kafka', label: 'Kafka' },
@@ -501,8 +442,7 @@ export default function AccountSettings() {
     void apiRequest({ name: 'settings/updatePreferences', version: 'v1', data: { preferences: { [prefKey]: next } } });
   };
   const [language, setSelectedLanguage] = useState<Language>(session?.language ?? 'en');
-  const sshUser = sshUserId ? membersById[sshUserId] : null;
-  //? Simplify: dev/ops surfaces (forge, SSH, PATs, deploy, services, DB, raw SQL) are only shown when the
+  //? Simplify: dev/ops surfaces (forge, PATs, deploy, services, DB, raw SQL) are only shown when the
   //? development module is on AND the current user is admin/owner (fail-open: an unresolved role is not 'member',
   //? so it stays visible). A plain 'member' or a content/design-only workspace sees a clean account page.
   //? Collapsed by default so even an admin's first paint stays light (progressive disclosure).
@@ -940,27 +880,6 @@ export default function AccountSettings() {
             ))}
           </Card>
 
-<Card
-            title={translate({ key: 'workspaces.account.sshKeysTitle' })}
-            desc={translate({ key: 'workspaces.account.sshKeysDesc' })}
-            right={sshUser
-              ? <span className="inline-flex items-center gap-1.5 rounded-lg bg-correct/15 text-correct px-2 h-7 text-xs font-medium"><Icon name="circle-check" /> {translate({ key: 'workspaces.account.terminalSshUser', params: [{ key: 'name', value: sshUser.name }] })}</span>
-              : <span className="inline-flex items-center gap-1.5 rounded-lg bg-warning/15 text-warning px-2 h-7 text-xs font-medium"><Icon name="triangle-exclamation" /> {translate({ key: 'workspaces.account.terminalsLocked' })}</span>}
-          >
-            <div className="flex flex-col">
-              {sshKeys.map((k) => (
-                <Row key={k.id}>
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-title">{k.name} <span className="text-xs text-muted font-mono">· {k.type}</span> {k.userId === sshUserId && <span className="ml-1 rounded-md bg-primary/12 text-primary px-1.5 py-0.5 text-[11px]">{translate({ key: 'workspaces.account.active' })}</span>}</div>
-                    <div className="text-xs text-muted font-mono truncate">{translate({ key: 'workspaces.account.keyMeta', params: [{ key: 'fingerprint', value: k.fingerprint }, { key: 'added', value: k.added }, { key: 'name', value: membersById[k.userId]?.name ?? k.userId }] })}</div>
-                  </div>
-                  <button type="button" onClick={() => { removeSshKey(k.id); }} className="text-xs text-wrong hover:underline cursor-pointer shrink-0">{translate({ key: 'workspaces.account.remove' })}</button>
-                </Row>
-              ))}
-              {sshKeys.length === 0 && <div className="text-sm text-muted py-3">{translate({ key: 'workspaces.account.noKeysLinked' })}</div>}
-            </div>
-            <div className="mt-3"><AddKeyForm onAdd={addSshKey} /></div>
-          </Card>
           </>)}
 
         </div>

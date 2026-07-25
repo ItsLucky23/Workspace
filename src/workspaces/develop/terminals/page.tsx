@@ -1,15 +1,15 @@
 //? intent: Terminals — a live shell inside each running ticket container: watch what the AI and its
 //? processes are doing, or step in and type yourself. One terminal per running ticket, shown one at a
 //? time by default (phone-friendly tab strip with status dots); the grid layout + drag-resize stay
-//? available as the demoted desktop view preference. Container shells need NO SSH key — the SSH-unlock
-//? card only appears when no key is linked AND nothing is running, and routes to Account settings.
+//? available as the demoted desktop view preference. Access uses the logged-in session, workspace RBAC
+//? and the exact server-derived ticket-container identity; SSH keys are not an additional gate.
 
 import { useEffect, useState } from 'react';
 
 import { apiRequest, tryCatch, useTranslator } from '@luckystack/core/client';
 
 import Icon from '../../_components/Icon';
-import { EmptyState, Segmented, statusColorVar, WsButton } from '../../_components/primitives';
+import { EmptyState, Segmented, statusColorVar } from '../../_components/primitives';
 import { SetupNotice } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import TerminalPanel from './TerminalPanel';
@@ -23,41 +23,21 @@ function termStatus(t: Terminal): TicketStatus {
   return t.processes.some((p) => p.status === 'busy') ? 'busy' : 'idle';
 }
 
-function SshLocked({ onGoToSettings }: { onGoToSettings: () => void }) {
-  const translate = useTranslator();
-  return (
-    <div className={`flex-1 flex items-center justify-center p-6`}>
-      <div className={`max-w-sm w-full rounded-2xl border border-container1-border bg-container1 p-6 text-center`}>
-        <div className={`w-12 h-12 rounded-xl bg-warning/15 text-warning flex items-center justify-center mx-auto mb-4 text-xl`}><Icon name="terminal" /></div>
-        <div className={`text-base font-semibold text-title`}>{translate({ key: 'workspaces.terminals.lockedTitle' })}</div>
-        <p className={`text-sm text-muted mt-1.5`}>{translate({ key: 'workspaces.terminals.lockedDescription' })}</p>
-        <div className={`mt-4`}>
-          <WsButton icon="check" onClick={onGoToSettings}>{translate({ key: 'workspaces.terminals.unlockWithSshKey' })}</WsButton>
-        </div>
-        <p className={`text-xs text-muted mt-3`}>{translate({ key: 'workspaces.terminals.takesYouToAccount' })}</p>
-      </div>
-    </div>
-  );
-}
-
 export const template = 'workspaces';
 
 export default function Terminals() {
   const translate = useTranslator();
-  const { sshUserId, navigate, membersById, activeWorkspace, readiness } = useWorkspaces();
+  const { currentUser, navigate, activeWorkspace, readiness } = useWorkspaces();
   //? Tabs (one fill-height terminal at a time) is the phone-friendly DEFAULT; grid is the
   //? demoted desktop preference behind the Segmented (hidden at phone width — a view
   //? preference, not an action).
   const [layout, setLayout] = useState<Layout>('tabs');
   const [activeTab, setActiveTab] = useState('');
   const [maximizedId, setMaximizedId] = useState<string | null>(null);
-  const sshUserName = sshUserId ? (membersById[sshUserId]?.name ?? sshUserId) : '';
-  const unlocked = sshUserId !== null;
-
   //? Live container terminals: one shell per RUNNING ticket container (docker exec via
   //? the ws-term relay). Polled so a container that spins up on stage-activation appears
-  //? without a manual refresh. These need NO SSH key — that gate is for the legacy
-  //? dev host-shell model; a container shell is isolated.
+  //? without a manual refresh. Authorization is enforced by the server from the session,
+  //? workTickets capability and exact workspace/ticket container labels.
   const [terminals, setTerminals] = useState<Terminal[]>([]);
   useEffect(() => {
     let cancelled = false;
@@ -85,7 +65,6 @@ export default function Terminals() {
         <div className={`min-w-0`}>
           <div className={`flex items-center gap-3 flex-wrap`}>
             <h1 className={`text-xl md:text-2xl font-semibold text-title`}>{translate({ key: 'workspaces.terminals.title' })}</h1>
-            {unlocked && <span className={`inline-flex items-center gap-1.5 rounded-lg bg-container2 px-2 h-7 text-xs font-medium text-common`}><Icon name="user" /> {translate({ key: 'workspaces.terminals.sshLabel', params: [{ key: 'name', value: sshUserName }] })}</span>}
           </div>
           <p className={`text-sm text-muted mt-0.5`}>{translate({ key: 'workspaces.terminals.subtitle' })}</p>
         </div>
@@ -100,11 +79,9 @@ export default function Terminals() {
         )}
       </div>
 
-      {!unlocked && terminals.length === 0 && <SshLocked onGoToSettings={() => { navigate('settings'); }} />}
-
       {/* A container shell only exists once a ticket provisions one — which silently can't happen when Docker
           is down (host) or no repo is linked (nothing to clone). Name the real reason instead of "no tickets". */}
-      {unlocked && terminals.length === 0 && !readiness.docker && (
+      {terminals.length === 0 && !readiness.docker && (
         <SetupNotice
           icon="server"
           title={translate({ key: 'workspaces.setup.docker.title' })}
@@ -112,7 +89,7 @@ export default function Terminals() {
           hint={translate({ key: 'workspaces.setup.docker.hint' })}
         />
       )}
-      {unlocked && terminals.length === 0 && readiness.docker && !readiness.repoLinked && (
+      {terminals.length === 0 && readiness.docker && !readiness.repoLinked && (
         <SetupNotice
           icon="terminal"
           title={translate({ key: 'workspaces.setup.repo.title' })}
@@ -120,7 +97,7 @@ export default function Terminals() {
           fix={{ cap: 'workspaceSettings', view: 'workspace', tab: 'repository', cta: translate({ key: 'workspaces.setup.repo.cta' }) }}
         />
       )}
-      {unlocked && terminals.length === 0 && readiness.docker && readiness.repoLinked && (
+      {terminals.length === 0 && readiness.docker && readiness.repoLinked && (
         <EmptyState
           icon="terminal"
           title={translate({ key: 'workspaces.terminals.emptyTitle' })}
@@ -144,14 +121,14 @@ export default function Terminals() {
               </button>
             ))}
           </div>
-          {terminals.filter((t) => t.ticketId === shownTab).map((t) => <TerminalPanel key={t.ticketId} workspaceId={activeWorkspace.id} terminal={t} sshUser={sshUserName} fill />)}
+          {terminals.filter((t) => t.ticketId === shownTab).map((t) => <TerminalPanel key={t.ticketId} workspaceId={activeWorkspace.id} terminal={t} viewerName={currentUser.name} fill />)}
         </div>
       )}
 
       {terminals.length > 0 && layout === 'grid' && maximizedId !== null && (
         <div className={`flex-1 min-h-0 flex flex-col px-4 md:px-6 pb-6`}>
           {terminals.filter((t) => t.ticketId === maximizedId).map((t) => (
-            <TerminalPanel key={t.ticketId} workspaceId={activeWorkspace.id} terminal={t} sshUser={sshUserName} fill isMaximized onToggleMaximize={() => { setMaximizedId(null); }} />
+            <TerminalPanel key={t.ticketId} workspaceId={activeWorkspace.id} terminal={t} viewerName={currentUser.name} fill isMaximized onToggleMaximize={() => { setMaximizedId(null); }} />
           ))}
         </div>
       )}
@@ -159,7 +136,7 @@ export default function Terminals() {
       {terminals.length > 0 && layout === 'grid' && maximizedId === null && (
         <div className={`flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-6`}>
           <div className={`grid grid-cols-1 xl:grid-cols-2 gap-3`}>
-            {terminals.map((t) => <TerminalPanel key={t.ticketId} workspaceId={activeWorkspace.id} terminal={t} sshUser={sshUserName} onToggleMaximize={() => { setMaximizedId(t.ticketId); }} />)}
+            {terminals.map((t) => <TerminalPanel key={t.ticketId} workspaceId={activeWorkspace.id} terminal={t} viewerName={currentUser.name} onToggleMaximize={() => { setMaximizedId(t.ticketId); }} />)}
           </div>
         </div>
       )}

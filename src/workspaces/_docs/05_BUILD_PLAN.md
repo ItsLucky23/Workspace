@@ -94,4 +94,4 @@ Each = a new role / trigger / verb consumer; none touches the others (the stable
 ## `ws-ai:*` socket events (the P1 client contract)
 Client→server: `chat {wsId,userId,text}` (routes to that user's Assistant) · `attach {wsId,sessionKey}` · `detach {sessionKey}` · `reply {ticketId,answers}` · `control {ticketId,action:'pause'|'resume'|'stop'|'promote',toStage?}`.
 Server→client: `stream {sessionKey,data}` · `status {sessionKey,ticketId?,status}` · `event {ticketId,event}` · `needs-input {ticketId,questionSet}` · `suggestion {suggestion}` · `notification {notification}` · `exit {sessionKey,code}`.
-All gated identically to `ws-term:*` (SSH-key challenge + RBAC); each socket joins `workspace-<wsId>` for Redis-adapter fan-out.
+All gated identically to `ws-term:*` (LuckyStack session + `workTickets` RBAC + exact container-label verification; ADR 0301); each socket joins `workspace-<wsId>` for Redis-adapter fan-out.

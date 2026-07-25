@@ -350,7 +350,7 @@ export const DOCS: InfoDoc[] = [
   },
   {
     id: 'authspec', name: 'Auth redesign.md', source: 'uploaded', updated: '5d ago', note: 'spec', aiEditable: false,
-    summary: 'Uploaded spec: OAuth = login, SSH key = terminal capability gate. The design decision behind the auth flow.',
+    summary: 'Auth contract: LuckyStack session = login; workspace RBAC plus exact container labels authorize terminal access. SSH keys are not a terminal gate.',
     usedByStages: ['Plan'],
     content: '# Auth redesign\n\nOAuth = primary login/identity. A linked SSH public key is required to open terminals (capability-gate on the /pty namespace). Private key stays client-side; server verifies against the public half.',
   },

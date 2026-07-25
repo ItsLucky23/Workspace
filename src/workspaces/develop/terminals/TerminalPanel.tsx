@@ -25,7 +25,7 @@ let rememberedGridHeight = 460;
 const MIN_PANEL_HEIGHT = 220;
 const MAX_PANEL_HEIGHT = 900;
 
-export default function TerminalPanel({ workspaceId, terminal, sshUser, fill = false, isMaximized = false, onToggleMaximize }: { workspaceId: string; terminal: Terminal; sshUser: string; fill?: boolean; isMaximized?: boolean; onToggleMaximize?: () => void }) {
+export default function TerminalPanel({ workspaceId, terminal, viewerName, fill = false, isMaximized = false, onToggleMaximize }: { workspaceId: string; terminal: Terminal; viewerName: string; fill?: boolean; isMaximized?: boolean; onToggleMaximize?: () => void }) {
   const translate = useTranslator();
   const [active, setActive] = useState(0);
   const [height, setHeight] = useState(rememberedGridHeight);
@@ -75,7 +75,7 @@ export default function TerminalPanel({ workspaceId, terminal, sshUser, fill = f
           <StatusPill status={proc.status} />
         </div>
         <div className={`flex items-center gap-2`}>
-          <span className={`hidden md:inline-flex items-center gap-1 rounded-md bg-white/5 px-1.5 py-0.5 text-[11px] font-mono text-terminal-muted`}><Icon name="user" /> {sshUser}</span>
+          <span className={`hidden md:inline-flex items-center gap-1 rounded-md bg-white/5 px-1.5 py-0.5 text-[11px] text-terminal-muted`}><Icon name="user" /> {viewerName}</span>
           <div className={`flex items-center gap-1`}>
             {terminal.processes.map((p, i) => (
               <button key={p.name} type="button" onClick={() => { setActive(i); }}
@@ -96,7 +96,7 @@ export default function TerminalPanel({ workspaceId, terminal, sshUser, fill = f
       </div>
       <XtermTerminal key={sessionId} sessionId={sessionId} workspaceId={workspaceId} ticketKey={terminal.ticketId} className={`flex-1 min-h-0`} />
       <div className={`flex items-center justify-between gap-2 bg-terminal-surface border-t border-white/5 px-3 h-7 shrink-0 text-[11px] font-mono text-terminal-muted`}>
-        <span className={`hidden sm:block min-w-0 truncate`}>{sshUser}@{terminal.ticketId.toLowerCase()}:{proc.cwd}</span>
+        <span className={`hidden sm:block min-w-0 truncate`}>{terminal.ticketId.toLowerCase()}:{proc.cwd}</span>
         <span className={`inline-flex items-center gap-1 shrink-0 ml-auto`}><span className={`w-1.5 h-1.5 rounded-full bg-terminal-green`} /> {translate({ key: 'workspaces.terminals.live' })}</span>
       </div>
       {!fill && (

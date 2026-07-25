@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (218)
+## Decisions (219)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -231,6 +231,7 @@
 | 0298 | Compose runner supports Incus QEMU sandboxes on ARM64 | 🟢 accepted | compose, incus, qemu, arm64, isolation, runner, self-hosting | 0297 | `docs/decisions/0298-compose-runner-supports-incus-qemu-on-arm64.md` |
 | 0299 | Compose-runner deadlines include the public reverse proxy | 🟢 accepted | compose, incus, nginx, timeout, operations | — | `docs/decisions/0299-compose-runner-deadlines-include-the-public-proxy.md` |
 | 0300 | Session cookie domain bridge is narrow and temporary | 🟢 accepted | auth, cookies, edge-auth, nginx, luckystack | — | `docs/decisions/0300-session-cookie-domain-bridge-is-narrow-and-temporary.md` |
+| 0301 | Terminal access uses session, RBAC and exact container identity | 🟢 accepted | terminals, auth, rbac, ssh, containers, security | — | `docs/decisions/0301-terminal-access-uses-session-rbac-and-exact-container-identity.md` |
 
 ## Summaries
 
@@ -1993,6 +1994,14 @@ Use measured Pi deadlines of 25 minutes for VM provisioning, 27 minutes for the 
 Until the framework serializer consumes `sessionCookieDomain`, prepend a Node request listener that wraps `ServerResponse.setHeader` and adds the configured Domain only to the named session cookie. OAuth-state, CSRF and all unrelated cookies remain unchanged. Keep the existing Secure, HttpOnly and SameSite attributes and retain workspace membership edge-auth plus the separate openvscode connection token.
 
 → `docs/decisions/0300-session-cookie-domain-bridge-is-narrow-and-temporary.md`
+
+### 0301 — Terminal access uses session, RBAC and exact container identity
+
+**0301** · accepted · tags: terminals, auth, rbac, ssh, containers, security · 2026-07-23
+
+A valid LuckyStack session is the terminal login identity. `workTickets` capability in the requested workspace is mandatory. The server derives the canonical container from `(workspaceId, ticketKey)` and verifies the container's exact workspace/ticket labels before attach. The browser never chooses a host shell, executable or arbitrary container. Production has no host-shell fallback and exposes no product SSH-to-host escape hatch. SSH keys do not unlock terminals and are not consulted by terminal authorization. Remove the SSH-unlock card, active-SSH badges and the stale nonce/signature promises from the current product/docs. Retain existing `SshKey` rows and add/remove routes only for backward-compatible data handling; they are not a security source and are not shown in the primary settings UI.
+
+→ `docs/decisions/0301-terminal-access-uses-session-rbac-and-exact-container-identity.md`
 
 ## Code governed by decisions
 

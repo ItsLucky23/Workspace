@@ -53,7 +53,7 @@ For **each** third-party tool you want the AI to use (the goal: e.g. "let the ag
 
 ## 7. Notifications / SSH / voice
 - **Web-push VAPID keys** (PWA push notifications) — *P2*, B-34. Plus the email adapter (`RESEND_API_KEY` **or** `SMTP_*`; otherwise console-only).
-- **SSH public key per user** — each operator pastes their public key (Account → SSH keys) to unlock terminals; the private key never leaves their device (B-05, gap **G19**). *P1.*
+- **No SSH key prerequisite for browser terminals** — login session + workspace `workTickets` RBAC + exact container-label verification form the access boundary (B-05, ADR 0301). Production exposes no host-shell fallback. *P1.*
 - **whisper.cpp** container for speech-to-text — **deferred** (voice is build-deferred, `features/06`, B-O1, gap **G27**). One shared orchestrator-side instance (decision 06.q3).
 
 ## 8. UI-Builder (code editor) — *needed: P5 / when the editor feature is built*

@@ -203,7 +203,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | `/workspaces/insights/activity` | workspaces | — | `workspaces/insights/activity/page.tsx` | intent: Workspaces — Activity: the live, workspace-wide chronological feed of everything |
 | `/workspaces/insights/knowledge` | workspaces | — | `workspaces/insights/knowledge/page.tsx` | intent: the Knowledge graph (Obsidian-view) — the workspace's context sources, tickets and |
 | `/workspaces/insights/usage` | workspaces | — | `workspaces/insights/usage/page.tsx` | intent: Show where the workspace's AI effort goes — tokens per day/ticket/person/provider — plus delivery analytics, spend caps and an AI root-cause diagnosis. |
-| `/workspaces/settings` | workspaces | — | `workspaces/settings/page.tsx` | Workspaces — Account settings. Profile, connections, SSH keys, sessions, |
+| `/workspaces/settings` | workspaces | — | `workspaces/settings/page.tsx` | Workspaces — Account settings. Profile, connections, sessions, web-push and data export, |
 | `/workspaces/workspace` | workspaces | — | `workspaces/workspace/page.tsx` | Workspaces — workspace settings. Members + per-member role (searchable |
 
 ## Helpers — `src/_functions/` (3 exports across 2 files)

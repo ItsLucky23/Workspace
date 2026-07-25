@@ -50,7 +50,7 @@ Teardown), **Terminal** (embedded), **Files & refs** (diff list + Add reference)
 Multi-terminal workspace (dark surface always). Per terminal: ticket + stage + process, status
 (busy / needs-input + reply box), process sub-tabs (server/client/claude), cwd/exit bar, ⋯ menu
 (Restart / Kill / Pop out / Split / Rename / Copy / Clear).
-- **SSH-unlock overlay** (Unlock → spinner → live). Layouts: grid / tabs / split.
+- **Terminal authorization** has no unlock overlay: session + workspace RBAC + exact container labels are checked server-side (ADR 0301). Layouts: tabs / grid.
 - Mobile: full-screen terminal + special-key bar (Tab/Ctrl/Esc/↑↓).
 - States: connecting, live, disconnected/reattaching, exited, locked, empty.
 
