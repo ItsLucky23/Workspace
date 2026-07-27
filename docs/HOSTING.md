@@ -100,7 +100,34 @@ built Vite SPA as `lucky23`, and leaves public TLS/WebSocket handling to host ng
 Install them with root ownership, create the include as writable by the application user, run `nginx -t`, then
 enable `workspaces-app`. The production host must set both `PUBLIC_URL` (LuckyStack auth/email/CORS) and
 `WS_PUBLIC_URL` (publishing/media URLs). The deployed public origin is `https://app.workspace.keetlerop.nl`; the
-wildcard parent remains `workspace.keetlerop.nl` for previews and cookies.
+wildcard parent remains `workspace.keetlerop.nl` for previews and cookies. The hardened unit keeps
+`ProtectHome=true`; therefore it sets `DOCKER_CONFIG=/run/workspaces-app` and lets systemd create that private
+runtime directory. Without the explicit path, Docker CLI reads `~/.docker/config.json` and fails before any
+container starts because the service cannot traverse the protected home.
+
+The same `ProtectHome=true` boundary applies to the Claude Max login. Set `WS_AUTH_DIR` and
+`CLAUDE_CONFIG_DIR` to `/var/lib/workspaces/auth`, owned by `lucky23`, instead of reading
+`/home/lucky23/.claude`. Install the operator's `.credentials.json` there as mode `0600` and a minimal
+`.claude.json` containing `hasCompletedOnboarding:true` and `bypassPermissionsModeAccepted:true`. Verify the
+actual service identity before launching a ticket:
+
+```bash
+sudo -u lucky23 env CLAUDE_CONFIG_DIR=/var/lib/workspaces/auth claude auth status
+# must report: "loggedIn": true
+```
+
+A binary-only `claude --version` check is insufficient. The stage runner now checks `claude auth status` inside
+the ticket container before opening the interactive PTY; absent or expired subscription credentials park the
+ticket as `stuck` instead of creating recurring four-minute timeout turns. Re-run the normal interactive
+`claude /login` as the operator and refresh the protected projection before resuming the ticket. Never substitute
+`claude -p`, the Agent SDK, or an API key: those use the separately metered pool and violate the PTY-billing
+contract.
+
+Ticket commits live in the container-owned `/work` named volume. Push-on-approval therefore exports the exact
+branch as a credential-free, size-bounded `git bundle`, imports it into a fresh host-controlled bare scratch repo,
+and only then performs the authenticated forge push. Do not restore the old host-`worktrees/<ticket>` push path:
+it cannot see named-volume commits and can become invalid after repository re-link. Do not pass forge tokens into
+`docker exec`; they remain host-side in `GIT_ASKPASS` (ADR 0302).
 
 Always run `npm run build` on the release source before deployment. Its `prebuild` regenerates the production
 API/sync/function maps; `services.config.ts` keeps the `default` preset aligned with every top-level route service,

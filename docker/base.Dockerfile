@@ -60,8 +60,11 @@ COPY docker/pty-agent/agent.mjs /opt/pty-agent/agent.mjs
 #? K4 — the integration MCP servers (e.g. cli-proxy.mjs: query an attached DB via the baked CLI + injected env).
 COPY docker/pty-agent/mcp/ /opt/pty-agent/mcp/
 
-#? Non-root agent (07b §7): baked uid/gid; everything below runs as this user.
-RUN useradd --create-home --uid 10001 --shell /bin/bash agent
+#? Non-root agent (07b §7): baked uid/gid; everything below runs as this user. Create /work
+#? while still root and hand it to uid 10001 BEFORE declaring the volume mountpoint. A fresh named
+#? volume copies this ownership from the image; otherwise git clone fails on /work/.git as non-root.
+RUN useradd --create-home --uid 10001 --shell /bin/bash agent \
+    && install -d -o agent -g agent /work
 USER agent
 WORKDIR /work
 

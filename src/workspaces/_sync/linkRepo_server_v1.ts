@@ -12,18 +12,18 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface SyncParams {
-  clientInput: { gitUrl: string; token?: string; clientRequestId: string };
+  clientInput: { projectId: string; gitUrl: string; token?: string; clientRequestId: string };
   user: SessionLayout;
   functions: Functions;
   roomCode: string;
 }
 
 export const main = async ({ clientInput, user, functions, roomCode }: SyncParams): Promise<SyncServerResponse> => {
-  const { gitUrl, token, clientRequestId } = clientInput;
-  if (gitUrl.trim().length === 0) return { status: 'error', errorCode: 'sync.invalidRequest' };
+  const { projectId, gitUrl, token, clientRequestId } = clientInput;
+  if (projectId.trim().length === 0 || gitUrl.trim().length === 0) return { status: 'error', errorCode: 'sync.invalidRequest' };
   const res = await dispatchControlSync({
     op: 'link-repo', roomCode, userId: user.id, prisma: functions.db.prisma,
-    payload: { gitUrl: gitUrl.trim(), ...(token ? { token } : {}) }, clientRequestId,
+    payload: { projectId: projectId.trim(), gitUrl: gitUrl.trim(), ...(token ? { token } : {}) }, clientRequestId,
   });
   if (!res.ok) return { status: 'error', errorCode: res.errorCode };
   return { status: 'success', repo: repoDelta(res.result) };

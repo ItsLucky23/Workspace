@@ -86,7 +86,7 @@ import { provisionServiceStack, teardownServiceStack, teardownWorkspaceServiceNe
 import { presetCompose, presetEnv } from '../container/servicePresets';
 import { sanitizeProblems, sanitizeScreenshots } from '../ui/uiReview';
 import { recordAudit } from '../control/audit';
-import { runStage } from './stageRunner';
+import { runStage, shouldRetryStageFailure } from './stageRunner';
 import { resolveProjectId } from './projectResolve';
 import { ensureEnvironment, deployEnvironment, teardownEnvironment, rollbackEnvironment } from '../deploy/environment';
 import { promoteEnvironment } from '../deploy/promote';
@@ -613,7 +613,7 @@ async function runStageActivation(workspaceId: string, projectId: string, keys: 
     const gitCfg = normalizeGitConfig(workspace?.gitConfig ?? null);
     for (const key of keys) {
       const ticket = await prisma.ticket.findFirst({
-        where: { workspaceId, projectId, key, stageId, archived: false, status: { notIn: ['done', 'paused'] } },
+        where: { workspaceId, projectId, key, stageId, archived: false, status: { notIn: ['done', 'paused', 'stuck'] } },
         select: { id: true, branch: true, title: true, labels: true, number: true },
       });
       if (!ticket || ticket.branch || !isLinked(workspaceId, projectId)) continue;
@@ -673,7 +673,7 @@ export async function openBlockersFor(db: PrismaClient, workspaceId: string, tic
 //? already-branched tickets, so a resumed ticket is re-provisioned directly here.
 export async function resolveReprovisionTarget(db: PrismaClient, workspaceId: string, key: string) {
   const ticket = await db.ticket.findFirst({
-    where: { workspaceId, key, archived: false, status: { notIn: ['done', 'paused'] } },
+    where: { workspaceId, key, archived: false, status: { notIn: ['done', 'paused', 'stuck'] } },
     select: { stageId: true, branch: true, projectId: true },
   });
   if (!ticket?.branch) return null;
@@ -753,7 +753,7 @@ export async function provisionContainers(
     for (const { key } of activated) {
       const run = tryCatch(async (): Promise<ProvisionResult> => {
         const ticket = await prisma.ticket.findFirst({
-          where: { workspaceId, key, archived: false, status: { notIn: ['done', 'paused'] } },
+          where: { workspaceId, key, archived: false, status: { notIn: ['done', 'paused', 'stuck'] } },
           select: { id: true, status: true, priority: true, projectId: true, stageId: true },
         });
         if (ticket?.stageId !== stageId) return { key, status: 'skipped' };
@@ -806,6 +806,11 @@ export async function provisionContainers(
         const released = await releaseSlot(acquired.reservation);
         if (released) void drainCapacityQueue();
         if (runError || outcome?.ok !== true) {
+          const failure = outcome?.error ?? runError?.message;
+          if (!shouldRetryStageFailure(failure)) {
+            if (runError) console.error(`[conductor] runStage ${key}@${stageId} failed:`, runError.message);
+            return { key, status: 'skipped' };
+          }
           const queued = await enqueueDeferred({ workspaceId, key, stageId });
           await writeStageDefer(workspaceId, target, { mode: 'set', reason: 'capacity', blockers: [] });
           if (runError) console.error(`[conductor] runStage ${key}@${stageId} failed:`, runError.message);
@@ -838,7 +843,7 @@ export async function resolveCapacityDeferredTarget(item: { workspaceId: string;
         workspaceId: item.workspaceId,
         key: item.key,
         archived: false,
-        status: { notIn: ['done', 'paused'] },
+        status: { notIn: ['done', 'paused', 'stuck'] },
       },
       select: { branch: true, stageId: true },
     });
@@ -2337,9 +2342,11 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const gitUrl = str(payload, 'gitUrl');
       if (!gitUrl) return { linked: false, error: 'sync.invalidRequest' };
       const token = str(payload, 'token');
-      //? R3-b — resolve the TARGET project FIRST so the clone lands in its own per-project slot
-      //? (a 2nd linked repo never clobbers the 1st).
-      const linkProjectId = await resolveProjectId(prisma, action.workspaceId, str(payload, 'projectId'));
+      //? R3-b — require and resolve the TARGET project FIRST so a lost transport field can
+      //? never silently fall back to project 1 and clobber its persisted URL/repo slot.
+      const requestedProjectId = str(payload, 'projectId');
+      if (!requestedProjectId) return { linked: false, gitUrl, error: 'sync.invalidRequest' };
+      const linkProjectId = await resolveProjectId(prisma, action.workspaceId, requestedProjectId);
       if (!linkProjectId) return { linked: false, gitUrl, error: 'project.notFound' };
       const [error, status] = await tryCatch(() => cloneRepo({ workspaceId: action.workspaceId, projectId: linkProjectId, gitUrl, ...(token ? { token } : {}) }));
       if (error) return { linked: false, gitUrl, error: error.message };

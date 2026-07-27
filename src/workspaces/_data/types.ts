@@ -160,6 +160,9 @@ export interface ProjectSummary {
   id: string;
   name: string;
   gitUrl?: string;
+  forgeMode?: 'gitlab' | 'github';
+  forgeStatus?: string;
+  forgeRepoPath?: string;
   baseImageRef?: string;   // #45 — the built/selected image tag, so a reload shows what image is built
   stack?: string;          // #45 — resolved stack (node/python/…) when no explicit image
 }

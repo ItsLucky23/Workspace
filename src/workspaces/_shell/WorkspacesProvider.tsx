@@ -1644,7 +1644,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       repo: snap.repo,
       linkRepo: (gitUrl, token) => {
         const room = snap.activeWorkspaceId;
-        if (room) void syncRequest({ name: 'workspaces/linkRepo', version: 'v1', data: { gitUrl, ...(token ? { token } : {}), clientRequestId: nextReqId() }, receiver: room });
+        const projectId = snap.activeProjectId;
+        if (room && projectId) void syncRequest({ name: 'workspaces/linkRepo', version: 'v1', data: { projectId, gitUrl, ...(token ? { token } : {}), clientRequestId: nextReqId() }, receiver: room });
       },
       scanDocs: () => {
         const room = snap.activeWorkspaceId;

@@ -203,7 +203,7 @@ export interface StageSessionStartInternalAction extends InternalActionBase {
 export interface StageSessionUpdateInternalAction extends InternalActionBase {
   op: 'stage-session-update';
   target: StageRunTarget;
-  payload: { containerId: string; status: 'busy' | 'stopped'; claudeSessionId?: string };
+  payload: { containerId: string; status: 'busy' | 'stopped'; claudeSessionId?: string; failure?: 'claude.notAuthenticated' };
 }
 
 export interface StageToolTrailAppendInternalAction extends InternalActionBase {
@@ -830,6 +830,7 @@ export function assertValidInternalAction(action: unknown): asserts action is In
     assertStageContainer(action.payload);
     if (action.payload.status !== 'busy' && action.payload.status !== 'stopped') throw new Error('[internal-op] invalid stage session status');
     assertOptionalString('payload.claudeSessionId', action.payload.claudeSessionId);
+    if (action.payload.failure !== undefined && action.payload.failure !== 'claude.notAuthenticated') throw new Error('[internal-op] invalid stage session failure');
     return;
   }
   if (action.op === 'stage-tool-trail-append') {

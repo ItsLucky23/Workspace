@@ -73,8 +73,9 @@ export async function pushTicketWork(
   workspaceId: string,
   ticketKey: string,
   expected: PushTicketExpectation,
-  dependencies: PushTicketWorkDependencies = DEFAULT_PUSH_DEPENDENCIES,
+  dependencies: Partial<PushTicketWorkDependencies> = {},
 ): Promise<ForgeResult> {
+  const deps: PushTicketWorkDependencies = { ...DEFAULT_PUSH_DEPENDENCIES, ...dependencies };
   const [workspace, ticket] = await Promise.all([
     prisma.workspace.findUnique({ where: { id: workspaceId }, select: { gitConfig: true } }),
     prisma.ticket.findFirst({
@@ -92,7 +93,7 @@ export async function pushTicketWork(
     where: { id: expected.projectId, workspaceId },
     select: { gitUrl: true },
   });
-  const forge = await dependencies.resolve(prisma, workspaceId, expected.projectId);
+  const forge = await deps.resolve(prisma, workspaceId, expected.projectId);
   const gitUrl = project?.gitUrl;
   if (!gitUrl || !forge) return { ok: false, pushed: false, error: 'forge.notActivated', ...common };
   const token = forge.token;
@@ -114,7 +115,7 @@ export async function pushTicketWork(
   if (!stillExpected) return { ok: false, pushed: false, error: 'forge.targetChanged', ...common };
   if (expected.assertAuthority) await expected.assertAuthority();
 
-  const [pushErr] = await tryCatch(() => dependencies.push({ workspaceId, projectId: expected.projectId, ticketKey, gitUrl, token, branch: expected.branch }));
+  const [pushErr] = await tryCatch(() => deps.push({ workspaceId, projectId: expected.projectId, ticketKey, gitUrl, token, branch: expected.branch }));
   if (pushErr) return { ok: false, pushed: false, error: `forge.pushFailed: ${pushErr.message}`, ...common };
   if (cfg.pushPolicy === 'push') return { ok: true, pushed: true, ...common };
 
@@ -136,7 +137,7 @@ export async function pushTicketWork(
   //? External-only: open/find the MR, but never persist its URL here. The stage-forge-complete
   //? InternalOp revalidates ticket/project/branch/session CAS before the Conductor writes it.
   if (forge.base.length === 0 || forge.repoPath.length === 0) return { ok: true, pushed: true, error: 'forge.noForgeApi', ...common };
-  const [mrErr, mrUrl] = await tryCatch(() => dependencies.openMr(forge.mode, {
+  const [mrErr, mrUrl] = await tryCatch(() => deps.openMr(forge.mode, {
     base: forge.base,
     path: forge.repoPath,
     token,

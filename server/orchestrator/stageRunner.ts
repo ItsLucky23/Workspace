@@ -25,6 +25,7 @@ import { loadTicketArtifactContext } from './artifactContext';
 import { toStageConfig } from '../read/workspaceSnapshot';
 import { broadcastTicketDelta, broadcastAgentTerm } from '../read/broadcast';
 import { pushTicketWork } from '../git/forge';
+import { pushContainerBranch } from '../git/containerPush';
 import { postIssueComment } from '../git/gitlabSync';
 import { retrieve } from '../rag';
 import { retrieveProductKnowledge } from '../rag/productKnowledge';
@@ -197,7 +198,7 @@ function quoteForShell(value: string): string {
 //? "Not logged in" once the initial copy expires (~hours). Best-effort, host-side.
 function refreshProjectedAuth(): void {
   const authDir = process.env.WS_AUTH_DIR ?? path.join(process.cwd(), 'data', '_auth');
-  const hostCreds = path.join(homedir(), '.claude', '.credentials.json');
+  const hostCreds = path.join(process.env.CLAUDE_CONFIG_DIR ?? path.join(homedir(), '.claude'), '.credentials.json');
   if (existsSync(hostCreds) && existsSync(authDir)) {
     tryCatchSync(() => { copyFileSync(hostCreds, path.join(authDir, '.credentials.json')); });
   }
@@ -215,6 +216,20 @@ export async function projectAuth(
     'mkdir -p /home/agent/.claude && cp /auth-ro/.credentials.json /auth-ro/.claude.json /home/agent/.claude/ 2>/dev/null; chmod 700 /home/agent/.claude 2>/dev/null; chmod 600 /home/agent/.claude/.credentials.json 2>/dev/null; '
     + 'git -C /work config user.name "Workspaces AI" 2>/dev/null; git -C /work config user.email "ai@workspaces.local" 2>/dev/null; '
     + 'rm -f ' + CAPTURE + '; true']);
+}
+
+export function claudeAuthStatusLoggedIn(raw: string): boolean {
+  const [error, parsed] = tryCatchSync(() => JSON.parse(raw) as unknown);
+  return !error && parsed !== null && typeof parsed === 'object' && 'loggedIn' in parsed
+    && (parsed as { loggedIn?: unknown }).loggedIn === true;
+}
+
+export async function containerClaudeAuthenticated(
+  container: string,
+  runDocker: (args: string[]) => Promise<DockerResult> = docker,
+): Promise<boolean> {
+  const result = await runDocker(['exec', container, 'claude', 'auth', 'status']);
+  return result.code === 0 && claudeAuthStatusLoggedIn(result.out);
 }
 
 //? Drive ONE interactive `claude` turn inside the container and return its final message.
@@ -235,6 +250,10 @@ export async function driveContainerTurn(container: string, kickoff: string, opt
   )) return { ok: false, message: '', error: 'stage.ownerMismatch' };
   refreshProjectedAuth();   //? keep the projected token fresh (07b §2.2 refresh loop)
   await projectAuth(container);
+  //? `claude --version` only proves the binary. Fail before opening a PTY when the
+  //? projected Max-subscription login is absent/expired, rather than burning repeated
+  //? four-minute timeout turns that can never produce a Stop-hook capture.
+  if (!(await containerClaudeAuthenticated(container))) return { ok: false, message: '', error: 'claude.notAuthenticated' };
 
   //? bypassPermissions: the agent runs autonomously INSIDE the hardened, isolated,
   //? disposable container (cap-drop ALL, non-root, no host access) — the CONTAINER is the
@@ -298,6 +317,10 @@ export async function driveContainerTurn(container: string, kickoff: string, opt
 
 function stageDigest(...parts: string[]): string {
   return createHash('sha256').update(parts.join('\0')).digest('hex');
+}
+
+export function shouldRetryStageFailure(error: string | undefined): boolean {
+  return error !== 'claude.notAuthenticated';
 }
 
 export function stableStageCompletionId(input: { runToken: string; runFence: number; turnMarker: string; message: string; report: StageCiReport | null }): string {
@@ -510,7 +533,7 @@ export async function loadMcpIntegrations(
 //? another stage, or an identically-keyed stage in a sibling project, fails closed.
 export async function resolveStageRuntime(prisma: PrismaClient, workspaceId: string, ticketKey: string, stageKey: string) {
   const ticket = await prisma.ticket.findFirst({
-    where: { workspaceId, key: ticketKey, archived: false, status: { notIn: ['done', 'paused'] } },
+    where: { workspaceId, key: ticketKey, archived: false, status: { notIn: ['done', 'paused', 'stuck'] } },
   });
   if (ticket?.stageId !== stageKey) return null;
   const stage = await prisma.pipelineStage.findFirst({ where: { workspaceId, projectId: ticket.projectId, key: stageKey } });
@@ -548,6 +571,7 @@ async function updateStageSession(input: {
   status: 'busy' | 'stopped';
   reason: string;
   claudeSessionId?: string;
+  failure?: 'claude.notAuthenticated';
 }): Promise<boolean> {
   const [error, enqueued] = await tryCatch(() => enqueueInternalAction({
     workspaceId: input.workspaceId,
@@ -557,6 +581,7 @@ async function updateStageSession(input: {
       containerId: input.containerId,
       status: input.status,
       ...(input.claudeSessionId === undefined ? {} : { claudeSessionId: input.claudeSessionId }),
+      ...(input.failure === undefined ? {} : { failure: input.failure }),
     },
     userId: 'stage-runner',
     clientRequestId: `stage-session-update:${stageDigest(input.target.sessionId, input.target.runToken, input.containerId, input.reason)}`,
@@ -707,7 +732,8 @@ async function runStageInTenant(workspaceId: string, ticketKey: string, stageKey
   const drive = await driveContainerTurn(container.name, kickoff, { ...(resumeSessionId ? { resumeSessionId } : {}), workspaceId, ticketKey, model: choice.model, runOwner });
   await opts.reservationGuard.assertOwned();
   if (!drive.ok) {
-    await updateStageSession({ workspaceId, target: runTarget, containerId: container.containerId, status: 'stopped', reason: `${turnMarker}:${drive.error ?? 'turn-failed'}` });
+    const failure = drive.error === 'claude.notAuthenticated' ? 'claude.notAuthenticated' as const : undefined;
+    await updateStageSession({ workspaceId, target: runTarget, containerId: container.containerId, status: 'stopped', reason: `${turnMarker}:${drive.error ?? 'turn-failed'}`, ...(failure ? { failure } : {}) });
     return { ok: false, error: drive.error ?? 'turn.failed' };
   }
 
@@ -797,6 +823,8 @@ async function runStageInTenant(workspaceId: string, ticketKey: string, stageKey
         projectId: ticket.projectId,
         branch: forgeBranch,
         assertAuthority: () => opts.reservationGuard.assertOwned(),
+      }, {
+        push: ({ gitUrl, token, branch }) => pushContainerBranch({ container: container.name, workspaceId, ticketKey, gitUrl, token, branch }),
       }));
       if (forgeError) console.error(`[forge] ${ticketKey} failed:`, forgeError.message);
       else if (forge && !forge.ok) console.warn(`[forge] ${ticketKey}: ${forge.error ?? ''}`);

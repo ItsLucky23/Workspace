@@ -302,6 +302,10 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     //? Only an omitted target gets the oldest-project legacy default. A sentinel ObjectId
     //? scopes to nothing for either invalid-target or genuinely project-less snapshots.
     const projectRows = await tenantDb.project.findMany({ orderBy: { createdAt: 'asc' } });
+    const forgeConnectionRows = projectRows.length > 0
+      ? await tenantDb.forgeConnection.findMany({ where: { projectId: { in: projectRows.map((project) => project.id) } } })
+      : [];
+    const forgeConnectionByProject = new Map(forgeConnectionRows.map((connection) => [connection.projectId, connection]));
     const activeProjectId = wantProjectId === undefined
       ? (projectRows[0]?.id ?? null)
       : (projectRows.some((project) => project.id === wantProjectId) ? wantProjectId : null);
@@ -621,7 +625,19 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
 
     return {
       workspaces, activeWorkspaceId,
-      projects: projectRows.map((p): ProjectSummary => ({ id: p.id, name: p.name, ...(p.gitUrl ? { gitUrl: p.gitUrl } : {}), ...(p.baseImageRef ? { baseImageRef: p.baseImageRef } : {}), ...(p.stack ? { stack: p.stack } : {}) })),
+      projects: projectRows.map((p): ProjectSummary => {
+        const forge = forgeConnectionByProject.get(p.id);
+        return {
+          id: p.id,
+          name: p.name,
+          ...(p.gitUrl ? { gitUrl: p.gitUrl } : {}),
+          ...(forge?.mode === 'github' || forge?.mode === 'gitlab' ? { forgeMode: forge.mode } : {}),
+          ...(forge?.status ? { forgeStatus: forge.status } : {}),
+          ...(forge?.repoPath ? { forgeRepoPath: forge.repoPath } : {}),
+          ...(p.baseImageRef ? { baseImageRef: p.baseImageRef } : {}),
+          ...(p.stack ? { stack: p.stack } : {}),
+        };
+      }),
       activeProjectId,
       services: serviceRows.map((s): ServiceSummary => ({ id: s.id, projectId: s.projectId, name: s.name, path: s.path })),
       serviceStacks: serviceStackRows.map((s): ServiceStackSummary => ({ id: s.id, name: s.name, status: s.status, services: s.services })),

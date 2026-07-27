@@ -556,6 +556,17 @@ export async function applyStageSessionUpdate(
     },
   });
   if (updated.count !== 1) throw new Error('[stage-writer] current session disappeared inside the writer boundary');
+  if (action.payload.failure === 'claude.notAuthenticated') {
+    const ticket = await prisma.ticket.updateMany({ where: { workspaceId,
+        id: action.target.ticketId,
+        projectId: action.target.projectId,
+        key: action.target.ticketKey,
+        stageId: action.target.stageId,
+      },
+      data: { status: 'stuck' },
+    });
+    if (ticket.count !== 1) throw new Error('[stage-writer] current ticket disappeared while recording fatal stage failure');
+  }
   return { applied: true, keys: [action.target.ticketKey] };
 }
 

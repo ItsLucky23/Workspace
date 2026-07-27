@@ -12,6 +12,10 @@ WorkingDirectory=/var/www/workspace.keetlerop.nl
 Environment=NODE_ENV=production
 Environment=LUCKYSTACK_ENV=production
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=DOCKER_CONFIG=/run/workspaces-app
+Environment=CLAUDE_CONFIG_DIR=/var/lib/workspaces/auth
+RuntimeDirectory=workspaces-app
+RuntimeDirectoryMode=0750
 ExecStart=/usr/bin/node node_modules/tsx/dist/cli.mjs --tsconfig tsconfig.server.json server/server.ts default 3003
 Restart=on-failure
 RestartSec=5

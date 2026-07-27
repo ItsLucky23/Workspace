@@ -60,8 +60,14 @@ try {
   const internalEnv = await prisma.envVar.create({ data: { workspaceId, key: '__DELTA_INTERNAL', value: 'server-only', secret: false } });
   eq(envDelta(internalEnv), null, 'internal EnvVars NEVER become realtime deltas');
 
+  // link-repo fails closed when transport loses projectId; the Conductor cannot fall back to project 1.
+  const unscopedRepo = await enqueueControlAction({ workspaceId, op: 'link-repo', target: {}, payload: { gitUrl: 'https://example.invalid/repo.git' }, userId: owner.id, clientRequestId: `d-repo-unscoped-${String(stamp)}` });
+  const unscoped = repoDelta(unscopedRepo.result);
+  eq(unscoped?.linked, false, 'a project-less link-repo action is rejected');
+  eq(unscoped?.error, 'sync.invalidRequest', 'project-less link-repo never falls back to project 1');
+
   // link-repo with an invalid URL → a scrubbed error delta (no clone), repoDelta maps it
-  const badRepo = await enqueueControlAction({ workspaceId, op: 'link-repo', target: {}, payload: { gitUrl: 'not-a-valid-url' }, userId: owner.id, clientRequestId: `d-repo-${String(stamp)}` });
+  const badRepo = await enqueueControlAction({ workspaceId, op: 'link-repo', target: {}, payload: { projectId: ticketScope?.projectId ?? '', gitUrl: 'not-a-valid-url' }, userId: owner.id, clientRequestId: `d-repo-${String(stamp)}` });
   const repo = repoDelta(badRepo.result);
   eq(repo?.linked, false, 'link-repo with a bad url returns not-linked');
   assert((repo?.error ?? '').length > 0, 'link-repo failure carries a (scrubbed) error message');

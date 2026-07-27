@@ -10,6 +10,7 @@ const prisma = await db();
 const { enqueueControlAction } = await import('../../server/orchestrator/conductor');
 const { resolveForge } = await import('../../server/git/forgeResolve');
 const { mapGithubIssues } = await import('../../server/git/gitlabSync');
+const { buildSnapshot } = await import('../../server/read/workspaceSnapshot');
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 async function poll<T>(fn: () => Promise<T>, timeoutMs = 4000, stepMs = 50): Promise<T | null> {
@@ -60,6 +61,12 @@ try {
   eq(gh?.base, 'https://api.github.com', 'resolveForge returns the GitHub API base');
   eq(gh?.repoPath, 'acme/frontend', 'resolveForge returns the connection repoPath');
   eq(gh?.token, 'ghp_secrettoken123', 'resolveForge decrypts the token');
+
+  const snapshot = await buildSnapshot(prisma, owner.id, wsId, proj1Id);
+  const projectSummary = snapshot.projects.find((project) => project.id === proj1Id);
+  eq(projectSummary?.forgeMode, 'github', 'the client snapshot exposes the per-project forge mode');
+  eq(projectSummary?.forgeStatus, 'connected', 'the client snapshot exposes real forge connection state');
+  eq(projectSummary?.forgeRepoPath, 'acme/frontend', 'the client snapshot exposes the non-secret forge repo identity');
 
   // ---- a sibling project in the SAME workspace is unaffected ---------------------
   await enqueueControlAction({ workspaceId: wsId, op: 'project-create', target: {}, payload: { name: 'Backend' }, userId: owner.id, clientRequestId: `fc-p2-${String(stamp)}` });

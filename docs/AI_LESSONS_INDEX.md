@@ -9,7 +9,7 @@
 > and the private per-dev `~/.claude` memory. The AI records these automatically — see
 > `docs/LESSONS_PROTOCOL.md`.
 
-## Lessons (19)
+## Lessons (24)
 
 | # | Lesson | Severity | Area | Tags | File |
 | --- | --- | --- | --- | --- | --- |
@@ -32,6 +32,11 @@
 | 0017 | surfaceReachability pins op ENTRY points, not op EFFECTS — an op's promised UI behavior can be pure prose | 🟡 medium | testing, op-catalog, ui-contracts | — | `docs/lessons/0017-op-contract-ui-effect-never-existed.md` |
 | 0018 | A shorter reverse-proxy timeout can report failed provisioning while the runner is still creating the VM | 🟠 high | compose-runner, nginx, incus, operations | — | `docs/lessons/0018-reverse-proxy-timeout-can-mask-live-provisioning.md` |
 | 0019 | Authenticated agent health can succeed even when the Incus configure exec reports failure | 🟠 high | compose-runner, incus, agent-bootstrap | — | `docs/lessons/0019-agent-health-is-authoritative-after-incus-exec-transport-failure.md` |
+| 0020 | A systemd-protected home requires an explicit Docker CLI config directory | 🟠 high | production, systemd, docker, stage-runner | — | `docs/lessons/0020-systemd-protecthome-needs-explicit-docker-config.md` |
+| 0021 | A named volume copies the image directory ownership on first mount | 🟠 high | production, docker, containers, git | — | `docs/lessons/0021-named-volume-copies-image-directory-ownership.md` |
+| 0022 | A project-aware Conductor still fails if the route drops projectId | 🔴 critical | multi-project, realtime, repository, forge | — | `docs/lessons/0022-project-scoped-conductor-input-must-cross-the-route.md` |
+| 0023 | Claude CLI presence is not Max-subscription readiness | 🔴 critical | production, stage-runner, claude-cli, systemd | — | `docs/lessons/0023-claude-binary-readiness-is-not-subscription-readiness.md` |
+| 0024 | A host activation worktree cannot push commits made in a named volume | 🔴 critical | git, containers, forge, stage-runner | — | `docs/lessons/0024-host-worktree-cannot-push-container-volume-commits.md` |
 
 ## Takeaways
 
@@ -186,3 +191,43 @@ Keep every layered deadline strictly outside its callee: VM provision < controll
 Treat an authenticated health response using the expected workspace-specific token as the authoritative post-condition. Probe health before and after each configure attempt; only retry when the desired end state is still absent. Keep the exec error as diagnostic context, not as a reason to reject a sandbox whose identity-bound agent is live. Test the partial-success shape explicitly: configure transport fails, authenticated health succeeds, provisioning returns the sandbox without waiting for the deadline.
 
 → `docs/lessons/0019-agent-health-is-authoritative-after-incus-exec-transport-failure.md`
+
+### 0020 — A systemd-protected home requires an explicit Docker CLI config directory
+
+**0020** · high · production, systemd, docker, stage-runner · 2026-07-27
+
+Keep `ProtectHome=true`; do not weaken the service sandbox to accommodate a CLI default. Set `DOCKER_CONFIG` to a systemd-owned runtime directory outside `/home` and create it with `RuntimeDirectory=`. Verify Docker from the actual service security context, not only with `sudo -u <user> docker info`. Lock the unit contract with a test so future hardening cannot reintroduce an implicit home dependency. When stage launch retries unexpectedly, inspect the first Docker CLI failure before assuming daemon, image, or worktree corruption.
+
+→ `docs/lessons/0020-systemd-protecthome-needs-explicit-docker-config.md`
+
+### 0021 — A named volume copies the image directory ownership on first mount
+
+**0021** · high · production, docker, containers, git · 2026-07-27
+
+Create every named-volume mountpoint explicitly while building the image and `chown` it to the runtime uid/gid before `USER` drops privileges. Keep the runtime non-root; do not solve this with a privileged container or root entrypoint. Verify the first-write operation against a genuinely fresh named volume, not only the image filesystem. Lock the Dockerfile ordering in a unit contract and run a real container clone as the acceptance test.
+
+→ `docs/lessons/0021-named-volume-copies-image-directory-ownership.md`
+
+### 0022 — A project-aware Conductor still fails if the route drops projectId
+
+**0022** · critical · multi-project, realtime, repository, forge · 2026-07-27
+
+Require `projectId` at project-scoped public route boundaries; never silently default a write to project 1. Forward the identity through UI context → generated request type → `_sync` route → Conductor payload. Add route-level tests for missing project identity as well as direct writer tests for correct isolation. For multi-project acceptance, use two real repositories and verify both the persisted URL and physical bare-repo path after each link.
+
+→ `docs/lessons/0022-project-scoped-conductor-input-must-cross-the-route.md`
+
+### 0023 — Claude CLI presence is not Max-subscription readiness
+
+**0023** · critical · production, stage-runner, claude-cli, systemd · 2026-07-27
+
+Keep `CLAUDE_CONFIG_DIR` and `WS_AUTH_DIR` in a dedicated service-readable directory outside the protected home, with credentials mode `0600`. Verify `claude auth status` and require `loggedIn:true`; `claude --version` is only a binary probe. Check auth inside the actual ticket container immediately before spawning the interactive PTY. Treat missing/expired auth as a fatal, user-actionable stage state (`stuck`), not as a turn timeout eligible for automatic retry. Recovery remains the normal interactive `claude /login` + projection refresh. Never route around the failure with `claude -p`, the Agent SDK, or an API key.
+
+→ `docs/lessons/0023-claude-binary-readiness-is-not-subscription-readiness.md`
+
+### 0024 — A host activation worktree cannot push commits made in a named volume
+
+**0024** · critical · git, containers, forge, stage-runner · 2026-07-27
+
+Treat the container's `/work` branch as authoritative whenever the runtime uses a named volume. Cross trust boundaries with an inert, credential-free artifact (`git bundle`), not by executing untrusted Git config/hooks on the host. Keep forge tokens host-side and out of Docker argv/environment. Acceptance-test the physical topology: commit in a real container volume, then assert the remote branch receives that exact SHA. Whenever storage topology changes, audit every read/write/push caller—not just container launch and editor paths.
+
+→ `docs/lessons/0024-host-worktree-cannot-push-container-volume-commits.md`

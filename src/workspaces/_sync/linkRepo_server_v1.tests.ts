@@ -9,13 +9,16 @@ import { loginSeededUser, createRealUser, cleanupWorkspace, joinRoom } from '../
 //? see the note below. These cases cover what the harness CAN prove without a container:
 //?  [1] input validation — an empty `gitUrl` is rejected with `sync.invalidRequest`
 //?      before the Conductor is ever enqueued (no dispatch happens).
-//?  [2] tenant/RBAC boundary — a room member who is NOT a `WorkspaceMember` of this
+//?  [2] project boundary — a missing active project is rejected before the Conductor can
+//?      silently fall back to project 1.
+//?  [3] tenant/RBAC boundary — a room member who is NOT a `WorkspaceMember` of this
 //?      workspace is rejected with `auth.forbidden`.
 //?
 //? //? TODO needs Docker: happy-path clone (valid `gitUrl` → Conductor clones the repo,
 //? real filesystem state under `data/workspaces/<id>/` + `repoDelta` post-condition).
 
 interface LinkRepoInput {
+  projectId: string;
   gitUrl: string;
   token?: string;
   clientRequestId: string;
@@ -35,10 +38,11 @@ export const customTests: CustomTestCase[] = [
     name: 'an empty gitUrl is rejected with sync.invalidRequest (no Conductor dispatch)',
     run: async (ctx: TestContext) => {
       const { userId, workspaceId } = await loginSeededUser(ctx, 'linkrepo_c1');
+      const project = await ctx.prisma.project.findFirst({ where: { workspaceId }, select: { id: true } });
       try {
         await joinRoom(ctx, workspaceId);
         const res = await ctx.callSync<LinkRepoInput, LinkRepoResponse>(
-          { gitUrl: '   ', clientRequestId: `lr-c1-${String(Date.now())}` },
+          { projectId: project?.id ?? '', gitUrl: '   ', clientRequestId: `lr-c1-${String(Date.now())}` },
           { receiver: workspaceId },
         );
         ctx.expect.eq(res.status, 'error', 'an empty gitUrl is rejected');
@@ -51,10 +55,28 @@ export const customTests: CustomTestCase[] = [
     },
   },
   {
-    name: 'a room member without a WorkspaceMember row is rejected (tenant/RBAC boundary)',
+    name: 'a missing projectId is rejected instead of falling back to the first project',
     run: async (ctx: TestContext) => {
       const { userId, workspaceId } = await loginSeededUser(ctx, 'linkrepo_c2');
-      const outsider = await createRealUser(ctx.prisma, 'linkrepo_c2_outsider');
+      try {
+        await joinRoom(ctx, workspaceId);
+        const res = await ctx.callSync<LinkRepoInput, LinkRepoResponse>(
+          { projectId: '', gitUrl: 'https://example.invalid/repo.git', clientRequestId: `lr-c2-${String(Date.now())}` },
+          { receiver: workspaceId },
+        );
+        ctx.expect.eq(res.status, 'error', 'a missing active project is rejected');
+        if (res.status === 'error') ctx.expect.eq(res.errorCode, 'sync.invalidRequest', 'the route never dispatches a project-less clone');
+      } finally {
+        await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
+      }
+    },
+  },
+  {
+    name: 'a room member without a WorkspaceMember row is rejected (tenant/RBAC boundary)',
+    run: async (ctx: TestContext) => {
+      const { userId, workspaceId } = await loginSeededUser(ctx, 'linkrepo_c3');
+      const project = await ctx.prisma.project.findFirst({ where: { workspaceId }, select: { id: true } });
+      const outsider = await createRealUser(ctx.prisma, 'linkrepo_c3_outsider');
       try {
         await ctx.session.logout();
         await ctx.session.login({ id: outsider.id, email: outsider.email, name: outsider.name });
@@ -62,7 +84,7 @@ export const customTests: CustomTestCase[] = [
         //? so the rejection below is proven to come from RBAC, not the room-membership gate.
         await joinRoom(ctx, workspaceId);
         const res = await ctx.callSync<LinkRepoInput, LinkRepoResponse>(
-          { gitUrl: 'https://example.invalid/repo.git', clientRequestId: `lr-c2-${String(Date.now())}` },
+          { projectId: project?.id ?? '', gitUrl: 'https://example.invalid/repo.git', clientRequestId: `lr-c3-${String(Date.now())}` },
           { receiver: workspaceId },
         );
         ctx.expect.eq(res.status, 'error', 'a non-member of the workspace is rejected');

@@ -733,7 +733,7 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
   //? the chat/LLM path (same principle as the EXCLUDED secret-bearing ops) — gitUrl only.
   'link-repo': (p, x) => {
     const gitUrl = str(p, 'gitUrl'); if (!gitUrl) return;
-    void syncRequest({ name: 'workspaces/linkRepo', version: 'v1', data: { gitUrl, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+    void syncRequest({ name: 'workspaces/linkRepo', version: 'v1', data: { projectId: x.activeProjectId, gitUrl, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
 
   // -- workspace settings + budgets

@@ -468,8 +468,10 @@ export default function AccountSettings() {
     [translate],
   );
   const selectedLanguage = languageItems.find((it) => it.id === language);
-  //? Real forge-connection state for the active project: a linked repo path/url means connected.
-  const forgeConnected = Boolean(activeProject?.gitUrl?.trim());
+  //? Forge identity is per PROJECT (ADR 0036). Never infer it from the workspace legacy fallback
+  //? or from repository-clone state: connecting forge APIs and cloning a worktree are separate steps.
+  const activeForgeMode = activeProject?.forgeMode ?? (activeWorkspace.forgeType === 'github' ? 'github' : 'gitlab');
+  const forgeConnected = activeProject?.forgeStatus === 'connected';
   //? #63 — the active project's declared services (monorepo units) that deploy per-service.
   const projectServices = activeProject ? services.filter((s) => s.projectId === activeProject.id) : [];
 
@@ -687,10 +689,10 @@ export default function AccountSettings() {
           {showDevOps && tab === 'developer' && (<>
 <Card title={translate({ key: 'workspaces.account.connectionsTitle' })} desc={translate({ key: 'workspaces.account.connectionsDesc' })}>
             {/* Per-project forge connect (ADR 0036): GitLab OR GitHub for the active project. The
-                label + connected badge reflect REAL state — the workspace's chosen forge and whether
-                the active project has a linked repo (no more hardcoded "connected"). */}
+                label + connected badge come from the ForgeConnection snapshot, not legacy workspace
+                mode or the separate repository-clone state. */}
             <Row>
-              <span className="flex items-center gap-2 text-sm text-title"><Icon name="diagram-project" className="text-muted" /> {translate({ key: activeWorkspace.forgeType === 'github' ? 'workspaces.account.github' : 'workspaces.account.gitlab' })}{activeProject ? ` · ${activeProject.name}` : ''}</span>
+              <span className="flex items-center gap-2 text-sm text-title"><Icon name="diagram-project" className="text-muted" /> {translate({ key: activeForgeMode === 'github' ? 'workspaces.account.github' : 'workspaces.account.gitlab' })}{activeProject ? ` · ${activeProject.name}` : ''}</span>
               <div className="flex items-center gap-2">
                 {forgeConnected && <span className="inline-flex items-center gap-1 text-xs text-correct"><Icon name="circle-check" /> {translate({ key: 'workspaces.account.connected' })}</span>}
                 <WsButton variant="secondary" disabled={!activeProject} onClick={() => { if (activeProject) void menuHandler.open(<ForgeConnectForm projectId={activeProject.id} onConnect={connectForge} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); }}>{translate({ key: 'workspaces.account.connect' })}</WsButton>

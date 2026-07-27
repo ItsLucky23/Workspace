@@ -618,6 +618,29 @@ async function cleanupWorktree(bare: string, wt: string): Promise<void> {
   await git(['--git-dir', bare, 'worktree', 'prune']).catch(() => '');
 }
 
+export const MAX_STAGE_BUNDLE_BYTES = 256 * 1024 * 1024;
+
+//? Import a credential-free `git bundle` captured from the container-owned worktree into a
+//? fresh host-controlled bare repository, then push that exact branch with host-side askpass.
+//? The untrusted container's git config/hooks never execute on the host, and the forge token
+//? never enters the container or Docker argv.
+export async function pushBundleBranch(input: { bundlePath: string; gitUrl: string; token: string; branch: string; expectedHead: string }): Promise<void> {
+  if (!(await validBranch(input.branch)) || !/^[0-9a-f]{40,64}$/i.test(input.expectedHead)) throw new Error('invalid-bundle-target');
+  const bundleStat = lstatSync(input.bundlePath);
+  if (!bundleStat.isFile() || bundleStat.isSymbolicLink() || bundleStat.size <= 0 || bundleStat.size > MAX_STAGE_BUNDLE_BYTES) throw new Error('invalid-bundle');
+  const scratch = path.join(path.dirname(input.bundlePath), `outgoing-${randomUUID()}.git`);
+  mkdirSync(scratch, { recursive: true });
+  try {
+    await git(['init', '--bare', scratch]);
+    await git(['--git-dir', scratch, '-c', 'protocol.file.allow=always', 'fetch', '--no-tags', input.bundlePath, `refs/heads/${input.branch}:refs/heads/${input.branch}`]);
+    const importedHead = await git(['--git-dir', scratch, 'rev-parse', '--verify', `refs/heads/${input.branch}`]);
+    if (importedHead !== input.expectedHead) throw new Error('bundle-head-mismatch');
+    await withRetry(() => git(['--git-dir', scratch, '-c', 'core.hooksPath=', '-c', 'credential.helper=', 'push', withAuth(input.gitUrl, input.token), `${input.branch}:${input.branch}`], { env: authEnv(input.token) }), { attempts: 3, baseMs: 200 });
+  } finally {
+    tryCatchSync(() => { rmSync(scratch, { recursive: true, force: true }); });
+  }
+}
+
 //? Push a ticket's branch to origin (push-on-approval, Track F). The token is injected ONLY
 //? into this git process via `withAuth` — never stored on the remote (origin keeps the clean
 //? url, like `cloneRepo`) and never logged (git errors are token-scrubbed). Pushes from the

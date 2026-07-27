@@ -28,12 +28,14 @@ const { deterministicObjectId, stageForgeIntentId } = await import('../../server
 const capacity = await import('../../server/orchestrator/capacity');
 const {
   cleanupFailedStageContainer,
+  containerClaudeAuthenticated,
   ensureStageContainerOwnership,
   persistToolTrail,
   projectAuth,
   resolveStageRuntime,
   resolveStageTurnWriterOutcome,
   runStageCiOutsideWriter,
+  shouldRetryStageFailure,
   stableStageCompletionId,
   stableStageHandoffId,
   verifyStageContainerOwner,
@@ -41,6 +43,8 @@ const {
 const { drainCapacityQueue, resolveReprovisionTarget } = await import('../../server/orchestrator/conductor');
 
 const stamp = Date.now();
+eq(shouldRetryStageFailure('claude.notAuthenticated'), false, 'missing Claude auth is fatal and never enters the capacity retry queue');
+eq(shouldRetryStageFailure('turn.timeout'), true, 'ordinary transient stage failures remain retryable');
 const [capacityActiveKey, capacityOwnerKey] = capacity.capacityRedisKeys('stage-probe', 'ticket-probe', 'token-probe');
 const capacityMembers: string[] = [];
 const capacityIdentities: string[] = [];
@@ -338,6 +342,10 @@ const [runError] = await tryCatch(async () => {
   await prisma.ticket.update({ where: { id: pausedRuntimeTicket.id }, data: { status: 'paused' } });
   eq(await resolveStageRuntime(prisma, workspaceId, pausedRuntimeTicket.key, pausedRuntimeTicket.stageId), null, 'runStage runtime resolution rejects paused tickets');
   eq(await resolveReprovisionTarget(prisma, workspaceId, pausedRuntimeTicket.key), null, 'reprovision rejects paused tickets');
+  const stuckRuntimeTicket = await ticketAt('refined', 'stuck-runtime');
+  await prisma.ticket.update({ where: { id: stuckRuntimeTicket.id }, data: { status: 'stuck' } });
+  eq(await resolveStageRuntime(prisma, workspaceId, stuckRuntimeTicket.key, stuckRuntimeTicket.stageId), null, 'runStage runtime resolution rejects stuck tickets');
+  eq(await resolveReprovisionTarget(prisma, workspaceId, stuckRuntimeTicket.key), null, 'reprovision rejects stuck tickets until a human resumes them');
 
   // Reused container id is NOT identity. A successor runToken wins; old completion/handoff are zero-write stale results.
   const staleTicket = await ticketAt('refined', 'stale');
@@ -412,6 +420,10 @@ const [runError] = await tryCatch(async () => {
     return { code: 0, out: '', err: '', timedOut: false, outputLimitExceeded: false };
   });
   assert(!authCommands.join('\n').includes('tool-calls.jsonl'), 'session projectAuth never deletes TOOL_TRAIL');
+  const authResult = (code: number, out: string) => async () => ({ code, out, err: '', timedOut: false, outputLimitExceeded: false });
+  eq(await containerClaudeAuthenticated('container-reused', authResult(0, '{"loggedIn":true}')), true, 'container auth accepts an authenticated Claude CLI status');
+  eq(await containerClaudeAuthenticated('container-reused', authResult(1, '{"loggedIn":false}')), false, 'container auth rejects an expired/missing Claude login');
+  eq(await containerClaudeAuthenticated('container-reused', authResult(0, 'not-json')), false, 'container auth fails closed on malformed CLI status output');
 
   const dockerCommands: string[] = [];
   const persistentMarker = 'd'.repeat(64);
@@ -482,6 +494,15 @@ const [runError] = await tryCatch(async () => {
     clientRequestId: `failed-drive-${String(stamp)}`,
   });
   eq((await prisma.agentSession.findUnique({ where: { id: toolSuccessor.id } }))?.status, 'stopped', 'failed drive status applies through guarded InternalOp');
+  await enqueueInternalAction({
+    workspaceId,
+    op: 'stage-session-update',
+    target: target(staleTicket, toolSuccessor),
+    payload: { containerId: 'container-reused', status: 'stopped', failure: 'claude.notAuthenticated' },
+    userId: 'stage-runner-test',
+    clientRequestId: `failed-auth-${String(stamp)}`,
+  });
+  eq((await prisma.ticket.findUnique({ where: { id: staleTicket.id } }))?.status, 'stuck', 'a missing Claude login parks the ticket instead of entering a retry loop');
 
   // Needs-input: full question set + claude id + spend apply together; duplicate request is idempotent.
   const needsTicket = await ticketAt('refined', 'needs-input');

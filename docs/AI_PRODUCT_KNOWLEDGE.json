@@ -1,6 +1,6 @@
 {
-  "hash": "cf2756e5650cd512",
-  "chunkCount": 236,
+  "hash": "782a75a19456379b",
+  "chunkCount": 237,
   "chunks": [
     {
       "id": "cap-001",
@@ -1417,6 +1417,12 @@
       "kind": "decision",
       "title": "Terminal access uses session, RBAC and exact container identity",
       "text": "ADR 0301: Terminal access uses session, RBAC and exact container identity. The original Workspaces design corpus required a linked SSH public key and a per-open nonce + `crypto.verify` challenge before attaching to a terminal. That mechanism was never implemented. The production runtime instead has a complete, simpler authorization chain: LuckyStack authenticates the socket, `workTickets` authorizes the user in the workspace, and the server derives then label-verifies the exact workspace/ticket container. Production has no host-shell fallback. Keeping the old prose and SSH-unlock UI would claim a security boundary that did not exist. Adding the challenge would also require browser/device private-key signing and a second identity lifecycle without granting access that session + tenant RBAC does not already express. On 2026-07-23 the owner explicitly chose the KISS option: retire the SSH gate rather than build it. Decision: - A valid LuckyStack session is the terminal login identity. - `workTickets` capability in the requested workspace is mandatory. - The server derives the canonical container from `(workspaceId, ticketKey)` and verifies the container's exact workspace/ticket labels before attach. The browser never chooses a host shell, executable or arbitrary container. - Production has no host-shell fallback and exposes no product SSH-to-host escape hatch. - SSH keys do not unlock terminals and are not consulted by terminal authorization. - Remove the SSH-unlock card, active"
+    },
+    {
+      "id": "adr-0302",
+      "kind": "decision",
+      "title": "Stage push crosses the container boundary as a credential-free Git bundle",
+      "text": "ADR 0302: Stage push crosses the container boundary as a credential-free Git bundle. Ticket code now lives in a container-owned named volume. The stage agent commits inside `/work`; the old orchestrator push path still opened the host activation worktree. After a repository re-link that host worktree was stale and its `.git` pointer referenced deleted bare-worktree metadata. More fundamentally, even a healthy host worktree cannot contain commits made only in the named volume. The forge credential must remain host-side. Passing it to `docker exec git push`, a container environment variable, or Docker argv would expose a durable workspace secret inside an agent-controlled container and violate the existing token-boundary contract. Decision: - The canonical container must carry the exact expected workspace and ticket labels; only then may it create a `git bundle` for the exact expected branch under `/tmp`. - Docker copies that credential-free single file into a fresh host scratch directory. - The host imports the bundle into a newly initialized, host-controlled bare repository and verifies its branch HEAD equals the exact SHA observed in the container before export. - Only that controlled bare repository performs the remote push, using the existing host-side `GIT_ASKPASS` token injection. The token never enters container state or Docker argv. - The Conductor's durable `stage-forge-prepare` intent and reservation/branch/project revalidation remain mandatory before this external b"
     }
   ]
 }
