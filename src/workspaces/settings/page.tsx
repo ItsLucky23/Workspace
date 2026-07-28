@@ -378,7 +378,7 @@ export const template = 'workspaces';
 
 export default function AccountSettings() {
   const translate = useTranslator();
-  const { currentUser, theme, setTheme, activeWorkspace, activeProject, connectForge, environments, deployEnv, teardownEnv, rollbackEnv, promoteEnv, buildArtifacts, exportBuild, services, serviceStacks, provisionServiceStack, teardownServiceStack, dbConnections, migrations, dbConnect, dbMigrateCreate, dbMigrateApply, dbIntrospect } = useWorkspaces();
+  const { currentUser, theme, setTheme, activeWorkspace, activeProject, connectForge, disconnectForge, environments, deployEnv, teardownEnv, rollbackEnv, promoteEnv, buildArtifacts, exportBuild, services, serviceStacks, provisionServiceStack, teardownServiceStack, dbConnections, migrations, dbConnect, dbMigrateCreate, dbMigrateApply, dbIntrospect } = useWorkspaces();
   //? K1/K3 — the curated service presets (stable client-side list; each maps to a server preset key).
   const SERVICE_PRESETS = useMemo(() => [
     { key: 'postgres', label: 'PostgreSQL' }, { key: 'redis', label: 'Redis' }, { key: 'kafka', label: 'Kafka' },
@@ -696,6 +696,13 @@ export default function AccountSettings() {
               <div className="flex items-center gap-2">
                 {forgeConnected && <span className="inline-flex items-center gap-1 text-xs text-correct"><Icon name="circle-check" /> {translate({ key: 'workspaces.account.connected' })}</span>}
                 <WsButton variant="secondary" disabled={!activeProject} onClick={() => { if (activeProject) void menuHandler.open(<ForgeConnectForm projectId={activeProject.id} onConnect={connectForge} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); }}>{translate({ key: 'workspaces.account.connect' })}</WsButton>
+                {forgeConnected && <WsButton variant="danger" icon="xmark" onClick={() => {
+                  void menuHandler.confirm({
+                    title: translate({ key: 'workspaces.account.forgeDisconnect' }),
+                    content: translate({ key: 'workspaces.account.forgeDisconnectConfirm' }),
+                    input: activeProject.name,
+                  }).then((ok) => { if (ok) disconnectForge(activeProject.id); });
+                }}>{translate({ key: 'workspaces.account.forgeDisconnect' })}</WsButton>}
               </div>
             </Row>
           </Card>

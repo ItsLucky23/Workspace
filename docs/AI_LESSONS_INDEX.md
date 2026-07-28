@@ -9,7 +9,7 @@
 > and the private per-dev `~/.claude` memory. The AI records these automatically — see
 > `docs/LESSONS_PROTOCOL.md`.
 
-## Lessons (24)
+## Lessons (27)
 
 | # | Lesson | Severity | Area | Tags | File |
 | --- | --- | --- | --- | --- | --- |
@@ -37,6 +37,9 @@
 | 0022 | A project-aware Conductor still fails if the route drops projectId | 🔴 critical | multi-project, realtime, repository, forge | — | `docs/lessons/0022-project-scoped-conductor-input-must-cross-the-route.md` |
 | 0023 | Claude CLI presence is not Max-subscription readiness | 🔴 critical | production, stage-runner, claude-cli, systemd | — | `docs/lessons/0023-claude-binary-readiness-is-not-subscription-readiness.md` |
 | 0024 | A host activation worktree cannot push commits made in a named volume | 🔴 critical | git, containers, forge, stage-runner | — | `docs/lessons/0024-host-worktree-cannot-push-container-volume-commits.md` |
+| 0025 | Pi model-detection failure can mean an incompatible GPIO stack | 🟡 medium | production, raspberry-pi, systemd | — | `docs/lessons/0025-pi-model-detection-failure-can-mean-incompatible-gpio-stack.md` |
+| 0026 | A newer npm can emit a lockfile that production npm refuses | 🟠 high | dependencies, deployment, arm64 | — | `docs/lessons/0026-newer-npm-can-emit-a-lockfile-older-production-npm-refuses.md` |
+| 0027 | Do not rebuild platform-neutral Vite assets on the Pi | 🟡 medium | deployment, raspberry-pi, frontend | — | `docs/lessons/0027-do-not-rebuild-platform-neutral-vite-assets-on-the-pi.md` |
 
 ## Takeaways
 
@@ -231,3 +234,27 @@ Keep `CLAUDE_CONFIG_DIR` and `WS_AUTH_DIR` in a dedicated service-readable direc
 Treat the container's `/work` branch as authoritative whenever the runtime uses a named volume. Cross trust boundaries with an inert, credential-free artifact (`git bundle`), not by executing untrusted Git config/hooks on the host. Keep forge tokens host-side and out of Docker argv/environment. Acceptance-test the physical topology: commit in a real container volume, then assert the remote branch receives that exact SHA. Whenever storage topology changes, audit every read/write/push caller—not just container launch and editor paths.
 
 → `docs/lessons/0024-host-worktree-cannot-push-container-volume-commits.md`
+
+### 0025 — Pi model-detection failure can mean an incompatible GPIO stack
+
+**0025** · medium · production, raspberry-pi, systemd · 2026-07-28
+
+Confirm the hardware revision, package version, consumers and reverse systemd dependencies before patching a model check. On Pi 5, prefer the kernel GPIO character-device stack (`libgpiod`/`lgpio`) and prove it with `gpioinfo`. If no product feature consumes an incompatible daemon, disable and mask it instead of spoofing hardware support. Keep intentionally masked units documented so a future operator does not “repair” them back into a boot failure.
+
+→ `docs/lessons/0025-pi-model-detection-failure-can-mean-incompatible-gpio-stack.md`
+
+### 0026 — A newer npm can emit a lockfile that production npm refuses
+
+**0026** · high · dependencies, deployment, arm64 · 2026-07-28
+
+Pin the project's package manager version and use it to regenerate the lockfile. Run `npm ci --dry-run` with the production npm version before copying a release. Treat cross-platform optional-package additions in the lockfile as required reproducibility metadata, not noise. Never work around an inconsistent lockfile with production-side `npm install`; fix and recommit the lockfile.
+
+→ `docs/lessons/0026-newer-npm-can-emit-a-lockfile-older-production-npm-refuses.md`
+
+### 0027 — Do not rebuild platform-neutral Vite assets on the Pi
+
+**0027** · medium · deployment, raspberry-pi, frontend · 2026-07-28
+
+Build and test `dist/` once on the release source, then transfer that exact artifact to the Pi. On the Pi run the clean dependency install and only architecture-relevant/small compilation steps. Give every remote build a short progress checkpoint; if no progress appears, inspect CPU/process state instead of waiting indefinitely. Compare source/artifact checksums across release source and host before restart.
+
+→ `docs/lessons/0027-do-not-rebuild-platform-neutral-vite-assets-on-the-pi.md`

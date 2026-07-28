@@ -144,7 +144,7 @@ try {
     clientRequestId: manualRequestId,
   });
   assert(readRecoveryTransitionResult(manualPrepared.result)?.applied === true, 'manual-kill crash fixture has an accepted recovery fence');
-  eq((await prisma.ticket.findUnique({ where: { id: manual.ticket.id } }))?.status, 'idle', 'manual-kill prepare moves the ticket idle only after fencing');
+  eq((await prisma.ticket.findUnique({ where: { id: manual.ticket.id } }))?.status, 'paused', 'manual-kill prepare parks the ticket only after fencing');
   recovered.length = 0;
   await watchdog.runWatchdogSweep(now + 1, {
     workspaceIds: [workspaceId],
@@ -152,7 +152,7 @@ try {
     reprovision: async () => undefined,
     pushReminder: async () => false,
   });
-  assert(recovered.some((entry) => entry.sessionId === manual.session.id && entry.reason === 'manual-kill' && !entry.provision), 'cron resumes a crashed manual-kill despite its prepared idle ticket state');
+  assert(recovered.some((entry) => entry.sessionId === manual.session.id && entry.reason === 'manual-kill' && !entry.provision), 'cron resumes a crashed manual-kill despite its prepared paused ticket state');
 
   if (!preparedResult?.applied || preparedResult.phase !== 'prepare') throw new Error('watchdog prepare fixture failed');
   await enqueueInternalAction({

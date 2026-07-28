@@ -1,6 +1,6 @@
 {
-  "hash": "782a75a19456379b",
-  "chunkCount": 237,
+  "hash": "601001a83a53e9cb",
+  "chunkCount": 240,
   "chunks": [
     {
       "id": "cap-001",
@@ -1423,6 +1423,24 @@
       "kind": "decision",
       "title": "Stage push crosses the container boundary as a credential-free Git bundle",
       "text": "ADR 0302: Stage push crosses the container boundary as a credential-free Git bundle. Ticket code now lives in a container-owned named volume. The stage agent commits inside `/work`; the old orchestrator push path still opened the host activation worktree. After a repository re-link that host worktree was stale and its `.git` pointer referenced deleted bare-worktree metadata. More fundamentally, even a healthy host worktree cannot contain commits made only in the named volume. The forge credential must remain host-side. Passing it to `docker exec git push`, a container environment variable, or Docker argv would expose a durable workspace secret inside an agent-controlled container and violate the existing token-boundary contract. Decision: - The canonical container must carry the exact expected workspace and ticket labels; only then may it create a `git bundle` for the exact expected branch under `/tmp`. - Docker copies that credential-free single file into a fresh host scratch directory. - The host imports the bundle into a newly initialized, host-controlled bare repository and verifies its branch HEAD equals the exact SHA observed in the container before export. - Only that controlled bare repository performs the remote push, using the existing host-side `GIT_ASKPASS` token injection. The token never enters container state or Docker argv. - The Conductor's durable `stage-forge-prepare` intent and reservation/branch/project revalidation remain mandatory before this external b"
+    },
+    {
+      "id": "adr-0303",
+      "kind": "decision",
+      "title": "Destructive project cleanup reuses existing ControlOps and exact runtime identity",
+      "text": "ADR 0303: Destructive project cleanup reuses existing ControlOps and exact runtime identity. The ticket detail showed both `Stop AI` and `Teardown container`. The latter opened a type-confirm dialog but executed nothing, while the former's existing `kill` ControlOp had drifted from the locked feature-24 contract: it killed only the Claude process instead of tearing down the ticket container. Repository and forge setup also supported connect/re-link but offered no way to remove stale encrypted credentials or a dead server-side clone. The structured 7+6 agent verb surface is frozen. These are human control-plane writes, so they belong behind the existing ControlOps and the Conductor—not in a new LLM verb or a direct browser/Prisma/Docker mutation. Decision: - Restore the existing Admin+ `kill` ControlOp to feature 24's destructive meaning: park the ticket, fence and stop an active session, then remove only the canonical container carrying the exact workspace/project/ticket labels and its deterministic named volume. Branch and event history remain; explicit Resume AI reprovisions later. - Show one type-confirmed `Teardown container` action instead of a duplicate stop action plus a known no-op. - Reuse `forge-connect` with `disconnect:true` to delete the exact project's `ForgeConnection`, including its encrypted credential. An explicit operator-only `clearExternalRefs:true` additionally clears dead ticket/MR URLs and closes affected open MRs after an external repository has been "
+    },
+    {
+      "id": "adr-0304",
+      "kind": "decision",
+      "title": "Pi 5 uses the GPIO character-device stack, not legacy pigpiod",
+      "text": "ADR 0304: Pi 5 uses the GPIO character-device stack, not legacy pigpiod. The production Pi 5 had carried a failed `pigpiod.service` since boot. Debian's packaged pigpio 1.79 rejected the Pi 5 revision `e04171` as “not a raspberry pi” because legacy pigpio does not support the RP1 GPIO architecture. Nothing in Workspaces, its deployment units, cron configuration or reverse systemd dependencies consumes pigpiod. The supported `libgpiod`/`lgpio` character-device stack is installed, and `gpioinfo gpiochip0` successfully enumerates the Pi 5 GPIO lines. Decision: - Disable and mask `pigpiod.service` on the production Pi so an incompatible, unused daemon no longer leaves the host degraded after each boot. - Keep the installed packages for compatibility; do not purge them as part of an application deployment. - Use the existing `libgpiod`/`lgpio` character-device interfaces if Workspaces ever gains a real GPIO feature. - Do not spoof a Raspberry Pi revision or patch pigpio's hardware check merely to make an unused daemon start."
+    },
+    {
+      "id": "adr-0305",
+      "kind": "decision",
+      "title": "Release lockfile is generated with the production npm version",
+      "text": "ADR 0305: Release lockfile is generated with the production npm version. After the safe PostCSS/MCP updates, npm 11.6.1 on Windows produced and accepted a lockfile that omitted several platform-optional transitive package records. Production runs npm 10.9.8 on ARM64. Its clean installer rejected that same lockfile as inconsistent (`@csstools/css-parser-algorithms`, `@csstools/css-tokenizer`, `@emnapi/*` missing), so a locally green install was not release-reproducible. Decision: - Declare `packageManager: npm@10.9.8`, matching the production host. - Generate dependency lock changes with npm 10.9.8 and require `npm ci --dry-run` to pass under that version before deployment. - Keep every platform's optional package records in the committed lockfile; do not hand-prune them on Windows. - Production continues to install from the committed lockfile with `npm ci`."
     }
   ]
 }

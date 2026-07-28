@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
+  "packageManager": "npm@10.9.8",
   "engines": {
     "node": ">=20.19.0"
   },
@@ -121,7 +122,7 @@
     "eslint-plugin-react-x": "^1.48.4",
     "eslint-plugin-unicorn": "^62.0.0",
     "globals": "^15.15.0",
-    "postcss": "^8.5.6",
+    "postcss": "^8.5.23",
     "prisma": "^6.19.3",
     "tailwindcss": "^4.2.2",
     "tsx": "^4.21.0",
@@ -131,6 +132,8 @@
     "vite-tsconfig-paths": "^5.1.4"
   },
   "overrides": {
-    "dompurify": "3.4.12"
+    "dompurify": "3.4.12",
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "@hono/node-server": "2.0.12"
   }
 }

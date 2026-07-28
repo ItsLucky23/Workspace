@@ -129,10 +129,31 @@ and only then performs the authenticated forge push. Do not restore the old host
 it cannot see named-volume commits and can become invalid after repository re-link. Do not pass forge tokens into
 `docker exec`; they remain host-side in `GIT_ASKPASS` (ADR 0302).
 
+Destructive ticket cleanup uses the existing Admin+ `kill` ControlOp: it parks the ticket, fences/stops an active
+session, verifies the canonical container's exact workspace/project/ticket labels, removes it by immutable ID and
+then removes only the deterministic ticket volume. Repository disconnect reuses `link-repo` with
+`disconnect:true` and refuses while any project container exists or Docker state cannot be proven. Forge
+disconnect reuses `forge-connect` with `disconnect:true` and deletes the selected project's encrypted
+`ForgeConnection`; operator fixture cleanup may also pass `clearExternalRefs:true` to clear that project's dead
+issue/PR URLs and close its stale open MRs. External repositories/accounts are never deleted by these controls
+(ADR 0303).
+
+The production Raspberry Pi 5 intentionally has `pigpiod.service` masked. Debian pigpio 1.79 does not support the
+Pi 5 RP1/revision `e04171`, and Workspaces has no pigpiod consumer. Do not unmask or bypass its model check;
+`libgpiod`/`lgpio` is the supported GPIO stack and `gpioinfo gpiochip0` is the host verification (ADR 0304).
+
+Dependency lockfiles are generated with the declared production package manager (`npm@10.9.8`). Run
+`npx npm@10.9.8 ci --dry-run` before release and `npm ci` on the Pi; do not replace a rejected clean install with
+`npm install`, because that rewrites the release graph. Cross-platform optional package records in the lockfile are
+intentional (ADR 0305).
+
 Always run `npm run build` on the release source before deployment. Its `prebuild` regenerates the production
 API/sync/function maps; `services.config.ts` keeps the `default` preset aligned with every top-level route service,
 and production function injection includes both consumer `functions/` shims and shared `tryCatch`/`sleep` helpers.
 Generated imports are workspace-relative so an artifact built on another OS remains portable to the Linux host.
+For Pi releases, transfer the exact locally verified `dist/` instead of rebuilding the large Vite graph on ARM64;
+run only `npm ci` and the small architecture-relevant `npm run compose-runner:build` step on the host. Compare
+source/artifact checksums before restarting the service (lesson 0027).
 
 ---
 

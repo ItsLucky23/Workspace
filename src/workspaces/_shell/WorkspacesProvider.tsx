@@ -1037,6 +1037,14 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       refetch();
     })();
   }, [snap.activeWorkspaceId, refetch]);
+  const disconnectForgeApi = useCallback((projectId: string) => {
+    const room = snap.activeWorkspaceId;
+    if (!room) return;
+    void (async () => {
+      await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'forge-connect', projectId, disconnect: true, clientRequestId: nextReqId() }, receiver: room });
+      refetch();
+    })();
+  }, [snap.activeWorkspaceId, refetch]);
   //? Environments (ADR 0037): deploy the active project (or a service) to a dev/staging/prod env,
   //? or tear one down. Deploy is slow (container launch + readiness) → refetch after it settles.
   const deployEnvApi = useCallback((input: { kind: string; serviceId?: string; pinnedCommit?: string; autoRedeploy?: boolean; subdomain?: string; customDomain?: string }) => {
@@ -1538,6 +1546,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       dbMigrateApply: dbMigrateApplyApi,
       dbIntrospect: dbIntrospectApi,
       connectForge: connectForgeApi,
+      disconnectForge: disconnectForgeApi,
       environments: snap.environments,
       deployEnv: deployEnvApi,
       teardownEnv: teardownEnvApi,
@@ -1646,6 +1655,11 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         const room = snap.activeWorkspaceId;
         const projectId = snap.activeProjectId;
         if (room && projectId) void syncRequest({ name: 'workspaces/linkRepo', version: 'v1', data: { projectId, gitUrl, ...(token ? { token } : {}), clientRequestId: nextReqId() }, receiver: room });
+      },
+      unlinkRepo: () => {
+        const room = snap.activeWorkspaceId;
+        const projectId = snap.activeProjectId;
+        if (room && projectId) void syncRequest({ name: 'workspaces/linkRepo', version: 'v1', data: { projectId, disconnect: true, clientRequestId: nextReqId() }, receiver: room });
       },
       scanDocs: () => {
         const room = snap.activeWorkspaceId;
@@ -1923,7 +1937,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, offline, queuedWrites, retryQueuedWrites, parkWrite, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, wantWorkspaceId, currentProjectScope, afterWrite, quickAddApi, sprintCreateApi, editSprintApi, createProjectApi, createFromTemplateApi, applyDesignTokensApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, deployEnvApi, teardownEnvApi, rollbackEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, viewCounts, agentTerm, copilotPrefill, settingsFocus, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut, pendingAnswers]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, offline, queuedWrites, retryQueuedWrites, parkWrite, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, wantWorkspaceId, currentProjectScope, afterWrite, quickAddApi, sprintCreateApi, editSprintApi, createProjectApi, createFromTemplateApi, applyDesignTokensApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, disconnectForgeApi, deployEnvApi, teardownEnvApi, rollbackEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, viewCounts, agentTerm, copilotPrefill, settingsFocus, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut, pendingAnswers]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

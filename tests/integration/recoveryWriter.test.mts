@@ -329,8 +329,8 @@ try {
   eq(noDocker, [{ key: noDockerKey, status: 'queued' }], 'Docker-unavailable provision returns queued instead of success');
   eq(await capacity.dequeueDeferred(), { workspaceId, key: noDockerKey, stageId: stage.key }, 'Docker-unavailable provision leaves a durable capacity retry');
 
-  // A fenced manual kill exposes idle only after prepare, restores busy on Docker cancel, and
-  // leaves idle after a completed stop.
+  // A fenced manual kill parks the ticket only after prepare, restores busy on Docker cancel, and
+  // leaves it paused after completed destructive teardown.
   const manualCanceled = await fixture('manual-cancel', Date.now() - 30_001, 'manual-kill');
   const canceledManualRun = await runAgentRecovery({ prepare: manualCanceled.prepare, mode: 'kill-claude' }, {
     claimExternal: async () => true,
@@ -348,7 +348,7 @@ try {
     recover: async () => ({ ok: true, container: { workspaceId, projectId: project.id, ticketKey: manualCompleted.ticket.key, containerId: manualCompleted.session.containerId ?? '', name: 'manual-complete' } }),
   });
   assert(completedManualRun.recovered, 'successful fenced manual kill completes without requiring a successor');
-  eq((await prisma.ticket.findUnique({ where: { id: manualCompleted.ticket.id } }))?.status, 'idle', 'completed manual kill leaves the ticket idle');
+  eq((await prisma.ticket.findUnique({ where: { id: manualCompleted.ticket.id } }))?.status, 'paused', 'completed manual kill parks the ticket until explicit reactivation');
   eq((await prisma.agentSession.findUnique({ where: { id: manualCompleted.session.id } }))?.status, 'stopped', 'completed manual kill stops the exact session');
 
   // Public manual kill cannot ACK success unless its nested recovery prepare fenced the
@@ -412,6 +412,30 @@ try {
   eq(stoppedReplay, { ok: true, container: exact }, 'crash replay accepts the exact already-stopped container');
   eq(replayOwnerReads, 0, 'already-stopped replay needs no impossible Docker-exec owner read');
   eq(replayStops, 0, 'already-stopped replay does not repeat the destructive stop');
+
+  let teardownCalls = 0;
+  let teardownStops = 0;
+  const tornDown = await recoverExactContainer({ ...exact, runToken: 'old-token', runFence: 7 }, 'teardown-container', {
+    inspect: async () => exact,
+    readOwner: async () => ({ runToken: 'old-token', runFence: 7 }),
+    killClaude: async () => true,
+    stopContainer: async () => { teardownStops += 1; return true; },
+    teardownContainer: async () => { teardownCalls += 1; return true; },
+    running: async () => teardownStops === 0,
+  });
+  eq(tornDown, { ok: true, container: exact }, 'manual teardown stops and removes the exact fenced container before completion');
+  eq(teardownCalls, 1, 'manual teardown removes the exact container/volume once');
+  let absentOwnerReads = 0;
+  const absentReplay = await recoverExactContainer({ ...exact, runToken: 'old-token', runFence: 7 }, 'teardown-container', {
+    inspect: async () => null,
+    readOwner: async () => { absentOwnerReads += 1; return null; },
+    killClaude: async () => true,
+    stopContainer: async () => false,
+    teardownContainer: async () => true,
+    running: async () => null,
+  });
+  assert(absentReplay.ok, 'crash replay accepts an already-absent exact container and volume');
+  eq(absentOwnerReads, 0, 'already-absent teardown replay never tries to read a dead container owner');
 
   // Runtime parser/result guard remains typed on terminal recovery results.
   const parsed = readRecoveryTransitionResult({ applied: false, phase: 'prepare', reason: 'stale', keys: [], intentId: 'd'.repeat(24) });

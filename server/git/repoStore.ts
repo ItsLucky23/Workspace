@@ -96,6 +96,18 @@ export function isLinked(workspaceId: string, projectId: string): boolean {
   return existsSync(bareRepoPath(workspaceId, projectId));
 }
 
+//? Disconnect only this project's durable repository baseline after the Conductor has
+//? proven no project container is active. Capture the legacy-aware root before removal so
+//? a legacy repo and its worktree registrations disappear together. Project config/drafts
+//? outside repo.git/worktrees remain intact for a later re-link.
+export function unlinkProjectRepo(workspaceId: string, projectId: string): RepoStatus {
+  const root = projectRoot(workspaceId, projectId);
+  rmSync(path.join(root, 'repo.git'), { recursive: true, force: true });
+  rmSync(path.join(root, 'worktrees'), { recursive: true, force: true });
+  if (existsSync(path.join(root, 'repo.git')) || existsSync(path.join(root, 'worktrees'))) throw new Error('repo.unlinkFailed');
+  return { linked: false };
+}
+
 //? Run a git command, capturing stdout. Rejects with a token-scrubbed message on
 //? non-zero exit so a bad URL/token surfaces without leaking the credential.
 function git(args: string[], opts: { cwd?: string; env?: Record<string, string>; trimOutput?: boolean } = {}): Promise<string> {

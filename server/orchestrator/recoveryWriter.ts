@@ -365,7 +365,7 @@ async function setManualKillTicketStatus(
       projectId: action.target.projectId,
       key: action.target.ticketKey,
       stageId: action.target.stageId,
-      status: { in: [...new Set([expectedStatus, 'idle', status])] },
+      status: { in: [...new Set([expectedStatus, 'idle', 'paused', status])] },
       archived: false,
     },
     data: { status },
@@ -429,12 +429,12 @@ async function applyPrepare(
   const expected = action.payload.expected;
   const retryRecovery = recoveryReservation(workspaceId, action.target.ticketKey, intentId, expected.runFence);
   const retryTicketMatches = await exactTicket(prisma, workspaceId, action)
-    || (action.payload.reason === 'manual-kill' && await exactTicket(prisma, workspaceId, action, 'idle'));
+    || (action.payload.reason === 'manual-kill' && await exactTicket(prisma, workspaceId, action, 'paused'));
   if (retryTicketMatches
     && await exactSession(prisma, workspaceId, action, 'recovering')
     && await reservationOwnsSlotStrict(workspaceId, action.target.ticketKey, retryRecovery.runToken, retryRecovery.fence)) {
-    if (!(await setManualKillTicketStatus(prisma, workspaceId, action, 'idle'))) {
-      throw new Error('[recovery-writer] manual-kill retry could not establish idle ticket state');
+    if (!(await setManualKillTicketStatus(prisma, workspaceId, action, 'paused'))) {
+      throw new Error('[recovery-writer] manual-kill retry could not establish paused ticket state');
     }
     return {
       applied: true,
@@ -481,9 +481,10 @@ async function applyPrepare(
     await cancelRecoveryReservation(prepared.reservation, expected.runFence);
     return { applied: false, phase: 'prepare', reason: 'stale', keys: [], intentId };
   }
-  //? Manual kill does not expose idle before its durable recovery fence exists. This update is
-  //? part of the same InternalOp; replay repairs a crash between the session and ticket writes.
-  if (!(await setManualKillTicketStatus(prisma, workspaceId, action, 'idle'))) {
+  //? Manual kill parks the ticket only after its durable recovery fence exists. `paused`
+  //? prevents capacity from recreating the canonical container before exact teardown finishes.
+  //? Replay repairs a crash between the session and ticket writes.
+  if (!(await setManualKillTicketStatus(prisma, workspaceId, action, 'paused'))) {
     const restored = await prisma.agentSession.updateMany({
       where: {
         id: action.target.sessionId,
@@ -537,7 +538,7 @@ async function applyCompleteOrCancel(
   if (!exactRecovering && !exactStopped) return { applied: false, phase, reason: 'stale', keys: [], intentId: stored.intent.id };
 
   if (phase === 'complete') {
-    const terminalTicketStatus = action.payload.reason === 'manual-kill' ? 'idle' : action.payload.expected.ticketStatus;
+    const terminalTicketStatus = action.payload.reason === 'manual-kill' ? 'paused' : action.payload.expected.ticketStatus;
     if (!(await exactTicket(prisma, workspaceId, action, terminalTicketStatus))) {
       return { applied: false, phase, reason: 'stale', keys: [], intentId: stored.intent.id };
     }

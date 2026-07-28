@@ -80,7 +80,7 @@ import {
   type ControlActionTerminalOutcome,
   type WorkspaceLeaseGuard,
 } from './cluster';
-import { dockerAvailable, teardownWorkspaceContainers } from '../container/runtime';
+import { dockerAvailable, teardownExactTicketContainer, teardownWorkspaceContainers } from '../container/runtime';
 import { isSpendEnforcementActive } from '../spend/record';
 import { provisionServiceStack, teardownServiceStack, teardownWorkspaceServiceNetwork } from '../container/composeEngine';
 import { presetCompose, presetEnv } from '../container/servicePresets';
@@ -100,6 +100,7 @@ import { beginArtifact, completeArtifact, isArtifactKind } from '../studio/gener
 import { withStudioBriefLock } from '../studio/briefLock';
 import { persistProjectDoc } from '../ai/docsGen';
 import { runAgentRecovery } from './agentControl';
+import { disconnectProjectRepo } from '../git/repoDisconnect';
 import { broadcastTicketDelta, broadcastContentAssetDelta, broadcastContentDirty, broadcastContentPieceDelta, broadcastWorkspaceDirty } from '../read/broadcast';
 import { sendWebPush } from '../hooks/webPush';
 import { runCustomTask } from '../ai/customTask';
@@ -2098,9 +2099,28 @@ async function executeAction(action: WriterAction): Promise<unknown> {
     //? Per-project forge connection (ADR 0036) — B-23: the Conductor writes the ForgeConnection.
     case 'forge-connect': {
       const forgeProjectId = await resolveProjectId(prisma, action.workspaceId, str(target, 'projectId') ?? str(payload, 'projectId'));
+      if (!forgeProjectId) return;
+      if (bool(payload, 'disconnect')) {
+        await prisma.forgeConnection.deleteMany({ where: { workspaceId: action.workspaceId, projectId: forgeProjectId } });
+        if (bool(payload, 'clearExternalRefs')) {
+          //? Explicit operator cleanup for a removed external repository. Preserve internal
+          //? ticket/MR history, but remove dead forge URLs and close only MRs belonging to
+          //? tickets that actually carried an external reference in this exact project.
+          // luckystack-allow tenant-scope: the explicit workspaceId + projectId filter below is the exact cleanup boundary.
+          const referencedTickets = await prisma.ticket.findMany({
+            where: { workspaceId: action.workspaceId, projectId: forgeProjectId, OR: [{ mrUrl: { not: null } }, { issueUrl: { not: null } }] },
+            select: { id: true },
+          });
+          const ticketIds = referencedTickets.map((ticket) => ticket.id);
+          if (ticketIds.length > 0) {
+            await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, projectId: forgeProjectId, id: { in: ticketIds } }, data: { mrUrl: null, issueUrl: null } });
+            await prisma.mergeRequest.updateMany({ where: { workspaceId: action.workspaceId, projectId: forgeProjectId, ticketId: { in: ticketIds }, status: 'open' }, data: { status: 'closed', externalUrl: null } });
+          }
+        }
+        return { projectId: forgeProjectId, status: 'disconnected' };
+      }
       const modeRaw = str(payload, 'mode');
       const mode = modeRaw === 'github' ? 'github' : 'gitlab';
-      if (!forgeProjectId) return;
       const token = str(payload, 'token');
       const baseUrl = str(payload, 'baseUrl');
       const repoPath = str(payload, 'repoPath');
@@ -2277,8 +2297,13 @@ async function executeAction(action: WriterAction): Promise<unknown> {
         select: { id: true, status: true, containerId: true, runToken: true, runFence: true, startedAt: true },
       });
       if (!session) {
-        await prisma.ticket.updateMany({ where: { id: ticket.id, workspaceId: action.workspaceId }, data: { status: 'idle' } });
+        //? A destructive kill parks the ticket before detached Docker teardown, so the
+        //? capacity loop cannot recreate the same canonical container during cleanup.
+        await prisma.ticket.updateMany({ where: { id: ticket.id, workspaceId: action.workspaceId }, data: { status: 'paused' } });
         await broadcastTicketDelta(prisma, action.workspaceId, [key]);
+        //? With no session there is no recovery fence to coordinate. Await exact idempotent
+        //? teardown before this durable ControlAction can be marked processed; a failure stays visible.
+        if (!(await teardownExactTicketContainer(action.workspaceId, ticket.projectId, key))) throw new Error('container.notRemoved');
         return;
       }
       if (!session.containerId || !session.runToken || session.runFence <= 0 || (session.status !== 'busy' && session.status !== 'paused')) {
@@ -2320,8 +2345,13 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       //? Only Docker + complete/cancel detach, after the public action can no longer ACK
       //? ahead of the fence. runAgentRecovery reconstructs the rich prepare on dedup replay.
       setTimeout(() => {
-        void tryCatch(() => runAgentRecovery({ prepare, mode: 'kill-claude' })).then(([error]) => {
-          if (error) console.error(`[conductor] manual kill ${key} failed:`, error.message);
+        void tryCatch(async () => {
+          //? The durable manual-kill recovery intent now owns stop + exact removal before
+          //? complete. Crash replay treats an already-absent exact container/volume as success.
+          const recovered = await runAgentRecovery({ prepare, mode: 'teardown-container' });
+          if (!recovered.recovered) throw new Error(`agent.recovery.${recovered.reason}`);
+        }).then(([error]) => {
+          if (error) console.error(`[conductor] manual teardown ${key} failed:`, error.message);
         });
       }, 0);
       return;
@@ -2339,15 +2369,16 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       //? Register-flow step A: bare-clone the linked repo into data/workspaces/<id>/
       //? (the baseline the runtime cuts DEV-#### worktrees from). Clone runs on the
       //? serial chain (link is rare); a failed clone returns an error delta, not a throw.
-      const gitUrl = str(payload, 'gitUrl');
-      if (!gitUrl) return { linked: false, error: 'sync.invalidRequest' };
-      const token = str(payload, 'token');
       //? R3-b — require and resolve the TARGET project FIRST so a lost transport field can
       //? never silently fall back to project 1 and clobber its persisted URL/repo slot.
       const requestedProjectId = str(payload, 'projectId');
-      if (!requestedProjectId) return { linked: false, gitUrl, error: 'sync.invalidRequest' };
+      if (!requestedProjectId) return { linked: false, error: 'sync.invalidRequest' };
       const linkProjectId = await resolveProjectId(prisma, action.workspaceId, requestedProjectId);
-      if (!linkProjectId) return { linked: false, gitUrl, error: 'project.notFound' };
+      if (!linkProjectId) return { linked: false, error: 'project.notFound' };
+      if (bool(payload, 'disconnect')) return disconnectProjectRepo(prisma, action.workspaceId, linkProjectId);
+      const gitUrl = str(payload, 'gitUrl');
+      if (!gitUrl) return { linked: false, error: 'sync.invalidRequest' };
+      const token = str(payload, 'token');
       const [error, status] = await tryCatch(() => cloneRepo({ workspaceId: action.workspaceId, projectId: linkProjectId, gitUrl, ...(token ? { token } : {}) }));
       if (error) return { linked: false, gitUrl, error: error.message };
       //? Persist the CLEAN url on the TARGET project only (ADR 0035). token is never stored.

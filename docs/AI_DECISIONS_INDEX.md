@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (220)
+## Decisions (223)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -233,6 +233,9 @@
 | 0300 | Session cookie domain bridge is narrow and temporary | 🟢 accepted | auth, cookies, edge-auth, nginx, luckystack | — | `docs/decisions/0300-session-cookie-domain-bridge-is-narrow-and-temporary.md` |
 | 0301 | Terminal access uses session, RBAC and exact container identity | 🟢 accepted | terminals, auth, rbac, ssh, containers, security | — | `docs/decisions/0301-terminal-access-uses-session-rbac-and-exact-container-identity.md` |
 | 0302 | Stage push crosses the container boundary as a credential-free Git bundle | 🟢 accepted | git, containers, forge, push, credentials, security | — | `docs/decisions/0302-stage-push-crosses-container-boundary-as-a-git-bundle.md` |
+| 0303 | Destructive project cleanup reuses existing ControlOps and exact runtime identity | 🟢 accepted | control-api, containers, git, forge, cleanup, security | — | `docs/decisions/0303-destructive-project-cleanup-reuses-existing-control-ops.md` |
+| 0304 | Pi 5 uses the GPIO character-device stack, not legacy pigpiod | 🟢 accepted | production, raspberry-pi, gpio, systemd, operations | — | `docs/decisions/0304-pi-5-uses-gpio-character-device-not-legacy-pigpiod.md` |
+| 0305 | Release lockfile is generated with the production npm version | 🟢 accepted | dependencies, deployment, npm, arm64, reproducibility | — | `docs/decisions/0305-release-lockfile-is-generated-with-production-npm.md` |
 
 ## Summaries
 
@@ -2011,6 +2014,30 @@ A valid LuckyStack session is the terminal login identity. `workTickets` capabil
 The canonical container must carry the exact expected workspace and ticket labels; only then may it create a `git bundle` for the exact expected branch under `/tmp`. Docker copies that credential-free single file into a fresh host scratch directory. The host imports the bundle into a newly initialized, host-controlled bare repository and verifies its branch HEAD equals the exact SHA observed in the container before export. Only that controlled bare repository performs the remote push, using the existing host-side `GIT_ASKPASS` token injection. The token never enters container state or Docker argv. The Conductor's durable `stage-forge-prepare` intent and reservation/branch/project revalidation remain mandatory before this external boundary. The existing `stage-forge-complete` writer remains the only place that persists the returned PR/MR URL. Bundle and scratch artifacts are bounded and removed after success or failure.
 
 → `docs/decisions/0302-stage-push-crosses-container-boundary-as-a-git-bundle.md`
+
+### 0303 — Destructive project cleanup reuses existing ControlOps and exact runtime identity
+
+**0303** · accepted · tags: control-api, containers, git, forge, cleanup, security · 2026-07-28
+
+Restore the existing Admin+ `kill` ControlOp to feature 24's destructive meaning: park the ticket, fence and stop an active session, then remove only the canonical container carrying the exact workspace/project/ticket labels and its deterministic named volume. Branch and event history remain; explicit Resume AI reprovisions later. Show one type-confirmed `Teardown container` action instead of a duplicate stop action plus a known no-op. Reuse `forge-connect` with `disconnect:true` to delete the exact project's `ForgeConnection`, including its encrypted credential. An explicit operator-only `clearExternalRefs:true` additionally clears dead ticket/MR URLs and closes affected open MRs after an external repository has been removed; sibling projects remain untouched. Reuse `link-repo` with `disconnect:true` to remove the exact project's host clone/worktree registrations and set `Project.gitUrl=null`. Refuse while project containers exist, and fail closed when Docker state is unavailable. Both disconnects remain `workspaceSettings`-gated and Conductor-executed. No structured-channel verb is added.
+
+→ `docs/decisions/0303-destructive-project-cleanup-reuses-existing-control-ops.md`
+
+### 0304 — Pi 5 uses the GPIO character-device stack, not legacy pigpiod
+
+**0304** · accepted · tags: production, raspberry-pi, gpio, systemd, operations · 2026-07-28
+
+Disable and mask `pigpiod.service` on the production Pi so an incompatible, unused daemon no longer leaves the host degraded after each boot. Keep the installed packages for compatibility; do not purge them as part of an application deployment. Use the existing `libgpiod`/`lgpio` character-device interfaces if Workspaces ever gains a real GPIO feature. Do not spoof a Raspberry Pi revision or patch pigpio's hardware check merely to make an unused daemon start.
+
+→ `docs/decisions/0304-pi-5-uses-gpio-character-device-not-legacy-pigpiod.md`
+
+### 0305 — Release lockfile is generated with the production npm version
+
+**0305** · accepted · tags: dependencies, deployment, npm, arm64, reproducibility · 2026-07-28
+
+Declare `packageManager: npm@10.9.8`, matching the production host. Generate dependency lock changes with npm 10.9.8 and require `npm ci --dry-run` to pass under that version before deployment. Keep every platform's optional package records in the committed lockfile; do not hand-prune them on Windows. Production continues to install from the committed lockfile with `npm ci`.
+
+→ `docs/decisions/0305-release-lockfile-is-generated-with-production-npm.md`
 
 ## Code governed by decisions
 

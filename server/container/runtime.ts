@@ -314,6 +314,63 @@ export async function isWorkspaceTicketContainer(name: string, workspaceId: stri
   return result.code === 0 && result.out === `${workspaceId}\t${ticketKey}`;
 }
 
+export interface ExactTicketTeardownDependencies {
+  available: () => Promise<boolean>;
+  inspect: typeof inspectWorkerContainer;
+  runDocker: (args: string[]) => Promise<DockerResult>;
+}
+
+//? Destructive manual kill boundary: derive the canonical name, verify immutable
+//? workspace/project/ticket labels, remove by immutable container ID, remove only the
+//? deterministic ticket volume, then prove both are absent. An already-absent pair is
+//? an idempotent replay; Docker unavailability fails closed instead of looking absent.
+const exactTicketTeardownDependencies: ExactTicketTeardownDependencies = {
+  available: dockerAvailable,
+  inspect: inspectWorkerContainer,
+  runDocker: docker,
+};
+
+export async function teardownExactTicketContainer(
+  workspaceId: string,
+  projectId: string,
+  ticketKey: string,
+  dependencies: ExactTicketTeardownDependencies = exactTicketTeardownDependencies,
+): Promise<boolean> {
+  if (!(await dependencies.available())) return false;
+  const name = containerName(workspaceId, ticketKey);
+  const volume = volumeName(workspaceId, ticketKey);
+  const identity = await dependencies.inspect(name);
+  if (identity && (identity.name !== name
+    || identity.workspaceId !== workspaceId
+    || identity.projectId !== projectId
+    || identity.ticketKey !== ticketKey)) return false;
+  if (identity) {
+    const removed = await dependencies.runDocker(['rm', '-f', identity.containerId]);
+    if (removed.code !== 0) return false;
+    const stillThere = await dependencies.runDocker(['inspect', '-f', '{{.Id}}', identity.containerId]);
+    if (stillThere.code === 0) return false;
+  }
+  const volumeState = await dependencies.runDocker(['volume', 'inspect', volume]);
+  if (volumeState.code === 0) {
+    const removed = await dependencies.runDocker(['volume', 'rm', '-f', volume]);
+    if (removed.code !== 0) return false;
+  }
+  const finalVolumeState = await dependencies.runDocker(['volume', 'inspect', volume]);
+  return finalVolumeState.code !== 0;
+}
+
+//? Return whether this project still owns any local ticket/editor/ref container.
+//? `null` means Docker could not prove the answer; destructive repo unlink must fail closed.
+export async function projectHasContainers(workspaceId: string, projectId: string): Promise<boolean | null> {
+  if (!(await dockerAvailable())) return null;
+  const listed = await docker([
+    'ps', '-aq',
+    '--filter', `label=org.workspaces.workspace=${workspaceId}`,
+    '--filter', `label=org.workspaces.project=${projectId}`,
+  ]);
+  return listed.code === 0 ? listed.out.trim().length > 0 : null;
+}
+
 //? Remove the ticket's container + its worktree volume (ticket teardown, §4/§7).
 export async function teardownTicketContainer(workspaceId: string, ticketKey: string, ref?: string): Promise<void> {
   const suffix = ref !== undefined && ref.length > 0 ? refSlug(ref) : undefined;

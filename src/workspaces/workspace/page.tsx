@@ -673,7 +673,7 @@ function DockerfileReview({ workspaceId }: { workspaceId: string }) {
 //? clone error). Token is write-only (never pre-filled). Realtime via the linkRepo op.
 function RepositoryTab() {
   const translate = useTranslator();
-  const { repo, linkRepo, activeWorkspace } = useWorkspaces();
+  const { repo, linkRepo, unlinkRepo, activeWorkspace, activeProject } = useWorkspaces();
   const [gitUrl, setGitUrl] = useState(repo.gitUrl ?? '');
   const [token, setToken] = useState('');
   const [linking, setLinking] = useState(false);
@@ -686,6 +686,14 @@ function RepositoryTab() {
     setLinking(true);
     linkRepo(u, token.trim().length > 0 ? token.trim() : undefined);
     setToken('');
+  };
+  const disconnect = (): void => {
+    if (!activeProject) return;
+    void menuHandler.confirm({
+      title: translate({ key: 'workspaces.workspaceSettings.repoUnlinkConfirmTitle' }),
+      content: translate({ key: 'workspaces.workspaceSettings.repoUnlinkConfirmContent' }),
+      input: activeProject.name,
+    }).then((ok) => { if (ok) { setLinking(true); unlinkRepo(); } });
   };
   return (
     <>
@@ -700,7 +708,9 @@ function RepositoryTab() {
       )}
       {repo.error !== undefined && (
         <div className="rounded-lg border border-wrong-border bg-wrong/10 px-3 py-2 text-sm text-wrong flex items-center gap-2">
-          <Icon name="triangle-exclamation" /> <span>{repo.error}</span>
+          <Icon name="triangle-exclamation" /> <span>{repo.error === 'repo.inUse'
+            ? translate({ key: 'workspaces.workspaceSettings.repoInUse' })
+            : (repo.error === 'repo.runtimeUnavailable' ? translate({ key: 'workspaces.workspaceSettings.repoRuntimeUnavailable' }) : repo.error)}</span>
         </div>
       )}
       <span className="text-xs text-muted mt-1">{translate({ key: 'workspaces.workspaceSettings.repoUrl' })}</span>
@@ -709,10 +719,11 @@ function RepositoryTab() {
       <span className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.accessToken' })}</span>
       <input type="password" value={token} onChange={(e) => { setToken(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.tokenPlaceholder' })}
         className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm font-mono text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
-      <div>
+      <div className="flex flex-wrap gap-2">
         <WsButton icon={linking ? 'spinner' : 'link'} disabled={linking} onClick={submit}>
           {translate({ key: linking ? 'workspaces.workspaceSettings.repoLinking' : (repo.linked ? 'workspaces.workspaceSettings.repoRelink' : 'workspaces.workspaceSettings.repoLinkBtn') })}
         </WsButton>
+        {repo.linked && <WsButton variant="danger" icon="xmark" disabled={linking} onClick={disconnect}>{translate({ key: 'workspaces.workspaceSettings.repoUnlink' })}</WsButton>}
       </div>
     </div>
     {repo.linked && <div className="max-w-2xl mx-auto w-full mt-4"><DockerfileReview key={activeWorkspace.id} workspaceId={activeWorkspace.id} /></div>}

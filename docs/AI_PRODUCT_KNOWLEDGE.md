@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `782a75a19456379b` · 17 capabilities · 220 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `601001a83a53e9cb` · 17 capabilities · 223 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -246,3 +246,6 @@
 - `adr-0300` Session cookie domain bridge is narrow and temporary
 - `adr-0301` Terminal access uses session, RBAC and exact container identity
 - `adr-0302` Stage push crosses the container boundary as a credential-free Git bundle
+- `adr-0303` Destructive project cleanup reuses existing ControlOps and exact runtime identity
+- `adr-0304` Pi 5 uses the GPIO character-device stack, not legacy pigpiod
+- `adr-0305` Release lockfile is generated with the production npm version

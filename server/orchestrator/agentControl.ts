@@ -9,7 +9,7 @@ import { claimActionOnce } from './cluster';
 import { recoveryReservation, withReservationRenewal } from './capacity';
 import { readRecoveryTransitionResult, reconstructAcceptedRecoveryPrepare } from './recoveryWriter';
 import type { AgentRecoveryTransitionInternalAction } from './internalOps';
-import { docker, inspectWorkerContainer, workerContainerRunning, DOCKER_BIN, type WorkerContainerIdentity } from '../container/runtime';
+import { containerName, docker, inspectWorkerContainer, teardownExactTicketContainer, workerContainerRunning, DOCKER_BIN, type WorkerContainerIdentity } from '../container/runtime';
 
 //? Kill Claude without procps, then prove the target process is absent. No initial match is an
 //? idempotent success; a process that ignores TERM makes Docker exec nonzero and recovery cancels.
@@ -45,6 +45,7 @@ export interface ExactRecoveryDependencies {
   readOwner: (containerId: string) => Promise<{ runToken: string; runFence: number } | null>;
   killClaude: (containerId: string) => Promise<boolean>;
   stopContainer: (containerId: string) => Promise<boolean>;
+  teardownContainer?: (expected: ExactRecoveryContainer) => Promise<boolean>;
   running: (containerId: string) => Promise<boolean | null>;
 }
 
@@ -65,10 +66,11 @@ const exactRecoveryDependencies: ExactRecoveryDependencies = {
     const result = await docker(['stop', containerId]);
     return result.code === 0;
   },
+  teardownContainer: (expected) => teardownExactTicketContainer(expected.workspaceId, expected.projectId, expected.ticketKey),
   running: workerContainerRunning,
 };
 
-export type ExactRecoveryMode = 'kill-claude' | 'stop-container';
+export type ExactRecoveryMode = 'kill-claude' | 'stop-container' | 'teardown-container';
 export type ExactRecoveryResult =
   | { ok: true; container: WorkerContainerIdentity }
   | { ok: false; reason: 'inspect' | 'identity' | 'owner' | 'docker' | 'state' };
@@ -83,20 +85,31 @@ export async function recoverExactContainer(
   dependencies: ExactRecoveryDependencies = exactRecoveryDependencies,
 ): Promise<ExactRecoveryResult> {
   const inspected = await dependencies.inspect(expected.containerId);
+  if (!inspected && mode === 'teardown-container' && await dependencies.teardownContainer?.(expected)) {
+    return { ok: true, container: {
+      workspaceId: expected.workspaceId,
+      projectId: expected.projectId,
+      ticketKey: expected.ticketKey,
+      containerId: expected.containerId,
+      name: containerName(expected.workspaceId, expected.ticketKey),
+    } };
+  }
   if (!inspected) return { ok: false, reason: 'inspect' };
   if (inspected.containerId !== expected.containerId
     || inspected.workspaceId !== expected.workspaceId
     || inspected.projectId !== expected.projectId
     || inspected.ticketKey !== expected.ticketKey) return { ok: false, reason: 'identity' };
 
-  if (mode === 'stop-container') {
-    const runningBefore = await dependencies.running(expected.containerId);
-    if (runningBefore === false) return { ok: true, container: inspected };
-    if (runningBefore !== true) return { ok: false, reason: 'state' };
-  }
+  const runningBefore = mode === 'stop-container' || mode === 'teardown-container'
+    ? await dependencies.running(expected.containerId)
+    : true;
+  if (runningBefore === null) return { ok: false, reason: 'state' };
+  if (mode === 'stop-container' && !runningBefore) return { ok: true, container: inspected };
 
-  const owner = await dependencies.readOwner(expected.containerId);
-  if (owner?.runToken !== expected.runToken || owner.runFence !== expected.runFence) return { ok: false, reason: 'owner' };
+  if (runningBefore) {
+    const owner = await dependencies.readOwner(expected.containerId);
+    if (owner?.runToken !== expected.runToken || owner.runFence !== expected.runFence) return { ok: false, reason: 'owner' };
+  }
 
   if (mode === 'kill-claude') {
     if (!(await dependencies.killClaude(expected.containerId))) return { ok: false, reason: 'docker' };
@@ -104,10 +117,11 @@ export async function recoverExactContainer(
     if (running !== true) return { ok: false, reason: 'state' };
     const ownerAfter = await dependencies.readOwner(expected.containerId);
     if (ownerAfter?.runToken !== expected.runToken || ownerAfter.runFence !== expected.runFence) return { ok: false, reason: 'owner' };
-  } else {
+  } else if (runningBefore) {
     if (!(await dependencies.stopContainer(expected.containerId))) return { ok: false, reason: 'docker' };
     if (await dependencies.running(expected.containerId) !== false) return { ok: false, reason: 'state' };
   }
+  if (mode === 'teardown-container' && !(await dependencies.teardownContainer?.(expected))) return { ok: false, reason: 'docker' };
   return { ok: true, container: inspected };
 }
 

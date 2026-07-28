@@ -71,8 +71,29 @@ try {
   // ---- a sibling project in the SAME workspace is unaffected ---------------------
   await enqueueControlAction({ workspaceId: wsId, op: 'project-create', target: {}, payload: { name: 'Backend' }, userId: owner.id, clientRequestId: `fc-p2-${String(stamp)}` });
   const proj2 = await poll(async () => { const rows = await prisma.project.findMany({ where: { workspaceId: wsId }, orderBy: { createdAt: 'asc' } }); return rows.length === 2 ? rows[1] : null; });
-  const sibling = await resolveForge(prisma, wsId, proj2?.id ?? '');
+  const proj2Id = proj2?.id ?? '';
+  const sibling = await resolveForge(prisma, wsId, proj2Id);
   eq(sibling?.mode, 'gitlab', 'a sibling project WITHOUT a ForgeConnection stays on the workspace GitLab default (GitHub connect did not leak)');
+
+  const [stage1, stage2] = await Promise.all([
+    prisma.pipelineStage.findFirst({ where: { workspaceId: wsId, projectId: proj1Id } }),
+    prisma.pipelineStage.findFirst({ where: { workspaceId: wsId, projectId: proj2Id } }),
+  ]);
+  const externalTicket = await prisma.ticket.create({ data: { workspaceId: wsId, projectId: proj1Id, key: 'DEV-9901', number: 9901, title: 'Dead external link', stageId: stage1?.key ?? 'backlog', status: 'idle', archived: false, branch: 'DEV-9901', labels: [], priority: 'normal', mrUrl: 'https://example.test/dead/pull/1' } });
+  const siblingTicket = await prisma.ticket.create({ data: { workspaceId: wsId, projectId: proj2Id, key: 'DEV-9902', number: 9902, title: 'Sibling external link', stageId: stage2?.key ?? 'backlog', status: 'idle', archived: false, branch: 'DEV-9902', labels: [], priority: 'normal', issueUrl: 'https://example.test/live/issues/2' } });
+  const externalMr = await prisma.mergeRequest.create({ data: { workspaceId: wsId, projectId: proj1Id, ticketId: externalTicket.id, number: 9901, title: 'Dead MR', sourceBranch: 'DEV-9901', targetBranch: 'main', status: 'open', externalUrl: 'https://example.test/dead/pull/1' } });
+
+  // ---- disconnect removes credentials and can explicitly scrub dead external refs ----
+  await enqueueControlAction({ workspaceId: wsId, op: 'forge-connect', target: { projectId: proj1Id }, payload: { disconnect: true, clearExternalRefs: true }, userId: owner.id, clientRequestId: `fc-disconnect-${String(stamp)}` });
+  const removedConnection = await poll(async () => (await prisma.forgeConnection.findFirst({ where: { workspaceId: wsId, projectId: proj1Id } })) === null ? true : null);
+  eq(removedConnection, true, 'disconnect removes the exact project ForgeConnection including its encrypted token');
+  const disconnectedSnapshot = await buildSnapshot(prisma, owner.id, wsId, proj1Id);
+  const disconnectedProject = disconnectedSnapshot.projects.find((project) => project.id === proj1Id);
+  eq(disconnectedProject?.forgeStatus, undefined, 'the project snapshot no longer advertises a connected forge');
+  eq((await prisma.ticket.findUnique({ where: { id: externalTicket.id } }))?.mrUrl, null, 'explicit disconnect cleanup clears the selected project dead ticket URL');
+  eq((await prisma.mergeRequest.findUnique({ where: { id: externalMr.id } }))?.status, 'closed', 'explicit disconnect cleanup closes the selected project stale open MR');
+  eq((await prisma.mergeRequest.findUnique({ where: { id: externalMr.id } }))?.externalUrl, null, 'explicit disconnect cleanup clears the stale MR URL');
+  eq((await prisma.ticket.findUnique({ where: { id: siblingTicket.id } }))?.issueUrl, 'https://example.test/live/issues/2', 'external-ref cleanup never crosses into a sibling project');
 } catch (error) {
   assert(false, `unexpected error during the run: ${String(error)}`);
 } finally {

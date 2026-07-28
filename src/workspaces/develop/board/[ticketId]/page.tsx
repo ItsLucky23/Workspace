@@ -125,20 +125,15 @@ function TicketControls({ ticket, primary }: { ticket: Ticket; primary: boolean 
   const [showLive, setShowLive] = useState(false);
   const liveOutput = ctx.agentTerm[ticket.id] ?? '';
 
-  const kill = (): void => {
-    void menuHandler.confirm({
-      title: translate({ key: 'workspaces.ticket.killConfirmTitle', params: [{ key: 'id', value: ticket.id }] }),
-      content: translate({ key: 'workspaces.ticket.killConfirmContent' }),
-    }).then((ok) => { if (ok) ctx.killTicket(ticket.id); });
-  };
-
+  //? Feature 24: the existing Admin+ `kill` ControlOp IS the destructive container
+  //? teardown. Type-to-confirm, then let the Conductor park the ticket and remove only
+  //? the exact labelled container + volume; branch and event history remain durable.
   const teardown = (): void => {
-    /* Fase 2: no teardown-container control-op yet — confirm only, no follow-up write */
     void menuHandler.confirm({
       title: translate({ key: 'workspaces.ticket.teardownConfirmTitle', params: [{ key: 'id', value: ticket.id }] }),
       content: translate({ key: 'workspaces.ticket.teardownConfirmContent' }),
       input: ticket.id,
-    });
+    }).then((ok) => { if (ok) ctx.killTicket(ticket.id); });
   };
 
   const openPreview = async (): Promise<void> => {
@@ -171,7 +166,7 @@ function TicketControls({ ticket, primary }: { ticket: Ticket; primary: boolean 
   //? The "…" menu: agent lifecycle (pause/resume/critique) for whoever manages the ticket,
   //? plus the relocated header buttons (terminal, the Fase-2 GitLab no-op — de-emphasized
   //? here instead of posing as a working primary), and the destructive/dev tools (time-travel,
-  //? kill, teardown) gated on the development module + admin/owner (fail-open: an unresolved
+  //? teardown) gated on the development module + admin/owner (fail-open: an unresolved
   //? role is not 'member').
   const showDevOps = isModuleEnabled(ctx.activeWorkspace.enabledSections, 'development') && ctx.activeWorkspace.role !== 'member';
   const agentMenu: PopMenuItem[] = [
@@ -190,8 +185,7 @@ function TicketControls({ ticket, primary }: { ticket: Ticket; primary: boolean 
     agentMenu.push(
       { label: translate({ key: 'workspaces.timetravel.button' }), icon: 'clock-rotate-left', onClick: openTimeTravel },
       { divider: true },
-      { label: translate({ key: 'workspaces.ticket.killAgent' }), icon: 'ban', danger: true, onClick: kill },
-      //? Teardown relocated out of the Overview canvas — destructive dev-op, same gate as kill.
+      //? Feature 24 has one destructive kill/teardown lever, not a second misleading no-op.
       { label: translate({ key: 'workspaces.ticket.teardownContainer' }), icon: 'box-archive', danger: true, onClick: teardown },
     );
   }

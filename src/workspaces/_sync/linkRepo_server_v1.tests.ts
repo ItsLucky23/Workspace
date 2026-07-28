@@ -19,8 +19,9 @@ import { loginSeededUser, createRealUser, cleanupWorkspace, joinRoom } from '../
 
 interface LinkRepoInput {
   projectId: string;
-  gitUrl: string;
+  gitUrl?: string;
   token?: string;
+  disconnect?: boolean;
   clientRequestId: string;
 }
 interface LinkRepoOk {

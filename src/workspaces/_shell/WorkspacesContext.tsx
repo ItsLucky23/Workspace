@@ -131,6 +131,7 @@ export interface WorkspacesCtx {
   dbIntrospect: (connectionId: string) => void;
   //? Per-project forge connection (ADR 0036): GitLab OR GitHub for a specific project.
   connectForge: (input: { projectId: string; mode: 'gitlab' | 'github'; baseUrl?: string; token?: string; repoPath?: string }) => void;
+  disconnectForge: (projectId: string) => void;
   //? Environments (ADR 0037): the active project's dev/staging/prod deployments + deploy/teardown.
   environments: EnvironmentSummary[];
   deployEnv: (input: { kind: string; serviceId?: string; pinnedCommit?: string; autoRedeploy?: boolean; subdomain?: string; customDomain?: string }) => void;
@@ -168,6 +169,7 @@ export interface WorkspacesCtx {
   uiReviewAction: (op: 'ui-review-to-ticket' | 'ui-review-dismiss', reviewId: string, projectId?: string) => void;
   repo: RepoInfo;
   linkRepo: (gitUrl: string, token?: string) => void;
+  unlinkRepo: () => void;
   scanDocs: () => void;
   //? K2 — register an uploaded doc (md/txt) as a context-doc InfoSource.
   addInfoDoc: (name: string, content: string) => void;

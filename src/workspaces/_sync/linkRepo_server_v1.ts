@@ -12,18 +12,20 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface SyncParams {
-  clientInput: { projectId: string; gitUrl: string; token?: string; clientRequestId: string };
+  clientInput: { projectId: string; gitUrl?: string; token?: string; disconnect?: boolean; clientRequestId: string };
   user: SessionLayout;
   functions: Functions;
   roomCode: string;
 }
 
 export const main = async ({ clientInput, user, functions, roomCode }: SyncParams): Promise<SyncServerResponse> => {
-  const { projectId, gitUrl, token, clientRequestId } = clientInput;
-  if (projectId.trim().length === 0 || gitUrl.trim().length === 0) return { status: 'error', errorCode: 'sync.invalidRequest' };
+  const { projectId, gitUrl, token, disconnect, clientRequestId } = clientInput;
+  const targetProjectId = projectId.trim();
+  const targetGitUrl = gitUrl?.trim() ?? '';
+  if (targetProjectId.length === 0 || (disconnect !== true && targetGitUrl.length === 0)) return { status: 'error', errorCode: 'sync.invalidRequest' };
   const res = await dispatchControlSync({
     op: 'link-repo', roomCode, userId: user.id, prisma: functions.db.prisma,
-    payload: { projectId: projectId.trim(), gitUrl: gitUrl.trim(), ...(token ? { token } : {}) }, clientRequestId,
+    payload: { projectId: targetProjectId, ...(disconnect === true ? { disconnect: true } : { gitUrl: targetGitUrl, ...(token ? { token } : {}) }) }, clientRequestId,
   });
   if (!res.ok) return { status: 'error', errorCode: res.errorCode };
   return { status: 'success', repo: repoDelta(res.result) };
