@@ -6,7 +6,7 @@
 > Don't read every index every session. Pick the profile matching your task, LOAD only its
 > artifacts, and QUERY the rest via the `@luckystack/mcp` tools instead of reading whole files.
 
-## Artifact sizes (total ≈ 212,716 tokens if all loaded)
+## Artifact sizes (total ≈ 213,095 tokens if all loaded)
 
 | Artifact | Est. tokens | Bytes | Purpose |
 | --- | --- | --- | --- |
@@ -14,8 +14,8 @@
 | `quick-index` — `docs/AI_QUICK_INDEX.md` | _(absent)_ | — | Framework surfaces + package map. |
 | `capabilities` — `docs/AI_CAPABILITIES.md` | 5,299 | 21,195 | Existing helpers/exports — check before authoring. |
 | `project-index` — `docs/AI_PROJECT_INDEX.md` | 8,990 | 35,960 | Routes/pages/helpers/components + test coverage. |
-| `decisions` — `docs/AI_DECISIONS_INDEX.md` | 66,601 | 266,403 | Why-it-is-this-way (ADRs). |
-| `lessons` — `docs/AI_LESSONS_INDEX.md` | 7,923 | 31,691 | Known pitfalls (what failed). |
+| `decisions` — `docs/AI_DECISIONS_INDEX.md` | 66,902 | 267,608 | Why-it-is-this-way (ADRs). |
+| `lessons` — `docs/AI_LESSONS_INDEX.md` | 8,001 | 32,002 | Known pitfalls (what failed). |
 | `runbooks` — `docs/AI_RUNBOOKS.md` | 1,176 | 4,703 | Task-shaped golden paths. |
 | `examples` — `docs/AI_EXAMPLES_INDEX.md` | 776 | 3,104 | Canonical example corpus index. |
 | `product` — `docs/AI_PRODUCT_OVERVIEW.md` | 4,890 | 19,559 | What the app + each page is FOR. |
@@ -43,14 +43,14 @@ _Adding a page: match an existing template/component + state the intent._
 
 _Auditing: lean on the why-record + risky hubs, not every page intent._
 
-- **Load** (≈ 87,379 tokens): `contract`, `decisions`, `project-index`
+- **Load** (≈ 87,680 tokens): `contract`, `decisions`, `project-index`
 - **Query via MCP** (don't read whole): `god_nodes`, `blast_radius`, `get_decision`, `list_decisions('security')`
 
 ### `debug`
 
 _Chasing a bug: check known pitfalls first, then trace impact via the graph._
 
-- **Load** (≈ 19,711 tokens): `contract`, `lessons`
+- **Load** (≈ 19,789 tokens): `contract`, `lessons`
 - **Query via MCP** (don't read whole): `find_lesson`, `who_calls`, `who_imports`, `blast_radius`
 
 ### `doc-fix`

@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `601001a83a53e9cb` · 17 capabilities · 223 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `607c01f0fa156d29` · 17 capabilities · 224 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -249,3 +249,4 @@
 - `adr-0303` Destructive project cleanup reuses existing ControlOps and exact runtime identity
 - `adr-0304` Pi 5 uses the GPIO character-device stack, not legacy pigpiod
 - `adr-0305` Release lockfile is generated with the production npm version
+- `adr-0306` LuckyStack upgrades jump straight to the newest patch of a minor

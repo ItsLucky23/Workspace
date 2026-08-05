@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (223)
+## Decisions (224)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -236,6 +236,7 @@
 | 0303 | Destructive project cleanup reuses existing ControlOps and exact runtime identity | 🟢 accepted | control-api, containers, git, forge, cleanup, security | — | `docs/decisions/0303-destructive-project-cleanup-reuses-existing-control-ops.md` |
 | 0304 | Pi 5 uses the GPIO character-device stack, not legacy pigpiod | 🟢 accepted | production, raspberry-pi, gpio, systemd, operations | — | `docs/decisions/0304-pi-5-uses-gpio-character-device-not-legacy-pigpiod.md` |
 | 0305 | Release lockfile is generated with the production npm version | 🟢 accepted | dependencies, deployment, npm, arm64, reproducibility | — | `docs/decisions/0305-release-lockfile-is-generated-with-production-npm.md` |
+| 0306 | LuckyStack upgrades jump straight to the newest patch of a minor | 🟢 accepted | dependencies, luckystack, upgrade, transport, security | — | `docs/decisions/0306-luckystack-upgrades-jump-straight-to-the-newest-patch.md` |
 
 ## Summaries
 
@@ -2038,6 +2039,14 @@ Disable and mask `pigpiod.service` on the production Pi so an incompatible, unus
 Declare `packageManager: npm@10.9.8`, matching the production host. Generate dependency lock changes with npm 10.9.8 and require `npm ci --dry-run` to pass under that version before deployment. Keep every platform's optional package records in the committed lockfile; do not hand-prune them on Windows. Production continues to install from the committed lockfile with `npm ci`.
 
 → `docs/decisions/0305-release-lockfile-is-generated-with-production-npm.md`
+
+### 0306 — LuckyStack upgrades jump straight to the newest patch of a minor
+
+**0306** · accepted · tags: dependencies, luckystack, upgrade, transport, security · 2026-08-05
+
+Upgrade all 16 `@luckystack/*` packages to 0.8.3 **in lockstep**, in one step. Their internal peer ranges are `^0.8.3`; a partial bump is unsupported. Do **not** step through 0.8.0 → 0.8.1 → 0.8.2. Each intermediate is a known-defective state and stopping on one would mean verifying a version nobody should run. Pin `transport: { invocation: 'socket' }` explicitly in `config.ts` even though it equals the framework default, because the alternative (`routed-http`) drops the offline queue's retry path. Wire the generated `apiMethodMap` through `registerApiMethodMap` in `src/_sockets/apiRequest.ts`, so a future transport switch cannot silently fall back to inferring HTTP methods from route names.
+
+→ `docs/decisions/0306-luckystack-upgrades-jump-straight-to-the-newest-patch.md`
 
 ## Code governed by decisions
 

@@ -4,7 +4,7 @@
       "type": "stdio",
       "command": "npx",
       "args": [
-        "@luckystack/mcp@^0.3.0"
+        "@luckystack/mcp@^0.8.3"
       ]
     },
     "playwright": {

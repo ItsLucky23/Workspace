@@ -1,6 +1,6 @@
 {
-  "hash": "601001a83a53e9cb",
-  "chunkCount": 240,
+  "hash": "607c01f0fa156d29",
+  "chunkCount": 241,
   "chunks": [
     {
       "id": "cap-001",
@@ -1441,6 +1441,12 @@
       "kind": "decision",
       "title": "Release lockfile is generated with the production npm version",
       "text": "ADR 0305: Release lockfile is generated with the production npm version. After the safe PostCSS/MCP updates, npm 11.6.1 on Windows produced and accepted a lockfile that omitted several platform-optional transitive package records. Production runs npm 10.9.8 on ARM64. Its clean installer rejected that same lockfile as inconsistent (`@csstools/css-parser-algorithms`, `@csstools/css-tokenizer`, `@emnapi/*` missing), so a locally green install was not release-reproducible. Decision: - Declare `packageManager: npm@10.9.8`, matching the production host. - Generate dependency lock changes with npm 10.9.8 and require `npm ci --dry-run` to pass under that version before deployment. - Keep every platform's optional package records in the committed lockfile; do not hand-prune them on Windows. - Production continues to install from the committed lockfile with `npm ci`."
+    },
+    {
+      "id": "adr-0306",
+      "kind": "decision",
+      "title": "LuckyStack upgrades jump straight to the newest patch of a minor",
+      "text": "ADR 0306: LuckyStack upgrades jump straight to the newest patch of a minor. The app ran `@luckystack/*` 0.7.6 (published 2026-07-23); npm `latest` was 0.8.3 (2026-07-28). The four intervening releases landed inside 20 hours, which is a signal rather than a detail: - `0.8.0` was published broken and re-tagged (`v0.8.0+publish.1`). - `0.8.1` was a security patch 31 minutes later (ADR 0040 upstream): with `NODE_ENV=production` plus a non-production `LUCKYSTACK_ENV`, 0.8.0 skipped generated production maps, loaded devkit into source-free images, weakened secure-cookie and bootstrap policy, and could activate loopback rate-limit bypasses. - `0.8.2` fixed composed atomic presets returning 500 on every API/sync request. - `0.8.3` made routed HTTP honor the generated API method map instead of inferring the method from the route name. Upstream ships no migration guide for 0.8, so the breaking surface had to be derived from the tag diff (17 commits, 169 files) before committing to the jump. Decision: - Upgrade all 16 `@luckystack/*` packages to 0.8.3 **in lockstep**, in one step. Their internal peer ranges are `^0.8.3`; a partial bump is unsupported. - Do **not** step through 0.8.0 → 0.8.1 → 0.8.2. Each intermediate is a known-defective state and stopping on one would mean verifying a version nobody should run. - Pin `transport: { invocation: 'socket' }` explicitly in `config.ts` even though it equals the framework default, because the alternative (`routed-http`) drops the offline queu"
     }
   ]
 }

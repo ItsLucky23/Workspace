@@ -150,6 +150,11 @@ registerProjectConfig({
     //? host-only cookie (most secure), so single-origin dev is unchanged.
     ...(env('WS_COOKIE_DOMAIN') ? { sessionCookieDomain: env('WS_COOKIE_DOMAIN') } : {}),
   },
+  //? Typed API/sync invocations ride the socket. This matches the framework default,
+  //? but is pinned explicitly because the alternative ('routed-http', for
+  //? @luckystack/router topologies) drops the offline queue's retry path — flipping it
+  //? must be a deliberate edit here, not a side effect of installing the router.
+  transport: { invocation: 'socket' },
   defaultLanguage: config.defaultLanguage,
   loginRedirectUrl: config.loginRedirectUrl,
   //? Backend origin for OAuth callback redirect URIs. Read by

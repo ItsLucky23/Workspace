@@ -22,6 +22,9 @@ not prove that an older npm on another architecture could reconstruct the graph.
 ## How to avoid
 
 - Pin the project's package manager version and use it to regenerate the lockfile.
+- The `packageManager` field is advisory: npm does not enforce it without Corepack, so a bare `npm install` under a
+  newer npm silently rewrites the lockfile anyway. Invoke the pinned version explicitly —
+  `npx npm@10.9.8 install` — and verify the canary optional records (`@csstools/*`, `@emnapi/*`) survived.
 - Run `npm ci --dry-run` with the production npm version before copying a release.
 - Treat cross-platform optional-package additions in the lockfile as required reproducibility metadata, not noise.
 - Never work around an inconsistent lockfile with production-side `npm install`; fix and recommit the lockfile.
