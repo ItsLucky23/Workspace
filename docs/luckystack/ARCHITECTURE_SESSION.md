@@ -1,6 +1,6 @@
 # Session Architecture
 
-> Session management using Redis with OAuth provider support.
+> Session management with a Redis default adapter, pluggable storage, and OAuth provider support.
 
 > **Where the code lives (post-package-split):** sessions are managed by `@luckystack/login` (`packages/login/src/session.ts`). Import session helpers from the package: `import { saveSession, getSession, deleteSession, getAllSessions, revokeUserSessions } from '@luckystack/login';`. The legacy `server/functions/session` path no longer exists.
 
@@ -21,12 +21,16 @@ await apiRequest({ name: "system/logout", version: "v1" });
 
 ## Session Storage
 
-Sessions are stored in **Redis** with configurable expiry.
+Session storage is owned by `@luckystack/login`'s active `SessionAdapter`. The default is `redisSessionAdapter`; consumers can register a DynamoDB, Postgres, signed-JWT-stateless, or test adapter before the first login request.
+
+The adapter receives the raw session value plus storage operations for TTL and active-token tracking. Framework behavior such as CSRF minting, lifecycle hooks, socket broadcasts, and single-session enforcement remains in `@luckystack/login` rather than in the adapter.
+
+For the default Redis adapter, the layout is:
 
 ```
-Redis Key: {projectName}-session:{token}
+Redis key: {projectName}-session:{token}
 Active-users key: {projectName}-activeUsers:{userId}
-Value: JSON-encoded SessionLayout
+Value: JSON-encoded SessionLayout without the token
 Expiry: ProjectConfig.session.expiryDays (default: 7 days)
 ```
 
@@ -43,7 +47,7 @@ getProjectName();
 
 Override it in `registerProjectConfig({ session: { projectName: 'my-app' } })` to share a Redis instance across multiple LuckyStack apps without key collisions. Reach for `getProjectName()` from any framework or project code that needs the prefix string instead of duplicating the env-read pattern.
 
-The key shape is centralized in `packages/login/src/session.ts` via two helpers:
+The default Redis key shape is centralized in `packages/login/src/session.ts` via two helpers:
 
 ```ts
 import { sessionKeyFor, activeUsersKeyFor } from '@luckystack/login';
@@ -52,7 +56,7 @@ const sessionKey = sessionKeyFor(token);          // -> '{projectName}-session:{
 const activeKey = activeUsersKeyFor(userId);      // -> '{projectName}-activeUsers:{userId}'
 ```
 
-Use them whenever you need to read or scan session data from outside `@luckystack/login` — they are the single source of truth for the key shape.
+Use these helpers only when integrating with the default Redis adapter. A custom adapter owns its own key/table/token representation.
 
 Sliding behavior:
 - Session TTL is refreshed on successful authenticated session reads.
@@ -67,41 +71,31 @@ Sliding behavior:
 import { registerHook } from '@luckystack/core';
 
 registerHook('postSessionRefresh', async ({ token, userId, oldTtl, newTtl, applied }) => {
-  if (!applied) return;                  // Redis EXPIRE failed or key disappeared
+  if (!applied) return;                  // the adapter could not refresh the record
   if (oldTtl != null && oldTtl < 60) {
     // user is on the verge of expiring — log for analytics
   }
 });
 ```
 
-`oldTtl` may be `-1` (key has no TTL) or `null` (TTL command failed). `applied: boolean` on the post payload reflects the actual EXPIRE return.
+`oldTtl` is adapter-provided and may be `null` when the backend cannot report it. `applied: boolean` on the post payload reflects whether the adapter refreshed an existing record.
 
 ---
 
 ## SessionLayout
 
-Define your session structure in `config.ts`:
+The session shape is project-defined and is checked against the shared `BaseSessionLayout` contract from `@luckystack/core`. Extend it with the fields your UI and authorization rules need; server-side session types normally make `token` required, while client-facing types should omit server-only credential fields.
 
 ```typescript
-export interface SessionLayout {
-  id: string;
-  name: string;
-  email: string;
-  provider: string;
-  admin: boolean;
-  avatar: string;
-  avatarFallback: string;
-  language: string;
-  theme: "light" | "dark";
-  createdAt: Date;
-  updatedAt: Date;
+import type { BaseSessionLayout } from '@luckystack/core';
+
+export interface SessionLayout extends BaseSessionLayout {
   token: string;
-  location?: {
-    pathName: string;
-    searchParams: { [key: string]: string };
-  };
+  theme?: 'light' | 'dark';
 }
 ```
+
+Values crossing the wire are JSON: for example, a `Date` becomes an ISO string. Do not type client-side session fields as server-side `Date` values unless the client explicitly parses them.
 
 ---
 
@@ -110,13 +104,14 @@ export interface SessionLayout {
 ```typescript
 // config.ts
 const config = {
-  // Session behavior
-  sessionPerUser: 'single', // 'single' = new login kicks other sessions
-  sessionExpiryDays: 7,
-
-  // Redirects
-  loginPageUrl: "/login",
-  loginRedirectUrl: "/examples",
+  session: {
+    basedToken: false,       // false = HttpOnly cookie; true = explicit token mode
+    expiryDays: 7,
+    perUser: 'single',       // a new login revokes older sessions
+    maxConcurrentPerUser: null,
+    onConflict: 'revokeOld',
+  },
+  loginRedirectUrl: '/examples',
 };
 ```
 
@@ -127,9 +122,9 @@ const config = {
 ```
 1. User logs in (OAuth or credentials)
    ↓
-2. Server generates random token (UUID)
+2. Server generates a cryptographically random 64-character hex token
    ↓
-3. Session stored in Redis: {token} → {user data}
+3. Session stored through the active `SessionAdapter`
    ↓
 4. Token sent to client:
    - Cookie-based: Set-Cookie: token={token}; HttpOnly
@@ -144,7 +139,7 @@ const config = {
 
 ## Token Modes
 
-Controlled by `sessionBasedToken` in `config.ts`:
+Controlled by `session.basedToken` in `registerProjectConfig(...)`:
 
 | Mode              | Storage         | Best For                   |
 | ----------------- | --------------- | -------------------------- |
@@ -153,16 +148,16 @@ Controlled by `sessionBasedToken` in `config.ts`:
 
 Notes:
 - Token extraction is strict by mode (no fallback between cookie and sessionStorage sources).
-- When `sessionBasedToken` is `true`, auth flows do not set token cookies; credentials login returns `X-Session-Token` and OAuth callback redirects with `?token=`.
-- When `sessionBasedToken` is `false`, auth flows use HttpOnly cookie delivery.
+- When `session.basedToken` is `true`, auth flows do not set token cookies; credentials login returns `X-Session-Token` and OAuth callback redirects with `?token=`.
+- When `session.basedToken` is `false`, auth flows use HttpOnly cookie delivery.
 
 ### Token-exposure contract (which side sees the raw token) — ADR 0018
 
-The raw session token reaches **page JS only in `sessionBasedToken` mode**, where the client deliberately holds it in `sessionStorage` (and the socket handshake reads it from there). In the default **cookie mode the token is the `HttpOnly` credential and must never reach page JS** — surfacing it there would defeat `HttpOnly` and hand an XSS foothold a stealable credential. This is why:
+The raw session token reaches **page JS only in `session.basedToken` mode**, where the client deliberately holds it in `sessionStorage` (and the socket handshake reads it from there). In the default **cookie mode the token is the `HttpOnly` credential and must never reach page JS** — surfacing it there would defeat `HttpOnly` and hand an XSS foothold a stealable credential. This is why:
 
-- The value stored in the adapter never contains the token (it is the Redis key; LOGIN-M9 strips it).
-- `saveSession`'s `updateSession` broadcast sends the token only in `sessionBasedToken` mode; in cookie mode it broadcasts the token-stripped projection.
-- A security scan that flags "the token reaches page JS" is only correct for **cookie mode**; in `sessionBasedToken` mode it is by design. See `docs/decisions/0018-*.md`.
+- The session value passed to the adapter never contains the token; the adapter receives the token separately as its storage key/input (LOGIN-M9 strips it from the serialized value).
+- `saveSession`'s `updateSession` broadcast sends the token only in `session.basedToken` mode; in cookie mode it broadcasts the token-stripped projection.
+- A security scan that flags "the token reaches page JS" is only correct for **cookie mode**; in `session.basedToken` mode it is by design. See `docs/decisions/0018-*.md`.
 - **Known follow-up (ADR 0018):** the `system/session` (`session_v1`) initial-load response still returns the token in cookie mode; fully closing it needs the client session type to stop requiring `token`.
 
 ---
@@ -211,7 +206,7 @@ function UserProfile() {
 
 ```typescript
 // config.ts
-sessionPerUser: 'single'; // Default
+session: { perUser: 'single' }; // Default
 
 // When 'single':
 // - User logs in on device A → Session A created
@@ -227,10 +222,10 @@ sessionPerUser: 'single'; // Default
 
 ## Security Notes
 
-1. **Tokens are random UUIDs** - Not predictable
+1. **Tokens are cryptographically random 64-character hex values** - Not predictable
 2. **HttpOnly cookies** - Not accessible via JavaScript
 3. **Session validation** - Every API/sync request validates token
-4. **Automatic cleanup** - Redis TTL handles expiry
+4. **Automatic cleanup** - the active adapter's TTL/expiry contract handles session expiry
 
 ---
 

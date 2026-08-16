@@ -2,7 +2,7 @@
 
 > See also: [`packages/email/README.md`](../packages/email/README.md) for the full public API and adapter setup.
 
-LuckyStack treats transactional email as a **plug-in**: framework code never depends on a specific provider. Adapters are registered at server boot via a registry in `@luckystack/core`, mirroring how the project handles `notify`, the Sentry adapter, and `projectConfig`.
+LuckyStack treats transactional email as a **plug-in**: framework code never depends on a specific provider. Adapters are registered at server boot via a registry in `@luckystack/core`, mirroring how the project handles `notify`, error-tracking adapters, and `projectConfig`.
 
 ## Why a separate package
 
@@ -17,7 +17,7 @@ LuckyStack treats transactional email as a **plug-in**: framework code never dep
 | File | Purpose |
 | --- | --- |
 | `packages/core/src/emailRegistry.ts` | The registry: `EmailSender`, `EmailMessage`, `EmailResult` types + `registerEmailSender / getEmailSender / isEmailSenderRegistered`. |
-| `packages/email/src/sendEmail.ts` | The single helper framework + project code calls. Handles missing-sender policy, terminal logging, Sentry capture (no-ops if not installed). |
+| `packages/email/src/sendEmail.ts` | The single helper framework + project code calls. Handles missing-sender policy, terminal logging, and registered error-tracker capture (no-ops if no tracker is installed). |
 | `packages/email/src/renderEmailLayout.ts` | Tiny HTML+text template helper. One CTA button optional. No external deps. |
 | `packages/email/src/adapters/console.ts` | `ConsoleSender()` — dev default, never sends. |
 | `packages/email/src/adapters/resend.ts` | `ResendSender({ apiKey, from })` — wraps the official `resend` SDK (lazy-imported). |
@@ -25,7 +25,7 @@ LuckyStack treats transactional email as a **plug-in**: framework code never dep
 
 ## Registry pattern
 
-Identical shape to `sentrySetup.ts`. Both are values that live in core but are populated by an optional package.
+Identical registry shape to the error-tracker setup. Both are values that live in core but are populated by optional packages.
 
 ```ts
 // core/src/emailRegistry.ts (simplified)
@@ -88,7 +88,7 @@ if (!result.ok) {
 }
 ```
 
-`sendEmail` always returns a typed result instead of throwing — matches the rest of the framework's `[error, value]` pattern.
+`sendEmail` always returns a typed result instead of throwing — matches the rest of the framework's `[error, value]` pattern. Callers may pass a cooperative `signal` and a stable `idempotencyKey`. If timeout/abort wins after provider dispatch, the failure includes `deliveryOutcome: 'unknown'`: the provider may still deliver, so a retry must reuse the same key. Resend forwards that key to its native idempotency option; SMTP has no delivery-cancellation guarantee.
 
 ## Sentry interplay
 
@@ -118,7 +118,7 @@ registerHook('postEmailSend', async ({ adapter, messageId, reason, ok }) => {
 Payload fields (concrete shape lives in `packages/email/src/hookPayloads.ts`):
 
 - `preEmailSend` — `{ message: EmailMessage, adapter: string }`. Return a stop signal to abort. The dispatcher honors the signal and `sendEmail` returns `{ ok: false, reason: signal.errorCode }`.
-- `postEmailSend` — `{ adapter: string, messageId?: string, reason?: string, ok: boolean }` (plus the original `message` summary). `messageId` is set on success, `reason` on failure.
+- `postEmailSend` — `{ adapter: string, messageId?: string, reason?: string, deliveryOutcome?: 'not-sent' | 'unknown', ok: boolean }` (plus the original `message` summary). `messageId` is set on success; failure carries `reason` and, for cancellation/timeout, the honest delivery outcome.
 
 ## Login flow integration
 

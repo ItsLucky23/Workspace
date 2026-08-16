@@ -1,10 +1,12 @@
 # Hosting LuckyStack
 
+<!-- @covers packages/router/src, packages/server/src, packages/devkit/src/supervisor.ts, packages/create-luckystack-app/template -->
+
 This guide covers everything you need to deploy LuckyStack from development to production.
 
-> **Multi-instance deployments:** LuckyStack supports per-preset bundles selected at runtime via the first positional argv to `server.ts` (comma-separated for multi-preset boots; see [`docs/ARCHITECTURE_PACKAGING.md`](./ARCHITECTURE_PACKAGING.md) §10.1a). Example: `node dist/server.js billing,vehicles 4001` — loads both preset maps and listens on port 4001. Production deploys SHOULD pass an explicit preset name; no argv falls back to `generatedApis.default.ts`. For service-key-aware HTTP/WS routing across multiple backends, see [`@luckystack/router`](../packages/router/README.md).
+> **Multi-instance deployments:** LuckyStack supports per-preset bundles selected at runtime via the first positional argv to `server.ts` (comma-separated for multi-preset boots; see [`docs/ARCHITECTURE_PACKAGING.md`](./ARCHITECTURE_PACKAGING.md) §10.1a). Example: `node dist/server.js billing,vehicles 4001` — loads both preset maps and listens on port 4001. Production deploys SHOULD pass an explicit preset name; no argv falls back to `generatedApis.default.ts`. For service-key-aware HTTP/WS routing across multiple backends, see the `@luckystack/router` package README.
 
-> **Bootstrap pre-flight:** call `verifyBootstrap({ requireDeployConfig, requireServicesConfig, requireOAuthProviders })` from `@luckystack/server` after your overlay loads and before `server.listen()`. In production the check hard-fails when `RuntimeMapsProvider` or `LocalizedNormalizer` is unregistered (otherwise every API/sync request silently returns `notFound`, and error responses leak raw `errorCode` strings instead of i18n messages). Dev runs only warn so devkit hot-reload can keep working before the registry settles. See [`packages/server/README.md`](../packages/server/README.md#pre-flight-check--verifybootstrap) for the full requirements list.
+> **Bootstrap pre-flight:** call `verifyBootstrap({ requireDeployConfig, requireServicesConfig, requireOAuthProviders })` from `@luckystack/server` after your overlay loads and before `server.listen()`. In production the check hard-fails when `RuntimeMapsProvider` or `LocalizedNormalizer` is unregistered (otherwise every API/sync request silently returns `notFound`, and error responses leak raw `errorCode` strings instead of i18n messages). Dev runs only warn so devkit hot-reload can keep working before the registry settles. See the `@luckystack/server` README and `verifyBootstrap` API for the full requirements list.
 
 > **Programmatic bind address (no env vars needed):** `createLuckyStackServer({ ip, port })` now writes the resolved bind address into `@luckystack/core`'s `registerBindAddress(...)` registry at boot. Framework code that previously read `process.env.SERVER_IP` / `SERVER_PORT` (most notably `checkOrigin` building the same-origin entry) now goes through `getBindAddress()` instead, so programmatic configuration no longer drifts from the env-derived values. You can keep using `SERVER_IP` / `SERVER_PORT` if that fits your deploy — the registry falls back to those exact env vars when no explicit address has been registered.
 
@@ -249,12 +251,12 @@ npm run server    # -> Node (canonical path, via tsx)
 bun run server    # -> Bun  (genuinely Bun; see "How this works" below)
 ```
 
-> **Status (verified 2026-07-15, bun 1.3.14 / Windows x64):** the dev server BOOTS
-> and SERVES under Bun — Redis connected, Socket.io initialized, `/livez` → `200`,
-> `/_health` → `{"status":"ok",...}`. **But optional-package detection is currently
-> broken under Bun** (see [Known blockers](#known-blockers-bun)), so a Bun boot
-> silently loses login/sync/presence/devkit. Bun is **not production-ready** until
-> that lands. Node remains the supported default.
+> **Status (verified 2026-07-15, Bun 1.3.14 / Windows x64):** a scaffolded app boots and serves
+> under Bun — Redis, Socket.io, HTTP/WebSocket traffic, a full `apiRequest` round-trip, and Prisma CRUD
+> on MongoDB, PostgreSQL, MySQL, and SQLite were exercised on both Node and Bun. Optional-package
+> detection is also verified on both runtimes. The separate router process remains the exception: Bun's
+> `node:http` upgrade primitive cannot proxy WebSockets, so the router refuses to start there. Node remains
+> the supported default for the router process.
 
 ### Verifying which runtime you actually got
 
@@ -351,21 +353,19 @@ The prod bundle is plain JS, so no transpile hop is involved either way. Optiona
 package detection is verified on both runtimes. Only the separate router process
 has the Bun limitation above and must currently run on Node.
 
-### Not yet verified
+### Remaining Bun caveats
 
-Honest gaps — do not read these as either working or broken:
+These are the remaining boundaries, not claims that the basic Bun runtime is unverified:
 
-- **Prisma queries under Bun in this stack.** Prisma's docs now list Bun as a
-  supported runtime (the older "experimental" note here was stale — see
-  <https://www.prisma.io/docs/guides/bun>), but no LuckyStack query path has been
-  exercised against a live DB under Bun. Smoke-test your hot queries before trusting
-  a deploy.
-- **`@luckystack/router`'s WebSocket proxy under Bun.** Untested.
-- **Socket.io under sustained load / long-polling fallback under Bun.** The
-  handshake + adapter attach were confirmed at boot; traffic was not exercised.
-- **`prisma generate` under `bunx --bun`** — deliberately stays on `npx` (Prisma's
-  CLI is a Node program; `bunx --bun prisma generate` has an open Windows hang,
-  oven-sh/bun#14868).
+- **`@luckystack/router` WebSocket proxy under Bun is intentionally unsupported.** Bun's
+  `node:http` upgrade socket is a silent no-op ([oven-sh/bun#28396](https://github.com/oven-sh/bun/issues/28396)).
+  The router measures the primitive and refuses to start instead of serving a misleadingly healthy HTTP-only
+  proxy. Run the router on Node; Bun application backends remain supported.
+- **Sustained Socket.io load and long-polling fallback under Bun** were not part of the feasibility matrix.
+  The handshake, WebSocket path, adapter attach, and API round-trip were verified.
+- **`prisma generate` under `bunx --bun`** deliberately remains unsupported in the scaffold. It stays on
+  `npx` because Prisma's CLI is a Node program and the Bun-forced path has an open Windows hang
+  (oven-sh/bun#14868).
 
 ---
 

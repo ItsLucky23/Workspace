@@ -4707,3 +4707,26 @@ Tijdens het loggen bleek mijn eigen `npm install` onder npm 11.6.1 te hebben ged
 **Files touched:** `package.json`, `package-lock.json`, `.mcp.json`, `config.ts`, `src/_sockets/apiRequest.ts`, `docs/decisions/0306-*.md`, `docs/lessons/0026-*.md`, afgeleide AI-indexen (capabilities, decisions, lessons, product-knowledge).
 
 **Verify:** typecheck · lint · `ai:lint` · productiebuild + compose-runner groen, nul warnings. Standalone **322/322** (eerste volle run gaf 321; `routeWriterBoundary.test.mts` racet onder belasting en is 39/39 groen in isolatie én in de eerdere run — gemeld, niet gefixt). HTTP **434/434 · 0 failed**. Playwright Chromium **24/24**. Backend `/readyz` groen met redis+database+prisma, socket.io-handshake via de Vite-proxy 200. Een eerste suiterun viel op zes Dockerbestanden om doordat de daemon uitstond; met Docker 29.6.1 actief zijn die zes volledig verdwenen. `npx npm@10.9.8 ci --dry-run` slaagt en trekt de cross-platform records (linux-arm/darwin/android/fsevents) — de lockfile is dus ARM64-reproduceerbaar. De 7 openstaande auditlabels zijn aantoonbaar niet door deze upgrade veroorzaakt: de install voegde nul packages toe en wijzigde nul niet-LuckyStack-versies, de telling bewoog door advisory-drift.
+
+## 2026-08-16 13:27 — Framework-documentatie in consumer Workspace bijgewerkt
+
+**User prompt (summary):** corrigeer de stale LuckyStack-documentatie niet alleen in de framework-repo, maar ook in bestaande consumer-repositories.
+
+**Wat ik deed:**
+- De framework-owned snapshots in `docs/luckystack/` bijgewerkt voor packaging, optional packages, package overview, hosting, AI boost en de framework quick index.
+- De consumer-root `CLAUDE.md` gecorrigeerd voor Prisma 6.19 en 16 gepubliceerde `@luckystack/*` packages.
+- Consumer-gegenereerde capabilities-, project-, runbook-, product-, lessons-, examples-, decisions-, context-budget- en graph-indexen opnieuw gegenereerd; de dated audit-findings blijven project-historie.
+
+**Verificatie:** `npm run ai:lint` groen; `npm run ai:doc-staleness` meldt 12/12 wired docs binnen de threshold; `git diff --check` schoon. Geen `npm install` of runtime gestart.
+
+**Files touched:** `CLAUDE.md`, `docs/luckystack/{AI_BOOST_OVERVIEW,AI_CAPABILITIES,AI_QUICK_INDEX,ARCHITECTURE_PACKAGING,DESIGN_OPTIONAL_SERVER_PACKAGES,HOSTING,PACKAGE_OVERVIEW}.md`, consumer AI-snapshots en deze branch-log.
+
+## 2026-08-16 14:24 — Sessiedocumentatie en error-trackerterminologie gelijkgetrokken
+
+**User prompt (summary):** vervolg de kritische documentatie-audit op package-contracten, sessieopslag en generieke error-trackingclaims.
+
+**Wat ik deed:** de bijgewerkte framework-contracten voor `ARCHITECTURE_API`, `ARCHITECTURE_AUTH`, `ARCHITECTURE_EMAIL` en `ARCHITECTURE_SESSION` naar `docs/luckystack/` doorgezet. Daarmee beschrijft de consumer sessies als adapter-gebaseerd met Redis als default, gebruikt auth de actuele nested config, en spreekt generieke foutafhandeling over geregistreerde trackers in plaats van uitsluitend Sentry. De geïnstalleerde `node_modules/@luckystack/*`-documentatie is bewust niet aangepast.
+
+**Verificatie:** `npm run ai:capabilities`, `npm run ai:context-budget`, `npm run ai:lint` groen; `npm run ai:doc-staleness` 12/12 binnen de threshold; `git diff --check` schoon. Geen `npm install` of runtime gestart.
+
+**Files touched:** `docs/luckystack/{ARCHITECTURE_API,ARCHITECTURE_AUTH,ARCHITECTURE_EMAIL,ARCHITECTURE_SESSION}.md`, consumer AI-snapshots en deze branch-log.

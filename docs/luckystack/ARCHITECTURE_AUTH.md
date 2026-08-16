@@ -45,9 +45,10 @@ const response = await fetch("/auth/api/credentials", {
 
 ```bash
 # .env
-# Public origin (where users browse) is derived in config.ts — dev defaults to the
-# Vite dev server, prod reads PUBLIC_URL. The OAuth callback uses the BACKEND origin
-# (dev http://localhost:80, derived from SERVER_IP/SERVER_PORT).
+# Public origin (where users browse) is derived in config.ts — dev uses the
+# Vite dev server, prod reads PUBLIC_URL. The OAuth callback uses the BACKEND
+# origin: in the scaffold that is config.ports.ts `backend` (or the explicit
+# CLI port), while a generic consumer may provide oauthCallbackBase directly.
 # PUBLIC_URL=https://myapp.com                # production only
 EXTERNAL_ORIGINS=https://myapp.com           # Extra allowed origins (comma-separated)
 
@@ -68,19 +69,25 @@ Provider config now lives in your overlay folder, not in framework code:
 
 ```typescript
 // luckystack/login/oauthProviders.ts
+import { getProjectConfig } from '@luckystack/core';
 import { registerOAuthProviders, googleProvider, microsoftProvider, credentialsProvider } from '@luckystack/login';
+
+const projectConfig = getProjectConfig();
+const backendOrigin = projectConfig.oauthCallbackBase || projectConfig.app.publicUrl;
 
 registerOAuthProviders([
   credentialsProvider(),
   googleProvider({
     clientId: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackUrl: `http://localhost:80/auth/callback/google`,
+    //? Use the same backend port configured in config.ports.ts (or the explicit
+    //? CLI port); this example is intentionally symbolic rather than hardcoded.
+    callbackUrl: `${backendOrigin}/auth/callback/google`,
   }),
   microsoftProvider({
     clientId: process.env.MICROSOFT_CLIENT_ID,
     clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
-    callbackUrl: `http://localhost:80/auth/callback/microsoft`,
+    callbackUrl: `${backendOrigin}/auth/callback/microsoft`,
     tenant: process.env.MICROSOFT_TENANT_ID,
   }),
 ]);
@@ -115,7 +122,7 @@ Self-hosted instances (GitHub Enterprise, Azure custom tenant) override the defa
    ↓
 10. Server creates/finds user in database
    ↓
-11. Server creates session in Redis
+11. Server creates the session through the active `SessionAdapter` (Redis by default)
   ↓
 12. Redirect to frontend with token cookie
 ```
@@ -132,7 +139,7 @@ Self-hosted instances (GitHub Enterprise, Azure custom tenant) override the defa
 4. If action='register': Create user, hash password
    If action='login': Verify password hash
    ↓
-5. Server creates session in Redis
+5. Server creates the session through the active `SessionAdapter` (Redis by default)
    ↓
 6. Return { status: true, session, newToken }
 ```
@@ -195,11 +202,15 @@ re-scaffolded:
    `@luckystack/email` is installed and a sender is registered. *Skipping this
    fails LOUDLY — the send logs "@luckystack/email is not installed" and the
    flow returns `login.emailCodeSendFailed`.*
-4. **`TOTP_ENCRYPTION_KEY` in `.env.local` (recommended).** A long random
-   string; encrypts TOTP secrets at rest (AES-256-GCM). *Skipping stores them
-   plaintext with a one-time boot warning; adding the key later upgrades new
-   enrollments. Use a random value, not a memorable passphrase (it is not
-   stretched).*
+4. **TOTP keyring in `.env.local` (recommended).** `TOTP_ENCRYPTION_KEY` is
+   the current long-random primary write key. New rows use AES-256-GCM as
+   `enc:v2:<key-id>:<iv>:<tag>:<ciphertext>`. To rotate, set the new primary and
+   put the old value in `TOTP_ENCRYPTION_LEGACY_KEYS` as a JSON string array.
+   Old `gcm:`/v2/plaintext rows remain readable and are lazily rewritten under
+   the primary after a successful TOTP proof; remove a legacy key only after
+   migration coverage confirms no row references it. *Skipping the primary
+   stores new enrollments plaintext with a one-time warning. Use random values,
+   not memorable passphrases (keys are SHA-256-derived, not password-stretched).*
 5. **UI — `npx luckystack update --app`** (ADR 0025). The phase-based
    `LoginForm` (email-code + 2FA challenge views) and the settings
    `TwoFactorSection` are consumer-owned `src/` files that a plain `npm install`
@@ -320,7 +331,7 @@ switch (location) {
 2. **CORS (fail-closed)** - Only the configured origins (the public origin + backend origin from `config.ts`) and `EXTERNAL_ORIGINS` are allowed. As of 2026-05-06, requests where neither `Origin` nor `Referer` is present are now allowed only for read-only methods (GET, HEAD, OPTIONS); state-changing methods (POST, PUT, PATCH, DELETE) are rejected with 403. This closes the previous `host`-fallback bypass for non-browser clients (`curl`, server-to-server).
 3. **`csrfMismatch` hook** - The CSRF middleware dispatches `csrfMismatch` before returning 403, with `{ route, method?, requestId?, userId?, providedToken: boolean }`. The token *value* is never included in the payload — only its presence — so audit-log handlers cannot accidentally leak it.
 4. **Framework `system/logout` is exact-match** - Earlier builds short-circuited any API whose final path segment was `logout`. The framework now matches the full normalized route name (`system/logout`), so consumer routes like `admin/logout/v1` reach their own handler.
-5. **Token delivery by mode** - `sessionBasedToken=false` uses HttpOnly cookies; `sessionBasedToken=true` uses session-token delivery for development workflows
+5. **Token delivery by mode** - `session.basedToken=false` uses HttpOnly cookies; `session.basedToken=true` uses explicit session-token delivery for development workflows
 6. **Mode negotiation for credentials login** - client can send `X-Session-Based-Token` so backend responds with cookie/token transport that matches the active frontend DNS config
 7. **Token extraction fallback** - server prefers the configured mode but can read both cookie and bearer/session auth token to prevent DNS-mode mismatch lockouts
 8. **bcrypt** - Passwords hashed with salt rounds. The framework no longer pipes the password or the email through `validator.escape()` before hashing/lookup — that was a no-op for HTML safety (neither value ever reaches HTML) and silently mangled passwords containing `& < > " '`. The `name` field is still escaped (it ends up rendered) — see the OAuth-name stored-XSS note in `packages/login/README.md`.

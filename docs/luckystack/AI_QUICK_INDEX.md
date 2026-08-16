@@ -12,7 +12,7 @@
 | H2 section | First line |
 | --- | --- |
 | Quick Links | \| Topic \| Framework dev path \| Consumer (post-install) path \| |
-| Project Snapshot | LuckyStack is a socket-first fullstack framework: React 19 frontend on a raw Node.js + Socket.io backend (no Express), with file-based routing for pages, APIs, and real-time sync events. Tech stack: React 19, React Router 7, TailwindCSS 4, Socket.io, Prisma 6.5 (MongoDB / MySQL / PostgreSQL / SQLite), TypeScript 6, Vite, Redis. The repo publishes as 16 `@luckystack/*` packages (+ `create-luckystack-app`); a 17th package dir, `env-resolver`, is a reserved, not-yet-published placeholder (no `package.json`, excluded from build/publish). See `docs/PACKAGE_OVERVIEW.md` for the use-case matrix and peer-dependency map. |
+| Project Snapshot | LuckyStack is a socket-first fullstack framework: React 19 frontend on a raw Node.js + Socket.io backend (no Express), with file-based routing for pages, APIs, and real-time sync events. Tech stack: React 19, React Router 7, TailwindCSS 4, Socket.io, Prisma 6.19 (MongoDB / MySQL / PostgreSQL / SQLite), TypeScript 6, Vite, Redis. The repo publishes as 16 `@luckystack/*` packages (+ `create-luckystack-app`); a 17th package dir, `env-resolver`, is a reserved, not-yet-published placeholder (no `package.json`, excluded from build/publish). See `docs/PACKAGE_OVERVIEW.md` for the use-case matrix and peer-dependency map. |
 | Core Rules (28) | 1. **Plan first for medium/high difficulty work.** Use tables or bullets, not wall-of-text. Skip planning only for trivial single-file changes. |
 | Branch Log Protocol | AI MUST append an entry to `branch-logs/<sanitized-branch>.md` after every prompt that produces **real code or architecture changes**. Skip for lint-only fixes, typo fixes, or translation-string-only edits. **When in doubt, log.** |
 | Decision Memory Protocol | This is **automatic AI behavior — there is no command for the user to run** (just like the branch-log protocol). The AI fills and reads the decision memory itself as a normal part of working in a session. |
@@ -43,7 +43,7 @@
 | ARCHITECTURE_LOGGING.md | Logger DI surface and the redacted-keys registry that keeps sensitive | docs/ARCHITECTURE_LOGGING.md |
 | ARCHITECTURE_MULTI_INSTANCE.md | **Read this before building anything that assumes more than one backend instance.** | docs/ARCHITECTURE_MULTI_INSTANCE.md |
 | ARCHITECTURE_MULTI_TENANCY.md | How to build a multi-tenant product on LuckyStack where **each tenant is a | docs/ARCHITECTURE_MULTI_TENANCY.md |
-| ARCHITECTURE_PACKAGING.md | Single source of truth for LuckyStack package extraction strategy. | docs/ARCHITECTURE_PACKAGING.md |
+| ARCHITECTURE_PACKAGING.md | <!-- @covers packages/server/src, packages/cli/src, packages/create-luckystack-app/src, scripts/generateServerRequests.ts --> | docs/ARCHITECTURE_PACKAGING.md |
 | ARCHITECTURE_ROUTING.md | File-based routing for pages, APIs, and real-time sync events. | docs/ARCHITECTURE_ROUTING.md |
 | ARCHITECTURE_SECRET_MANAGER.md | Replaces the older `ARCHITECTURE_SECRETS.md` design. The client (`@luckystack/secret-manager`) is implemented; the companion server lives in a separate repo (`luckystack-secret-manager`) and only its wire contract is captured here. | docs/ARCHITECTURE_SECRET_MANAGER.md |
 | ARCHITECTURE_SESSION.md | Session management using Redis with OAuth provider support. | docs/ARCHITECTURE_SESSION.md |
@@ -80,7 +80,7 @@
 | `commands/list.ts` | `list` — read-only: registry packages `installed (vRANGE)` vs `available` + core/other @luckystack deps. `installedRegistryIds` (pure). |
 | `commands/reconfigure.ts` | `runReconfigureWizard` — the interactive STEP wizard for `manage`: detect state (`lib/state.ts`) → edit per-setting (row 0 = ORM/data layer, then auth/email/monitoring + toggles) → preview (`transitions.ts` `planChanges`) → confirm → apply → one install. |
 | `commands/manage.ts` | Single-feature plan helpers used by `add <feature>` / `remove <feature>`: `computeManagePlan` (PURE diff, test-only) + `applyManagePlan` (run the plan, then ONE install). NOT the interactive wizard (that's reconfigure.ts). |
-| `commands/switchOrm.ts` | `switchOrm(project, {from,to,dbProvider,cliVersion})` — the bidirectional data-layer switch (ADR 0020): renders a fresh scaffold with the TARGET orm (via `renderScaffoldToTemp`, the update-command seam — single source of truth for file content + dep VERSIONS), swaps package.json deps/scripts/keys per the `ORM_SURFACES` name tables, replaces the active shims (`functions/db.ts`, `luckystack/core/clients.ts`) with a `.orm-<from>.bak` backup, copies starters copy-if-absent, edits the config.ts `User` type BOTH ways (prisma import ↔ the render's placeholder block — never leaves a non-compiling half-state), writes a per-ORM UserAdapter starter when login is installed, updates manifest `choices.orm`/`dbProvider`, and NEVER deletes old-orm leftovers (reports them). Tokens/dep-names parity-tested against the scaffolder exports (`switchOrm.test.ts`). |
+| `commands/switchOrm.ts` | `switchOrm(project, {from,to,dbProvider,cliVersion})` — the bidirectional data-layer switch (ADR 0020): renders a fresh scaffold with the TARGET orm (via `renderScaffoldToTemp`, the update-command seam — single source of truth for file content + dep VERSIONS), swaps package.json deps/scripts/keys per the `ORM_SURFACES` name tables, replaces the active shims (`functions/db.ts`, `luckystack/core/clients.ts`) with a `.orm-<from>.bak` backup, copies starters copy-if-absent, edits the config.ts `User` type BOTH ways (prisma import ↔ the render's placeholder block — never leaves a non-compiling half-state), writes a per-ORM UserAdapter starter when login is installed, updates manifest `choices.orm`/`dbProvider`, refreshes the shared `ConsumerProject.pkg` snapshot after writing package.json so later transitions cannot restore stale dependencies, and NEVER deletes old-orm leftovers (reports them). Tokens/dep-names parity-tested against the scaffolder exports (`switchOrm.test.ts`). |
 | `transitions.ts` | `planChanges(current, desired)` → granular `Change[]` each with a consequence preview + `apply`. `configFromState`, `TOGGLE_IDS`. The reconfigure engine. |
 | `lib/state.ts` / `lib/envKeys.ts` / `lib/envFile.ts` | `detectProjectState` (authMode/oauth/email/monitoring/**orm**/packages from deps + env KEY names + the scaffold manifest) · `deriveOrm`/`readScaffoldOrm` — the DATA-LAYER detector (`'prisma' \| 'drizzle' \| 'mikro-orm' \| 'none'`; manifest `choices.orm` wins, else dep inference) that every orm-sensitive CLI path reads instead of assuming Prisma (ADR 0020) · `deriveDbProvider`/`readPrismaSchemaProvider` — the db detector (manifest `choices.dbProvider` wins, else the `prisma/schema.prisma` provider, else `postgresql`) · value-blind env-key reader (`.env.local` then `.env`) · value-safe env-block add/remove + EXTERNAL_ORIGINS edits. |
 | `featureOptions.ts` | Reconfigurable option lists (authMode/oauth/email/monitoring) + provider→env-key/origin/dep maps. Mirrors the scaffolder's PROVIDER_OPTIONS (parity-tested). |
@@ -95,7 +95,7 @@
 | `commands/addRouter.ts` | Add `@luckystack/router` + the `router` npm script AND copy the topology config files (`services.config.ts` + `deploy.config.ts` + `server/config/presetLoader.ts`) from `assets/router/` (idempotent) + wire their two `server.ts` side-effect imports (`import '../deploy.config';` / `import '../services.config';` after `import '../config';`). `removeRouter` drops the dep + script, un-wires those imports, and deletes the three config files. These files are NOT in a base install — `pruneRouter` strips them from a no-router scaffold; this is the inverse. |
 | `commands/addAiDocs.ts` | Add `@luckystack/mcp` (devDep) + register the graph server in `.mcp.json`; `removeAiDocs` reverses. (The doc tree is NOT bundled — re-scaffold for that.) |
 | `commands/addBackendOnly.ts` | Generic handler for `sync` / `email`: add dep + install (self-wire at boot). |
-| `commands/update.ts` | `update` — framework-owned-files refresh (ADR 0021 phase 1a). Exports the pure pieces for tests/tooling: `readScaffoldManifest`, `choicesToFlags` (recorded choices → scaffolder flags), `isSafeSurfacePath` (the bucket-(a) allow-list), `planUpdate` (add/overwrite/sidecar/unchanged classification), `applyUpdate` (writes + manifest refresh + dump/ report), `runUpdate` (orchestrator; `renderFreshScaffold` injectable — default runs `npx create-luckystack-app@<version>` into a temp dir with the Windows-safe cmd /s /c quoting). Hash logic mirrors the scaffolder's `scaffoldManifest.ts` (sha256, CRLF→LF for text) — verified by a cross-scaffold check. |
+| `commands/update.ts` | `update` — framework-owned-files refresh (ADR 0021 phase 1a). Exports the pure pieces for tests/tooling: `readScaffoldManifest`, `choicesToFlags` (allowlisted recorded choices → scaffolder flags), `normalizeScaffoldProjectName` (byte-equivalent scaffold slug), `isSafeWindowsScaffoldArg`, `isSafeSurfacePath` (the bucket-(a) allow-list), `planUpdate` (add/overwrite/sidecar/unchanged classification), `applyUpdate` (writes + manifest refresh + dump/ report), `runUpdate` (orchestrator; `renderFreshScaffold` injectable — default runs `npx create-luckystack-app@<version>` into a temp dir with the Windows-safe cmd /s /c boundary). Hash logic mirrors the scaffolder's `scaffoldManifest.ts` (sha256, CRLF→LF for text) — verified by a cross-scaffold check. |
 | `commands/upgrade.ts` | `upgrade` — READ-ONLY plan generator. `readInstalledPackages` (node_modules `@luckystack/*` + versions + CHANGELOG paths), `buildUpgradePlan` (pure — installed/target/manifest + ordered CHANGELOG list + steps + gotchas), `runUpgrade` (writes `dump/UPGRADE_PLAN.md`, injectable `now` for tests). |
 | `commands/checkEnv.ts` | `check-env` — A: unused `.env` keys; B: env vars used but undefined. DEV_-aware; framework-key ignore list; env files via `getEnvFiles()` semantics (`LUCKYSTACK_ENV_FILES` else `.env`,`.env.local`). |
 | `commands/checkI18n.ts` | `check-i18n` — C: unused locale keys; D: used keys missing per-language. Used-set = literal `{ key: '...' }` + `errorCode: '...'` (dotted) harvested repo-wide; dynamic `key:<var>` sites listed for review. |
@@ -122,8 +122,10 @@
 | `registerAvatarConfig(config: AvatarConfigInput): void` | Override avatar disk format(s) + Cache-Control header. | -> docs/config-registry.md |
 | `getAvatarConfig(): AvatarConfig` | Read active avatar config. | -> docs/config-registry.md |
 | `DEFAULT_AVATAR_CONFIG: AvatarConfig` | Default formats `[{ extension: 'webp', contentType: 'image/webp' }]` + 24h cache. | -> docs/config-registry.md |
-| `registerBindAddress(address: { ip: string; port: number }): void` | `createLuckyStackServer` writes the resolved listen address here at boot. | -> docs/app-bootstrap.md |
-| `getBindAddress(): { ip: string; port: string }` | Resolve at call time (registry -> `SERVER_IP`/`SERVER_PORT` -> `'127.0.0.1'`/`''`). | -> docs/app-bootstrap.md |
+| `registerBindAddress(address: { ip: string; port: number }): void` | Store the intended pre-listen address; resets the OAuth pre-hop baseline. | -> docs/app-bootstrap.md |
+| `registerBoundAddress(address: { ip: string; port: number }): void` | Store the address reported by `node:http` after bind while preserving the intended baseline. | -> docs/app-bootstrap.md |
+| `getBindAddress(): { ip: string; port: string }` | Resolve the actually-bound address at call time (registry -> env -> fallback). | -> docs/app-bootstrap.md |
+| `resolveDevCallbackUrl(callbackUrl: string): string` | In non-prod, rewrite a loopback OAuth callback from the intended port to the actually-bound port; preserves explicit local ingress ports. | -> docs/app-bootstrap.md |
 | `registerRuntimeMapsProvider(provider: RuntimeMapsProvider): void` | DI slot for generated api/sync maps; called by project `server/prod/runtimeMaps.ts`. | -> docs/app-bootstrap.md |
 | `getRuntimeApiMaps(): Promise<RuntimeApiMapsResult>` | Async accessor for `{ apisObject, functionsObject }`. | -> docs/app-bootstrap.md |
 | `getRuntimeSyncMaps(): Promise<RuntimeSyncMapsResult>` | Async accessor for `{ syncObject, functionsObject }`. | -> docs/app-bootstrap.md |
@@ -132,7 +134,7 @@
 | `getRegisteredApiMethod(pagePath: string, apiName: string, version: string): HttpMethodLiteral \| undefined` | Lookup helper used by `isGetMethod`. | -> docs/app-bootstrap.md |
 | `isApiMethodMapRegistered(): boolean` | Detect whether the prefix-heuristic fallback is active. | -> docs/app-bootstrap.md |
 | `registerPrismaClient(client: PrismaClient, key?: string): PrismaClient` | Register a Prisma client into a slot (default `'default'`). Pass a `key` for graded credentials (e.g. `'ro'`/`'rw'`) or per-tenant clients. | -> docs/app-bootstrap.md |
-| `registerRedisClient(client: RedisClient, key?: string): RedisClient` | Register an ioredis client into a slot (default `'default'`). | -> docs/app-bootstrap.md |
+| `registerRedisClient(client: RedisClient, key?: string): RedisClient` | Register an ioredis client into a slot (default `'default'`). A consumer-owned default keeps precedence across automatic secret refresh; rebuild it from your own secrets-resolved listener when needed. | -> docs/app-bootstrap.md |
 | `getPrismaClient(): PrismaClient` | Read the `'default'` slot (registered client or lazy default resolver). | -> docs/app-bootstrap.md |
 | `getRedisClient(): RedisClient` | Read the `'default'` slot (registered client or lazy default resolver). | -> docs/app-bootstrap.md |
 | `getPrismaClientFor(key?: string): PrismaClient` | Read a specific slot. `'default'` falls back to the resolver; any other unregistered slot throws (never silently returns the privileged default). | -> docs/app-bootstrap.md |
@@ -166,7 +168,7 @@
 | `registerNotifier(notifier: Notifier): void` | DI for client-side toast notifier (success/error/info/warning). | -> docs/app-bootstrap.md |
 | `getNotifier(): Notifier` | Read active notifier (no-op default). | -> docs/app-bootstrap.md |
 | `notify: Notifier` | Delegating wrapper used by framework hot paths. | -> docs/app-bootstrap.md |
-| `registerEmailSender(sender: EmailSender): void` | Legacy single-sender registration; mirrors into `default` slot. | -> docs/app-bootstrap.md |
+| `registerEmailSender(sender: EmailSender): void` | Legacy single-sender registration; mirrors into `default` slot. `send(message, context?)` may honor `AbortSignal` + stable idempotency key; timeout outcomes can be explicitly unknown. | -> docs/app-bootstrap.md |
 | `registerEmailSenders(senders: EmailSenderRegistry): void` | Multi-adapter registration (`'default'`, `'transactional'`, `'marketing'`, custom). | -> docs/app-bootstrap.md |
 | `getEmailSender(): EmailSender \| null` | Read legacy/`default` sender. | -> docs/app-bootstrap.md |
 | `getEmailSenderByName(name: string): EmailSender \| null` | Read a specific slot (falls back to legacy sender for `'default'`). | -> docs/app-bootstrap.md |
@@ -244,6 +246,8 @@
 | `applySocketMiddlewares(io: SocketIOServer): void` | Wire every registered middleware into the running Socket.io server (called from `@luckystack/server`'s `loadSocket`). | -> docs/socket-bootstrap.md |
 | `writeBootUuid(envKey?): Promise<string>` | Write a fresh UUID to `luckystack:boot:<envKey>` with the configured TTL. | -> docs/app-bootstrap.md |
 | `readBootUuid(envKey?): Promise<string \| null>` | Read the boot UUID (router cross-checks against `/_health`). | -> docs/app-bootstrap.md |
+| `refreshBootUuid(envKey?): Promise<void>` | Extend the existing environment UUID without rotating it; recreate it when Redis recovered after expiry. | -> docs/app-bootstrap.md |
+| `startBootUuidHeartbeat(envKey?): BootUuidHeartbeat` | Start a non-overlapping, unref'd TTL/3 refresh loop; `stop()` cancels it during server shutdown. | -> docs/app-bootstrap.md |
 | `resolveEnvKey(): string` | `LUCKYSTACK_ENV` -> `NODE_ENV` -> `'development'`. | -> docs/app-bootstrap.md |
 | `BOOT_KEY_PREFIX: 'luckystack:boot:'` | Constant — single source of truth so router can't drift. | -> docs/app-bootstrap.md |
 | `collectSynchronizedEnvKeys()` / `computeSynchronizedEnvHashes(bootUuid?)` / `hashSynchronizedValue(value, bootUuid?)` | Cross-env drift detection helpers for the router boot handshake. Both hash helpers now honour `http.healthHash` (default `'plain'` = byte-identical to before); the optional `bootUuid?` arg is only needed when `http.healthHash.salt === '@bootUuid'`. Zero-arg callers unchanged. | -> docs/app-bootstrap.md |
@@ -270,13 +274,14 @@
 | `attachSocketRedisAdapter(io, options?)` | Now accepts `{ adapterOptions, pubClient, subClient }` to tune `createAdapter` / supply pre-built clients. | -> docs/redis-adapter.md |
 - ### `/client` subpath (browser-safe React + i18n surface)
 - Imported from `@luckystack/core/client` (the server barrel intentionally does NOT export these): `apiRequest`, `syncRequest` + sync-callback helpers, the offline-queue API, `registerClientHook` (returns an unsubscribe) + `ClientHookPayloadMap` (`preLogin`/`postLogin`/`postLogout`/`queueItemDropped`), `useTheme`, the `TranslationProvider` + i18n registry, `SessionProvider`/session context, `registerMiddlewareHandler`/`registerPageMiddleware`, and the CSRF-aware `httpFetch`.
+- Shared helpers available from BOTH barrels: `sleep`, `tryCatch`, `tryCatchSync`. Note `tryCatch` resolves to a different implementation per barrel — the client gets `tryCatchClient`, which lazy-imports the capture seam so `node:async_hooks` never enters a Vite bundle. `tryCatchSync` needs no such split (it has zero imports and deliberately does not auto-capture). `barrelParity.test.ts` fails the build if another browser-shipped helper is exported server-side but forgotten on `/client`.
 - ### `./eslint` subpath
 - `@luckystack/core/eslint` exposes the shared ESLint rule set (the CLAUDE.md-invariant rules). Requires the optional `eslint@^9.0.0` peer.
 
 ### `create-luckystack-app`
 | Function / Export | One-liner | Deep doc |
 | --- | --- | --- |
-| `main()` (CLI entrypoint, auto-invoked at bottom of `src/index.ts`) | Orchestrates the full scaffold flow: parse argv -> validate target dir -> optional prompts -> `copyTree` -> framework-docs copy (E.2) -> scaffold-manifest write -> optional `npm install` + `npx prisma generate` -> print next-step block. | -> docs/scaffold-flow.md |
+| `main()` (CLI entrypoint, auto-invoked at bottom of `src/index.ts`) | Orchestrates the full scaffold flow: parse argv -> validate target dir -> optional prompts -> `copyTree` -> framework-docs copy -> scaffold-manifest write -> selected package-manager install + relevant ORM generation -> print next-step block. | -> docs/scaffold-flow.md |
 | `writeScaffoldManifest(targetDir, { luckystackVersion, projectName, choices, isTextFile })` (`src/scaffoldManifest.ts`) | LAST file-producing step of `main()`: writes `.luckystack/scaffold.json` = `{ schemaVersion, luckystackVersion, createdAt, projectName, choices, files: [{ path, sha256 }] }` — the committed baseline that lets a future `luckystack update` re-render the template with the SAME choices and tell pristine files (hash matches → safe overwrite) from user-modified ones (never overwrite). Hashes are CRLF→LF-normalized for text files; `node_modules`/`.git`/`.env`/`.env.local`/`.secret-manager-token`/the manifest itself are excluded. Companion helpers `collectFileHashes` / `hashFileContent` are exported for the update tooling. Rationale: ADR 0021. | (module header) |
 | `parseArgs(argv)` | Strict argv parser. Recognises `--no-install`, `--no-prompt`, the opt-in package flags `--presence` / `--error-tracking` / `--docs-ui` / `--secret-manager` / `--router` / `--cron`, `--db=` / `--auth=` / `--oauth=` / `--email=` / `--monitoring=`, `--ai-docs` / `--no-ai-docs`, `--ai-browser=<all\|agent-browser\|none>`, `--help` / `-h` (the `VALID_FLAGS` list), plus the first non-flag token as the project name. Any other `-`/`--` token (or a bad value) causes `process.exit(2)`. Returns `CliArgs`. | -> docs/cli-flags.md |
 | `printHelp()` | Prints the human-readable usage banner. Triggered by `--help` / `-h` and on missing project name. | -> docs/cli-flags.md |
@@ -403,7 +408,7 @@
 ### `email`
 | Function / Export | 1-liner | Deep doc |
 |---|---|---|
-| `sendEmail(input)` | Send via the resolved sender; supports raw `{ subject, html }` or `{ template, data }`. Returns `EmailResult`. | -> docs/sending.md |
+| `sendEmail(input)` | Send via the resolved sender; supports raw/template input plus optional `signal` + stable `idempotencyKey`. Timeout/late abort returns `deliveryOutcome: 'unknown'`; retry only with the same key. | -> docs/sending.md |
 | `renderEmailLayout({ title, intro, ctaLabel?, ctaUrl?, outro?, footer?, brand?, accent? })` | Render inline-styled HTML + plain-text fallback with optional CTA button. | -> docs/templates.md |
 | `ConsoleSender(options?)` | Dev-mode adapter. Logs to terminal, never sends real mail. Returns `EmailSender`. | -> docs/adapters.md |
 | `ResendSender({ apiKey, from? })` | Production adapter using `resend` SDK (lazy peer-dep). | -> docs/adapters.md |
@@ -432,7 +437,7 @@
 | `EmailConfig`, `EmailConfigInput`, `EmailLoggingConfig`, `EmailEnvVarsConfig`, `EmailDefaultsConfig` | `./emailConfig` | Config shape + deep-partial input. |
 | `RenderEmailLayoutInput`, `RenderedEmail` | `./renderEmailLayout` | Layout helper input/output. |
 | `AutoSelectEmailSenderOptions` | `./autoSelect` | `{ from?, force? }`. |
-| `EmailSender`, `EmailMessage`, `EmailResult`, `EmailSenderRegistry` | Re-exported from `@luckystack/core` | Adapter contract + result tuple. |
+| `EmailSender`, `EmailSendContext`, `EmailMessage`, `EmailResult`, `EmailDeliveryOutcome`, `EmailSenderRegistry` | Re-exported from `@luckystack/core` | Adapter contract, cancellation/idempotency context, and outcome-aware result. |
 | `PreEmailSendPayload`, `PostEmailSendPayload` | `./hookPayloads` | Hook payload shapes (also augmented onto `HookPayloads`). |
 
 ### `env-resolver`
@@ -502,7 +507,7 @@
 - ### Post-login redirect (`./src/redirectResolver.ts`)
 - `registerPostLoginRedirect(resolver)` — Register a `({ userId, provider, isNewUser, defaultUrl }) => string | Promise<string>` resolver.
 - `getPostLoginRedirect()` — Read the active resolver (or `null`).
-- The resolver's returned URL is validated against `http.cors.allowedOrigins` before use; invalid URLs fall back to `defaultUrl`.
+- The resolver's returned URL is validated against `http.cors.allowedOrigins` before use; invalid URLs fall back to `defaultUrl`. A valid relative result is then resolved against an absolute `defaultUrl`, so split frontend/backend callback deployments return to the frontend origin.
 - ### Password reset (`./src/passwordReset.ts`, `./src/forgotPassword.ts`, `./src/passwordPolicy.ts`)
 - `createPasswordResetToken(userId)` — Mint a 64-char hex token; store `userId` under `${projectName}-pwreset:<sha256(token)>` (hashed at rest, via `@luckystack/core`'s `issueOneTimeToken`) with `auth.passwordResetTtlSeconds`. Returns the RAW token.
 - `consumePasswordResetToken(token)` — One-time-use redemption. Returns the bound `userId` or `null`.
@@ -511,6 +516,7 @@
 - `PasswordPolicyError` — Thrown by `updatePasswordHash`; carries `errorCode` matching the i18n reason keys used by the rest of the login flow.
 - `validatePassword(plaintext)` — Returns `null` when the policy passes, or a reason key when it fails (length, complexity, common-list, custom validator).
 - `sendPasswordResetEmail({ email, brand? })` — Framework-mode orchestrator. Looks up the user (credentials provider only), mints a token, lazy-imports `@luckystack/email`, and sends a transactional reset email. Always resolves "ok" when the email is not found (anti-enumeration). No-op when `auth.forgotPassword !== 'framework'`.
+- Email-code issue/verify (`emailOtp.ts`) — passwordless login + 2FA fallback primitive. Issue (`SET code hash + reset attempts`) and verify (`read current hash + increment attempts + compare + consume`) each run as one Redis Lua transaction, so reissue and verification are generation-linearizable; a stale code cannot delete or spend the replacement.
 - `createEmailChangeToken(userId, newEmail)` — Mint a one-shot token bound to `userId` + `newEmail`. Stored in Redis at `${projectName}-email-change:<sha256(token)>` (hashed at rest, via `@luckystack/core`'s `issueOneTimeToken`) with TTL from `auth.emailChangeTtlSeconds`. Returns the RAW token.
 - `consumeEmailChangeToken(token)` — Atomic get + del redemption. Returns `{ userId, newEmail }` on success, `null` on miss / malformed payload / expired entry.
 - `sendEmailChangeConfirmation({ userId, newEmail, userName?, brand? })` — Lazy-imports `@luckystack/email`, renders the confirmation template via `renderEmailLayout`, and sends to the NEW address with `adapterHint: 'transactional'`. Returns `{ ok, reason?, token }` — `token` is the minted email-change token so the caller can build the confirmation URL.
@@ -583,9 +589,9 @@
 - Health polling (`packages/router/src/healthPoller.ts`):
 - `startHealthPoller(input: StartHealthPollerInput): HealthPoller` — Polls each locally-owned service's URL with `HEAD /`, flips `resolver.setLocalHealth(...)` on state change, fires `onStateChange` callback. Only started in dev with `enableFallbackRouting`. Returns `{ stop(), checkNow() }`.
 - HTTP proxy (`packages/router/src/httpProxy.ts`):
-- `createHttpProxy(input: CreateHttpProxyInput)` — Returns an `(req, res) => void` handler. Strips hop-by-hop headers, adds `x-forwarded-host`, `x-forwarded-proto`, `x-luckystack-resolved-env`, `x-luckystack-via-fallback`. Dispatches `preProxyRequest` hook before the upstream call and `postProxyResponse` after the upstream response starts. Emits `routing.invalidRequestPath` (400), `<missingServiceErrorCode>` (502), or `routing.upstreamUnreachable` (502) on errors.
+- `createHttpProxy(input: CreateHttpProxyInput)` — Returns an `(req, res) => void` handler. Strips hop-by-hop headers, adds router-authoritative forwarding/routing headers, and honors inbound HTTPS only when `isTrustedProxy(remoteAddress)` passes. Dispatches `preProxyRequest` before the upstream call and `postProxyResponse` after response start. Guards all streams; a backend reset closes only that downstream leg. Emits typed 400/502 errors.
 - WebSocket proxy (`packages/router/src/wsProxy.ts`):
-- `createWsProxy(input: CreateWsProxyInput)` — Returns an `upgrade` handler. Pins all upgrades to the `system` service backend; Socket.io's Redis adapter handles cross-instance fanout. The forwarded 101 keeps `Connection: Upgrade` + `Upgrade: websocket` (RFC 6455 §4.2.2) while still stripping `set-cookie` and `x-luckystack-*` — see `WS_RESPONSE_HOP_BY_HOP_HEADERS`, and do not "simplify" it back to the request-direction set.
+- `createWsProxy(input: CreateWsProxyInput)` — Returns an `upgrade` handler. Pins all upgrades to the `system` service backend; Socket.io's Redis adapter handles cross-instance fanout. Uses the same immediate-peer HTTPS trust gate as HTTP. The forwarded 101 keeps `Connection: Upgrade` + `Upgrade: websocket` while stripping `set-cookie` and `x-luckystack-*`.
 - Runtime capability guard (`packages/router/src/runtimeCapabilities.ts`):
 - `probeUpgradeSocketDelivery(timeoutMs?): Promise<boolean>` — Measures whether an HTTP upgrade handshake written to an upgrade socket actually reaches a client on this runtime (one loopback connection). `false` on Bun.
 - `assertRuntimeCanProxyWebsockets(deps?): Promise<void>` — Called first by `startRouter`. Throws on a runtime that cannot deliver an upgrade, so the router fails loudly instead of black-holing every socket. Only probes when the failure is plausible (skipped on Node). `deps` injects `isBunRuntime` / `probe` for tests, because Node cannot reproduce the Bun branch. Escape hatch: `LUCKYSTACK_ALLOW_BROKEN_WS_PROXY=1`.
@@ -606,7 +612,7 @@
 | --- | --- | --- |
 | `initSecretManager(config)` | Boot-time entry. Scans `process.env` for pointer-shaped values, `POST /resolve`s them, overwrites `process.env` with real values. No-op in `'local'`. Starts dev hot reload when `config.dev` is set. Starts the production rotation poll when `config.pollIntervalMs` is set. | -> docs/architecture.md |
 | `refreshSecretManager()` | Re-resolve the captured pointers against the server (the production rotation poll channel). Call manually after an admin rotates a secret on a long-running process. No-op in `'local'` mode. | -> docs/architecture.md |
-| `reloadSecretManagerFromFiles()` | Re-parse the configured env files (`dev.envFiles`, default `.env` + `.env.local`) and apply them: plain values injected into `process.env` (live config reload), pointer-shaped values re-resolved. The dev **file-watch** channel; callable manually. No-op before init or in `'local'` mode. | -> docs/architecture.md |
+| `reloadSecretManagerFromFiles()` | Re-parse the configured env files (`dev.envFiles`, default `.env` + `.env.local`) and apply them: plain values injected into `process.env`, pointer-shaped values re-resolved. File-owned names replace their prior topology (pointer→plain/removal drops the stale pointer), while unrelated inherited shell/CI pointers remain active. The dev **file-watch** channel; callable manually. No-op before init or in `'local'` mode. | -> docs/architecture.md |
 | `stopSecretManager()` | Tear down all dev watchers, debounce timers, and rotation-poll intervals started by `initSecretManager`. Call on process shutdown if you need deterministic cleanup; otherwise timers are `unref`'d and won't block exit. | -> docs/architecture.md |
 | `getCachedResolution()` | Returns a shallow copy of the last `{ fetchedAt, values }` (pointer -> resolved secret) for diagnostics, or `null`. **Sensitive** — never serialize into HTTP responses, health payloads, or logs. | -> docs/architecture.md |
 | `getCachedResolutionMeta()` | Values-free diagnostic view: `{ fetchedAt, pointerNames, pointerCount }` — the resolved pointer names only, never the secret values. Safe for logs and health endpoints. | -> docs/architecture.md |
@@ -628,7 +634,7 @@
 ### `server`
 | Function / Export | One-liner | Deep doc |
 |---|---|---|
-| `createLuckyStackServer(options)` | Lower-level factory that returns `{ httpServer, ioServer, listen, stop, close }`. Wires HTTP + Socket.io + framework routes; installs a persistent `httpServer.on('error')` listener and (in prod) SIGTERM/SIGINT → graceful `stop()`. | -> docs/create-server.md |
+| `createLuckyStackServer(options)` | Lower-level factory that returns `{ httpServer, ioServer, listen, stop, close }`. Wires HTTP + Socket.io + framework routes; after a successful listen starts the boot-UUID TTL heartbeat, and stops it during shutdown. Installs a persistent `httpServer.on('error')` listener and (in prod) SIGTERM/SIGINT → graceful `stop()`. | -> docs/create-server.md |
 | `RunningLuckyStackServer.stop(options?)` / `.close(options?)` | Graceful shutdown (MIS-016). Stops accepting new connections, dispatches the core `preServerStop` hook, flushes error-trackers (bounded by a per-step timeout race), then closes io + http + the Redis-adapter pub/sub clients. Each step isolated + time-bounded so one hanging step can't stall shutdown. Idempotent. `options`: `{ reason?, timeoutMs? }` (default `timeoutMs` 10000). | -> docs/create-server.md |
 | `bootstrapLuckyStack(options)` | High-level entry: auto-imports `luckystack/<pkg>/*.ts` overlay in topological order, then delegates to `createLuckyStackServer`. An overlay file that fails to import (classic: it imports a package removed via `luckystack remove`) aborts boot with an ACTIONABLE error naming the file, instead of a raw ERR_MODULE_NOT_FOUND. | -> docs/create-server.md |
 | `OVERLAY_ORDER` (exported const) | The canonical overlay walk order (`core, deploy, login, email, sentry, presence, cron, docs-ui, server`). Exported so the consumer's `scripts/bundleServer.mjs` imports it at build time — a hardcoded bundler copy once silently dropped the cron slot from prod; `overlayOrderParity.test.ts` pins the bundlers' fallback lists to this. | -> docs/create-server.md |
@@ -652,7 +658,7 @@
 | `registerErrorFormatter(formatter)` | Override the JSON error shape returned by framework error responses. | -> docs/security-defaults.md |
 | `getErrorFormatter()` | Read the currently registered formatter. | -> docs/security-defaults.md |
 | Route handler: `handleLivezRoute` | Liveness probe at `projectConfig.http.liveEndpoint`. Always 200 when reachable. | -> docs/http-routes.md |
-| Route handler: `handleReadyzRoute` | Readiness probe: boot UUID + Redis ping + database check (ADR 0020: a registered `registerDbHealthCheck` probe wins; else the built-in Prisma ping when Prisma is registered/resolvable; else `'skipped'` so a deliberately DB-less project can go ready). Response `checks.database` = tri-state, `checks.prisma` kept for compat. | -> docs/http-routes.md |
+| Route handler: `handleReadyzRoute` | Readiness probe: boot UUID + dev-tool initialization state + Redis ping + database check (ADR 0020: a registered `registerDbHealthCheck` probe wins; else the built-in Prisma ping when Prisma is registered/resolvable; else `'skipped'` so a deliberately DB-less project can go ready). A recorded fatal devkit boot is 503 even when Redis/database are green. Response `checks.database` = tri-state, `checks.prisma` kept for compat. | -> docs/http-routes.md |
 | Route handler: `handleHealthRoute` | Health endpoint: returns boot UUID + env hashes for router topology checks. | -> docs/http-routes.md |
 | Route handler: `handleTestResetRoute` | Destructive test reset. Fail-closed on `NODE_ENV` and `TEST_RESET_TOKEN`. | -> docs/security-defaults.md |
 | Hook payload: `OnSocketConnectPayload` | Payload type for `onSocketConnect` lifecycle hook handlers. | -> docs/create-server.md |
@@ -710,7 +716,7 @@
 | Function / Export | 1-regel | Deep doc |
 |---|---|---|
 | `runAllTests({ apiMethodMap, apiMetaMap, apiInputSchemas, baseUrl, ... })` | Orchestrator: draait contract + auth + rate-limit + fuzz + custom (Layer 5) in volgorde, levert een `RunAllTestsSummary`. | → docs/contract-tests.md |
-| `runCustomTests(input)` | Layer 5: draait per-route `<name>_v<N>.tests.ts` files naast de `_api/` / `_sync/` sources, levert een `RunCustomTestsSummary`. | → docs/contract-tests.md |
+| `runCustomTests(input)` | Layer 5: draait per-route tests. Direct callers moeten lazy `loadProjectConfig` meegeven; env/secrets resolven vóór test-module imports. `runAllTests` gebruikt een interne already-prepared entrypoint om pointer-reload te voorkomen. | → docs/contract-tests.md |
 | `discoverCustomTestFiles(srcDir?)` | Walker die elke `<name>_v<N>.tests.ts` onder de configured src dir yields. | → docs/contract-tests.md |
 | `logRunAllSummary(summary)` | Pretty-print één `RunAllTestsSummary`. | → docs/extension-hooks.md |
 | `walkEndpoints(apiMethodMap)` | Genereert `EndpointDescriptor[]` uit de generated map | → docs/contract-tests.md |
@@ -723,6 +729,8 @@
 | `runFuzzCheck({ endpoint, baseUrl, headers? })` | Single-endpoint crash-resistance fuzz | → docs/fuzz-tests.md |
 | `runFuzzTests({ apiMethodMap, baseUrl, skip?, headers?, onResult? })` | Sweep fuzz layer (nightly CI) | → docs/fuzz-tests.md |
 | `resetServerState({ baseUrl, token? })` | POST naar `/_test/reset` om DB+Redis schoon te maken | → docs/rate-limit-tests.md |
+| `resolveTestBaseUrl({ cwd?, fallbackUrl? })` | Resolves `TEST_BASE_URL` → actually-bound dev port advertisement → caller fallback, so an auto-hop does not create false connection failures. | → docs/contract-tests.md |
+| `resolveTestEnvironment({ loadProjectConfig? })` | Laadt `.env`-lagen en resolveert optionele secret-manager-pointers in het testproces vóór DB/Redis-backed Layer-5 modules importeren. | → docs/contract-tests.md |
 | `sampleSchemaInput(schema, options?)` | Genereert Zod-valid sample payload uit een schema. `options.stringPrefix` tagt UNCONSTRAINED strings (finding #98) — format/checked strings blijven ongeprefixt zodat ze valid blijven. | → docs/contract-tests.md |
 | `createTestDataMarker()` / `TEST_DATA_PREFIX` | Run-unique `lstest_<uuid>_` marker (+ vaste `lstest_` prefix-constant) waarmee `runAllTests` gegenereerde test-strings identificeerbaar maakt. | → docs/contract-tests.md |
 | `logContractResult(result)` | Pretty-print één `ContractCheckResult` | → docs/extension-hooks.md |
@@ -788,7 +796,7 @@
 | /load_handoff | Load a handoff file and emit a short TL;DR (Done / Open / Next Steps) so the agent can resume work with full context. |
 | /log_progress | Manually append a branch-log entry for the current branch summarizing the most recent prompt's work. |
 | /parallel_review | Spawn four parallel sub-agent reviewers (security, performance, conventions, type-safety) over the current branch diff and consolidate their findings. |
-| /review_branch | Full audit of the current branch — compares git history against branch-log and SESSION_STATE, flags discrepancies, suggests a commit message and review focus areas. |
+| /review_branch | Full audit of the current branch — compares git history against branch-log and handoff files, flags discrepancies, suggests a commit message and review focus areas. |
 | /review_memory | Audit the session's persistent memory store — list every memory by type with mtime, accept user flags for keep/update/delete, apply edits. |
 | /save_handoff | Write a session handoff file (solo or parallel-agent mode) capturing done/in-progress/blockers/next-steps/open-questions/files-touched. |
 

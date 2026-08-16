@@ -405,7 +405,7 @@ Do not add `unsafe*` wrapper aliases around `apiRequest`. If runtime-dynamic too
 
 LuckyStack dispatches typed hooks at every key lifecycle stage so consumers can extend behavior without forking framework code. There are two registries:
 
-- **Async hooks** — registered with `registerHook(name, handler)`. Handler may be `async` and may return a `HookStopSignal` (`{ stop: true, errorCode, httpStatus? }`) to short-circuit a `pre*` event. Failures inside one handler are isolated and surfaced via `getLogger()` + Sentry; they never affect the main flow. Dispatched via `dispatchHook(name, payload)` from `@luckystack/core`.
+- **Async hooks** — registered with `registerHook(name, handler)`. Handler may be `async` and may return a `HookStopSignal` (`{ stop: true, errorCode, httpStatus? }`) to short-circuit a `pre*` event. Failures inside one handler are isolated and surfaced via `getLogger()` + the registered error-tracking adapters; they never affect the main flow. Dispatched via `dispatchHook(name, payload)` from `@luckystack/core`.
 - **Sync hooks** — registered with `registerSyncHook(name, handler)`. Handler must be synchronous (no `async`). Cannot stop the flow. Used for hot-path mutators where `await` is too expensive (the error normalizer is synchronous and called from many code paths). Dispatched via `dispatchSyncHook(name, payload)`.
 
 Both registries share `clearAllHooks()` for tests.
@@ -476,11 +476,11 @@ These augment `HookPayloads` via TypeScript module augmentation from each packag
 | Hook | Source package | Notes |
 | --- | --- | --- |
 | `preLogin` / `postLogin`, `preRegister` / `postRegister`, `preLogout` / `postLogout`, `preSessionCreate` / `postSessionCreate`, `preSessionDelete` / `postSessionDelete` | `@luckystack/login` | Auth + session lifecycle. |
-| `preSessionRefresh` / `postSessionRefresh` | `@luckystack/login` (payload type lives in `@luckystack/core`) | Fires on every authenticated `getSession` call (sliding TTL). `oldTtl` may be `-1` (no TTL) or `null` (TTL command failed). `applied: boolean` on the post payload reflects the actual Redis EXPIRE return. |
+| `preSessionRefresh` / `postSessionRefresh` | `@luckystack/login` (payload type lives in `@luckystack/core`) | Fires on every authenticated `getSession` call (sliding TTL). `oldTtl` is adapter-provided and may be `null` when unavailable. `applied: boolean` on the post payload reflects whether the active session adapter refreshed the record. |
 | `preEmailSend` / `postEmailSend` | `@luckystack/email` | Fires for every `sendEmail` call, including framework-mode password-reset emails. |
 | `prePresenceUpdate` / `postPresenceUpdate` | `@luckystack/presence` | Fires when a peer goes AFK or comes back, around the `userAfk` / `userBack` socket emit. `recipientCount` on the post payload reflects how many peer sockets actually got the event. |
 | `onSocketConnect` / `onSocketDisconnect`, `preRoomJoin` / `postRoomJoin`, `preRoomLeave` / `postRoomLeave`, `onLocationUpdate` | `@luckystack/server` | Socket lifecycle. |
-| `onUploadStart` / `onUploadComplete` | `@luckystack/core` (dispatched by `processUpload`) | Generic upload hooks — payload includes `uploadKind` so future kinds (documents, attachments) reuse the same surface. Consumer upload routes call `processUpload({ userId, contentType, buffer, fileName, encodeAndSave, uploadKind? })` from `@luckystack/core`; the helper dispatches `onUploadStart` (stoppable), runs the consumer's `encodeAndSave` callback, then dispatches `onUploadComplete`. The `'avatar'` kind is the default. See [`src/settings/_api/updateUser_v1.ts`](../../src/settings/_api/updateUser_v1.ts) for the canonical avatar usage. |
+| `onUploadStart` / `onUploadComplete` | `@luckystack/core` (dispatched by `processUpload`) | Generic upload hooks — payload includes `uploadKind` so future kinds (documents, attachments) reuse the same surface. Consumer upload routes call `processUpload({ userId, contentType, buffer, fileName, encodeAndSave, uploadKind? })` from `@luckystack/core`; the helper dispatches `onUploadStart` (stoppable), runs the consumer's `encodeAndSave` callback, then dispatches `onUploadComplete`. The `'avatar'` kind is the default. See [`src/settings/_api/updateUser_v1.ts`](../src/settings/_api/updateUser_v1.ts) for the canonical avatar usage. |
 
 ---
 
