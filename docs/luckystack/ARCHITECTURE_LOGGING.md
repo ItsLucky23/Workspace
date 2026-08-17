@@ -124,7 +124,7 @@ The framework applies redaction in these locations:
 | API request entry log | The full `data` payload before the handler runs. |
 | API response entry log | The full result payload before it's sent to the client. |
 | Sync request entry log | The `data` payload. |
-| Error capture (Sentry / error-tracking adapter) | Cookies are dropped wholesale; redacted keys masked in `extra`/`context`. |
+| Error capture (registered tracker adapters) | Cookies are dropped wholesale; redacted keys masked in `extra`/`context`. |
 | HTTP request headers (`/_health`, custom routes) | `Authorization`, `Cookie`, `Set-Cookie` masked. |
 
 Custom loggers registered via `registerLogger()` receive already-redacted
@@ -134,7 +134,7 @@ payloads — you don't need to re-implement masking in your transport.
 
 ## Related
 
-- [`@luckystack/core` projectConfig.logging](./ARCHITECTURE_PACKAGING.md#projectconfig) — toggles for dev logs and socket-startup logs.
+- [`@luckystack/core` projectConfig.logging](../packages/core/docs/config-registry.md#api-reference--project-config) — toggles for dev logs and socket-startup logs.
 - [`@luckystack/error-tracking`](./ARCHITECTURE_PACKAGING.md) — pluggable
   error-tracker adapters (Sentry / Datadog / PostHog) that consume the
   same redacted payload stream.

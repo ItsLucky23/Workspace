@@ -232,7 +232,7 @@ When a Prisma model type is needed in app code, create `src/_types/{ModelName}.t
 Always use the custom `tryCatch`:
 
 - **In API / sync handlers**: use the injected `functions.tryCatch.tryCatch(...)` (sourced from `shared/tryCatch.ts` via the function-injection system — spec: `docs/ARCHITECTURE_FUNCTION_INJECTION.md`).
-- **Elsewhere (client components, server utilities, scripts)**: `import { tryCatch } from '@luckystack/core'`. Same `[error, result]` tuple shape; the server-side path captures to Sentry via the registered error-tracker.
+- **Elsewhere (client components, server utilities, scripts)**: `import { tryCatch } from '@luckystack/core'`. Same `[error, result]` tuple shape; the server-side path captures through the registered error-tracker adapter(s).
 - Check the first value; if truthy, there's an error. Never use raw `try/catch`.
 
 ---
@@ -327,7 +327,7 @@ When verifying the frontend in a browser, follow the cheapest-first ladder + sug
 - **Cheapest-first ladder:** `agent-browser` (CLI) is the default for ~90% — flows, console/errors/network, single-browser screenshot + visual-diff, Web Vitals. Escalate to **Playwright MCP** ONLY for cross-browser / mobile rendering or a vision styling judgement; to **Chrome DevTools MCP** ONLY for Lighthouse / performance traces / Core Web Vitals / deep diagnostics.
 - **Never launch a browser tool without proposing it + getting explicit user approval.** Announce *"I want to verify X → cheapest fit = `<tool>` → approve?"*; for an escalation, name the exclusive capability that forces the higher rung. (The harness also hard-gates these via `.claude/settings.json` `permissions.ask`; first MCP use shows a one-time trust prompt.)
 - **Server-start is a developer action (Rule 8):** the dev server (`npm run server` + `npm run client`) must be running before any browser test — ask the user to start it.
-- **Auth:** use the tool's session/state persistence + a dedicated test account; **never read `.env.local`** (Rule 16).
+- **Auth:** use the tool's session/state persistence + a dedicated test account; follow this project's Rule 16 for local environment access and never expose secret values in test artifacts.
 - After agent-browser confirms a flow, offer to capture it as a deterministic `@playwright/test` spec (keep the LLM out of the permanent CI loop).
 - **Complementary skills** GENERATE committed artifacts (vs the interactive tooling above): `/agent-browser` (E2E tests), `/lighthouse` (perf), `/a11y-audit` (axe). `/agent-browser-verify` drives the interactive login-matrix check.
 

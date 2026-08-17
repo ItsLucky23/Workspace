@@ -41,16 +41,9 @@ Not blockers, but worth verifying before relying on them.
 
 ## 4. Tech debt for future sweeps
 
-### Documentation
-
-- **Split `docs/ARCHITECTURE_PACKAGING.md`** — currently the largest doc in the repo. Hard to scan and creates merge-conflict hotspots.
-- **`packages/server/docs/security-defaults.md` + `http-routes.md`** still mention hardcoded `'x-csrf-token'` — should reference `registerCsrfConfig()` now.
-
 ### Tooling
 
 - **JSDoc-based `CLAUDE.md` Function INDEX regenerator** — currently hand-curated. Worth building (~100-line Node script reusing `packages/devkit/src/typeMap/extractors.ts`) when drift between source signatures and the INDEX table becomes a recurring chore. Until then, the periodic-review approach is fine.
-- **Optional runtime warning in `registerCsrfConfig()`** when `cookieOptions.httpOnly === true` is set (since that would break client-side reads once cookie-issued CSRF mode lands).
-
 ### Generated files
 
 - **`apiTypes.generated.ts` `session.*` paths** — in the framework repo, TypeScript resolves the workspace dependency to its source folder (`../../packages/login/src/session`). In a consumer repo this resolves to `node_modules/@luckystack/login` and works correctly, so it is only cosmetically odd in the framework. A `tsconfig` paths tweak could normalise this.
@@ -62,5 +55,5 @@ Not blockers, but worth verifying before relying on them.
 1. **Read the relevant section above** plus any linked memory or doc.
 2. **Search `branch-logs/<branch>.md`** in the archive directory for prior context.
 3. **Check `docs/AGENT_TEAM_PLAYBOOK.md`** — captures the rationale for why some patterns were intentionally left as-is.
-4. **Start a new branch** named for the work (`feat/jwt-session-adapter`, `feat/sync-docs-cli`, etc.).
+4. **Start a new branch** named for the work (for example `feat/jwt-session-adapter`).
 5. **Remove the item from this `docs/ROADMAP.md`** when it lands. Treat it as a living document, not historical record.

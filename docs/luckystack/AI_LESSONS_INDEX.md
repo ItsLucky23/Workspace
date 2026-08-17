@@ -9,7 +9,7 @@
 > and the private per-dev `~/.claude` memory. The AI records these automatically — see
 > `docs/LESSONS_PROTOCOL.md`.
 
-## Lessons (11)
+## Lessons (16)
 
 | # | Lesson | Severity | Area | Tags | File |
 | --- | --- | --- | --- | --- | --- |
@@ -24,6 +24,11 @@
 | 0009 | The integration suite that "proves the Redis cross-instance link" had never run a single test | 🟠 high | testing | testing, redis, false-green, env | `docs/lessons/0009-a-skipped-test-suite-reports-as-a-pass.md` |
 | 0010 | An ORM's toJSON() describes stringifying THAT object — not the same object reached through its parent | 🟡 medium | packages/devkit | types, orm, serialization, codegen, wontfix | `docs/lessons/0010-tojson-describes-the-object-not-the-parent-path.md` |
 | 0011 | A Windows-green lockfile can be invalid for Linux npm ci | 🟠 high | release | npm, lockfile, ci, cross-platform, release | `docs/lessons/0011-windows-lockfile-can-omit-linux-optional-transitives.md` |
+| 0012 | Alle input op _ai-routes geweigerd" was geen type-bug — het was een stale dev-proces met lege devApis | 🟠 high | packages/server | dev-tooling, false-diagnosis, silent-failure, ports, hot-reload, devkit | `docs/lessons/0012-a-stale-broken-dev-process-looks-like-a-per-route-bug.md` |
+| 0013 | Production dependencies can overwrite generated runtime artifacts | 🟠 high | docker | docker, prisma, multi-stage, healthcheck, scaffold | `docs/lessons/0013-production-dependencies-can-overwrite-generated-runtime-artifacts.md` |
+| 0014 | Global transitive overrides can hide platform-specific contract breakage | 🟠 high | dependencies | dependencies, eslint, linux, ci, release | `docs/lessons/0014-global-transitive-overrides-can-hide-platform-specific-contract-breakage.md` |
+| 0015 | Generate Prisma before type maps in artifact-free worktrees | 🟡 medium | build | prisma, type-generation, worktree, postinstall, build | `docs/lessons/0015-generate-prisma-before-type-maps-in-artifact-free-worktrees.md` |
+| 0016 | Windows port-0 probes and WSL Redis defaults can invalidate runtime E2E setup | 🟡 medium | scripts/e2eVerdaccio.mjs | e2e, windows, ports, redis, wsl, infrastructure | `docs/lessons/0016-windows-e2e-port-pairs-and-wsl-redis-protected-mode.md` |
 
 ## Takeaways
 
@@ -111,6 +116,46 @@ When a fix depends on a config value or a callback, **verify the value is actual
 
 **0011** · high · release · tags: npm, lockfile, ci, cross-platform, release · 2026-07-16
 
-Validate release lockfiles with the npm majors used by CI: `npm ci --dry-run -ignore-scripts` under npm 10, 11, and the publish workflow's current npm. Keep `@emnapi/core` and `@emnapi/runtime` as root dev dependencies while the transitive optional-dependency graph needs them. Direct dependencies force npm to retain their lock entries on Windows; they are tooling-only and are not published in any LuckyStack package tarball. A successful `npm install` is not equivalent to `npm ci`; the latter validates the committed graph before installing. Do not move or recreate a release tag until the CI install step has passed. If a tag has already fired but publication has not started, fix `main` and use the manual publish workflow from the corrected commit rather than force-moving the tag.
+Validate release lockfiles with the npm majors used by CI: `npm ci --dry-run -ignore-scripts` under npm 10, 11, and the publish workflow's current npm. Keep `@emnapi/core` and `@emnapi/runtime` as root dev dependencies while the transitive optional-dependency graph needs them. Direct dependencies force npm to retain their lock entries on Windows; they are tooling-only and are not published in any LuckyStack package tarball. A successful `npm install` is not equivalent to `npm ci`; the latter validates the committed graph before installing. Do not move or recreate a release tag until the CI install step has passed. If a tag has already fired but publication has not started, first fix `main` and publish from the corrected commit through the manual workflow. Aligning a public tag afterwards is exceptional: do it only with explicit user approval, after proving the failed tag run published nothing, and point it at the exact provenance commit.
 
 → `docs/lessons/0011-windows-lockfile-can-omit-linux-optional-transitives.md`
+
+### 0012 — Alle input op _ai-routes geweigerd" was geen type-bug — het was een stale dev-proces met lege devApis
+
+**0012** · high · packages/server · tags: dev-tooling, false-diagnosis, silent-failure, ports, hot-reload, devkit · 2026-07-18
+
+**Verifieer eerst dat het proces dat je test het levende, juiste proces is.** Bij een "alles faalt op deze routes"-symptoom: check de boot-logs op init-fouten en check op welke poort dit proces daadwerkelijk luistert (dev auto-increment hopt weg van een bezette poort). Een zombie op de canonieke poort is de klassieke val. **Onderscheid de twee code-paden.** De extractor (`getInputTypeFromFile`, volledige TypeChecker) en de request-tijd-resolver (`resolveRuntimeTypeText`, string-re-parser) zijn verschillend. "Verse extractie werkt wél" bewijst niets over het request-pad tenzij je een echte request door de validatie stuurt. **Framework-fix (deze les):** foutgevoelige plekken moeten luid + zelf-verklarend falen. `createServer.ts` logt een init-fout nu als `error` met volledige uitleg + herstelstap en registreert de fout (`devToolsStatus.ts`); `apiRoute.ts`/`syncRoute.ts` geven dan een `503` met de echte oorzaak i.p.v. een misleidende 404; de poort-hop-warning legt de zombie-consequentie uit.
+
+→ `docs/lessons/0012-a-stale-broken-dev-process-looks-like-a-per-route-bug.md`
+
+### 0013 — Production dependencies can overwrite generated runtime artifacts
+
+**0013** · high · docker · tags: docker, prisma, multi-stage, healthcheck, scaffold · 2026-07-27
+
+After ORM/client generation, copy required generated runtime dependency directories from the build stage into the final production `node_modules`. Keep the production-dependency stage minimal, but add an explicit `runtime-artifacts` projection stage rather than copying all dev dependencies. Run a real final-image `/readyz` check; a successful `docker build` is insufficient. Use a TCP liveness check for the standalone router process and test routed backend readiness separately through integration/edge smoke tests. Validate against a clean scaffold and Linux image, not only the framework monorepo's already-generated local tree.
+
+→ `docs/lessons/0013-production-dependencies-can-overwrite-generated-runtime-artifacts.md`
+
+### 0014 — Global transitive overrides can hide platform-specific contract breakage
+
+**0014** · high · dependencies · tags: dependencies, eslint, linux, ci, release · 2026-07-27
+
+Never silence a transitive advisory by globally forcing an incompatible major without testing every consumer contract. Reproduce release gates in the target Linux/Node environment before tagging, not only on the developer OS. Distinguish required runtime dependencies from optional peer/tooling trees in audit policy, while tracking both explicitly. Keep the lockfile on each package's declared compatible major and prefer upstream plugin upgrades over cross-major overrides. Treat a green audit report as insufficient when the dependency graph no longer matches consumers' declared ranges.
+
+→ `docs/lessons/0014-global-transitive-overrides-can-hide-platform-specific-contract-breakage.md`
+
+### 0015 — Generate Prisma before type maps in artifact-free worktrees
+
+**0015** · medium · build · tags: prisma, type-generation, worktree, postinstall, build · 2026-07-27
+
+In artifact-free worktree and release validation, generate Prisma Client before generating route type maps. Treat an unsupported `symbol` error on a Prisma-backed DTO as a possible missing-client artifact, not immediately as a route contract violation. A future build-pipeline fix should order Prisma generation before route generation or produce a specific missing-Prisma diagnostic; do not weaken wire-type validation to hide the placeholder.
+
+→ `docs/lessons/0015-generate-prisma-before-type-maps-in-artifact-free-worktrees.md`
+
+### 0016 — Windows port-0 probes and WSL Redis defaults can invalidate runtime E2E setup
+
+**0016** · medium · scripts/e2eVerdaccio.mjs · tags: e2e, windows, ports, redis, wsl, infrastructure · 2026-08-16
+
+For an E2E that needs consecutive ports, reserve both exact candidates with real `net.Server` instances before selecting the pair; do not infer adjacency from `listen(0)`. When using a disposable WSL Redis from Windows, verify a real Redis `PING` over the Windows→WSL address, not just TCP connect. Use an isolated, non-persistent instance with `--protected-mode no` only for that test, then shut it down immediately; never weaken the developer's normal Redis or read secrets from `.env.local`.
+
+→ `docs/lessons/0016-windows-e2e-port-pairs-and-wsl-redis-protected-mode.md`

@@ -90,11 +90,11 @@ if (!result.ok) {
 
 `sendEmail` always returns a typed result instead of throwing — matches the rest of the framework's `[error, value]` pattern. Callers may pass a cooperative `signal` and a stable `idempotencyKey`. If timeout/abort wins after provider dispatch, the failure includes `deliveryOutcome: 'unknown'`: the provider may still deliver, so a retry must reuse the same key. Resend forwards that key to its native idempotency option; SMTP has no delivery-cancellation guarantee.
 
-## Sentry interplay
+## Error-tracker interplay
 
-When `@luckystack/error-tracking` is installed and initialized, `sendEmail` errors are auto-reported via `captureException` from `@luckystack/core`. When it isn't, the call is a silent no-op — no special detection needed.
+When one or more error trackers are registered, `sendEmail` failures fan out through `captureException` from `@luckystack/core` (Sentry, Datadog, PostHog, or custom adapters). With no active tracker the capture call is a safe no-op.
 
-Terminal logging is independent: `email.logging.errors` and `email.logging.sends` flip the console output regardless of Sentry state.
+Terminal logging is independent: `email.logging.errors` and `email.logging.sends` control console output regardless of tracker state.
 
 ## Send-time hooks
 

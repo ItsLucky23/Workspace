@@ -104,15 +104,14 @@ Values crossing the wire are JSON: for example, a `Date` becomes an ISO string. 
 ```typescript
 // config.ts
 const config = {
-  session: {
-    basedToken: false,       // false = HttpOnly cookie; true = explicit token mode
-    expiryDays: 7,
-    perUser: 'single',       // a new login revokes older sessions
-    maxConcurrentPerUser: null,
-    onConflict: 'revokeOld',
-  },
+  sessionBasedToken: false, // false = HttpOnly cookie; true = tab-scoped sessionStorage bearer
+  sessionExpiryDays: 7,
+  sessionPerUser: 'single', // a new login revokes older sessions
   loginRedirectUrl: '/examples',
 };
+
+// During boot, config.ts maps these public fields into registerProjectConfig:
+// session: { basedToken, expiryDays, perUser, ... }
 ```
 
 ---
@@ -128,18 +127,18 @@ const config = {
    ↓
 4. Token sent to client:
    - Cookie-based: Set-Cookie: token={token}; HttpOnly
-   - Session-based: Returned in response body
+   - SessionStorage bearer: credentials return `X-Session-Token`; OAuth redirects with `?token=` for one-time client consumption
    ↓
 5. Subsequent requests include token:
-   - WebSocket: socket.handshake.auth.token
-   - HTTP: Cookie header or Authorization: Bearer {token}
+   - Cookie mode: browser-attached session cookie
+   - SessionStorage mode: `socket.handshake.auth.token` or `Authorization: Bearer {token}`
 ```
 
 ---
 
 ## Token Modes
 
-Controlled by `session.basedToken` in `registerProjectConfig(...)`:
+Consumers set top-level `config.sessionBasedToken`; `config.ts` maps it to `session.basedToken` in `registerProjectConfig(...)`:
 
 | Mode              | Storage         | Best For                   |
 | ----------------- | --------------- | -------------------------- |
@@ -147,9 +146,10 @@ Controlled by `session.basedToken` in `registerProjectConfig(...)`:
 | `true`            | sessionStorage  | Developing                 |
 
 Notes:
-- Token extraction is strict by mode (no fallback between cookie and sessionStorage sources).
-- When `session.basedToken` is `true`, auth flows do not set token cookies; credentials login returns `X-Session-Token` and OAuth callback redirects with `?token=`.
-- When `session.basedToken` is `false`, auth flows use HttpOnly cookie delivery.
+- In cookie mode, token extraction ignores bearer/handshake tokens by default; `http.acceptBearerInCookieMode=true` is the explicit compatibility opt-in.
+- In sessionStorage mode, extraction prefers bearer/handshake auth and retains a cookie fallback for compatibility, although framework auth flows do not set a token cookie in this mode.
+- With `session.basedToken=true`, credentials login returns `X-Session-Token` and OAuth redirects with `?token=`.
+- With `session.basedToken=false`, auth flows use HttpOnly cookie delivery plus CSRF protection.
 
 ### Token-exposure contract (which side sees the raw token) — ADR 0018
 

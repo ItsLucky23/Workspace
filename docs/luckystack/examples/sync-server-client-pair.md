@@ -158,7 +158,7 @@ export const BoardSync = ({ roomCode }: { roomCode: string }) => {
   i18n-backed `notify` (`notify.error({ key })`) at the call site. Returning a
   sentence in `errorCode` breaks translation and the error contract.
 - **`functions.tryCatch.tryCatch` over raw try/catch.** It yields the
-  `[error, result]` tuple and routes the failure to Sentry via the registered
+  `[error, result]` tuple and routes the failure through the registered
   error-tracker. The handler stays linear and every failure maps to a code.
 - **Typed route/version literals end-to-end.** `syncRequest` and
   `upsertSyncEventCallback` are called with the `name`/`version` literals so the

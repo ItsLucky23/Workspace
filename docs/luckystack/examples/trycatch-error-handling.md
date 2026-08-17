@@ -55,7 +55,7 @@ import { tryCatch } from '@luckystack/core';
 
 export const fetchAvatarBytes = async (url: string): Promise<Buffer | null> => {
   const [fetchError, response] = await tryCatch(() => fetch(url));
-  if (fetchError || !response.ok) return null; // error branch is already captured to Sentry
+  if (fetchError || !response.ok) return null; // error branch is already captured by the registered error tracker(s)
 
   const [readError, bytes] = await tryCatch(() => response.arrayBuffer());
   if (readError) return null;

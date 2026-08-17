@@ -76,7 +76,7 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   default. Tuning it here keeps the limit next to the handler it protects.
 - **`functions.tryCatch.tryCatch` over raw `try/catch`.** The injected helper returns
   a `[error, result]` tuple and routes server-side failures to the registered
-  error-tracker (Sentry). Raw `try/catch` would bypass that capture and is banned by
+  registered error-tracker adapter(s). Raw `try/catch` would bypass that capture and is banned by
   the error-handling convention. Check the first element; on truthy, return an error
   envelope.
 - **Errors return a translation `errorCode`, never a sentence.** `common.500` is an

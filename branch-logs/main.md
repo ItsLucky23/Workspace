@@ -4730,3 +4730,13 @@ Tijdens het loggen bleek mijn eigen `npm install` onder npm 11.6.1 te hebben ged
 **Verificatie:** `npm run ai:capabilities`, `npm run ai:context-budget`, `npm run ai:lint` groen; `npm run ai:doc-staleness` 12/12 binnen de threshold; `git diff --check` schoon. Geen `npm install` of runtime gestart.
 
 **Files touched:** `docs/luckystack/{ARCHITECTURE_API,ARCHITECTURE_AUTH,ARCHITECTURE_EMAIL,ARCHITECTURE_SESSION}.md`, consumer AI-snapshots en deze branch-log.
+
+## 2026-08-17 08:16 — Framework-documentatiesnapshot volledig naar v0.8.3-contract gebracht
+
+**User prompt (summary):** rond alle resterende LuckyStack-documentatieverbeteringen af en synchroniseer de consumer zonder geïnstalleerde packages te wijzigen.
+
+**Wat ik deed:** de actuele frameworkarchitectuur voor API, HTTP/CSRF, email/error-tracking, logging, packaging, sessies, sockets, hosting, package-overview en roadmap naar `docs/luckystack/` doorgezet. Ook de gegenereerde framework-indexen, canonical examples, framework-ADRs 0031–0045 en lessons 0012–0016 zijn gesynchroniseerd; de foutieve dubbele oude port-ADR-filename is vervangen door de canonieke 0043-keten. De project-specifieke CLAUDE-regels zijn behouden; alleen generieke error-trackerterminologie en de interne Rule-16-browserauthverwijzing zijn coherent gemaakt. `node_modules` bleef onaangeraakt.
+
+**Verificatie:** Workspace lint groen; volledige Vite + compose-runner-build groen na artifactgeneratie; `ai:lint` groen; doc-staleness 12/12; `git diff --check` schoon.
+
+**Files touched:** `CLAUDE.md`, `docs/luckystack/` frameworkdocs/indexen/examples/decisions/lessons, `docs/AI_CONTEXT_BUDGET.md` en branch-log/index.

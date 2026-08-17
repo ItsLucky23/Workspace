@@ -25,7 +25,7 @@
 | Package | Use case | Required peers | Optional peers |
 |---|---|---|---|
 | `@luckystack/email` | Pluggable transactional email with Console / Resend / SMTP adapters, named template registry, `preEmailSend` / `postEmailSend` hooks, multi-sender slots. | none | `resend` (for `ResendSender`), `nodemailer` (for `SmtpSender`) |
-| `@luckystack/presence` | Presence + activity awareness: AFK detection, disconnect grace windows, room-peer `userAfk` / `userBack` notifications, reconnect hooks, pluggable activity events. | `socket.io` | `@luckystack/login`, React, `react-router-dom` (client subpath only) |
+| `@luckystack/presence` | Presence + activity awareness: AFK detection, disconnect grace windows, room-peer `userAfk` / `userBack` notifications, reconnect hooks, pluggable activity events. | none | `socket.io` (server lifecycle), `@luckystack/login` (session integration), React + `react-router-dom` (`/client`) |
 
 ## Observability
 

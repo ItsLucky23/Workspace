@@ -25,7 +25,7 @@ Socket event names and dynamic response event builders are centralized in `share
 
 Full boot sequence executed by `createLuckyStackServer` from `@luckystack/server`:
 
-1. `applyServerArgv()` — parses positional `<bundles> [port]`; writes `process.env.SERVER_PORT`.
+1. `applyServerArgv()` — parses positional `<bundles> [port]`; registers the port through browser-safe `@luckystack/core/config`.
 2. `registerProjectConfig(...)` — installer overlay merged over defaults.
 3. `verifyBootstrap()` — pre-flight check that ProjectConfig / DeployConfig / RuntimeMapsProvider are registered. Throws one descriptive error on miss.
 4. `http.createServer(...)` with the HTTP request dispatcher (csrf -> health -> /_test/reset -> favicon -> uploads -> auth -> api -> sync -> custom routes -> static).
@@ -91,7 +91,7 @@ Both check the same sources in priority order:
 | Cookie (name from `http.sessionCookieName`) | `socket.handshake.headers.cookie` | `request.headers.cookie` |
 | Bearer / session-mode token | `socket.handshake.auth.token` | `Authorization: Bearer <token>` |
 
-The framework calls these internally before `getSession(token)` in `handleApiRequest`, `handleSyncRequest`, `handleHttpApiRequest`, and `handleHttpSyncRequest`. Custom transports (queue worker, gRPC bridge, Lambda adapter) should reuse them rather than reading cookies or headers manually — that is the only way to stay consistent with the cookie-name registry and the `sessionBasedToken` mode toggle.
+The framework calls these internally before `getSession(token)` in `handleApiRequest`, `handleSyncRequest`, `handleHttpApiRequest`, and `handleHttpSyncRequest`. Custom transports (queue worker, gRPC bridge, Lambda adapter) should reuse them rather than reading cookies or headers manually — that is the only way to stay consistent with the cookie-name registry and the public `config.sessionBasedToken` toggle. Consumer `config.ts` maps that flag to the internal `ProjectConfig.session.basedToken` slot.
 
 ---
 
@@ -207,6 +207,9 @@ A disconnect inside the grace window does NOT delete the session. If the same to
 ## Configuration
 
 ```typescript
+// config.ports.ts
+export const ports = { frontend: 5173, backend: 80 } as const;
+
 // config.ts
 const config = {
   backendUrl: 'http://localhost:80',
@@ -214,9 +217,8 @@ const config = {
   locationProviderEnabled: true,     // Enable route-to-session location syncing
 };
 
-// .env
+// .env — bind address only; listen port comes from config.ports.ts or argv
 SERVER_IP=127.0.0.1
-SERVER_PORT=80
 ```
 
 ---

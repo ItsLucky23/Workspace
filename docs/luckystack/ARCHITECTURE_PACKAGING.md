@@ -6,7 +6,7 @@
 > This document records stable contracts only. Historical migration logs belong in git history, branch logs,
 > ADRs, or dated findings — not in the current architecture reference.
 >
-> Last reviewed: 2026-08-15
+> Last reviewed: 2026-08-16
 
 ## 1. Source-of-truth rule
 
@@ -123,8 +123,10 @@ When topology config is present:
 - every service belongs to exactly one preset;
 - `generatedApis.<preset>.ts` is emitted per preset;
 - a backend can load one or multiple preset bundles;
-- cross-instance sockets and sync require shared Redis and the Redis Socket.io adapter;
-- Socket.io upgrades are pinned to the `system` service by the router;
+- custom non-API/sync HTTP prefixes declare service ownership in `services.config.ts > customRoutes`; deploy validation rejects malformed, overlapping, duplicate-normalized, or unknown owners;
+- Socket.io upgrades remain pinned to the configured websocket service (`system` by convention), preserving one room/presence/reconnect channel;
+- `transport.invocation: 'routed-http'` independently routes typed API/sync invocation over HTTP/SSE to the owning service while callbacks and realtime delivery stay on that socket;
+- multi-instance socket rooms, sync delivery, presence, and shared health state require shared Redis and the Redis Socket.io adapter; Redis fanout transports events but cannot execute a handler absent from a service bundle;
 - the separate router process must run on Node while Bun's `node:http` upgrade primitive remains broken.
 
 See [`ARCHITECTURE_MULTI_INSTANCE.md`](./ARCHITECTURE_MULTI_INSTANCE.md) for the operational model and
@@ -168,6 +170,8 @@ npx luckystack update
 
 The update command preserves user edits by writing `.new` sidecars instead of overwriting modified files.
 Package-local `CLAUDE.md` and `docs/` are refreshed by upgrading the corresponding `@luckystack/*` package.
+
+Docker is a rendered project surface rather than a runtime package. Fresh scaffolds receive provider/router-aware Dockerfile, Compose, nginx, health, and preset assets; existing projects use `npx luckystack add docker`. `npm run docker:check` validates the rendered topology without printing secrets.
 
 ## 10. Runtime bundle selection
 
