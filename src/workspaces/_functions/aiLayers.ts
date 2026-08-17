@@ -74,3 +74,53 @@ export function resolveAiLayers({ workspace, skills, stage, applyPoint }: {
 export function composeEffectivePrompt(layers: ResolvedAiLayer[]): string {
   return layers.filter((l) => l.text.length > 0).map((l) => l.text).join('\n\n');
 }
+
+//? ---- Content/Studio/Marketing profile (duplicateConcepts #2 — a SECOND, unrelated layering stack) ----
+//? brief.tone, the workspace's central brand.voice and a per-generation refine instruction all steer
+//? ONE Studio/Marketing artifact generation, and nothing stated how they combine. Order verified against
+//? server/studio/generate.ts: `briefBlock()` folds brief tone into the base prompt, then (if the brand
+//? library has a palette or voice) appends brand voice; `applyRefine()` appends the refine text LAST —
+//? so refine has the strongest, most immediate effect, not the weakest, despite reading "first" in the
+//? owner's shorthand. Channel brand voice (Content settings → Channels) is a THIRD, separate axis: it
+//? shapes posts published to a channel, never a Studio/Marketing generation, so it's listed but always
+//? inert here (`applicable: false`) — same "say what the other one does" principle as the InfoDot pattern.
+export const CONTENT_LAYER_ORDER = ['briefTone', 'brandVoice', 'refine', 'channelVoice'] as const;
+export type ContentLayerId = (typeof CONTENT_LAYER_ORDER)[number];
+
+export const CONTENT_LAYER_LABEL_KEY: Record<ContentLayerId, string> = {
+  briefTone: 'workspaces.aiLayers.briefTone',
+  brandVoice: 'workspaces.aiLayers.brandVoice',
+  refine: 'workspaces.aiLayers.refine',
+  channelVoice: 'workspaces.aiLayers.channelVoice',
+};
+
+export const CONTENT_LAYER_COUNT = CONTENT_LAYER_ORDER.length;
+
+export interface ResolvedContentLayer {
+  id: ContentLayerId;
+  position: number;
+  text: string;
+  source: 'brief' | 'brand' | 'refine' | 'channel';
+  /** false only for channelVoice: it never feeds a Studio/Marketing generation, so an empty layer
+   *  here means "not part of this prompt", not "not set yet". */
+  applicable: boolean;
+}
+
+export function resolveContentAiLayers({ briefTone, brandVoice, refine }: {
+  briefTone?: string;
+  brandVoice?: string;
+  refine?: string;
+}): ResolvedContentLayer[] {
+  return [
+    { id: 'briefTone', position: 1, text: (briefTone ?? '').trim(), source: 'brief', applicable: true },
+    { id: 'brandVoice', position: 2, text: (brandVoice ?? '').trim(), source: 'brand', applicable: true },
+    { id: 'refine', position: 3, text: (refine ?? '').trim(), source: 'refine', applicable: true },
+    { id: 'channelVoice', position: 4, text: '', source: 'channel', applicable: false },
+  ];
+}
+
+/** The composed prompt exactly as Studio/Marketing generation receives it — mirrors buildPrompt()
+ *  + applyRefine() in server/studio/generate.ts (contributing, applicable layers only, in order). */
+export function composeEffectiveContentPrompt(layers: ResolvedContentLayer[]): string {
+  return layers.filter((l) => l.applicable && l.text.length > 0).map((l) => l.text).join('\n\n');
+}

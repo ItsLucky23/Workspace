@@ -12,7 +12,8 @@ import { useTranslator } from '@luckystack/core/client';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import { menuHandler } from 'src/_functions/menuHandler';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
-import { WsButton } from './primitives';
+import { WsButton, IconButton } from './primitives';
+import { Collapse } from './motion';
 import Icon from './Icon';
 import type { TriggerActionKind, TriggerEventKind } from '../_data/types';
 
@@ -93,6 +94,24 @@ export default function AutomationPanel() {
     if (ok) deleteTrigger(id);
   };
 
+  //? #96 — one-line plain-language preview ("when <event> → <action>") so the user can sanity-check the
+  //? rule before creating it, instead of only finding out what it does via "run now" after the fact.
+  const previewPlaceholder = translate({ key: 'workspaces.automation.previewPlaceholder' });
+  const previewDetail = ((): string => {
+    switch (action) {
+      case 'notify': { return translate({ key: 'workspaces.automation.previewNotify', params: [{ key: 'title', value: title || name || previewPlaceholder }] }); }
+      case 'emit-signal': { return translate({ key: 'workspaces.automation.previewEmitSignal', params: [{ key: 'kind', value: signalKind.trim() || 'custom' }] }); }
+      case 'start-stage': { return translate({ key: 'workspaces.automation.previewStartStage', params: [{ key: 'stage', value: stages.find((st) => st.id === targetStage)?.name ?? previewPlaceholder }] }); }
+      case 'invoke-agent-role': { return translate({ key: 'workspaces.automation.previewInvokeRole', params: [{ key: 'role', value: agentRoles.find((r) => r.key === roleKey)?.label ?? previewPlaceholder }] }); }
+      case 'invoke-workspace-ai': { return translate({ key: 'workspaces.automation.previewInvokeAi', params: [{ key: 'prompt', value: aiPrompt.trim() || previewPlaceholder }] }); }
+      case 'run-command': { return translate({ key: 'workspaces.automation.previewRunCommand', params: [{ key: 'command', value: command.trim() || previewPlaceholder }] }); }
+      case 'webhook': { return translate({ key: 'workspaces.automation.previewWebhook', params: [{ key: 'url', value: webhookUrl.trim() || previewPlaceholder }] }); }
+      default: { return ''; }
+    }
+  })();
+  const previewEvent = on === 'cron' ? translate({ key: 'workspaces.automation.previewCron', params: [{ key: 'cron', value: cron }] }) : translate({ key: evKey(on) });
+  const preview = translate({ key: 'workspaces.automation.previewTemplate', params: [{ key: 'event', value: previewEvent }, { key: 'detail', value: previewDetail }] });
+
   return (
     <div className="rounded-2xl border border-container1-border bg-container1 p-5">
       <div className="flex items-center justify-between gap-3 mb-4">
@@ -126,17 +145,14 @@ export default function AutomationPanel() {
                 {t.requiresApproval && <span className="rounded bg-warning/15 text-warning px-1.5 py-0.5">{translate({ key: 'workspaces.automation.needsApproval' })}</span>}
               </div>
             </div>
-            <button type="button" onClick={() => { runTrigger(t.id); }} className="text-muted hover:text-primary cursor-pointer shrink-0" title={translate({ key: 'workspaces.automation.runNow' })}>
-              <Icon name="play" />
-            </button>
-            <button type="button" onClick={() => { void confirmDelete(t.id, t.name); }} className="text-muted hover:text-wrong cursor-pointer shrink-0" title={translate({ key: 'workspaces.automation.delete' })}>
-              <Icon name="trash-can" />
-            </button>
+            <IconButton icon="play" onClick={() => { runTrigger(t.id); }} title={translate({ key: 'workspaces.automation.runNow' })} className="shrink-0 hover:text-primary" />
+            <IconButton icon="trash-can" onClick={() => { void confirmDelete(t.id, t.name); }} title={translate({ key: 'workspaces.automation.delete' })} className="shrink-0 hover:text-wrong" />
           </div>
         ))}
       </div>
 
-      {creating && (
+      {/* #94 — motion gap-fix: the create form used to snap into existence; Collapse gives it a height+fade entrance. */}
+      <Collapse open={creating}>
         <div className="mt-3 rounded-xl border border-container1-border bg-container2/40 p-4 flex flex-col gap-3">
           <input
             value={name} onChange={(e) => { setName(e.target.value); }}
@@ -146,83 +162,95 @@ export default function AutomationPanel() {
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.whenLabel' })}</span>
-              <Dropdown size="sm" items={eventItems} value={eventItems.find((i) => i.id === on)} onChange={(it) => { setOn(EVENTS.find((e) => e === it.id) ?? 'ticket.created'); }} />
+              <Dropdown size="sm" width="full" items={eventItems} value={eventItems.find((i) => i.id === on)} onChange={(it) => { setOn(EVENTS.find((e) => e === it.id) ?? 'ticket.created'); }} />
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.doLabel' })}</span>
-              <Dropdown size="sm" items={actionItems} value={actionItems.find((i) => i.id === action)} onChange={(it) => { setAction(ACTIONS.find((a) => a === it.id) ?? 'notify'); }} />
+              <Dropdown size="sm" width="full" items={actionItems} value={actionItems.find((i) => i.id === action)} onChange={(it) => { setAction(ACTIONS.find((a) => a === it.id) ?? 'notify'); }} />
             </div>
           </div>
-          {on === 'cron' && (
+          {/* #94 — each conditional action/event field block animates in/out instead of popping as `action`/`on` change. */}
+          <Collapse open={on === 'cron'}>
             <input value={cron} onChange={(e) => { setCron(e.target.value); }} placeholder="0 9 * * *" className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm font-mono text-title focus:outline-none focus:border-primary" />
-          )}
-          {action === 'notify' && (
-            <>
+          </Collapse>
+          <Collapse open={action === 'notify'}>
+            <div className="flex flex-col gap-3">
               <input value={title} onChange={(e) => { setTitle(e.target.value); }} placeholder={translate({ key: 'workspaces.automation.notifyTitlePlaceholder' })} className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary" />
               <input value={body} onChange={(e) => { setBody(e.target.value); }} placeholder={translate({ key: 'workspaces.automation.notifyBodyPlaceholder' })} className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary" />
-            </>
-          )}
-          {action === 'emit-signal' && (
+            </div>
+          </Collapse>
+          <Collapse open={action === 'emit-signal'}>
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.signalKindLabel' })}</span>
               <input value={signalKind} onChange={(e) => { setSignalKind(e.target.value); }} placeholder={translate({ key: 'workspaces.automation.signalKindPlaceholder' })} className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm font-mono text-title focus:outline-none focus:border-primary" />
               <span className="text-xs text-disabled">{translate({ key: 'workspaces.automation.signalKindHelp' })}</span>
             </div>
-          )}
-          {action === 'start-stage' && (
+          </Collapse>
+          <Collapse open={action === 'start-stage'}>
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.targetStage' })}</span>
-              <Dropdown size="sm" items={stageItems} value={stageItems.find((i) => i.id === targetStage)} onChange={(it) => { setTargetStage(String(it.id)); }} />
+              <Dropdown size="sm" width="full" items={stageItems} value={stageItems.find((i) => i.id === targetStage)} onChange={(it) => { setTargetStage(String(it.id)); }} />
             </div>
-          )}
-          {action === 'invoke-agent-role' && (
+          </Collapse>
+          <Collapse open={action === 'invoke-agent-role'}>
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.roleLabel' })}</span>
-              <Dropdown size="sm" items={roleItems} value={roleItems.find((i) => i.id === roleKey)} onChange={(it) => { setRoleKey(String(it.id)); }} />
+              <Dropdown size="sm" width="full" items={roleItems} value={roleItems.find((i) => i.id === roleKey)} onChange={(it) => { setRoleKey(String(it.id)); }} />
             </div>
-          )}
-          {action === 'webhook' && (
+          </Collapse>
+          <Collapse open={action === 'webhook'}>
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.webhookUrl' })}</span>
               <input value={webhookUrl} onChange={(e) => { setWebhookUrl(e.target.value); }} placeholder="https://example.com/hook" className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary font-mono" />
             </div>
-          )}
-          {action === 'run-command' && (
+          </Collapse>
+          <Collapse open={action === 'run-command'}>
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.commandLabel' })}</span>
               <input value={command} onChange={(e) => { setCommand(e.target.value); }} placeholder={translate({ key: 'workspaces.automation.commandPlaceholder' })} className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm font-mono text-title focus:outline-none focus:border-primary" />
               <span className="text-xs text-disabled">{translate({ key: 'workspaces.automation.commandHelp' })}</span>
             </div>
-          )}
-          {action === 'invoke-workspace-ai' && (
+          </Collapse>
+          <Collapse open={action === 'invoke-workspace-ai'}>
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.aiPromptLabel' })}</span>
               <input value={aiPrompt} onChange={(e) => { setAiPrompt(e.target.value); }} placeholder={translate({ key: 'workspaces.automation.aiPromptPlaceholder' })} className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary" />
             </div>
-          )}
-          {/* #91 — optional match facet (stage) + debounce for event triggers (hidden for cron). */}
-          {on !== 'cron' && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.matchStageLabel' })}</span>
-                <Dropdown size="sm" items={matchStageItems} value={matchStageItems.find((i) => i.id === matchStage)} onChange={(it) => { setMatchStage(String(it.id)); }} />
+          </Collapse>
+          {/* #91 — optional match facet (stage) + debounce for event triggers (hidden for cron). #95 — help text
+              disambiguates "match stage" from the stage the event itself already fires from: for a stage.* event
+              it narrows WHICH stage's event counts; for every other event it filters by the ticket's current stage. */}
+          <Collapse open={on !== 'cron'}>
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.matchStageLabel' })}</span>
+                  <Dropdown size="sm" width="full" items={matchStageItems} value={matchStageItems.find((i) => i.id === matchStage)} onChange={(it) => { setMatchStage(String(it.id)); }} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.debounceLabel' })}</span>
+                  <input type="number" min="0" value={debounce} onChange={(e) => { setDebounce(e.target.value); }} placeholder="0" className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary" />
+                </div>
               </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.debounceLabel' })}</span>
-                <input type="number" min="0" value={debounce} onChange={(e) => { setDebounce(e.target.value); }} placeholder="0" className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary" />
-              </div>
+              <span className="text-xs text-disabled">{translate({ key: on.startsWith('stage.') ? 'workspaces.automation.matchStageHelpStage' : 'workspaces.automation.matchStageHelpTicket' })}</span>
             </div>
-          )}
+          </Collapse>
           <label className="flex items-center gap-2 text-sm text-common cursor-pointer">
             <input type="checkbox" checked={requiresApproval} onChange={(e) => { setRequiresApproval(e.target.checked); }} className="accent-primary" />
             {translate({ key: 'workspaces.automation.requireApproval' })}
           </label>
+          {/* #96 — a one-line plain-language preview of the rule, so the user can sanity-check the sentence
+              before creating it instead of finding out via "run now" after the fact. */}
+          <div className="flex items-start gap-2 rounded-lg border border-container1-border bg-container1 px-3 py-2">
+            <Icon name="arrow-right-long" className="text-primary mt-0.5 shrink-0" />
+            <span className="text-sm text-common">{preview}</span>
+          </div>
           <div className="flex items-center justify-end gap-2">
             <WsButton variant="ghost" onClick={reset}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
             <WsButton icon="plus" onClick={create}>{translate({ key: 'workspaces.automation.create' })}</WsButton>
           </div>
         </div>
-      )}
+      </Collapse>
     </div>
   );
 }

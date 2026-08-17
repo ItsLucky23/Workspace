@@ -13,7 +13,8 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Icon from '../../../_components/Icon';
 import MarkdownView from '../../../_components/MarkdownView';
 import { MediaUploadButton } from '../../../_components/MediaUploadButton';
-import { EmptyState, Segmented, WsButton } from '../../../_components/primitives';
+import { Collapse } from '../../../_components/motion';
+import { EmptyState, InfoDot, SectionCard, Segmented, WsButton } from '../../../_components/primitives';
 import DiffView from '../../../develop/board/[ticketId]/DiffView';
 import { AssetPicker, type PickableAsset } from '../../../_components/AssetPicker';
 import { useWorkspaces } from '../../../_shell/WorkspacesContext';
@@ -36,7 +37,7 @@ function fileAssetIcon(stub: boolean, extractStatus?: string): string {
 export default function DocumentDetail({ params }: { params: Record<string, string | undefined> }) {
   const translate = useTranslator();
   const id = params.docid ?? '';
-  const { documents, content: contentSnapshot, setAssetStarred, editDocument, runDocumentAi, applyDocumentDraft, discardDocumentDraft, genDocumentImage, exportDocument, restoreDocumentRevision, navigate, activeWorkspace } = useWorkspaces();
+  const { documents, content: contentSnapshot, setAssetStarred, editDocument, runDocumentAi, applyDocumentDraft, discardDocumentDraft, genDocumentImage, exportDocument, restoreDocumentRevision, navigate, activeWorkspace, focusSetup } = useWorkspaces();
   const doc = documents.find((d) => d.id === id);
 
   const [title, setTitle] = useState(doc?.title ?? '');
@@ -103,7 +104,18 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
       {/* AI bar: mode + instruction → a DRAFT (apply = consent, B-23). */}
       <div className="rounded-lg border border-container1-border bg-container1 p-2.5 flex items-center gap-2 flex-wrap">
         <div className="w-36 shrink-0">
-          <Dropdown size="sm" value={modeItems.find((m) => m.id === aiMode)} items={modeItems} onChange={(it) => { setAiMode(String(it.id)); }} />
+          <Dropdown size="sm" width="full" value={modeItems.find((m) => m.id === aiMode)} items={modeItems} onChange={(it) => { setAiMode(String(it.id)); }} />
+        </div>
+        {/* UI_AUDIT — which AI actually runs this: 'document-generate' is its own fixed assignment
+            (server/ai/assignments.ts), untouched by pipeline stage personas and NOT the same feature as
+            the similarly-named "Docs generate" row in Workspace → AI (that one drives the repo project-summary
+            doc, not this editor). The link still goes there because the workspace AI instruction + skills
+            DO apply here — only the provider choice doesn't. */}
+        <div className="flex items-center gap-1 shrink-0">
+          <WsButton variant="ghost" icon="robot" onClick={() => { focusSetup({ view: 'workspace', tab: 'aibehavior' }); }}>
+            {translate({ key: 'workspaces.documents.aiProviderChip', params: [{ key: 'provider', value: 'Gemini' }] })}
+          </WsButton>
+          <InfoDot title={translate({ key: 'workspaces.documents.aiProviderInfoTitle' })} body={translate({ key: 'workspaces.documents.aiProviderInfo' })} />
         </div>
         <input
           value={aiInstruction} onChange={(e) => { setAiInstruction(e.target.value); }}
@@ -116,7 +128,7 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
       </div>
 
       {/* Pending AI draft: preview + apply/discard. */}
-      {doc.aiDraft !== null && (
+      <Collapse open={doc.aiDraft !== null}>
         <div className="rounded-lg border border-warning/40 bg-warning/5 p-3 flex flex-col gap-2">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="text-sm font-semibold text-title flex items-center gap-2">
@@ -129,7 +141,7 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
               <WsButton variant="ghost" icon="trash" onClick={() => { discardDocumentDraft(doc.id); }}>{translate({ key: 'workspaces.documents.discardDraft' })}</WsButton>
             </div>
           </div>
-          {(() => {
+          {doc.aiDraft !== null && (() => {
             const diff = lineDiff(doc.content, doc.aiDraft);
             const stat = diffStat(diff);
             const statLabel = `+${String(stat.added)} −${String(stat.removed)}`;
@@ -149,7 +161,7 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
             );
           })()}
         </div>
-      )}
+      </Collapse>
 
       {/* Editor / preview. */}
       <div className="flex items-center justify-between">
@@ -163,8 +175,7 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
         : <div className="rounded-lg border border-container1-border bg-container1 p-4 min-h-96"><MarkdownView markdown={content} /></div>}
 
       {/* EXP — export the markdown source to a target format; results appear under attachments. */}
-      <div className="pt-2 border-t border-divider">
-        <div className="text-sm font-semibold text-title mb-2">{translate({ key: 'workspaces.documents.exportTitle' })}</div>
+      <SectionCard title={translate({ key: 'workspaces.documents.exportTitle' })}>
         <div className="flex flex-wrap gap-2">
           {(['md', 'html', 'pdf', 'docx', 'xlsx'] as const).map((f) => (
             <WsButton key={f} variant="secondary" icon="file-lines" onClick={() => { setExporting(f); exportDocument(doc.id, f); }} disabled={exporting !== null}>
@@ -182,11 +193,10 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
             ))}
           </div>
         )}
-      </div>
+      </SectionCard>
 
       {/* Assets: uploads + AI-generated images. */}
-      <div className="pt-2 border-t border-divider">
-        <div className="text-sm font-semibold text-title mb-2">{translate({ key: 'workspaces.documents.assetsTitle' })}</div>
+      <SectionCard title={translate({ key: 'workspaces.documents.assetsTitle' })}>
         <div className="flex flex-wrap gap-2 mb-2">
           {doc.assets.filter((a) => a.kind !== 'export').map((a, i) => (
             <a key={`${a.url}-${String(i)}`} href={a.url} target="_blank" rel="noreferrer" className="block w-28">
@@ -204,12 +214,12 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
           {/* GAP_SCAN C2 — reuse before regenerate: the workspace's already-approved media is offered
               first, so an existing visual costs nothing instead of a fresh image-gen. */}
           {reusableAssets.length > 0 && (
-            <button type="button" onClick={() => { setShowReuse((v) => !v); }} className="text-xs text-primary hover:underline cursor-pointer">
+            <WsButton variant="ghost" icon="image" onClick={() => { setShowReuse((v) => !v); }}>
               {translate({ key: showReuse ? 'workspaces.documents.reuseHide' : 'workspaces.documents.reuseExisting' })} ({String(reusableAssets.length)})
-            </button>
+            </WsButton>
           )}
         </div>
-        {showReuse && (
+        <Collapse open={showReuse}>
           <AssetPicker
             assets={reusableAssets}
             kinds={['image', 'thumbnail']}
@@ -219,13 +229,12 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
             pickHint={translate({ key: 'workspaces.documents.reuseThis' })}
             starHint={translate({ key: 'workspaces.content.libraryStar' })}
           />
-        )}
-      </div>
+        </Collapse>
+      </SectionCard>
 
       {/* History: prior revisions (restore snapshots current first, so it's undoable). */}
       {doc.revisions.length > 0 && (
-        <div className="pt-2 border-t border-divider">
-          <div className="text-sm font-semibold text-title mb-2">{translate({ key: 'workspaces.documents.historyTitle' })}</div>
+        <SectionCard title={translate({ key: 'workspaces.documents.historyTitle' })}>
           <div className="flex flex-col gap-1">
             {doc.revisions.slice(0, 12).map((r) => (
               <div key={r.id} className="flex items-center justify-between gap-2 text-xs rounded-lg border border-container1-border bg-container1 px-2.5 py-1.5">
@@ -234,7 +243,7 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
               </div>
             ))}
           </div>
-        </div>
+        </SectionCard>
       )}
     </div>
   );

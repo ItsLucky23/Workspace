@@ -6,11 +6,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { motion } from 'motion/react';
+
 import { apiRequest, i18nNotify as notify, tryCatch, useTranslator } from '@luckystack/core/client';
 
 import Icon, { type IconName } from '../../_components/Icon';
-import { Popover } from '../../_components/motion';
-import { EmptyState, useClickAway, WsButton } from '../../_components/primitives';
+import { Collapse, Popover } from '../../_components/motion';
+import { EmptyState, IconButton, InteractiveRow, useClickAway, WsButton } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { InterviewFinding } from '../../_data/types';
 
@@ -30,6 +32,14 @@ const AREA_META: Record<string, { icon: IconName; tint: string }> = {
   other: { icon: 'circle-dot', tint: 'text-muted' },
 };
 const areaMeta = (area: string): { icon: IconName; tint: string } => AREA_META[area] ?? { icon: 'circle-dot', tint: 'text-muted' };
+
+//? Finding severity → translation key (for the row's expanded detail). "high" already has a
+//? standalone key because it also renders as a chip on the collapsed row.
+const SEVERITY_KEY: Record<string, string> = {
+  low: 'workspaces.interviewer.severityLow',
+  normal: 'workspaces.interviewer.severityNormal',
+  high: 'workspaces.interviewer.high',
+};
 
 //? Starter prompts — clickable so a first-time visitor instantly sees what this page is for.
 //? The translated starter text IS the prompt that gets sent to the AI.
@@ -102,29 +112,28 @@ export default function Interviewer() {
               </button>
             )}
             {/* #167 — invoke the interviewer agent-role on demand; findings surface via the snapshot when ready. */}
-            <GenerateIdeasMenu onGenerate={(focus) => { runAgentRole('interviewer', focus); notify.info({ key: 'workspaces.interviewer.generateStarted' }); }} />
+            <GenerateIdeasMenu onGenerate={(focus) => {
+              runAgentRole('interviewer', focus);
+              const trimmedFocus = focus.trim();
+              //? Echo the focus text back so a user who runs this twice with different focuses can tell
+              //? which run they just kicked off (the toast used to be identical either way).
+              if (trimmedFocus.length > 0) notify.info({ key: 'workspaces.interviewer.generateStartedFocus', params: [{ key: 'focus', value: trimmedFocus }] });
+              else notify.info({ key: 'workspaces.interviewer.generateStarted' });
+            }} />
           </div>
         </div>
       </div>
 
-      {/* middle — the conversation (default), or the persisted findings list when the pill is active */}
-      {showFindings ? (
-        <div className={`flex-1 min-h-0 overflow-y-auto px-5 md:px-6 py-5`}>
-          <div className={`max-w-2xl mx-auto flex flex-col gap-2.5`}>
-            <div className={`mb-1`}>
-              <div className={`text-sm font-semibold text-title`}>{translate({ key: 'workspaces.interviewer.findingsTitle', params: [{ key: 'n', value: String(interviewFindings.length) }] })}</div>
-              <p className={`text-xs text-muted mt-0.5`}>{translate({ key: 'workspaces.interviewer.findingsIntro' })}</p>
-            </div>
-            {interviewFindings.map((f) => (
-              <FindingRow key={f.id} f={f} translate={translate}
-                onMakeTicket={() => { makeTicketFromFinding(f.id); }}
-                onOpenTicket={() => { if (f.ticketId) openTicket(f.ticketId); }}
-                onDismiss={() => { dismissFinding(f.id); }} />
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div ref={scrollRef} className={`flex-1 min-h-0 overflow-y-auto px-5 md:px-6 py-5`}>
+      {/* middle — the conversation (default), or the persisted findings list when the pill is active.
+          Both panels stay mounted and crossfade via opacity (motion's global reduced-motion config
+          honours prefers-reduced-motion automatically) instead of the previous hard ternary swap —
+          the single most-reported motion defect in the audit. */}
+      <div className={`flex-1 min-h-0 relative`}>
+        <motion.div
+          ref={scrollRef} aria-hidden={showFindings}
+          animate={{ opacity: showFindings ? 0 : 1 }} transition={{ duration: 0.15 }}
+          className={`absolute inset-0 overflow-y-auto px-5 md:px-6 py-5 ${showFindings ? 'pointer-events-none' : ''}`}
+        >
           {empty ? (
             <div className={`max-w-2xl mx-auto`}>
               <EmptyState
@@ -149,8 +158,26 @@ export default function Interviewer() {
               {messages.map((m) => <Bubble key={m.id} m={m} />)}
             </div>
           )}
-        </div>
-      )}
+        </motion.div>
+        <motion.div
+          aria-hidden={!showFindings}
+          animate={{ opacity: showFindings ? 1 : 0 }} transition={{ duration: 0.15 }}
+          className={`absolute inset-0 overflow-y-auto px-5 md:px-6 py-5 ${showFindings ? '' : 'pointer-events-none'}`}
+        >
+          <div className={`max-w-2xl mx-auto flex flex-col gap-2.5`}>
+            <div className={`mb-1`}>
+              <div className={`text-sm font-semibold text-title`}>{translate({ key: 'workspaces.interviewer.findingsTitle', params: [{ key: 'n', value: String(interviewFindings.length) }] })}</div>
+              <p className={`text-xs text-muted mt-0.5`}>{translate({ key: 'workspaces.interviewer.findingsIntro' })}</p>
+            </div>
+            {interviewFindings.map((f) => (
+              <FindingRow key={f.id} f={f} translate={translate}
+                onMakeTicket={() => { makeTicketFromFinding(f.id); }}
+                onOpenTicket={() => { if (f.ticketId) openTicket(f.ticketId); }}
+                onDismiss={() => { dismissFinding(f.id); }} />
+            ))}
+          </div>
+        </motion.div>
+      </div>
 
       {/* composer — the primary action, always pinned at the bottom */}
       <div className={`shrink-0 border-t border-divider p-3 md:px-6`}>
@@ -201,26 +228,44 @@ function GenerateIdeasMenu({ onGenerate }: { onGenerate: (focus: string) => void
 function FindingRow({ f, translate, onMakeTicket, onOpenTicket, onDismiss }: { f: InterviewFinding; translate: ReturnType<typeof useTranslator>; onMakeTicket: () => void; onOpenTicket: () => void; onDismiss: () => void }) {
   const meta = areaMeta(f.area);
   const accepted = f.status === 'accepted';
+  //? Expand-to-read-more (gap-fix): the row used to be inert besides its two action buttons, so a
+  //? user had to accept/dismiss blind. Click anywhere on the row (not the actions) to reveal the
+  //? full severity + when it was found; ClickableCard/InteractiveRow is the shared answer for a
+  //? clickable row that also carries its own nested action buttons.
+  const [expanded, setExpanded] = useState(false);
   return (
-    <div className={`flex items-start gap-2.5 rounded-xl border border-container1-border bg-container1 p-2.5`}>
-      <span className={`w-7 h-7 shrink-0 rounded-lg bg-container2 flex items-center justify-center ${meta.tint}`}><Icon name={meta.icon} className={`text-sm`} /></span>
-      <div className={`min-w-0 flex-1`}>
-        <div className={`flex items-center gap-1.5 flex-wrap`}>
-          <span className={`text-sm font-medium text-title`}>{f.title}</span>
-          <span className={`text-[10px] px-1.5 py-0.5 rounded bg-container2 text-muted uppercase shrink-0`}>{f.area}</span>
-          {f.severity === 'high' && <span className={`text-[10px] px-1.5 py-0.5 rounded bg-wrong/12 text-wrong shrink-0`}>{translate({ key: 'workspaces.interviewer.high' })}</span>}
+    <InteractiveRow onClick={() => { setExpanded((e) => !e); }} className={`flex flex-col`}>
+      <div className={`flex items-start gap-2.5`}>
+        <span className={`w-7 h-7 shrink-0 rounded-lg bg-container2 flex items-center justify-center ${meta.tint}`}><Icon name={meta.icon} className={`text-sm`} /></span>
+        <div className={`min-w-0 flex-1`}>
+          <div className={`flex items-center gap-1.5 flex-wrap`}>
+            <span className={`text-sm font-medium text-title`}>{f.title}</span>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded bg-container2 text-muted uppercase shrink-0`}>{f.area}</span>
+            {f.severity === 'high' && <span className={`text-[10px] px-1.5 py-0.5 rounded bg-wrong/12 text-wrong shrink-0`}>{translate({ key: 'workspaces.interviewer.high' })}</span>}
+          </div>
+          {f.summary.length > 0 && <div className={`text-xs text-muted mt-0.5`}>{f.summary}</div>}
         </div>
-        {f.summary.length > 0 && <div className={`text-xs text-muted mt-0.5`}>{f.summary}</div>}
+        <Icon name="caret-down" className={`shrink-0 self-center text-muted text-xs transition-transform motion-reduce:transition-none ${expanded ? 'rotate-180' : ''}`} />
+        {/* nested actions stop the click from also toggling the expand state above */}
+        <div onClick={(e) => { e.stopPropagation(); }} className={`shrink-0 self-center`}>
+          {accepted ? (
+            <button type="button" onClick={onOpenTicket} disabled={!f.ticketId} className={`text-xs text-correct inline-flex items-center gap-1 enabled:hover:underline enabled:cursor-pointer disabled:cursor-default`}><Icon name="circle-check" />{translate({ key: 'workspaces.interviewer.linkedTicket' })}</button>
+          ) : (
+            <div className={`flex items-center gap-1.5`}>
+              <button type="button" onClick={onMakeTicket} className={`text-xs text-primary hover:underline cursor-pointer inline-flex items-center gap-1`}><Icon name="plus" className={`text-xs`} />{translate({ key: 'workspaces.interviewer.makeTicket' })}</button>
+              <IconButton icon="xmark" size="sm" title={translate({ key: 'workspaces.interviewer.dismiss' })} onClick={onDismiss} className={`hover:text-wrong`} />
+            </div>
+          )}
+        </div>
       </div>
-      {accepted ? (
-        <button type="button" onClick={onOpenTicket} disabled={!f.ticketId} className={`text-xs text-correct inline-flex items-center gap-1 shrink-0 self-center enabled:hover:underline enabled:cursor-pointer disabled:cursor-default`}><Icon name="circle-check" />{translate({ key: 'workspaces.interviewer.linkedTicket' })}</button>
-      ) : (
-        <div className={`flex items-center gap-1.5 shrink-0 self-center`}>
-          <button type="button" onClick={onMakeTicket} className={`text-xs text-primary hover:underline cursor-pointer inline-flex items-center gap-1`}><Icon name="plus" className={`text-xs`} />{translate({ key: 'workspaces.interviewer.makeTicket' })}</button>
-          <button type="button" onClick={onDismiss} title={translate({ key: 'workspaces.interviewer.dismiss' })} className={`text-muted hover:text-wrong cursor-pointer p-1`}><Icon name="xmark" className={`text-xs`} /></button>
+      <Collapse open={expanded}>
+        <div className={`pl-[2.375rem] pt-2 flex items-center gap-2 text-xs text-meta`}>
+          <span>{translate({ key: SEVERITY_KEY[f.severity] ?? 'workspaces.interviewer.severityNormal' })}</span>
+          <span aria-hidden="true">·</span>
+          <span>{new Date(f.createdAt).toLocaleString()}</span>
         </div>
-      )}
-    </div>
+      </Collapse>
+    </InteractiveRow>
   );
 }
 

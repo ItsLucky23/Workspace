@@ -11,6 +11,7 @@ import { i18nNotify as notify, useTranslator } from '@luckystack/core/client';
 import Icon, { type IconName } from '../../_components/Icon';
 import { PopMenu, type PopMenuItem } from '../../_components/primitives';
 import type { StudioArtifact, StudioArtifactKind } from '../../_data/types';
+import { getArtifactRefine } from '../studio/refineHistory';
 import { KIND_ICONS } from './kinds';
 
 //? ---- content readers (the AI content is `unknown`; read defensively, no casts to `any`) ----
@@ -54,7 +55,7 @@ function downloadHtmlAsPng(html: string, onFail: () => void): void {
 //? Header = icon + title + status + ONE primary action + overflow menu. Priority for the visible
 //? button: Publish live (landing) > Use as brand (brand) > Send to Content; whichever loses the
 //? slot stays reachable via the menu. `busy` guards Regenerate while another generation runs.
-export function ArtifactCard({ artifact, busy, onDelete, onRegenerate, onPromote, onSendToContent, onPublishLive }: { artifact: StudioArtifact; busy: boolean; onDelete: () => void; onRegenerate: () => void; onPromote?: () => void; onSendToContent?: () => void; onPublishLive?: () => void }) {
+export function ArtifactCard({ artifact, busy, pendingRefine, onDelete, onRegenerate, onPromote, onSendToContent, onPublishLive }: { artifact: StudioArtifact; busy: boolean; pendingRefine: string; onDelete: () => void; onRegenerate: () => void; onPromote?: () => void; onSendToContent?: () => void; onPublishLive?: () => void }) {
   const translate = useTranslator();
   const c = asRecord(artifact.content);
   const when = new Date(artifact.createdAt).toLocaleString();
@@ -62,6 +63,14 @@ export function ArtifactCard({ artifact, busy, onDelete, onRegenerate, onPromote
   const [full, setFull] = useState(false);
   const html = asStr(c.html);
   const hasHtmlPreview = (artifact.kind === 'landing' || artifact.kind === 'component' || artifact.kind === 'thumbnail') && artifact.status === 'ready' && html.trim().length > 0;
+  //? I4 bug fix — the refine that PRODUCED this card (persisted, historical) vs. the refine that WILL
+  //? apply if Regenerate is clicked now (the live shared box) are two different things; show both
+  //? instead of leaving the user to guess which one a stale box silently reapplies.
+  const usedRefine = getArtifactRefine(artifact.id);
+  const trimmedPending = pendingRefine.trim();
+  const regenerateLabel = trimmedPending.length > 0
+    ? translate({ key: 'workspaces.studio.regenerateWithRefine', params: [{ key: 'refine', value: trimmedPending.length > 28 ? `${trimmedPending.slice(0, 27)}…` : trimmedPending }] })
+    : translate({ key: 'workspaces.studio.regenerate' });
 
   let primary: { onClick: () => void; icon: IconName; label: string; hint: string } | null = null;
   if (onPublishLive) primary = { onClick: onPublishLive, icon: 'globe', label: 'workspaces.studio.publishLive', hint: 'workspaces.studio.publishLiveHint' };   //? G3 — one click from "generated page" to a real public URL (re-publish = update, same slug).
@@ -70,7 +79,7 @@ export function ArtifactCard({ artifact, busy, onDelete, onRegenerate, onPromote
 
   const menu: PopMenuItem[] = [
     //? busyKind semantics preserved: while any generation runs, Regenerate is inert (was `disabled`).
-    { label: translate({ key: 'workspaces.studio.regenerate' }), icon: 'rotate', onClick: () => { if (!busy) onRegenerate(); } },
+    { label: regenerateLabel, icon: 'rotate', onClick: () => { if (!busy) onRegenerate(); } },
   ];
   if (onSendToContent && primary && primary.onClick !== onSendToContent) menu.push({ label: translate({ key: 'workspaces.studio.sendToContent' }), icon: 'paper-plane', onClick: onSendToContent });
   if (hasHtmlPreview) {
@@ -103,6 +112,7 @@ export function ArtifactCard({ artifact, busy, onDelete, onRegenerate, onPromote
       <div className={`px-4 py-2 border-t border-divider text-[11px] text-meta flex items-center gap-2`}>
         <span>{translate({ key: `workspaces.studio.kind.${artifact.kind}` })}</span>
         {artifact.providerId && <span>· {artifact.providerId}</span>}
+        {usedRefine && <span className={`truncate max-w-[10rem]`} title={usedRefine}>· {translate({ key: 'workspaces.studio.refinedWith', params: [{ key: 'refine', value: usedRefine }] })}</span>}
         <span className={`ml-auto`}>{when}</span>
       </div>
     </div>

@@ -131,8 +131,12 @@ export function NewBacklogTicketForm({ quickAdd, sprints, members, initialSprint
         className={`resize-y px-3 py-2 rounded-lg border border-container1-border bg-container2/50 text-sm text-common focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30`}
       />
       <div className={`flex gap-2`}>
-        <Dropdown size="md" value={sprintItems.find((s) => s.id === sprintId)} items={sprintItems} onChange={(it) => { setSprintId(String(it.id)); }} />
-        <Dropdown size="md" value={assigneeItems.find((a) => a.id === assigneeId)} items={assigneeItems} onChange={(it) => { setAssigneeId(String(it.id)); }} />
+        <div className={`flex-1 min-w-0`}>
+          <Dropdown size="md" width="full" value={sprintItems.find((s) => s.id === sprintId)} items={sprintItems} onChange={(it) => { setSprintId(String(it.id)); }} />
+        </div>
+        <div className={`flex-1 min-w-0`}>
+          <Dropdown size="md" width="full" value={assigneeItems.find((a) => a.id === assigneeId)} items={assigneeItems} onChange={(it) => { setAssigneeId(String(it.id)); }} />
+        </div>
       </div>
       <input
         value={labelsText} onChange={(e) => { setLabelsText(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}

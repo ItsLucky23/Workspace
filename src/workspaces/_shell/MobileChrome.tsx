@@ -10,7 +10,7 @@ import { useTranslator } from '@luckystack/core/client';
 
 import Icon from '../_components/Icon';
 import { SPRING_SHEET } from '../_components/motion';
-import { AvatarBubble } from '../_components/primitives';
+import { AvatarBubble, IconButton } from '../_components/primitives';
 import { isSectionEnabled } from '../_data/modules';
 import { menuHandler } from 'src/_functions/menuHandler';
 
@@ -40,7 +40,7 @@ export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
         {onTicket ? (
           <button type="button" onClick={() => { navigate('board'); }} className="flex items-center gap-1 text-sm text-common cursor-pointer"><Icon name="angle-left" /> {translate({ key: 'workspaces.mobileChrome.board' })}</button>
         ) : (
-          <button type="button" aria-label="Menu" onClick={() => { setDrawer(true); }} className="w-9 h-9 flex items-center justify-center rounded-xl text-common hover:bg-container2 cursor-pointer"><Icon name="bars" /></button>
+          <IconButton icon="bars" onClick={() => { setDrawer(true); }} title={translate({ key: 'workspaces.shell.menu' })} size="touch" />
         )}
         {/* GAP_SCAN B2 — this had a caret but no handler: on a phone there was no way to reach the
             workspace list at all. It now opens the drawer, which owns switching AND creating. */}
@@ -49,9 +49,11 @@ export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
           {activeWorkspace.name} <Icon name="caret-down" className="text-xs text-muted" />
         </button>
         <div className="flex-1" />
-        <button type="button" aria-label="Search" onClick={onCmdK} className="w-9 h-9 flex items-center justify-center rounded-xl text-common hover:bg-container2 cursor-pointer"><Icon name="magnifying-glass" /></button>
-        {/* #116 — the notification bell was desktop-only; a phone user can now see + clear notifications. */}
-        <button type="button" onClick={() => { setNotifOpen(true); }} className="relative w-9 h-9 flex items-center justify-center rounded-xl text-common hover:bg-container2 cursor-pointer" title={translate({ key: 'workspaces.shell.notifications' })}>
+        <IconButton icon="magnifying-glass" onClick={onCmdK} title={translate({ key: 'workspaces.shell.search' })} size="touch" />
+        {/* #116 — the notification bell was desktop-only; a phone user can now see + clear notifications.
+            Kept as a raw button (not IconButton): the unread-count badge needs a child slot the shared
+            primitive doesn't expose — bumped to the same 44px touch target by hand. */}
+        <button type="button" onClick={() => { setNotifOpen(true); }} className="relative w-11 h-11 flex items-center justify-center rounded-xl text-common hover:bg-container2 cursor-pointer" title={translate({ key: 'workspaces.shell.notifications' })}>
           <Icon name="bell" />
           {unreadNotifications > 0 && <span className="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-wrong text-[10px] font-bold text-title-primary flex items-center justify-center">{unreadNotifications > 9 ? '9+' : unreadNotifications}</span>}
         </button>

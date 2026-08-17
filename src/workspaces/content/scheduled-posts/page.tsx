@@ -10,6 +10,7 @@ import { useMemo, useState } from 'react';
 import { useTranslator } from '@luckystack/core/client';
 
 import Icon from '../../_components/Icon';
+import { Collapse } from '../../_components/motion';
 import { EmptyState, WsButton } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 
@@ -57,12 +58,12 @@ function RowCard({ row, onOpen }: { row: ScheduledRow; onOpen: () => void }) {
             <span className={`min-w-0 truncate text-left`}>{translate({ key: 'workspaces.scheduledPosts.whyFailed' })}</span>
             <Icon name="caret-down" className={`shrink-0 text-muted transition-transform motion-reduce:transition-none ${showDetail ? 'rotate-180' : ''}`} />
           </button>
-          {showDetail && (
+          <Collapse open={showDetail}>
             <div className={`px-4 pb-3 flex flex-col gap-1.5`}>
               {row.error != null && <div className={`text-xs text-common break-words`}>{row.error}</div>}
               {row.attempts != null && <div className={`text-xs text-muted`}>{translate({ key: 'workspaces.scheduledPosts.attempts', params: [{ key: 'count', value: String(row.attempts) }] })}</div>}
             </div>
-          )}
+          </Collapse>
         </>
       )}
     </div>
@@ -97,30 +98,46 @@ export default function ScheduledPosts() {
   }, [content.pieces, content.channels]);
 
   //? Group by calendar day for a light calendar feel (a full grid is overkill for the queue volume).
-  const groups = useMemo<{ day: string; items: ScheduledRow[] }[]>(() => {
+  //? `relation` flags the group the user actually cares about first (today, then tomorrow) so its
+  //? label can stand out from the flat scroll of muted day strings.
+  const groups = useMemo<{ day: string; items: ScheduledRow[]; relation: 'today' | 'tomorrow' | null }[]>(() => {
+    const dayKey = (d: Date): string => d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    const now = new Date();
+    const todayKey = dayKey(now);
+    const tomorrowKey = dayKey(new Date(now.getTime() + 24 * 60 * 60 * 1000));
     const map = new Map<string, ScheduledRow[]>();
     for (const r of rows) {
-      const day = new Date(r.when).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+      const day = dayKey(new Date(r.when));
       const list = map.get(day) ?? [];
       list.push(r);
       map.set(day, list);
     }
-    return [...map.entries()].map(([day, items]) => ({ day, items }));
+    return [...map.entries()].map(([day, items]) => ({
+      day, items,
+      relation: day === todayKey ? 'today' : (day === tomorrowKey ? 'tomorrow' : null),
+    }));
   }, [rows]);
 
   return (
     <div className={`h-full min-h-0 overflow-y-auto`}>
       <div className={`px-5 md:px-6 pt-5 pb-3 border-b border-divider flex flex-wrap items-center gap-3`}>
-        <div className={`flex items-center gap-2 text-title min-w-0`}>
+        <div className={`flex items-center gap-2 text-title min-w-0 flex-1`}>
           <span className={`w-8 h-8 rounded-xl bg-primary/12 text-primary flex items-center justify-center shrink-0`}><Icon name="calendar-day" /></span>
           <div className={`min-w-0`}>
             <div className={`text-xl font-semibold leading-tight`}>{translate({ key: 'workspaces.scheduledPosts.title' })}</div>
             <div className={`text-xs text-muted truncate`}>{translate({ key: 'workspaces.scheduledPosts.tagline' })}</div>
           </div>
         </div>
+        {rows.length > 0 && (
+          //? Persistent escape hatch to where scheduling actually happens — previously this only
+          //? existed inside the empty state, so it vanished the moment the queue had items (finding).
+          <WsButton variant="secondary" icon="wand-magic-sparkles" onClick={() => { navigate('content'); }}>
+            {translate({ key: 'workspaces.scheduledPosts.goToContent' })}
+          </WsButton>
+        )}
       </div>
 
-      <div className={`p-5 md:p-6 flex flex-col gap-6 max-w-3xl`}>
+      <div className={`p-5 md:p-6 flex flex-col gap-6 max-w-4xl`}>
         {rows.length === 0 && (
           //? Teaching empty state: says what fills this page and hands over the primary action
           //? (scheduling happens on a content piece, not here).
@@ -134,7 +151,14 @@ export default function ScheduledPosts() {
 
         {groups.map((g) => (
           <div key={g.day} className={`flex flex-col gap-2`}>
-            <div className={`text-xs font-medium text-muted uppercase tracking-wide`}>{g.day}</div>
+            <div className={`flex items-center gap-2`}>
+              {g.relation != null && (
+                <span className={`text-[10px] font-semibold uppercase tracking-wide rounded-full bg-primary/12 text-primary px-2 py-0.5`}>
+                  {translate({ key: g.relation === 'today' ? 'workspaces.scheduledPosts.today' : 'workspaces.scheduledPosts.tomorrow' })}
+                </span>
+              )}
+              <div className={`text-xs font-medium text-muted uppercase tracking-wide`}>{g.day}</div>
+            </div>
             <div className={`flex flex-col gap-2`}>
               {g.items.map((r, i) => (
                 <RowCard key={`${r.pieceId}-${r.platform}-${String(i)}`} row={r} onOpen={() => { navigate(`content/${r.pieceId}`); }} />

@@ -9,9 +9,10 @@ import { apiRequest, i18nNotify as notify, useTranslator } from '@luckystack/cor
 
 import { menuHandler } from 'src/_functions/menuHandler';
 import Icon from '../../_components/Icon';
-import { WsButton } from '../../_components/primitives';
+import { Disclosure, IconButton, WsButton } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { StudioBrief } from '../../_data/types';
+import { getBrandProvenance, recordBrandProvenance } from '../studio/brandProvenance';
 
 const inputCls = 'w-full h-9 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 
@@ -49,12 +50,22 @@ export function BriefForm({ brief, onSaved, onCancel }: { brief: StudioBrief | n
     <div className={`flex flex-col gap-4`}>
       <div className={`text-lg font-semibold text-title`}>{translate({ key: brief ? 'workspaces.studio.editBrief' : 'workspaces.studio.newBrief' })}</div>
       <div className={`text-sm text-muted -mt-2`}>{translate({ key: 'workspaces.studio.briefIntro' })}</div>
-      {field(translate({ key: 'workspaces.studio.fieldName' }), name, setName, translate({ key: 'workspaces.studio.fieldNamePlaceholder' }))}
-      {field(translate({ key: 'workspaces.studio.fieldProduct' }), productName, setProductName, translate({ key: 'workspaces.studio.fieldProductPlaceholder' }))}
-      {field(translate({ key: 'workspaces.studio.fieldAudience' }), audience, setAudience, translate({ key: 'workspaces.studio.fieldAudiencePlaceholder' }))}
-      {field(translate({ key: 'workspaces.studio.fieldTone' }), tone, setTone, translate({ key: 'workspaces.studio.fieldTonePlaceholder' }))}
-      {field(translate({ key: 'workspaces.studio.fieldGoals' }), goals, setGoals, translate({ key: 'workspaces.studio.fieldGoalsPlaceholder' }), true)}
-      {field(translate({ key: 'workspaces.studio.fieldNotes' }), notes, setNotes, translate({ key: 'workspaces.studio.fieldNotesPlaceholder' }), true)}
+      {/* required pair: name + product carry equal weight, side by side so the form reads in two rows, not six */}
+      <div className={`grid sm:grid-cols-2 gap-3`}>
+        {field(translate({ key: 'workspaces.studio.fieldName' }), name, setName, translate({ key: 'workspaces.studio.fieldNamePlaceholder' }))}
+        {field(translate({ key: 'workspaces.studio.fieldProduct' }), productName, setProductName, translate({ key: 'workspaces.studio.fieldProductPlaceholder' }))}
+      </div>
+      <div className={`grid sm:grid-cols-2 gap-3`}>
+        {field(translate({ key: 'workspaces.studio.fieldAudience' }), audience, setAudience, translate({ key: 'workspaces.studio.fieldAudiencePlaceholder' }))}
+        {field(translate({ key: 'workspaces.studio.fieldTone' }), tone, setTone, translate({ key: 'workspaces.studio.fieldTonePlaceholder' }))}
+      </div>
+      {/* optional (canSave only needs name+productName) — collapsed behind a disclosure instead of two more full-weight rows */}
+      <Disclosure summary={translate({ key: 'workspaces.studio.optionalDetails' })}>
+        <div className={`flex flex-col gap-4`}>
+          {field(translate({ key: 'workspaces.studio.fieldGoals' }), goals, setGoals, translate({ key: 'workspaces.studio.fieldGoalsPlaceholder' }), true)}
+          {field(translate({ key: 'workspaces.studio.fieldNotes' }), notes, setNotes, translate({ key: 'workspaces.studio.fieldNotesPlaceholder' }), true)}
+        </div>
+      </Disclosure>
       <div className={`flex items-center justify-end gap-2 pt-1`}>
         {onCancel && <WsButton variant="ghost" onClick={onCancel}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>}
         <WsButton icon="check" onClick={() => { void save(); }} disabled={!canSave || saving}>{translate({ key: 'workspaces.studio.saveBrief' })}</WsButton>
@@ -121,15 +132,30 @@ export function BrandPanel() {
   const save = async () => {
     setSaving(true);
     await saveBrand({ palette: palette.filter((p) => p.hex.trim().length > 0), typography: { heading: heading.trim(), body: body.trim() }, voice: voice.trim(), taglines: taglines.split('\n').map((t) => t.trim()).filter(Boolean) });
+    //? Owner decision 6 — provenance covers manual edits too, not only "Use as brand" promotions.
+    recordBrandProvenance(activeWorkspace.id, 'manual');
     setSaving(false);
   };
   const setColor = (i: number, patch: Partial<{ name: string; hex: string }>) => { setPalette((p) => p.map((c, j) => (j === i ? { ...c, ...patch } : c))); };
+  const provenance = getBrandProvenance(activeWorkspace.id);
 
   return (
     <div className={`flex flex-col gap-5`}>
       <div>
         <div className={`text-xl font-semibold text-title`}>{translate({ key: 'workspaces.studio.brandLibrary' })}</div>
         <div className={`text-sm text-muted mt-0.5`}>{translate({ key: 'workspaces.studio.brandIntro' })}</div>
+        {/* Owner decision 6 — provenance; only shown once this browser has recorded one. */}
+        {provenance && (
+          <div className={`text-xs text-meta mt-1`}>
+            {translate({
+              key: 'workspaces.studio.brandProvenanceLabel',
+              params: [
+                { key: 'source', value: provenance.source === 'manual' ? translate({ key: 'workspaces.studio.brandProvenanceManual' }) : provenance.source },
+                { key: 'date', value: new Date(provenance.at).toLocaleDateString() },
+              ],
+            })}
+          </div>
+        )}
       </div>
 
       {/* palette editor */}
@@ -145,7 +171,7 @@ export function BrandPanel() {
               <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(c.hex) ? c.hex : '#000000'} onChange={(e) => { setColor(i, { hex: e.target.value }); }} className={`w-9 h-9 rounded-lg border border-container1-border cursor-pointer bg-transparent p-0.5`} />
               <input value={c.name} onChange={(e) => { setColor(i, { name: e.target.value }); }} placeholder={translate({ key: 'workspaces.studio.colourName' })} className={`flex-1 ${inputCls}`} />
               <input value={c.hex} onChange={(e) => { setColor(i, { hex: e.target.value }); }} placeholder="#4B3FDE" className={`w-28 font-mono ${inputCls}`} />
-              <button type="button" onClick={() => { setPalette((p) => p.filter((_, j) => j !== i)); }} className={`text-muted hover:text-wrong cursor-pointer shrink-0`}><Icon name="trash-can" className={`text-xs`} /></button>
+              <IconButton icon="trash-can" title={translate({ key: 'workspaces.studio.removeColour' })} onClick={() => { setPalette((p) => p.filter((_, j) => j !== i)); }} className={`shrink-0 hover:text-wrong`} />
             </div>
           ))}
         </div>

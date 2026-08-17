@@ -8,7 +8,7 @@
 //? diagnosis (ADR 0042) sits behind its own disclosure. Data comes from the
 //? real SpendRecord aggregate (server aggregateUsage), not dummy rows.
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
@@ -26,6 +26,18 @@ type UsageTab = 'usage' | 'delivery' | 'people';
 //? Compact token count for the always-visible per-bar labels (hover must not be the only reading).
 const fmtTokens = (n: number): string => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}k` : String(n));
 
+//? Example symptoms so a first-time user knows what a good diagnose input looks like (audit finding: copy).
+const DIAGNOSE_EXAMPLE_KEYS = ['workspaces.usage.diagnoseExample1', 'workspaces.usage.diagnoseExample2', 'workspaces.usage.diagnoseExample3'] as const;
+
+//? One local-session diagnose call: tracked client-side (no symptom field on WorkspaceSuggestion) so the
+//? panel can show feedback + a trace of what was asked, instead of the input just going blank (audit finding).
+interface DiagnoseEntry {
+  id: string;
+  symptom: string;
+  status: 'pending' | 'ready';
+  suggestionId: string | null;
+}
+
 function StatCard({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div className={`rounded-2xl border border-container1-border bg-container1 p-5`}>
@@ -37,11 +49,15 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint: 
 }
 
 export default function Usage() {
-  const { openTicket, navigate, tickets, membersById, usage, insights, analytics, budget, budgets, editBudget, resumeSpend, diagnoseRootCause } = useWorkspaces();
+  const { openTicket, navigate, focusSetup, tickets, membersById, usage, insights, analytics, budget, budgets, editBudget, resumeSpend, diagnoseRootCause, suggestions, acceptSuggestion, dismissSuggestion, toggleAi } = useWorkspaces();
   const translate = useTranslator();
   const [tab, setTab] = useState<UsageTab>('usage');
   //? root-cause (ADR 0042) — a symptom → the likely-culprit merge as a rollback suggestion (AI panel).
   const [symptom, setSymptom] = useState('');
+  //? Client-side trace of diagnose calls this session (audit finding: zero on-page feedback + no history).
+  const [diagnoseHistory, setDiagnoseHistory] = useState<DiagnoseEntry[]>([]);
+  //? Suggestion ids present right before a diagnose call — whatever's new after that is its result.
+  const diagnoseBaselineRef = useRef<Set<string>>(new Set());
   //? AI/token €-budget editor (D81) — the first save creates the budget if none exists (conductor upsert).
   const [capInput, setCapInput] = useState(budget ? String(budget.cap) : '');
   const [alertInput, setAlertInput] = useState(budget ? String(budget.alertPct) : '80');
@@ -58,7 +74,25 @@ export default function Usage() {
   //? Page-level teaching empty state: no per-ticket rows AND an all-zero activity week.
   const pageEmpty = usage.byTicket.length === 0 && usage.activity.every((d) => d.tokens === 0);
   const spentPct = budget && budget.cap > 0 ? Math.min(100, (budget.spent / budget.cap) * 100) : 0;
-  const nearCap = budget !== null && budget.cap > 0 && (budget.spent / budget.cap) * 100 >= budget.alertPct;
+  //? THE BUG (audit finding): this strip used to watch only the legacy primary `budget`, so a secondary
+  //? NAMED cap (#103 multi-cap) crossing its own alert threshold triggered nothing — the exact
+  //? runaway-spend case caps exist to prevent. Now every entry in `budgets` is checked too (skipping
+  //? disabled caps), and each over-threshold cap is named in the strip instead of one generic message.
+  const overCaps = useMemo(() => {
+    const list: { id: string; label: string; spentLabel: string; pct: number }[] = [];
+    if (budget && budget.cap > 0 && (budget.spent / budget.cap) * 100 >= budget.alertPct) {
+      list.push({ id: 'primary', label: translate({ key: 'workspaces.usage.budgetPrimaryLabel' }), spentLabel: `€${budget.spent.toFixed(2)} / €${budget.cap.toFixed(2)}`, pct: Math.min(100, (budget.spent / budget.cap) * 100) });
+    }
+    for (const b of budgets) {
+      if (b.enabled === false || b.cap <= 0) continue;
+      const pct = (b.spent / b.cap) * 100;
+      if (pct >= b.alertPct) {
+        list.push({ id: b.id ?? `cap-${String(list.length)}`, label: b.label ?? translate({ key: 'workspaces.usage.budgetUnnamedCap' }), spentLabel: `€${b.spent.toFixed(2)} / €${b.cap.toFixed(2)}`, pct: Math.min(100, pct) });
+      }
+    }
+    return list;
+  }, [budget, budgets, translate]);
+  const nearCap = overCaps.length > 0;
 
   const revealBudgets = () => {
     setBudgetsSeed((s) => s + 1);
@@ -83,6 +117,34 @@ export default function Usage() {
   //? #100 — real per-user token/cost attribution (from the SpendRecord aggregate), keyed by userId.
   const usageByUser = useMemo(() => new Map(usage.byUser.map((u) => [u.userId, u])), [usage.byUser]);
 
+  //? Match the pending diagnose entry to whichever suggestion arrived while it was in flight (realtime push).
+  useEffect(() => {
+    setDiagnoseHistory((history) => {
+      const pendingIdx = history.findIndex((e) => e.status === 'pending');
+      if (pendingIdx === -1) return history;
+      const fresh = suggestions.find((s) => !diagnoseBaselineRef.current.has(s.id));
+      if (!fresh) return history;
+      return history.map((e, i): DiagnoseEntry => (i === pendingIdx ? { ...e, status: 'ready', suggestionId: fresh.id } : e));
+    });
+  }, [suggestions]);
+
+  const handleDiagnose = () => {
+    const value = symptom.trim();
+    if (value.length === 0 || diagnoseHistory.some((e) => e.status === 'pending')) return;
+    diagnoseBaselineRef.current = new Set(suggestions.map((s) => s.id));
+    const entry: DiagnoseEntry = { id: `diag-${String(Date.now())}`, symptom: value, status: 'pending', suggestionId: null };
+    setDiagnoseHistory((h) => [entry, ...h].slice(0, 5));
+    diagnoseRootCause(value);
+    setSymptom('');
+  };
+  const diagnosePendingEntry = diagnoseHistory.find((e) => e.status === 'pending');
+  //? The newest ready result that hasn't been accepted/dismissed yet (locally or by a teammate elsewhere).
+  const diagnoseActiveEntry = diagnosePendingEntry
+    ? undefined
+    : diagnoseHistory.find((e) => e.suggestionId !== null && suggestions.some((s) => s.id === e.suggestionId));
+  const diagnoseActiveSuggestion = diagnoseActiveEntry ? (suggestions.find((s) => s.id === diagnoseActiveEntry.suggestionId) ?? null) : null;
+  const diagnoseTraceEntries = diagnoseHistory.filter((e) => e.id !== diagnosePendingEntry?.id && e.id !== diagnoseActiveEntry?.id);
+
   return (
     <div className={`flex flex-col h-full min-h-0`}>
       <div className={`px-4 md:px-6 pt-3 md:pt-4 shrink-0`}>
@@ -104,16 +166,24 @@ export default function Usage() {
       <div className={`flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-8 pt-4`}>
         {tab === 'usage' && (
           <div className={`flex flex-col gap-4`}>
-            {/* Near/over-threshold spend strip (status only — the full editor stays behind the disclosure). */}
+            {/* Near/over-threshold spend strip (status only — the full editor stays behind the disclosure).
+                Named per cap (the bug fix): every over-threshold cap gets its own row so a secondary
+                cap tripping its alert is never silently invisible next to a fine primary budget. */}
             {nearCap && (
-              <button type="button" onClick={revealBudgets} className={`flex items-center gap-3 flex-wrap rounded-xl border border-warning/40 bg-warning/10 px-4 py-2.5 text-left cursor-pointer`}>
-                <Icon name="triangle-exclamation" className={`text-warning shrink-0`} />
-                <span className={`text-sm font-medium text-warning`}>{translate({ key: 'workspaces.usage.capAlertStrip' })}</span>
-                <span className={`font-mono tabular-nums text-sm text-title`}>{budgetSpentLabel}</span>
-                <span className={`flex-1 min-w-16 h-1.5 rounded-full bg-container2 overflow-hidden`}>
-                  <span className={`block h-full bg-warning`} style={{ width: `${String(spentPct)}%` }} />
-                </span>
-                <span className={`text-sm text-warning underline`}>{translate({ key: 'workspaces.usage.capAlertView' })}</span>
+              <button type="button" onClick={revealBudgets} className={`flex flex-col gap-2 rounded-xl border border-warning/40 bg-warning/10 px-4 py-2.5 text-left cursor-pointer`}>
+                {overCaps.map((c, i) => (
+                  <div key={c.id} className={`flex items-center gap-3 flex-wrap`}>
+                    {i === 0
+                      ? <Icon name="triangle-exclamation" className={`text-warning shrink-0`} />
+                      : <span className={`w-3.5 shrink-0`} />}
+                    <span className={`text-sm font-medium text-warning`}>{translate({ key: 'workspaces.usage.capAlertStripNamed', params: [{ key: 'name', value: c.label }] })}</span>
+                    <span className={`font-mono tabular-nums text-sm text-title`}>{c.spentLabel}</span>
+                    <span className={`flex-1 min-w-16 h-1.5 rounded-full bg-container2 overflow-hidden`}>
+                      <span className={`block h-full bg-warning`} style={{ width: `${String(c.pct)}%` }} />
+                    </span>
+                    {i === 0 && <span className={`text-sm text-warning underline`}>{translate({ key: 'workspaces.usage.capAlertView' })}</span>}
+                  </div>
+                ))}
               </button>
             )}
 
@@ -243,6 +313,16 @@ export default function Usage() {
                 </span>
               }>
                 <div className={`text-sm text-muted mb-3`}>{translate({ key: 'workspaces.usage.budgetDesc' })}</div>
+                {/* Audit finding: this caps metered API/token spend workspace-wide; content's media
+                    generation spend (fal/elevenlabs/suno) has its OWN separate cap in Content settings →
+                    Admin — say so instead of leaving the user to guess which spend a cap covers. */}
+                <div className={`flex flex-wrap items-center gap-1.5 text-xs text-muted mb-3`}>
+                  <Icon name="circle-info" />
+                  <span>{translate({ key: 'workspaces.usage.budgetScopeNote' })}</span>
+                  <button type="button" onClick={() => { focusSetup({ view: 'content/settings', tab: 'admin' }); }} className={`text-primary hover:underline cursor-pointer inline-flex items-center gap-1`}>
+                    {translate({ key: 'workspaces.usage.budgetMediaCapsLink' })} <Icon name="arrow-right" />
+                  </button>
+                </div>
                 {budget && (
                   <div className={`flex flex-col gap-2 mb-3`}>
                     <div className={`flex items-center justify-between text-sm`}>
@@ -296,10 +376,63 @@ export default function Usage() {
             {/* root-cause (ADR 0042): diagnose what broke → the likely-culprit merge as a rollback suggestion. */}
             <Disclosure summary={translate({ key: 'workspaces.usage.diagnoseTitle' })}>
               <div className={`text-sm text-muted mb-3`}>{translate({ key: 'workspaces.usage.diagnoseDesc' })}</div>
-              <div className={`flex items-center gap-2`}>
-                <input value={symptom} onChange={(e) => { setSymptom(e.target.value); }} placeholder={translate({ key: 'workspaces.usage.diagnosePlaceholder' })} className={`flex-1 min-w-0 rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring`} />
-                <button type="button" disabled={symptom.trim().length === 0} onClick={() => { diagnoseRootCause(symptom); setSymptom(''); }} className={`shrink-0 rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer`}>{translate({ key: 'workspaces.usage.diagnoseBtn' })}</button>
+              {/* Example chips: a first-time user has no idea what a good symptom string looks like. */}
+              <div className={`flex flex-wrap gap-1.5 mb-3`}>
+                {DIAGNOSE_EXAMPLE_KEYS.map((exampleKey) => (
+                  <button key={exampleKey} type="button" onClick={() => { setSymptom(translate({ key: exampleKey })); }} className={`rounded-full border border-container1-border bg-container1 px-2.5 py-1 text-xs text-common hover:bg-container2 cursor-pointer`}>
+                    {translate({ key: exampleKey })}
+                  </button>
+                ))}
               </div>
+              <div className={`flex items-center gap-2`}>
+                <input value={symptom} onChange={(e) => { setSymptom(e.target.value); }} placeholder={translate({ key: 'workspaces.usage.diagnosePlaceholder' })} disabled={diagnosePendingEntry !== undefined} className={`flex-1 min-w-0 rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring disabled:opacity-60`} />
+                <button type="button" disabled={symptom.trim().length === 0 || diagnosePendingEntry !== undefined} onClick={handleDiagnose} className={`shrink-0 rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer`}>
+                  {diagnosePendingEntry === undefined ? translate({ key: 'workspaces.usage.diagnoseBtn' }) : <Icon name="spinner" className={`animate-spin`} />}
+                </button>
+              </div>
+
+              {/* On-page feedback: was previously invisible (audit finding) — a pending state, then the
+                  resulting suggestion rendered right here with accept/dismiss + a link to the AI panel. */}
+              {diagnosePendingEntry && (
+                <div className={`flex items-center gap-2 rounded-lg border border-container1-border bg-container1 px-3 py-2 mt-3 text-sm text-muted`}>
+                  <Icon name="spinner" className={`animate-spin shrink-0`} />
+                  <span>{translate({ key: 'workspaces.usage.diagnosePendingHint' })}</span>
+                </div>
+              )}
+              {diagnoseActiveSuggestion && (
+                <div className={`rounded-lg border border-container1-border bg-container1 p-3 mt-3`}>
+                  <div className={`flex items-center gap-2 mb-1`}>
+                    <Icon name="robot" className={`text-primary shrink-0`} />
+                    <span className={`text-sm font-semibold text-title`}>{diagnoseActiveSuggestion.title}</span>
+                  </div>
+                  <p className={`text-sm text-common leading-relaxed`}>{diagnoseActiveSuggestion.body}</p>
+                  {diagnoseActiveSuggestion.ticketIds.length > 0 && (
+                    <div className={`flex flex-wrap gap-1.5 mt-2`}>
+                      {diagnoseActiveSuggestion.ticketIds.map((t) => (
+                        <button key={t} type="button" onClick={() => { openTicket(t); }} className={`rounded-md bg-container2 px-1.5 py-0.5 text-xs font-mono text-common hover:bg-container2-hover cursor-pointer`}>{t}</button>
+                      ))}
+                    </div>
+                  )}
+                  <div className={`flex items-center gap-2 mt-3`}>
+                    <button type="button" onClick={() => { acceptSuggestion(diagnoseActiveSuggestion.id); }} className={`rounded-lg bg-primary px-3 h-8 text-sm font-medium text-title-primary hover:bg-primary-hover cursor-pointer`}>{translate({ key: 'workspaces.shell.accept' })}</button>
+                    <button type="button" onClick={() => { dismissSuggestion(diagnoseActiveSuggestion.id); }} className={`rounded-lg px-3 h-8 text-sm font-medium text-common hover:bg-container2 cursor-pointer`}>{translate({ key: 'workspaces.shell.dismiss' })}</button>
+                    <button type="button" onClick={toggleAi} className={`ml-auto rounded-lg px-3 h-8 text-sm font-medium text-primary hover:bg-container2 cursor-pointer`}>{translate({ key: 'workspaces.usage.diagnoseOpenPanel' })}</button>
+                  </div>
+                </div>
+              )}
+
+              {/* Trace of past diagnoses — previously the input just went blank with no record of what was asked. */}
+              {diagnoseTraceEntries.length > 0 && (
+                <div className={`flex flex-col gap-1 mt-3`}>
+                  <div className={`text-xs font-semibold text-muted uppercase tracking-wide`}>{translate({ key: 'workspaces.usage.diagnoseHistoryTitle' })}</div>
+                  {diagnoseTraceEntries.map((entry) => (
+                    <div key={entry.id} className={`flex items-center gap-2 text-xs`}>
+                      <span className={`truncate flex-1 min-w-0 text-common`}>{entry.symptom}</span>
+                      <span className={`shrink-0 text-meta`}>{translate({ key: entry.suggestionId !== null && suggestions.some((s) => s.id === entry.suggestionId) ? 'workspaces.usage.diagnoseAwaiting' : 'workspaces.usage.diagnoseResolved' })}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </Disclosure>
           </div>
         )}

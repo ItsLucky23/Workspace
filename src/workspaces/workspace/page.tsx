@@ -20,15 +20,17 @@ import Dropdown from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../_components/Icon';
 import SetupWizard from '../_components/SetupWizard';
+import { Table, type TableColumn } from '../_components/dataDisplay';
 import { EffectivePromptPreview, LayerNote } from '../_components/EffectivePromptPreview';
+import { Collapse } from '../_components/motion';
 import { AvatarBubble, IconButton, PopMenu, Tabs, Toggle, WsButton, type PopMenuItem, type TabDef } from '../_components/primitives';
-import { FormSection, SettingRow, useAutosave } from '../_components/settings';
+import { FormSection, SavePill, SettingRow, useAutosave } from '../_components/settings';
 import { resolveAiLayers } from '../_functions/aiLayers';
 import { INTEGRATION_TYPES, RBAC_CAPABILITIES, ROLE_DISPLAY } from '../_data/seed';
 import { GATEABLE_SECTIONS, WORKSPACE_MODULES, WORKSPACE_SECTIONS, isModuleEnabled } from '../_data/modules';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import { AI_SKILL_APPLY_POINTS } from '../_data/types';
-import type { AiSkillEntry, BranchStrategyKind, EnvVar, GitConfig, IntegrationField, IntegrationTool, Member, PushPolicy } from '../_data/types';
+import type { AiSkillEntry, BranchStrategyKind, EnvVar, GitConfig, IntegrationField, IntegrationTool, InviteEntry, Member, PushPolicy } from '../_data/types';
 
 const fieldCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 
@@ -52,42 +54,61 @@ function MembersTab() {
   //? You assign any non-Owner role; ownership changes via the danger zone only.
   const roleItems = permRoles.filter((r) => !r.locked).map((r) => ({ id: r.name, value: r.name, item: r.name }));
 
-  return (
-    <div className="max-w-2xl mx-auto w-full rounded-2xl border border-container1-border bg-container1 divide-y divide-divider">
-      {members.map((m) => {
-        const isOwner = m.id === activeWorkspace.ownerId;
+  const columns: TableColumn<Member>[] = [
+    {
+      id: 'member',
+      header: translate({ key: 'workspaces.workspaceSettings.member' }),
+      cell: (m) => (
+        <div className="flex items-center gap-3 min-w-0">
+          <AvatarBubble user={m} size={32} />
+          <div className="min-w-0">
+            <div className="text-sm font-medium text-title truncate">{m.name}</div>
+            <div className="text-xs text-muted truncate">{m.email}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'role',
+      header: translate({ key: 'workspaces.workspaceSettings.role' }),
+      className: 'w-52',
+      cell: (m) => {
+        if (m.id === activeWorkspace.ownerId) return <span className="rounded-full bg-container2 px-2.5 py-1 text-[11px] font-medium text-muted">{translate({ key: 'workspaces.workspaceSettings.ownerBadge' })}</span>;
         const current = roleItems.find((r) => r.id === memberRoles[m.id]);
         return (
-          <div key={m.id} className="flex items-center gap-3 px-4 py-3">
-            <div className="w-9 h-9"><AvatarBubble user={m} size={36} /></div>
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium text-title">{m.name}</div>
-              <div className="text-xs text-muted">{m.email}</div>
-            </div>
-            {isOwner ? (
-              <span className="rounded-full bg-container2 px-2.5 py-1 text-[11px] font-medium text-muted">{translate({ key: 'workspaces.workspaceSettings.ownerBadge' })}</span>
-            ) : (
-              <Dropdown
-                size="sm" showSearch searchPlaceholder={translate({ key: 'workspaces.workspaceSettings.findRolePlaceholder' })}
-                value={current} placeholder={translate({ key: 'workspaces.workspaceSettings.setRolePlaceholder' })}
-                items={roleItems}
-                onChange={(it) => { setMemberRole(m.id, String(it.id)); }}
-              />
-            )}
-            {isOwner ? <span className="w-7" /> : <PopMenu items={removeMenu(m, translate, () => { removeMember(m.id); })} />}
-          </div>
+          <Dropdown
+            size="sm" width="full" showSearch searchPlaceholder={translate({ key: 'workspaces.workspaceSettings.findRolePlaceholder' })}
+            value={current} placeholder={translate({ key: 'workspaces.workspaceSettings.setRolePlaceholder' })}
+            items={roleItems}
+            onChange={(it) => { setMemberRole(m.id, String(it.id)); }}
+          />
         );
-      })}
+      },
+    },
+    {
+      id: 'actions',
+      header: '',
+      className: 'w-10',
+      cell: (m) => (m.id === activeWorkspace.ownerId ? null : <div className="flex justify-end"><PopMenu items={removeMenu(m, translate, () => { removeMember(m.id); })} /></div>),
+    },
+  ];
+
+  return (
+    <div className="max-w-2xl mx-auto w-full">
+      <Table columns={columns} rows={members} rowKey={(m) => m.id} />
     </div>
   );
 }
 
-function PermCell({ on, locked, onToggle }: { on: boolean; locked?: boolean; onToggle: () => void }) {
+function PermCell({ on, locked, onToggle, ariaLabel }: { on: boolean; locked?: boolean; onToggle: () => void; ariaLabel: string }) {
   const translate = useTranslator();
+  const status = on ? translate({ key: 'workspaces.workspaceSettings.allowed' }) : translate({ key: 'workspaces.workspaceSettings.denied' });
   return (
     <button
-      type="button" disabled={locked} onClick={onToggle} title={on ? translate({ key: 'workspaces.workspaceSettings.allowed' }) : translate({ key: 'workspaces.workspaceSettings.denied' })}
-      className={`w-8 h-6 rounded-md flex items-center justify-center transition-colors ${locked ? 'cursor-default' : 'cursor-pointer'} ${on ? 'bg-primary/15 text-primary' : 'bg-container2 text-disabled hover:bg-container2-hover'}`}
+      //? a11y (gap-fix): the icon alone announced nothing but "button" — the label now states which
+      //? capability × role this cell is, not just its on/off state. Bumped to a 36px touch target.
+      type="button" disabled={locked} onClick={onToggle} title={status} aria-label={`${ariaLabel} — ${status}`}
+      className={`w-9 h-9 rounded-md flex items-center justify-center transition-colors ${locked ? 'cursor-default' : 'cursor-pointer'} ${on ? 'bg-primary/15 text-primary' : 'bg-container2 text-disabled hover:bg-container2-hover'}`}
     >
       <Icon name={on ? 'check' : 'xmark'} className="text-xs" />
     </button>
@@ -109,7 +130,21 @@ function PermissionsTab() {
     setNewRole(''); setAdding(false);
   };
 
-  const cols = `minmax(0,1fr) repeat(${String(permRoles.length)}, 4.5rem)`;
+  const columns: TableColumn<string>[] = [
+    { id: 'capability', header: translate({ key: 'workspaces.workspaceSettings.capability' }), cell: (action) => action },
+    ...permRoles.map((r, ri) => ({
+      id: r.name,
+      header: <span className="block text-center capitalize">{r.name}</span>,
+      cell: (action: string) => {
+        const ci = RBAC_CAPABILITIES.indexOf(action);
+        return (
+          <div className="flex justify-center">
+            <PermCell on={r.perms[ci] ?? false} locked={r.locked} onToggle={() => { togglePerm(ri, ci); }} ariaLabel={`${action} — ${r.name}`} />
+          </div>
+        );
+      },
+    })),
+  ];
 
   return (
     <div className="max-w-3xl mx-auto w-full flex flex-col gap-3">
@@ -128,22 +163,7 @@ function PermissionsTab() {
         ) : <WsButton variant="secondary" icon="plus" onClick={() => { setAdding(true); }}>{translate({ key: 'workspaces.workspaceSettings.addRole' })}</WsButton>}
       </div>
 
-      <div className="rounded-2xl border border-container1-border bg-container1 overflow-x-auto">
-        <div className="grid items-center gap-x-3 px-4 h-10 border-b border-divider text-xs font-medium text-muted min-w-max" style={{ gridTemplateColumns: cols }}>
-          <span>{translate({ key: 'workspaces.workspaceSettings.capability' })}</span>
-          {permRoles.map((r) => <span key={r.name} className="text-center capitalize">{r.name}</span>)}
-        </div>
-        {RBAC_CAPABILITIES.map((action, ci) => (
-          <div key={action} className="grid items-center gap-x-3 px-4 py-2 border-b border-divider last:border-0 text-sm text-common min-w-max" style={{ gridTemplateColumns: cols }}>
-            <span>{action}</span>
-            {permRoles.map((r, ri) => (
-              <span key={r.name} className="flex justify-center">
-                <PermCell on={r.perms[ci] ?? false} locked={r.locked} onToggle={() => { togglePerm(ri, ci); }} />
-              </span>
-            ))}
-          </div>
-        ))}
-      </div>
+      <Table columns={columns} rows={RBAC_CAPABILITIES} rowKey={(action) => action} />
       <p className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.permissionsFootnote' })}</p>
     </div>
   );
@@ -166,13 +186,43 @@ function InvitesTab() {
     cancel();
   };
 
+  const columns: TableColumn<InviteEntry>[] = [
+    {
+      id: 'email',
+      header: translate({ key: 'workspaces.workspaceSettings.email' }),
+      cell: (i) => (
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="w-8 h-8 rounded-full bg-container2 text-muted flex items-center justify-center shrink-0"><Icon name="plus" /></span>
+          <span className="text-sm font-medium text-title truncate">{i.email}</span>
+        </div>
+      ),
+    },
+    { id: 'role', header: translate({ key: 'workspaces.workspaceSettings.role' }), cell: (i) => ROLE_DISPLAY[i.role] },
+    {
+      id: 'sent',
+      header: translate({ key: 'workspaces.workspaceSettings.sentColumn' }),
+      cell: (i) => (
+        <span className="text-muted">
+          {translate({ key: 'workspaces.workspaceSettings.sentAt', params: [{ key: 'when', value: new Date(i.sentAt).toLocaleDateString() }] })}
+          {i.expiresAt !== null && ` · ${translate({ key: 'workspaces.workspaceSettings.expiresIn', params: [{ key: 'days', value: Math.max(0, Math.ceil((new Date(i.expiresAt).getTime() - Date.now()) / 86_400_000)) }] })}`}
+        </span>
+      ),
+    },
+    {
+      id: 'actions',
+      header: '',
+      className: 'w-20',
+      cell: (i) => <div className="flex justify-end"><button type="button" onClick={() => { revokeInvite(i.id); }} className="text-xs text-wrong hover:underline cursor-pointer">{translate({ key: 'workspaces.workspaceSettings.revoke' })}</button></div>,
+    },
+  ];
+
   return (
     <div className="max-w-2xl mx-auto w-full flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.pendingInvites' })}</span>
         {!inviting && <WsButton icon="plus" onClick={() => { setInviting(true); }}>{translate({ key: 'workspaces.workspaceSettings.inviteMembers' })}</WsButton>}
       </div>
-      {inviting && (
+      <Collapse open={inviting}>
         <div className="rounded-xl border border-container1-border bg-container2/40 p-3 flex flex-wrap items-center gap-2">
           <input value={email} onChange={(e) => { setEmail(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
             placeholder={translate({ key: 'workspaces.workspaceSettings.inviteEmailPlaceholder' })} className={`flex-1 min-w-[10rem] ${fieldCls}`} />
@@ -185,46 +235,33 @@ function InvitesTab() {
           <WsButton icon="paper-plane" onClick={submit}>{translate({ key: 'workspaces.workspaceSettings.sendInvite' })}</WsButton>
           <WsButton variant="ghost" onClick={cancel}>{translate({ key: 'workspaces.workspaceSettings.cancel' })}</WsButton>
         </div>
-      )}
-      <div className="rounded-2xl border border-container1-border bg-container1 divide-y divide-divider">
-        {invites.map((i) => (
-          <div key={i.id} className="flex items-center gap-3 px-4 py-3">
-            <span className="w-9 h-9 rounded-full bg-container2 text-muted flex items-center justify-center"><Icon name="plus" /></span>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-title truncate">{i.email}</div>
-              <div className="text-xs text-muted">{ROLE_DISPLAY[i.role]} · {translate({ key: 'workspaces.workspaceSettings.sentAt', params: [{ key: 'when', value: new Date(i.sentAt).toLocaleDateString() }] })}{i.expiresAt !== null && ` · ${translate({ key: 'workspaces.workspaceSettings.expiresIn', params: [{ key: 'days', value: Math.max(0, Math.ceil((new Date(i.expiresAt).getTime() - Date.now()) / 86_400_000)) }] })}`}</div>
-            </div>
-            <button type="button" onClick={() => { revokeInvite(i.id); }} className="text-xs text-wrong hover:underline cursor-pointer">{translate({ key: 'workspaces.workspaceSettings.revoke' })}</button>
-          </div>
-        ))}
-        {invites.length === 0 && <div className="px-4 py-6 text-sm text-muted text-center">{translate({ key: 'workspaces.workspaceSettings.noPendingInvites' })}</div>}
-      </div>
+      </Collapse>
+      <Table columns={columns} rows={invites} rowKey={(i) => i.id} empty={translate({ key: 'workspaces.workspaceSettings.noPendingInvites' })} />
     </div>
   );
 }
 
-//? Local edit buffer, committed on blur/Enter (not on every keystroke) so
-//? typing a new value doesn't fire a save round-trip per character.
+//? Autosave (ADR 0309): typing debounces into a write, and the row shows the same saved/error
+//? pill AiBehaviorTab uses — a blur with zero feedback used to be the only confirmation a value
+//? actually persisted.
 function EnvRow({ v, reveal, onToggleReveal, onCommit, onRemove }: {
   v: EnvVar; reveal: boolean; onToggleReveal: () => void; onCommit: (value: string) => void; onRemove: () => void;
 }) {
   const translate = useTranslator();
   const [val, setVal] = useState(v.value);
   useEffect(() => { setVal(v.value); }, [v.value]);
-  const commit = () => { if (val !== v.value) onCommit(val); };
+  const status = useAutosave([val], () => { onCommit(val); }, { resetKey: v.id });
   return (
-    <div className="flex items-center gap-2 px-4 py-2.5">
-      <span className="font-mono text-sm text-title w-44 shrink-0 truncate">{v.key}</span>
+    <div className="flex items-center gap-2">
       <input
         value={v.secret && !reveal ? '••••••••••' : val}
         readOnly={v.secret && !reveal}
         onChange={(e) => { setVal(e.target.value); }}
-        onBlur={commit}
-        onKeyDown={(e) => { if (e.key === 'Enter') { commit(); e.currentTarget.blur(); } }}
         className={`flex-1 min-w-0 font-mono ${fieldCls}`}
       />
+      <SavePill status={status} />
       {v.secret && <IconButton icon="eye" title={reveal ? translate({ key: 'workspaces.workspaceSettings.hide' }) : translate({ key: 'workspaces.workspaceSettings.reveal' })} onClick={onToggleReveal} />}
-      <button type="button" onClick={onRemove} className="text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center shrink-0"><Icon name="trash" className="text-xs" /></button>
+      <IconButton icon="trash" title={translate({ key: 'workspaces.workspaceSettings.removeVariable' })} onClick={onRemove} />
     </div>
   );
 }
@@ -237,22 +274,29 @@ function EnvTab() {
   const [newVal, setNewVal] = useState('');
   const [newSecret, setNewSecret] = useState(true);
   const add = () => { const k = newKey.trim(); if (!k) return; saveEnvVar({ id: `env-${String(Date.now())}`, key: k, value: newVal, secret: newSecret, configured: newVal.length > 0 }); setNewKey(''); setNewVal(''); setNewSecret(true); };
+
+  const columns: TableColumn<EnvVar>[] = [
+    { id: 'key', header: translate({ key: 'workspaces.workspaceSettings.envKeyColumn' }), className: 'w-44', cell: (v) => <span className="font-mono text-title">{v.key}</span> },
+    {
+      id: 'value',
+      header: translate({ key: 'workspaces.workspaceSettings.envValueColumn' }),
+      cell: (v) => (
+        <EnvRow
+          v={v} reveal={!!reveal[v.id]}
+          onToggleReveal={() => { setReveal((s) => ({ ...s, [v.id]: !s[v.id] })); }}
+          onCommit={(value) => { saveEnvVar({ ...v, value }); }}
+          onRemove={() => { removeEnvVar(v.id); }}
+        />
+      ),
+    },
+  ];
+
   return (
     <div className="max-w-2xl mx-auto w-full flex flex-col gap-3">
       <div><span className="text-sm font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.environmentVariables' })}</span><span className="text-sm text-muted ml-2">{translate({ key: 'workspaces.workspaceSettings.envSubtitle' })}</span></div>
       {/* #64 — discoverability: the deploy-hook target is just two env vars, set here (save-env), used on export. */}
       <div className="text-xs text-muted rounded-xl border border-container1-border bg-container2/30 px-3 py-2">{translate({ key: 'workspaces.workspaceSettings.deployHookHint' })}</div>
-      <div className="rounded-2xl border border-container1-border bg-container1 divide-y divide-divider">
-        {envVars.map((v) => (
-          <EnvRow
-            key={v.id} v={v} reveal={!!reveal[v.id]}
-            onToggleReveal={() => { setReveal((s) => ({ ...s, [v.id]: !s[v.id] })); }}
-            onCommit={(value) => { saveEnvVar({ ...v, value }); }}
-            onRemove={() => { removeEnvVar(v.id); }}
-          />
-        ))}
-        {envVars.length === 0 && <div className="px-4 py-4 text-sm text-muted text-center">{translate({ key: 'workspaces.workspaceSettings.noEnvVars' })}</div>}
-      </div>
+      <Table columns={columns} rows={envVars} rowKey={(v) => v.id} empty={translate({ key: 'workspaces.workspaceSettings.noEnvVars' })} />
       <div className="rounded-xl border border-container1-border bg-container2/40 p-3 flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <input value={newKey} onChange={(e) => { setNewKey(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.keyPlaceholder' })} className={`w-44 font-mono ${fieldCls}`} />
@@ -292,7 +336,7 @@ function IntegrationToolForm({ tool, onSave, onCancel }: { tool: IntegrationTool
   return (
     <div className="rounded-xl border border-container1-border bg-container2/40 p-4 flex flex-col gap-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.workspaceSettings.type' })}</div><Dropdown size="sm" value={typeItems.find((t) => t.id === typeKey)} items={typeItems} onChange={(it) => { applyType(String(it.id)); }} /></div>
+        <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.workspaceSettings.type' })}</div><Dropdown size="sm" width="full" value={typeItems.find((t) => t.id === typeKey)} items={typeItems} onChange={(it) => { applyType(String(it.id)); }} /></div>
         <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.workspaceSettings.name' })}</div><input value={name} onChange={(e) => { setName(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.namePlaceholder' })} className={`w-full ${fieldCls}`} /></div>
       </div>
       <div>
@@ -301,14 +345,18 @@ function IntegrationToolForm({ tool, onSave, onCancel }: { tool: IntegrationTool
           {fields.map((f) => (
             <div key={f.id} className="flex items-center gap-2">
               <span className="text-sm text-title w-40 shrink-0 truncate">{f.label}</span>
-              <Dropdown size="sm" showSearch searchPlaceholder={translate({ key: 'workspaces.workspaceSettings.findEnvVarPlaceholder' })} placeholder={translate({ key: 'workspaces.workspaceSettings.selectEnvVar' })} value={envItems.find((i) => i.id === (f.envVarId ?? '__none__'))} items={envItems} onChange={(it) => { const id = String(it.id); setFields((prev) => prev.map((x) => (x.id === f.id ? { ...x, envVarId: id === '__none__' ? null : id } : x))); }} />
+              <div className="flex-1 min-w-0">
+                <Dropdown size="sm" width="full" showSearch searchPlaceholder={translate({ key: 'workspaces.workspaceSettings.findEnvVarPlaceholder' })} placeholder={translate({ key: 'workspaces.workspaceSettings.selectEnvVar' })} value={envItems.find((i) => i.id === (f.envVarId ?? '__none__'))} items={envItems} onChange={(it) => { const id = String(it.id); setFields((prev) => prev.map((x) => (x.id === f.id ? { ...x, envVarId: id === '__none__' ? null : id } : x))); }} />
+              </div>
             </div>
           ))}
           {fields.length === 0 && <span className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.pickTypeHint' })}</span>}
         </div>
       </div>
       <Toggle on={mcpEnabled} onChange={setMcpEnabled} label={translate({ key: 'workspaces.workspaceSettings.exposeViaMcp' })} />
-      {mcpEnabled && <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.workspaceSettings.mcpServerCommand' })}</div><input value={mcpCmd} onChange={(e) => { setMcpCmd(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.mcpCommandPlaceholder' })} className={`w-full font-mono ${fieldCls}`} /></div>}
+      <Collapse open={mcpEnabled}>
+        <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.workspaceSettings.mcpServerCommand' })}</div><input value={mcpCmd} onChange={(e) => { setMcpCmd(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.mcpCommandPlaceholder' })} className={`w-full font-mono ${fieldCls}`} /></div>
+      </Collapse>
       <div className="flex items-center gap-2">
         <WsButton icon="check" onClick={submit}>{translate({ key: 'workspaces.workspaceSettings.saveIntegration' })}</WsButton>
         <WsButton variant="ghost" onClick={onCancel}>{translate({ key: 'workspaces.workspaceSettings.cancel' })}</WsButton>
@@ -323,27 +371,44 @@ function IntegrationsTab() {
   const [editing, setEditing] = useState<IntegrationTool | null>(null);
   const [adding, setAdding] = useState(false);
   const envName = (id: string | null) => (id ? (envVars.find((v) => v.id === id)?.key ?? '—') : '— none —');
+
+  const columns: TableColumn<IntegrationTool>[] = [
+    {
+      id: 'tool',
+      header: translate({ key: 'workspaces.workspaceSettings.name' }),
+      cell: (t) => (
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="w-8 h-8 rounded-lg bg-container2 text-muted flex items-center justify-center shrink-0"><Icon name="database" /></span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2"><span className="text-sm font-medium text-title">{t.name}</span><span className="rounded-md bg-container2 px-1.5 py-0.5 text-[11px] text-muted">{t.type}</span>{t.mcp.enabled && <span className="rounded-md bg-primary/12 text-primary px-1.5 py-0.5 text-[11px]">{translate({ key: 'workspaces.workspaceSettings.mcpBadge' })}</span>}</div>
+            <div className="text-xs text-muted truncate">{t.fields.map((f) => `${f.label}: ${envName(f.envVarId)}`).join(' · ')}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'actions',
+      header: '',
+      className: 'w-20',
+      cell: (t) => (
+        <div className="flex justify-end items-center gap-1">
+          <button type="button" onClick={() => { setEditing(t); setAdding(false); }} className="text-xs text-common hover:text-title cursor-pointer shrink-0">{translate({ key: 'workspaces.workspaceSettings.edit' })}</button>
+          <IconButton icon="trash" title={translate({ key: 'workspaces.workspaceSettings.removeIntegration' })} onClick={() => { removeIntegrationTool(t.id); }} />
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="max-w-2xl mx-auto w-full flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
         <div><span className="text-sm font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.integrationTools' })}</span><span className="text-sm text-muted ml-2">{translate({ key: 'workspaces.workspaceSettings.integrationToolsSubtitle' })}</span></div>
         {!adding && !editing && <WsButton variant="secondary" icon="plus" onClick={() => { setAdding(true); }}>{translate({ key: 'workspaces.workspaceSettings.setUpIntegration' })}</WsButton>}
       </div>
-      {(adding || editing) && <IntegrationToolForm tool={editing} onSave={(t) => { saveIntegrationTool(t); setAdding(false); setEditing(null); }} onCancel={() => { setAdding(false); setEditing(null); }} />}
-      <div className="rounded-2xl border border-container1-border bg-container1 divide-y divide-divider">
-        {integrationTools.map((t) => (
-          <div key={t.id} className="flex items-center gap-3 px-4 py-3">
-            <span className="w-9 h-9 rounded-lg bg-container2 text-muted flex items-center justify-center shrink-0"><Icon name="database" /></span>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2"><span className="text-sm font-medium text-title">{t.name}</span><span className="rounded-md bg-container2 px-1.5 py-0.5 text-[11px] text-muted">{t.type}</span>{t.mcp.enabled && <span className="rounded-md bg-primary/12 text-primary px-1.5 py-0.5 text-[11px]">{translate({ key: 'workspaces.workspaceSettings.mcpBadge' })}</span>}</div>
-              <div className="text-xs text-muted truncate">{t.fields.map((f) => `${f.label}: ${envName(f.envVarId)}`).join(' · ')}</div>
-            </div>
-            <button type="button" onClick={() => { setEditing(t); setAdding(false); }} className="text-xs text-common hover:text-title cursor-pointer shrink-0">{translate({ key: 'workspaces.workspaceSettings.edit' })}</button>
-            <button type="button" onClick={() => { removeIntegrationTool(t.id); }} className="text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center shrink-0"><Icon name="trash" className="text-xs" /></button>
-          </div>
-        ))}
-        {integrationTools.length === 0 && <div className="px-4 py-6 text-sm text-muted text-center">{translate({ key: 'workspaces.workspaceSettings.noIntegrations' })}</div>}
-      </div>
+      <Collapse open={adding || editing !== null}>
+        <IntegrationToolForm tool={editing} onSave={(t) => { saveIntegrationTool(t); setAdding(false); setEditing(null); }} onCancel={() => { setAdding(false); setEditing(null); }} />
+      </Collapse>
+      <Table columns={columns} rows={integrationTools} rowKey={(t) => t.id} empty={translate({ key: 'workspaces.workspaceSettings.noIntegrations' })} />
     </div>
   );
 }
@@ -379,56 +444,70 @@ function GitLabTab() {
   };
   const webhookLastEventAt = activeWorkspace.webhookLastEventAt ?? '';
   return (
-    <div className="max-w-2xl mx-auto w-full rounded-2xl border border-container1-border bg-container1 p-5 flex flex-col gap-3">
-      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.tabGitlab' })}</div>
-      <div className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.gitlabDescription' })}</div>
-      <span className="text-xs text-muted mt-1">{translate({ key: 'workspaces.workspaceSettings.forgeProvider' })}</span>
-      <Dropdown size="sm" items={forgeItems} value={forgeItems.find((i) => i.id === forge)} onChange={(it) => { setForge(it.id === 'github' ? 'github' : 'gitlab'); if (it.id === 'github') setBaseUrl('https://api.github.com'); }} />
-      <span className="text-xs text-muted mt-1">{translate({ key: 'workspaces.workspaceSettings.baseUrl' })}</span>
-      <input value={baseUrl} onChange={(e) => { setBaseUrl(e.target.value); }}
-        className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
-      <span className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.accessToken' })}</span>
-      {/* #22 — the live-verify round-trip is a deliberate no-op (owner decision); the dead Verify button
-          was removed so the token field doesn't render a click with zero feedback. */}
-      <input type="password" value={token} onChange={(e) => { setToken(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.tokenPlaceholder' })}
-        className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm font-mono text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
-      <div className="flex items-center gap-2">
-        <WsButton icon="check" onClick={() => { saveGitlab(baseUrl, token, forge); setToken(''); }}>{translate({ key: 'workspaces.workspaceSettings.save' })}</WsButton>
-        {/* gitlab-resync: pull open forge issues → tickets (was UI-less). */}
-        <WsButton variant="secondary" icon="rotate" onClick={() => { resyncForge(); }}>{translate({ key: 'workspaces.workspaceSettings.resyncIssues' })}</WsButton>
-      </div>
+    <div className="max-w-2xl mx-auto w-full flex flex-col gap-4">
+      <FormSection title={translate({ key: 'workspaces.workspaceSettings.tabGitlab' })} desc={translate({ key: 'workspaces.workspaceSettings.gitlabDescription' })}>
+        <SettingRow
+          label={translate({ key: 'workspaces.workspaceSettings.forgeProvider' })}
+          control={<Dropdown width="full" size="sm" items={forgeItems} value={forgeItems.find((i) => i.id === forge)} onChange={(it) => { setForge(it.id === 'github' ? 'github' : 'gitlab'); if (it.id === 'github') setBaseUrl('https://api.github.com'); }} />}
+        />
+        <SettingRow
+          label={translate({ key: 'workspaces.workspaceSettings.baseUrl' })}
+          control={<input value={baseUrl} onChange={(e) => { setBaseUrl(e.target.value); }} className={fieldCls} />}
+        />
+        <SettingRow
+          label={translate({ key: 'workspaces.workspaceSettings.accessToken' })}
+          //? #22 — the live-verify round-trip is a deliberate no-op (owner decision); the dead Verify
+          //? button was removed so the token field doesn't render a click with zero feedback.
+          control={<input type="password" value={token} onChange={(e) => { setToken(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.tokenPlaceholder' })} className={`${fieldCls} font-mono`} />}
+        />
+        <div className="px-5 py-4 flex items-center gap-2">
+          <WsButton icon="check" onClick={() => { saveGitlab(baseUrl, token, forge); setToken(''); }}>{translate({ key: 'workspaces.workspaceSettings.save' })}</WsButton>
+          {/* gitlab-resync: pull open forge issues → tickets (was UI-less). */}
+          <WsButton variant="secondary" icon="rotate" onClick={() => { resyncForge(); }}>{translate({ key: 'workspaces.workspaceSettings.resyncIssues' })}</WsButton>
+        </div>
+      </FormSection>
+
       {/* #27 — inbound webhook card: URL + rotatable secret + last-event indicator. Continuous issue ingest. */}
-      <div className="mt-2 pt-3 border-t border-divider flex flex-col gap-2">
-        <span className="text-xs font-semibold text-muted uppercase tracking-wide">{translate({ key: 'workspaces.workspaceSettings.webhookTitle' })}</span>
-        <span className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.webhookDesc' })}</span>
-        <div className="flex items-center gap-2">
-          <code className="flex-1 min-w-0 truncate h-9 px-3 flex items-center rounded-lg border border-container1-border bg-container2/50 text-xs font-mono text-title">{webhookUrl}</code>
-          <WsButton variant="secondary" icon="copy" onClick={() => { void navigator.clipboard.writeText(webhookUrl); }}>{translate({ key: 'workspaces.workspaceSettings.webhookCopy' })}</WsButton>
-        </div>
-        <span className="text-xs text-muted mt-1">{translate({ key: 'workspaces.workspaceSettings.webhookSecretLabel' })}</span>
-        <div className="flex items-center gap-2">
-          <code className="flex-1 min-w-0 truncate h-9 px-3 flex items-center rounded-lg border border-container1-border bg-container2/50 text-xs font-mono text-title">{webhookSecret ?? (webhookConfigured ? '••••••••••' : translate({ key: 'workspaces.workspaceSettings.webhookNoSecret' }))}</code>
-          {webhookSecret !== null && <WsButton variant="secondary" icon="copy" onClick={() => { void navigator.clipboard.writeText(webhookSecret); }}>{translate({ key: 'workspaces.workspaceSettings.webhookCopy' })}</WsButton>}
-          <WsButton variant="secondary" icon={rotatingWebhookSecret ? 'spinner' : 'rotate'} disabled={rotatingWebhookSecret} className={rotatingWebhookSecret ? '[&_svg]:animate-spin' : ''} onClick={() => { void rotateSecret(); }}>{translate({ key: webhookConfigured ? 'workspaces.workspaceSettings.webhookRotate' : 'workspaces.workspaceSettings.webhookGenerate' })}</WsButton>
-        </div>
-        <span className="text-xs text-muted">
-          {webhookLastEventAt === '' ? translate({ key: 'workspaces.workspaceSettings.webhookNoEvent' }) : translate({ key: 'workspaces.workspaceSettings.webhookLastEvent', params: [{ key: 'when', value: new Date(webhookLastEventAt).toLocaleString() }] })}
-        </span>
-      </div>
+      <FormSection title={translate({ key: 'workspaces.workspaceSettings.webhookTitle' })} desc={translate({ key: 'workspaces.workspaceSettings.webhookDesc' })}>
+        <SettingRow
+          stacked
+          label={translate({ key: 'workspaces.workspaceSettings.webhookTitle' })}
+          control={(
+            <div className="flex items-center gap-2">
+              <code className="flex-1 min-w-0 truncate h-9 px-3 flex items-center rounded-lg border border-container1-border bg-container2/50 text-xs font-mono text-title">{webhookUrl}</code>
+              <WsButton variant="secondary" icon="copy" onClick={() => { void navigator.clipboard.writeText(webhookUrl); }}>{translate({ key: 'workspaces.workspaceSettings.webhookCopy' })}</WsButton>
+            </div>
+          )}
+        />
+        <SettingRow
+          stacked
+          label={translate({ key: 'workspaces.workspaceSettings.webhookSecretLabel' })}
+          help={webhookLastEventAt === '' ? translate({ key: 'workspaces.workspaceSettings.webhookNoEvent' }) : translate({ key: 'workspaces.workspaceSettings.webhookLastEvent', params: [{ key: 'when', value: new Date(webhookLastEventAt).toLocaleString() }] })}
+          control={(
+            <div className="flex items-center gap-2">
+              <code className="flex-1 min-w-0 truncate h-9 px-3 flex items-center rounded-lg border border-container1-border bg-container2/50 text-xs font-mono text-title">{webhookSecret ?? (webhookConfigured ? '••••••••••' : translate({ key: 'workspaces.workspaceSettings.webhookNoSecret' }))}</code>
+              {webhookSecret !== null && <WsButton variant="secondary" icon="copy" onClick={() => { void navigator.clipboard.writeText(webhookSecret); }}>{translate({ key: 'workspaces.workspaceSettings.webhookCopy' })}</WsButton>}
+              <WsButton variant="secondary" icon={rotatingWebhookSecret ? 'spinner' : 'rotate'} disabled={rotatingWebhookSecret} className={rotatingWebhookSecret ? '[&_svg]:animate-spin' : ''} onClick={() => { void rotateSecret(); }}>{translate({ key: webhookConfigured ? 'workspaces.workspaceSettings.webhookRotate' : 'workspaces.workspaceSettings.webhookGenerate' })}</WsButton>
+            </div>
+          )}
+        />
+      </FormSection>
     </div>
   );
 }
 
 //? Workflow tab (hosting-proxy plan) — the STRUCTURED git config (branch strategy → branch
-//? name + preview host, push policy) plus the starter-guidance toggles (curated conventions
-//? the AI follows in every stage). The freeform half (write-your-own) lives on the Sources page.
+//? name + preview host, push policy) plus a read-only list of the starter-guidance docs
+//? (curated conventions the AI follows in every stage). Sources owns the aiEditable toggle
+//? for these (same doc id, same op) — this list used to carry its own copy of that toggle
+//? with no cross-link, so a flip here silently changed Sources and vice versa. Now it only
+//? reads, and links out to the single home.
 function WorkflowTab() {
   const translate = useTranslator();
-  const { gitConfig, saveGitConfig, docs, toggleSkill } = useWorkspaces();
+  const { gitConfig, saveGitConfig, docs, navigate } = useWorkspaces();
   const [cfg, setCfg] = useState<GitConfig>(gitConfig);
   const patch = (p: Partial<GitConfig>) => { setCfg((c) => ({ ...c, ...p })); };
   const starter = docs.filter((d) => d.note === 'starter');
-  const inputCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 
   const strategyItems = [
     { id: 'ticket-prefix', value: 'ticket-prefix', item: translate({ key: 'workspaces.workspaceSettings.branchStrategyTicketPrefix' }) },
@@ -450,56 +529,70 @@ function WorkflowTab() {
 
   return (
     <div className="max-w-2xl mx-auto w-full flex flex-col gap-4">
-      <div className="rounded-2xl border border-container1-border bg-container1 p-5 flex flex-col gap-3">
-        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.workflowTitle' })}</div>
-        <div className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.workflowDescription' })}</div>
+      <FormSection title={translate({ key: 'workspaces.workspaceSettings.workflowTitle' })} desc={translate({ key: 'workspaces.workspaceSettings.workflowDescription' })}>
+        <SettingRow
+          label={translate({ key: 'workspaces.workspaceSettings.branchStrategy' })}
+          control={<Dropdown width="full" size="sm" value={strategyItems.find((i) => i.id === cfg.branchStrategy)} items={strategyItems} onChange={(it) => { const v = String(it.id); if (v === 'ticket-prefix' || v === 'typed' || v === 'custom') patch({ branchStrategy: v satisfies BranchStrategyKind }); }} />}
+        />
+        <Collapse open={cfg.branchStrategy !== 'ticket-prefix'}>
+          <SettingRow
+            label={translate({ key: 'workspaces.workspaceSettings.defaultBranchType' })}
+            control={<input value={cfg.defaultBranchType} onChange={(e) => { patch({ defaultBranchType: e.target.value }); }} className={fieldCls} />}
+          />
+        </Collapse>
+        <Collapse open={cfg.branchStrategy === 'custom'}>
+          <SettingRow
+            label={translate({ key: 'workspaces.workspaceSettings.branchTemplate' })}
+            control={<input value={cfg.branchTemplate} onChange={(e) => { patch({ branchTemplate: e.target.value }); }} className={`${fieldCls} font-mono`} />}
+          />
+        </Collapse>
+        <SettingRow
+          label={translate({ key: 'workspaces.workspaceSettings.previewBranch' })}
+          control={<span className="font-mono text-sm text-title">{exampleBranch}</span>}
+        />
+        <SettingRow
+          label={translate({ key: 'workspaces.workspaceSettings.pushPolicy' })}
+          control={<Dropdown width="full" size="sm" value={pushItems.find((i) => i.id === cfg.pushPolicy)} items={pushItems} onChange={(it) => { const v = String(it.id); if (v === 'local-only' || v === 'push' || v === 'merge-request') patch({ pushPolicy: v satisfies PushPolicy }); }} />}
+        />
+        <SettingRow
+          label={translate({ key: 'workspaces.workspaceSettings.targetBranch' })}
+          control={<input value={cfg.targetBranch} onChange={(e) => { patch({ targetBranch: e.target.value }); }} className={fieldCls} />}
+        />
+        <SettingRow
+          label={translate({ key: 'workspaces.workspaceSettings.protectedBranches' })}
+          control={<input value={cfg.protectedBranches.join(', ')} onChange={(e) => { patch({ protectedBranches: e.target.value.split(',').map((s) => s.trim()).filter((s) => s.length > 0) }); }} className={fieldCls} />}
+        />
+        <SettingRow
+          label={translate({ key: 'workspaces.workspaceSettings.commitSigning' })}
+          control={<Toggle on={cfg.commitSigning} onChange={() => { patch({ commitSigning: !cfg.commitSigning }); }} ariaLabel={translate({ key: 'workspaces.workspaceSettings.commitSigning' })} />}
+        />
+        <div className="px-5 py-4"><WsButton icon="check" onClick={() => { saveGitConfig(cfg); }}>{translate({ key: 'workspaces.workspaceSettings.save' })}</WsButton></div>
+      </FormSection>
 
-        <span className="text-xs text-muted mt-1">{translate({ key: 'workspaces.workspaceSettings.branchStrategy' })}</span>
-        <Dropdown size="sm" value={strategyItems.find((i) => i.id === cfg.branchStrategy)} items={strategyItems} onChange={(it) => { const v = String(it.id); if (v === 'ticket-prefix' || v === 'typed' || v === 'custom') patch({ branchStrategy: v satisfies BranchStrategyKind }); }} />
-
-        {cfg.branchStrategy !== 'ticket-prefix' && (
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.defaultBranchType' })}</span>
-            <input value={cfg.defaultBranchType} onChange={(e) => { patch({ defaultBranchType: e.target.value }); }} className={inputCls} />
-          </div>
+      <FormSection
+        title={translate({ key: 'workspaces.workspaceSettings.starterTitle' })}
+        desc={translate({ key: 'workspaces.workspaceSettings.starterDescriptionLocked' })}
+        right={(
+          <button
+            type="button" onClick={() => { navigate('sources'); }}
+            className={`shrink-0 text-xs text-primary hover:underline cursor-pointer inline-flex items-center gap-1`}
+          >
+            {translate({ key: 'workspaces.workspaceSettings.manageInSources' })} <Icon name="arrow-right" />
+          </button>
         )}
-        {cfg.branchStrategy === 'custom' && (
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.branchTemplate' })}</span>
-            <input value={cfg.branchTemplate} onChange={(e) => { patch({ branchTemplate: e.target.value }); }} className={`${inputCls} font-mono`} />
-          </div>
-        )}
-        <div className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.previewBranch' })}: <span className="font-mono text-title">{exampleBranch}</span></div>
-
-        <span className="text-xs text-muted mt-2">{translate({ key: 'workspaces.workspaceSettings.pushPolicy' })}</span>
-        <Dropdown size="sm" value={pushItems.find((i) => i.id === cfg.pushPolicy)} items={pushItems} onChange={(it) => { const v = String(it.id); if (v === 'local-only' || v === 'push' || v === 'merge-request') patch({ pushPolicy: v satisfies PushPolicy }); }} />
-
-        <span className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.targetBranch' })}</span>
-        <input value={cfg.targetBranch} onChange={(e) => { patch({ targetBranch: e.target.value }); }} className={inputCls} />
-
-        <span className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.protectedBranches' })}</span>
-        <input value={cfg.protectedBranches.join(', ')} onChange={(e) => { patch({ protectedBranches: e.target.value.split(',').map((s) => s.trim()).filter((s) => s.length > 0) }); }} className={inputCls} />
-
-        <label className="flex items-center gap-2 mt-1 cursor-pointer"><Toggle on={cfg.commitSigning} onChange={() => { patch({ commitSigning: !cfg.commitSigning }); }} /><span className="text-sm text-title">{translate({ key: 'workspaces.workspaceSettings.commitSigning' })}</span></label>
-
-        <div className="mt-1"><WsButton icon="check" onClick={() => { saveGitConfig(cfg); }}>{translate({ key: 'workspaces.workspaceSettings.save' })}</WsButton></div>
-      </div>
-
-      <div className="rounded-2xl border border-container1-border bg-container1 p-5 flex flex-col gap-3">
-        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.starterTitle' })}</div>
-        <div className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.starterDescription' })}</div>
-        <div className="flex flex-col gap-2">
-          {starter.map((d) => (
-            <div key={d.id} className="flex items-center gap-3 rounded-lg border border-container1-border bg-container2/40 px-3 py-2">
-              <div className="flex-1 min-w-0">
-                <div className="text-sm text-title truncate">{d.name}</div>
-                <div className="text-xs text-muted truncate">{d.summary}</div>
-              </div>
-              <Toggle on={d.aiEditable} onChange={() => { toggleSkill(d.id, !d.aiEditable); }} />
+      >
+        {/* No longer a SettingRow (a "decision") — there is nothing to decide here anymore,
+            just what exists; the decision (aiEditable) is made on Sources now. */}
+        {starter.map((d) => (
+          <div key={d.id} className={`px-5 py-3 flex items-center gap-2 min-w-0`}>
+            <Icon name="file-lines" className={`text-muted shrink-0`} />
+            <div className={`min-w-0`}>
+              <div className={`text-sm font-medium text-title truncate`}>{d.name}</div>
+              <div className={`text-xs text-muted truncate`}>{d.summary}</div>
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+        ))}
+      </FormSection>
     </div>
   );
 }
@@ -700,34 +793,40 @@ function RepositoryTab() {
   };
   return (
     <>
-    <div className="max-w-2xl mx-auto w-full rounded-2xl border border-container1-border bg-container1 p-5 flex flex-col gap-3">
-      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.tabRepository' })}</div>
-      <div className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.repoDescription' })}</div>
-      {repo.linked && (
-        <div className="rounded-lg border border-correct-border bg-correct/10 px-3 py-2 text-sm text-common flex items-center gap-2">
-          <Icon name="circle-check" className="text-correct" />
-          <span>{translate({ key: 'workspaces.workspaceSettings.repoLinked', params: [{ key: 'branch', value: repo.branch ?? '—' }, { key: 'head', value: repo.head ?? '—' }] })}</span>
+    <div className="max-w-2xl mx-auto w-full flex flex-col gap-4">
+      <FormSection title={translate({ key: 'workspaces.workspaceSettings.tabRepository' })} desc={translate({ key: 'workspaces.workspaceSettings.repoDescription' })}>
+        {repo.linked && (
+          <div className="px-5 py-3">
+            <div className="rounded-lg border border-correct-border bg-correct/10 px-3 py-2 text-sm text-common flex items-center gap-2">
+              <Icon name="circle-check" className="text-correct" />
+              <span>{translate({ key: 'workspaces.workspaceSettings.repoLinked', params: [{ key: 'branch', value: repo.branch ?? '—' }, { key: 'head', value: repo.head ?? '—' }] })}</span>
+            </div>
+          </div>
+        )}
+        {repo.error !== undefined && (
+          <div className="px-5 py-3">
+            <div className="rounded-lg border border-wrong-border bg-wrong/10 px-3 py-2 text-sm text-wrong flex items-center gap-2">
+              <Icon name="triangle-exclamation" /> <span>{repo.error === 'repo.inUse'
+                ? translate({ key: 'workspaces.workspaceSettings.repoInUse' })
+                : (repo.error === 'repo.runtimeUnavailable' ? translate({ key: 'workspaces.workspaceSettings.repoRuntimeUnavailable' }) : repo.error)}</span>
+            </div>
+          </div>
+        )}
+        <SettingRow
+          label={translate({ key: 'workspaces.workspaceSettings.repoUrl' })}
+          control={<input value={gitUrl} onChange={(e) => { setGitUrl(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.repoUrlPlaceholder' })} className={fieldCls} />}
+        />
+        <SettingRow
+          label={translate({ key: 'workspaces.workspaceSettings.accessToken' })}
+          control={<input type="password" value={token} onChange={(e) => { setToken(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.tokenPlaceholder' })} className={`${fieldCls} font-mono`} />}
+        />
+        <div className="px-5 py-4 flex flex-wrap gap-2">
+          <WsButton icon={linking ? 'spinner' : 'link'} disabled={linking} onClick={submit}>
+            {translate({ key: linking ? 'workspaces.workspaceSettings.repoLinking' : (repo.linked ? 'workspaces.workspaceSettings.repoRelink' : 'workspaces.workspaceSettings.repoLinkBtn') })}
+          </WsButton>
+          {repo.linked && <WsButton variant="danger" icon="xmark" disabled={linking} onClick={disconnect}>{translate({ key: 'workspaces.workspaceSettings.repoUnlink' })}</WsButton>}
         </div>
-      )}
-      {repo.error !== undefined && (
-        <div className="rounded-lg border border-wrong-border bg-wrong/10 px-3 py-2 text-sm text-wrong flex items-center gap-2">
-          <Icon name="triangle-exclamation" /> <span>{repo.error === 'repo.inUse'
-            ? translate({ key: 'workspaces.workspaceSettings.repoInUse' })
-            : (repo.error === 'repo.runtimeUnavailable' ? translate({ key: 'workspaces.workspaceSettings.repoRuntimeUnavailable' }) : repo.error)}</span>
-        </div>
-      )}
-      <span className="text-xs text-muted mt-1">{translate({ key: 'workspaces.workspaceSettings.repoUrl' })}</span>
-      <input value={gitUrl} onChange={(e) => { setGitUrl(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.repoUrlPlaceholder' })}
-        className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
-      <span className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.accessToken' })}</span>
-      <input type="password" value={token} onChange={(e) => { setToken(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.tokenPlaceholder' })}
-        className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm font-mono text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
-      <div className="flex flex-wrap gap-2">
-        <WsButton icon={linking ? 'spinner' : 'link'} disabled={linking} onClick={submit}>
-          {translate({ key: linking ? 'workspaces.workspaceSettings.repoLinking' : (repo.linked ? 'workspaces.workspaceSettings.repoRelink' : 'workspaces.workspaceSettings.repoLinkBtn') })}
-        </WsButton>
-        {repo.linked && <WsButton variant="danger" icon="xmark" disabled={linking} onClick={disconnect}>{translate({ key: 'workspaces.workspaceSettings.repoUnlink' })}</WsButton>}
-      </div>
+      </FormSection>
     </div>
     {repo.linked && <div className="max-w-2xl mx-auto w-full mt-4"><DockerfileReview key={activeWorkspace.id} workspaceId={activeWorkspace.id} /></div>}
     {repo.linked && <div className="max-w-2xl mx-auto w-full mt-4"><DevCommandCard key={`dc-${activeWorkspace.id}`} workspaceId={activeWorkspace.id} /></div>}
@@ -821,27 +920,31 @@ function SectionsTab() {
   };
   const save = () => { if (enabled.size > 0) saveSections(GATEABLE_SECTIONS.filter((s) => enabled.has(s))); };
   return (
-    <div className="flex flex-col gap-5 max-w-2xl">
+    <div className="flex flex-col gap-4 max-w-2xl">
       <div className="text-sm text-muted">{translate({ key: 'workspaces.sections.intro' })}</div>
       {WORKSPACE_MODULES.map((m) => (
-        <div key={m.id} className="rounded-xl border border-container1-border bg-container1 p-4 flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <span className="w-7 h-7 rounded-lg bg-container2 text-muted flex items-center justify-center"><Icon name={m.icon} /></span>
-            <div className="text-sm font-semibold text-title">{translate({ key: m.labelKey })}</div>
-          </div>
-          <div className="flex flex-col gap-2.5">
-            {WORKSPACE_SECTIONS.filter((s) => s.moduleId === m.id).map((s) => (
-              // ws-<page>-<element>: the shared `Toggle` primitive renders a bare icon-only
-              // button with no accessible name, and section labels ("Content"/"Documents") can
-              // collide with the module-header text above — a testid on the row disambiguates
-              // it for tests without touching the primitive itself.
-              <div key={s.id} data-testid={`ws-workspace-section-${s.id}`} className="flex items-center justify-between gap-3">
-                <span className="text-sm text-common">{translate({ key: s.labelKey })}</span>
-                <Toggle on={enabled.has(s.id)} onChange={() => { toggle(s.id); }} />
-              </div>
-            ))}
-          </div>
-        </div>
+        <FormSection
+          key={m.id}
+          title={(
+            <span className="inline-flex items-center gap-2">
+              <span className="w-7 h-7 rounded-lg bg-container2 text-muted flex items-center justify-center"><Icon name={m.icon} /></span>
+              {translate({ key: m.labelKey })}
+            </span>
+          )}
+        >
+          {WORKSPACE_SECTIONS.filter((s) => s.moduleId === m.id).map((s) => (
+            // ws-<page>-<element>: the shared `Toggle` primitive renders a bare icon-only
+            // button with no accessible name, and section labels ("Content"/"Documents") can
+            // collide with the module-header text above — a testid on the row disambiguates
+            // it for tests without touching the primitive itself.
+            <div key={s.id} data-testid={`ws-workspace-section-${s.id}`}>
+              <SettingRow
+                label={translate({ key: s.labelKey })}
+                control={<Toggle on={enabled.has(s.id)} onChange={() => { toggle(s.id); }} ariaLabel={translate({ key: s.labelKey })} />}
+              />
+            </div>
+          ))}
+        </FormSection>
       ))}
       <div className="flex items-center gap-3">
         <WsButton icon="check" onClick={save} disabled={enabled.size === 0}>{translate({ key: 'workspaces.sections.save' })}</WsButton>
@@ -916,7 +1019,7 @@ function SkillCard({ s }: { s: AiSkillEntry }) {
         </div>
       </div>
       {!open && <div className="text-xs text-muted mt-1 truncate">{s.instruction.split('\n')[0]}</div>}
-      {open && (
+      <Collapse open={open}>
         <div className="flex flex-col gap-2 mt-2">
           <input value={name} onChange={(e) => { setName(e.target.value); }} className={fieldCls} placeholder={translate({ key: 'workspaces.workspaceSettings.skillsAi.namePlaceholder' })} />
           <textarea value={instruction} onChange={(e) => { setInstruction(e.target.value); }} rows={6} className={`${fieldCls} min-h-28 py-2 resize-y`} placeholder={translate({ key: 'workspaces.workspaceSettings.skillsAi.instructionPlaceholder' })} />
@@ -939,7 +1042,7 @@ function SkillCard({ s }: { s: AiSkillEntry }) {
               : <button type="button" onClick={() => { deleteAiSkill(s.id); }} className="text-xs text-muted hover:text-wrong px-1.5 py-1 cursor-pointer"><Icon name="trash" /> {translate({ key: 'workspaces.workspaceSettings.skillsAi.delete' })}</button>}
           </div>
         </div>
-      )}
+      </Collapse>
     </div>
   );
 }
@@ -1149,22 +1252,27 @@ function AuditTab() {
       setLoaded(true);
     });
   }, [activeWorkspace.id]);
+  const columns: TableColumn<AuditRow>[] = [
+    {
+      id: 'entry',
+      header: translate({ key: 'workspaces.workspaceSettings.auditAction' }),
+      cell: (e) => (
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="w-8 h-8 rounded-lg bg-container2 text-muted flex items-center justify-center shrink-0"><Icon name="clock-rotate-left" /></span>
+          <div className="min-w-0">
+            <div className="text-sm text-title truncate"><span className="font-medium">{e.actorName}</span> · <span className="font-mono text-xs">{e.action}</span>{e.target !== null && e.target.length > 0 ? ` · ${e.target}` : ''}</div>
+          </div>
+        </div>
+      ),
+    },
+    { id: 'when', header: translate({ key: 'workspaces.workspaceSettings.auditWhen' }), className: 'w-44', cell: (e) => <span className="text-muted">{new Date(e.createdAt).toLocaleString()}</span> },
+  ];
+
   return (
     <div className="max-w-3xl mx-auto w-full flex flex-col gap-2">
       <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.auditTitle' })}</div>
       <div className="text-sm text-muted -mt-1 mb-1">{translate({ key: 'workspaces.workspaceSettings.auditDesc' })}</div>
-      {loaded && entries.length === 0 && <div className="px-4 py-8 text-sm text-muted text-center rounded-2xl border border-dashed border-container1-border">{translate({ key: 'workspaces.workspaceSettings.auditEmpty' })}</div>}
-      <div className="rounded-2xl border border-container1-border bg-container1 divide-y divide-divider">
-        {entries.map((e) => (
-          <div key={e.id} className="flex items-center gap-3 px-4 py-2.5">
-            <span className="w-8 h-8 rounded-lg bg-container2 text-muted flex items-center justify-center shrink-0"><Icon name="clock-rotate-left" /></span>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm text-title truncate"><span className="font-medium">{e.actorName}</span> · <span className="font-mono text-xs">{e.action}</span>{e.target !== null && e.target.length > 0 ? ` · ${e.target}` : ''}</div>
-              <div className="text-xs text-muted">{new Date(e.createdAt).toLocaleString()}</div>
-            </div>
-          </div>
-        ))}
-      </div>
+      {loaded && <Table columns={columns} rows={entries} rowKey={(e) => e.id} empty={translate({ key: 'workspaces.workspaceSettings.auditEmpty' })} />}
     </div>
   );
 }

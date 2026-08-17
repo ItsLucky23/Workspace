@@ -12,6 +12,7 @@
 import { useMemo, useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
+import { AnimatePresence, motion } from 'motion/react';
 
 import Icon from '../../_components/Icon';
 import { AvatarBubble, EmptyState, Segmented, WsButton } from '../../_components/primitives';
@@ -116,26 +117,40 @@ export default function Activity() {
               action={<WsButton variant="ghost" icon="arrows-rotate" onClick={() => { setFilter('all'); }}>{translate({ key: 'workspaces.activity.resetFilter' })}</WsButton>}
             />
           )}
-          {events.map((e, i) => (
-            //? Composite key on purpose: events carry no id (yet), and time alone can collide.
-            <div key={`${e.time}-${e.actor}-${e.type}-${e.text}`} className={`flex gap-3`}>
-              <div className={`flex flex-col items-center`}>
-                <ActorBadge actor={e.actor} membersById={membersById} />
-                {i < events.length - 1 && <span className={`w-px flex-1 bg-divider my-1`} />}
-              </div>
-              <div className={`pb-5 min-w-0 flex-1`}>
-                <div className={`flex items-center gap-2 flex-wrap`}>
-                  <span className={`text-sm font-medium text-title`}>{actorName(e.actor, translate, membersById)}</span>
-                  <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium ${EVENT_TINT[e.type]}`}>{translate({ key: EVENT_LABEL[e.type] })}</span>
-                  {/* The page's one op-triggering control: openTicket (back-stack push, opens a
-                      ticket tab) — never swap this for chrome navigation. */}
-                  <button type="button" onClick={() => { openTicket(e.ticketId); }} className={`font-mono text-xs text-primary hover:underline cursor-pointer`}>{e.ticketId}</button>
-                  <span className={`text-xs text-muted`}>· {e.time}</span>
+          {/* Filtering swaps the visible subset instantly by default — on a page branded "Live"
+              with a pulsing badge, that static jump undercuts the live framing. Fade+lift rows
+              out/in on the same composite key so a filter change reads as a transition, not a snap. */}
+          <AnimatePresence initial={false}>
+            {events.map((e, i) => (
+              <motion.div
+                key={`${e.time}-${e.actor}-${e.type}-${e.text}`}
+                layout
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.16 }}
+                className={`flex gap-3`}
+              >
+                <div className={`flex flex-col items-center`}>
+                  <ActorBadge actor={e.actor} membersById={membersById} />
+                  {i < events.length - 1 && <span className={`w-px flex-1 bg-divider my-1`} />}
                 </div>
-                <div className={`text-sm text-common mt-1 break-words`}>{e.text}</div>
-              </div>
-            </div>
-          ))}
+                <div className={`pb-5 min-w-0 flex-1`}>
+                  <div className={`flex items-center gap-2 flex-wrap`}>
+                    <span className={`text-sm font-medium text-title`}>{actorName(e.actor, translate, membersById)}</span>
+                    <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium ${EVENT_TINT[e.type]}`}>{translate({ key: EVENT_LABEL[e.type] })}</span>
+                    {/* The page's one op-triggering control: openTicket (back-stack push, opens a
+                        ticket tab) — never swap this for chrome navigation. Padded with a matching
+                        negative margin so the hit target clears the ~24px minimum without shifting
+                        the row's baseline alignment. */}
+                    <button type="button" onClick={() => { openTicket(e.ticketId); }} className={`font-mono text-xs text-primary hover:underline cursor-pointer px-1 py-0.5 -my-0.5 -mx-1 rounded`}>{e.ticketId}</button>
+                    <span className={`text-xs text-muted`}>· {e.time}</span>
+                  </div>
+                  <div className={`text-sm text-common mt-1 break-words`}>{e.text}</div>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       </div>
     </div>

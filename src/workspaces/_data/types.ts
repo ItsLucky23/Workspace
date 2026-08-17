@@ -243,6 +243,10 @@ export interface Ticket {
   serviceId?: string | null;
   carryOver?: string;
   needsInput?: string;
+  //? Count of still-unanswered questions parked on this ticket (W1 multi-question sets). Only present
+  //? when there is more than one — the answer inbox's whole value is showing WHERE the blockage is, and a
+  //? ticket with a single open question needs no "+N more" badge.
+  openQuestionCount?: number;
   //? #16 (W2) — NON-blocking advisory questions the agent proceeded past with an assumption. The user
   //? can confirm the assumption or correct it (a divergent answer schedules a revision turn). `index` is
   //? the position in the stored list (the conductor resolves by that index). Only UNRESOLVED ones.

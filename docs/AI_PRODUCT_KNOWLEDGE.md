@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `5c07fa968d25140f` · 17 capabilities · 227 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `cd64eb93a87809ed` · 17 capabilities · 228 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -253,3 +253,4 @@
 - `adr-0307` The UI identity lives in the token layer, not in components
 - `adr-0308` AI prompt layers stack strictly, and are shown as one effective prompt
 - `adr-0309` Settings autosave per row, and one canonical account page
+- `adr-0310` Each duplicated concept gets one owning surface

@@ -172,7 +172,7 @@ function TokenRow({ token, value, onSet }: { token: ColorToken; value: string; o
   const isHex = /^#[0-9a-fA-F]{6}$/.test(value);
   return (
     <div className="flex items-center gap-2">
-      <input type="color" value={isHex ? value : '#000000'} onChange={(e) => { onSet(e.target.value); }} className="w-8 h-8 rounded-md border border-container1-border cursor-pointer bg-transparent p-0.5 shrink-0" />
+      <input type="color" aria-label={token} value={isHex ? value : '#000000'} onChange={(e) => { onSet(e.target.value); }} className="w-8 h-8 rounded-md border border-container1-border cursor-pointer bg-transparent p-0.5 shrink-0" />
       <span className="text-[11px] text-common flex-1 truncate">{token}</span>
       <input value={value} onChange={(e) => { onSet(e.target.value); }} className={`w-28 h-7 px-2 font-mono text-[11px] ${inputCls}`} />
     </div>

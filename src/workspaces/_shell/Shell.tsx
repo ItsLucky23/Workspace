@@ -7,17 +7,18 @@ import { Fragment, useEffect, useRef, useState, type PointerEvent as ReactPointe
 
 import { menuHandler } from 'src/_functions/menuHandler';
 
-import { apiRequest, tryCatch as tryCatchClient, i18nNotify as notify, useTranslator, useUpdateLanguage, getActiveLanguage } from '@luckystack/core/client';
+import { apiRequest, tryCatch as tryCatchClient, i18nNotify as notify, useSession, useTranslator, useUpdateLanguage, getActiveLanguage } from '@luckystack/core/client';
 
 import { uploadMedia } from '../_functions/uploadMedia';
 import { backendUrl } from '../../../config';
+import type { SessionLayout } from '../../../config';
 
 import { motion } from 'motion/react';
 
 import Icon, { type IconName } from '../_components/Icon';
 import { ModulePicker } from '../_components/ModulePicker';
 import { Glossary } from '../_components/Glossary';
-import { Popover, SPRING_SOFT } from '../_components/motion';
+import { Collapse, Popover, SPRING_SOFT } from '../_components/motion';
 import { AvatarBubble, AvatarStack, IconButton, WsButton, useClickAway } from '../_components/primitives';
 import { SetupNotice } from '../_components/SetupNotice';
 import { WORKSPACE_MODULES, isSectionEnabled, sectionsForModules, type WorkspaceModuleId } from '../_data/modules';
@@ -131,13 +132,22 @@ const roleChip = (role: string) => (
   <span className="rounded-full bg-container2 px-2 py-0.5 text-[11px] font-medium capitalize text-muted">{role}</span>
 );
 
+const LANGUAGES = ['en', 'nl', 'de', 'fr'] as const;
+type Language = typeof LANGUAGES[number];
+const isLanguage = (value: string): value is Language => LANGUAGES.includes(value as Language);
+
 /* ----------------------------------------------------------------- nav rail */
 export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpanded: (fn: (e: boolean) => boolean) => void }) {
   const { view, navigate, suggestions, currentUser, activeWorkspace, aiOpen, toggleAi, theme, setTheme, signOut, viewCounts } = useWorkspaces();
+  const { session } = useSession<SessionLayout>();
   const translate = useTranslator();
   const updateLanguage = useUpdateLanguage();
-  const activeLang = getActiveLanguage();
+  const initialLanguage = getActiveLanguage();
+  const [activeLang, setActiveLang] = useState<Language>(() => (isLanguage(initialLanguage) ? initialLanguage : 'en'));
   const [userOpen, setUserOpen] = useState(false);
+  useEffect(() => {
+    if (session?.language !== undefined && isLanguage(session.language)) setActiveLang(session.language);
+  }, [session?.language]);
   //? null = "follow the current view" (the group holding it is open). A string pins the user's own choice;
   //? '' means they collapsed everything on purpose.
   const [openGroup, setOpenGroup] = useState<string | null>(null);
@@ -218,20 +228,22 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
                   collapsed, which produced 19 icons where there used to be 15 — the opposite of the point.
                   Collapsed, the group icons ARE the navigation; clicking one opens its first page. Develop's
                   items carry a `sub` band, so a thin sub-header renders before the first item of each band. */}
-              {expanded && open && (
-                <div className="flex flex-col gap-1 pl-3 border-l border-divider ml-3">
-                  {items.map((it, i) => {
-                    const subKey = it.sub !== undefined && it.sub !== items[i - 1]?.sub ? SUB_LABEL_KEY[it.sub] : undefined;
-                    return (
-                      <Fragment key={it.id}>
-                        {subKey !== undefined && (
-                          <div className="px-3 pt-2 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-disabled select-none">{translate({ key: subKey })}</div>
-                        )}
-                        {renderItem(it)}
-                      </Fragment>
-                    );
-                  })}
-                </div>
+              {expanded && (
+                <Collapse open={open}>
+                  <div className="flex flex-col gap-1 pl-3 border-l border-divider ml-3">
+                    {items.map((it, i) => {
+                      const subKey = it.sub !== undefined && it.sub !== items[i - 1]?.sub ? SUB_LABEL_KEY[it.sub] : undefined;
+                      return (
+                        <Fragment key={it.id}>
+                          {subKey !== undefined && (
+                            <div className="px-3 pt-2 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-disabled select-none">{translate({ key: subKey })}</div>
+                          )}
+                          {renderItem(it)}
+                        </Fragment>
+                      );
+                    })}
+                  </div>
+                </Collapse>
               )}
             </div>
           );
@@ -255,19 +267,35 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
             </div>
             <div className="my-1 h-px bg-divider" />
             <button type="button" onClick={() => { setUserOpen(false); navigate('settings'); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name="user" className="w-4 text-center" /> {translate({ key: 'workspaces.shell.account' })}</button>
-            <button type="button" onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name={theme === 'dark' ? 'sun' : 'moon'} className="w-4 text-center" /> {translate({ key: 'workspaces.shell.themeLabel', params: [{ key: 'theme', value: theme }] })}</button>
+            <button
+              type="button"
+              onClick={() => {
+                const nextTheme = theme === 'dark' ? 'light' : 'dark';
+                setTheme(nextTheme);
+                void apiRequest({ name: 'settings/updateUser', version: 'v1', data: { theme: nextTheme } }).then((response) => {
+                  if (response.status !== 'success') notify.error({ key: 'settings.failedUpdateUser' });
+                });
+              }}
+              className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"
+            >
+              <Icon name={theme === 'dark' ? 'sun' : 'moon'} className="w-4 text-center" /> {translate({ key: 'workspaces.shell.themeLabel', params: [{ key: 'theme', value: theme }] })}
+            </button>
             <div className="flex items-center gap-2.5 px-2.5 py-1.5 text-sm text-common">
               <Icon name="language" className="w-4 text-center" />
               <div className="flex items-center gap-1">
-                {(['en', 'nl', 'de', 'fr'] as const).map((code) => (
+                {LANGUAGES.map((code) => (
                   <button
                     key={code} type="button"
                     onClick={() => {
-                      //? Live client switch + persist to the session (a language source
-                      //? reads session.language and would otherwise override the client
-                      //? state on the next render). Mirrors the Account-settings switcher.
+                      const previousLanguage = activeLang;
+                      setActiveLang(code);
                       updateLanguage(code);
-                      void apiRequest({ name: 'settings/updateUser', version: 'v1', data: { language: code } });
+                      void apiRequest({ name: 'settings/updateUser', version: 'v1', data: { language: code } }).then((response) => {
+                        if (response.status === 'success') return;
+                        setActiveLang(previousLanguage);
+                        updateLanguage(previousLanguage);
+                        notify.error({ key: 'settings.failedUpdateUser' });
+                      });
                     }}
                     className={`rounded-md px-1.5 py-0.5 text-xs uppercase cursor-pointer transition-colors ${activeLang === code ? 'bg-primary text-common-primary' : 'text-muted hover:bg-container2 hover:text-common'}`}
                   >{code}</button>
@@ -334,12 +362,16 @@ export function TopBar({ onCmdK }: { onCmdK: () => void }) {
               <button type="button" onClick={() => { setWsOpen(false); navigate('workspace'); }} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name="users" className="w-4 text-center" /> {translate({ key: 'workspaces.shell.manageMembers' })}</button>
           </Popover>
         </div>
+        {/* Breadcrumb glyph: a Project lives INSIDE the Workspace, but both switchers rendered as the
+            same tinted-square + name + caret shape with nothing showing containment — this static
+            separator reads the pair as a path, not two independent pickers. */}
+        <span aria-hidden="true" className="text-sm text-disabled select-none">/</span>
         {/* project switcher (ADR 0035 multi-project) */}
         <ProjectSwitcher />
       </div>
 
       {/* search */}
-      <button type="button" onClick={onCmdK} className="flex items-center gap-2 rounded-xl border border-container1-border bg-container2/50 px-3 h-9 text-sm text-muted hover:bg-container2 transition-colors cursor-pointer min-w-44">
+      <button type="button" onClick={onCmdK} className="flex flex-1 max-w-xl items-center gap-2 rounded-xl border border-container1-border bg-container2/50 px-3 h-9 text-sm text-muted hover:bg-container2 transition-colors cursor-pointer">
         <Icon name="magnifying-glass" /> <span className="flex-1 text-left">{translate({ key: 'workspaces.shell.search' })}</span>
         <kbd className="rounded-md border border-container1-border bg-container1 px-1.5 text-xs font-sans">{translate({ key: 'workspaces.shell.searchShortcut' })}</kbd>
       </button>
@@ -1012,14 +1044,14 @@ function AiRunCard({ run }: { run: AiRun }) {
       </div>
       <div className="text-[11px] text-muted mt-0.5">{meta}</div>
       <button type="button" onClick={() => { setOpen((o) => !o); }} className="text-[11px] text-primary hover:text-primary-hover cursor-pointer mt-1">{translate({ key: open ? 'workspaces.shell.hideDetails' : 'workspaces.shell.showDetails' })}</button>
-      {open && (
+      <Collapse open={open}>
         <div className="mt-2 flex flex-col gap-2">
           <div><div className="text-[10px] uppercase tracking-wide text-muted mb-0.5">{translate({ key: 'workspaces.shell.ourPrompt' })}</div><div className="text-xs text-common whitespace-pre-wrap max-h-40 overflow-y-auto rounded-lg bg-container1 p-2">{run.prompt}</div></div>
           {run.status === 'ok'
             ? <div><div className="text-[10px] uppercase tracking-wide text-muted mb-0.5">{translate({ key: 'workspaces.shell.reasoning' })}</div><div className="text-xs text-common whitespace-pre-wrap max-h-60 overflow-y-auto rounded-lg bg-container1 p-2">{run.output}</div></div>
             : <div className="text-xs text-wrong">{run.error ?? translate({ key: 'workspaces.shell.aiError' })}</div>}
         </div>
-      )}
+      </Collapse>
     </div>
   );
 }

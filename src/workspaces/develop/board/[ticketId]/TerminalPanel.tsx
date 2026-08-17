@@ -24,7 +24,15 @@ export default function TerminalPanel({ ticketId, stageId }: { ticketId: string;
   const ctx = useWorkspaces();
   const stageCfg = ctx.stageConfigs.find((s) => s.id === stageId);
   const processes = stageCfg?.processes ?? [];
+  //? #20/relationship-fix — the inline "live agent" tail (page.tsx TicketControls) and this tab's
+  //? per-process PTYs are the SAME underlying observability: `agentTerm` is a throttled, read-only tee of
+  //? the container's `claude` PTY (see docs/07_ORCHESTRATOR.md §A step 7). Rather than leave a user to guess
+  //? whether they're two different things, the tail is folded in HERE as one more (synthetic) process tab —
+  //? appended after the real ones so its appearance/disappearance never reshuffles an already-selected index.
+  const liveOutput = ctx.agentTerm[ticketId] ?? '';
+  const hasLiveTail = liveOutput.length > 0;
   const [active, setActive] = useState(0);
+  const isAgentTab = hasLiveTail && active === processes.length;
   const [height, setHeight] = useState(rememberedTerminalHeight);
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef<{ startY: number; startH: number } | null>(null);
@@ -46,8 +54,8 @@ export default function TerminalPanel({ ticketId, stageId }: { ticketId: string;
   const onHandleUp = () => { dragRef.current = null; setDragging(false); };
 
   const proc = processes[active] ?? processes[0];
-  if (!proc) {
-    //? Stage-config driven teaching empty state: no processes in THIS stage → no terminal.
+  if (!proc && !isAgentTab) {
+    //? Stage-config driven teaching empty state: no processes in THIS stage AND no live agent tail → no terminal.
     return <EmptyState icon="terminal" title={translate({ key: 'workspaces.ticket.noTerminal' })} sub={translate({ key: 'workspaces.ticket.noTerminalStageSub' })} />;
   }
   return (
@@ -60,15 +68,28 @@ export default function TerminalPanel({ ticketId, stageId }: { ticketId: string;
               {p.name}
             </button>
           ))}
-          <span className="text-terminal-muted text-xs ml-1">· {proc.cwd}</span>
+          {hasLiveTail && (
+            <button type="button" onClick={() => { setActive(processes.length); }}
+              className={`rounded-md px-2 py-0.5 text-xs font-mono cursor-pointer transition-colors inline-flex items-center gap-1.5 ${isAgentTab ? 'bg-white/10 text-terminal-text' : 'text-terminal-muted hover:text-terminal-text'}`}>
+              <span className="w-1.5 h-1.5 rounded-full bg-correct animate-pulse" />{translate({ key: 'workspaces.ticket.aiAgentTab' })}
+            </button>
+          )}
+          {proc && !isAgentTab && <span className="text-terminal-muted text-xs ml-1">· {proc.cwd}</span>}
         </div>
         <button type="button" onClick={() => { ctx.navigate('terminals'); }} className="text-xs text-terminal-muted hover:text-terminal-text cursor-pointer inline-flex items-center gap-1">
           <Icon name="up-right-from-square" /> {translate({ key: 'workspaces.ticket.openInTerminals' })}
         </button>
       </div>
-      <div style={{ height }}>
-        <XtermTerminal key={`${ctx.activeWorkspace.id}:${ticketId}:${proc.name}`} sessionId={`${ctx.activeWorkspace.id}:${ticketId}:${proc.name}`} workspaceId={ctx.activeWorkspace.id} ticketKey={ticketId} className="h-full" />
-      </div>
+      {isAgentTab ? (
+        <div style={{ height }} className="overflow-auto bg-container2/60">
+          <div className="px-3 pt-2 text-[11px] text-muted">{translate({ key: 'workspaces.ticket.aiAgentTailHint' })}</div>
+          <pre className="p-3 text-[11px] leading-snug font-mono text-common whitespace-pre-wrap break-words">{liveOutput}</pre>
+        </div>
+      ) : proc && (
+        <div style={{ height }}>
+          <XtermTerminal key={`${ctx.activeWorkspace.id}:${ticketId}:${proc.name}`} sessionId={`${ctx.activeWorkspace.id}:${ticketId}:${proc.name}`} workspaceId={ctx.activeWorkspace.id} ticketKey={ticketId} className="h-full" />
+        </div>
+      )}
       <div onPointerDown={onHandleDown} onPointerMove={onHandleMove} onPointerUp={onHandleUp}
         title={translate({ key: 'workspaces.terminals.resizeTitle' })}
         className="group h-2.5 flex items-center justify-center cursor-ns-resize bg-terminal-surface border-t border-white/5">

@@ -13,7 +13,7 @@ import { useTranslator, i18nNotify as notify, apiRequest, tryCatch } from '@luck
 
 import { useWorkspaces } from '../../../_shell/WorkspacesContext';
 import Icon from '../../../_components/Icon';
-import { IconButton, PopMenu, WsButton } from '../../../_components/primitives';
+import { Disclosure, IconButton, PopMenu, WsButton } from '../../../_components/primitives';
 import { PREMADE_LOOKS, resolveLook, lookToArtifacts, isActiveLook, type ResolvedLook } from '../premades';
 import { validArtifactContent } from '../persisted';
 import { SEED_ANIMS, FADE_ANIM, animFrom, ANIM_TO, animTransition } from '../animations';
@@ -106,8 +106,8 @@ async function saveArtifact(workspaceId: string, artifact: { kind: string; name:
 }
 
 //? `inspiration` is the INS import form (defined in page.tsx so the C8 live-URL coupling stays there);
-//? the Gallery owns its entry point — a secondary header button — because it is a Gallery input, not
-//? page chrome.
+//? the Gallery owns its entry point — a Disclosure just under the header — because it is a Gallery
+//? input, not page chrome.
 export default function Gallery({ inspiration }: { inspiration?: ReactNode }) {
   const translate = useTranslator();
   const d = useDesigner();
@@ -116,7 +116,6 @@ export default function Gallery({ inspiration }: { inspiration?: ReactNode }) {
   const [replay, setReplay] = useState(0);
   const [busy, setBusy] = useState(false);
   const [pendingLook, setPendingLook] = useState<ResolvedLook | null>(null);
-  const [inspireOpen, setInspireOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const selected = resolveLook(selectedId);
 
@@ -173,7 +172,6 @@ export default function Gallery({ inspiration }: { inspiration?: ReactNode }) {
             <p className={`text-sm text-muted`}>{translate({ key: 'workspaces.gallery.subtitle' })}</p>
           </div>
           <div className={`flex items-center gap-2 shrink-0`}>
-            {inspiration != null && <WsButton variant="secondary" icon="eye" onClick={() => { setInspireOpen((v) => !v); }}>{translate({ key: 'workspaces.gallery.importInspiration' })}</WsButton>}
             <PopMenu ariaLabel={translate({ key: 'workspaces.designer.moreActions' })} items={[
               { label: translate({ key: 'workspaces.gallery.import' }), icon: 'file-lines', onClick: () => { fileRef.current?.click(); } },
               { label: translate({ key: 'workspaces.gallery.copy' }), icon: 'copy', onClick: copyLook },
@@ -181,12 +179,11 @@ export default function Gallery({ inspiration }: { inspiration?: ReactNode }) {
           </div>
           <input ref={fileRef} type="file" accept="application/json,.json" className={`hidden`} onChange={(e) => { const f = e.target.files?.[0]; if (f) onImportFile(f); e.target.value = ''; }} />
         </div>
-        {/* INS — inspiration import, one tap away from the Gallery header */}
-        {inspiration != null && inspireOpen && (
-          <div className={`rounded-xl border border-container1-border bg-container1 p-4 flex flex-col gap-3`}>
-            <div className={`text-sm font-medium text-title`}>{translate({ key: 'workspaces.inspire.title' })}</div>
+        {/* INS — inspiration import, one tap away from the Gallery header; one shared expand/collapse idiom */}
+        {inspiration != null && (
+          <Disclosure summary={<span className={`inline-flex items-center gap-2`}><Icon name="eye" />{translate({ key: 'workspaces.gallery.importInspiration' })}</span>}>
             {inspiration}
-          </div>
+          </Disclosure>
         )}
         {/* catalog grid — compact thumbnails */}
         <div className={`grid grid-cols-2 lg:grid-cols-4 gap-3`}>

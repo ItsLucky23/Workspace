@@ -8,15 +8,21 @@ import { useEffect, useState } from 'react';
 
 import { i18nNotify as notify, useTranslator } from '@luckystack/core/client';
 
+import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import { menuHandler } from 'src/_functions/menuHandler';
 import Icon, { type IconName } from '../../_components/Icon';
-import { Disclosure, EmptyState, PopMenu, Segmented, WsButton, type PopMenuItem } from '../../_components/primitives';
+import { Disclosure, EmptyState, InteractiveRow, PopMenu, SectionCard, Segmented, WsButton, type PopMenuItem } from '../../_components/primitives';
 import { SetupNotice } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { isSectionEnabled } from '../../_data/modules';
 import type { StudioArtifact, StudioArtifactKind, StudioBrief } from '../../_data/types';
+import { BrandDiffList } from './BrandDiffList';
+import { buildBrandDiff } from './brandDiff';
+import { recordBrandProvenance } from './brandProvenance';
 import { BrandPanel } from './BrandPanel';
+import { ContentPromptPreview } from './promptStack';
 import { ArtifactBody } from './previews';
+import { getArtifactRefine, recordArtifactRefine } from './refineHistory';
 import { asRecord, asStr, downloadHtmlAsPng, inputCls } from './content';
 
 export const template = 'workspaces';
@@ -116,8 +122,27 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
   const runGenerate = async (kind: StudioArtifactKind) => {
     if (!selected || busyKind !== null) return;
     setBusyKind(kind);
-    await generateArtifact(selected.id, kind, refine.trim() || undefined);
+    const trimmedRefine = refine.trim();
+    const res = await generateArtifact(selected.id, kind, trimmedRefine || undefined);
+    //? I4 bug fix — record which refine text produced this artifact (Generate AND Regenerate both
+    //? land here, sharing the one refine box), so a later card never silently inherits a stale value.
+    if (res.artifactId) recordArtifactRefine(res.artifactId, trimmedRefine);
     setBusyKind(null);
+  };
+
+  //? Owner decision 6 — gate promote behind a confirm showing a real before/after field diff, and
+  //? record provenance so the Brand panel can say where the library was last set from.
+  const promoteWithConfirm = (artifact: StudioArtifact) => {
+    const rows = buildBrandDiff(studioBrand, artifact.content);
+    void menuHandler.confirm({
+      title: translate({ key: 'workspaces.studio.promoteBrandTitle' }),
+      content: (
+        <div className={`flex flex-col gap-2`}>
+          <p className={`text-sm text-common`}>{translate({ key: 'workspaces.studio.promoteBrandBody' })}</p>
+          <BrandDiffList rows={rows} />
+        </div>
+      ),
+    }).then((ok) => { if (ok) { void promoteBrand(artifact.id); recordBrandProvenance(activeWorkspace.id, artifact.title); } });
   };
 
   const removeBrief = (b: StudioBrief) => void menuHandler.confirm({
@@ -155,11 +180,11 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
       )}
       {/* ---- Assets | Brand — the brand library is a secondary tab, only on the studio variant ---- */}
       {variant === 'studio' && (
-        <div className={`px-4 md:px-6 pt-4 shrink-0`}>
+        <div className={`px-4 md:px-6 pt-4 shrink-0 overflow-x-auto ws-no-scrollbar`}>
           <Segmented
             options={[
               { id: 'assets', label: <span className={`inline-flex items-center gap-1.5`}><Icon name="table-cells-large" />{translate({ key: 'workspaces.studio.tabAssets' })}</span> },
-              { id: 'brand', label: <span className={`inline-flex items-center gap-1.5`}><Icon name="book-open" />{translate({ key: 'workspaces.studio.tabBrand' })}<span className={`text-xs text-muted font-normal`}>· {brandSignal}</span></span> },
+              { id: 'brand', label: <span className={`inline-flex items-center gap-1.5`}><Icon name="book-open" />{translate({ key: 'workspaces.studio.tabBrand' })}<span className={`text-xs text-muted font-normal whitespace-nowrap`}>· {brandSignal}</span></span> },
             ]}
             value={tab} onChange={setTab}
           />
@@ -179,10 +204,10 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
                 </div>
                 <div className={`flex-1 min-h-0 overflow-y-auto px-2 pb-3 flex flex-col gap-1`}>
                   {studioBriefs.map((b) => (
-                    <div key={b.id} onClick={() => { openBrief(b.id); }} className={`rounded-lg px-3 py-2 cursor-pointer transition-colors ${selectedId === b.id && !editing ? 'bg-container1' : 'hover:bg-container1/60'}`}>
+                    <InteractiveRow key={b.id} onClick={() => { openBrief(b.id); }} selected={selectedId === b.id && !editing}>
                       <div className={`text-sm text-title truncate`}>{b.name}</div>
                       <div className={`text-xs text-muted truncate`}>{b.productName}</div>
-                    </div>
+                    </InteractiveRow>
                   ))}
                 </div>
               </div>
@@ -236,6 +261,8 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
                           <div className={`text-base font-semibold text-title`}>{translate({ key: 'workspaces.studio.generate' })}</div>
                           <div className={`text-sm text-muted mt-0.5`}>{translate({ key: 'workspaces.studio.generateHint' })}</div>
                         </div>
+                        {/* duplicateConcepts #2 — the second AI prompt stack, visible before you generate */}
+                        <ContentPromptPreview briefTone={selected.tone} brandVoice={studioBrand?.voice ?? ''} refine={refine} />
                         {roles.map((role) => (
                           <div key={role}>
                             <div className={`text-xs font-medium text-muted uppercase tracking-wide mb-1.5 flex items-center gap-1.5`}>
@@ -261,6 +288,8 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
                           </span>
                         )}>
                           <input value={refine} onChange={(e) => { setRefine(e.target.value); }} placeholder={translate({ key: 'workspaces.studio.refinePlaceholder' })} className={inputCls} />
+                          {/* IA-conflict finding — refine/tone/voice have no stated precedence; say it inline. */}
+                          <div className={`text-xs text-muted mt-1.5`}>{translate({ key: 'workspaces.studio.refinePrecedenceHint' })}</div>
                         </Disclosure>
                         {busyKind && <div className={`text-xs text-muted flex items-center gap-1.5`}><Icon name="spinner" className={`animate-spin`} />{translate({ key: 'workspaces.studio.generating' })}</div>}
                       </div>
@@ -275,7 +304,7 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
                             sub={translate({ key: variant === 'marketing' ? 'workspaces.studio.emptyBriefBodyMarketing' : 'workspaces.studio.emptyBriefBody' })}
                           />
                         )}
-                        {artifacts.map((a) => <ArtifactCard key={a.id} artifact={a} busy={busyKind !== null} onDelete={() => { deleteArtifact(a.id); }} onRegenerate={() => { void runGenerate(a.kind); }} {...(a.kind === 'brand' && a.status === 'ready' ? { onPromote: () => { void promoteBrand(a.id); } } : {})} {...(contentOn && a.status === 'ready' ? { onSendToContent: () => { sendToContent(a.id); } } : {})} {...(a.kind === 'landing' && a.status === 'ready' ? { onPublishLive: () => { publishLive(a.id); } } : {})} />)}
+                        {artifacts.map((a) => <ArtifactCard key={a.id} artifact={a} busy={busyKind !== null} pendingRefine={refine} onDelete={() => { deleteArtifact(a.id); }} onRegenerate={() => { void runGenerate(a.kind); }} {...(a.kind === 'brand' && a.status === 'ready' ? { onPromote: () => { promoteWithConfirm(a); } } : {})} {...(contentOn && a.status === 'ready' ? { onSendToContent: () => { sendToContent(a.id); } } : {})} {...(a.kind === 'landing' && a.status === 'ready' ? { onPublishLive: () => { publishLive(a.id); } } : {})} />)}
                       </div>
                     </div>
                   )
@@ -291,7 +320,7 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
 //? `initial` (#109) seeds a NEW brief from a copilot prefill; the user reviews + saves themselves.
 function BriefForm({ brief, initial, onSaved, onCancel }: { brief: StudioBrief | null; initial?: BriefDraft; onSaved: () => void; onCancel?: () => void }) {
   const translate = useTranslator();
-  const { saveBrief } = useWorkspaces();
+  const { saveBrief, studioBriefs } = useWorkspaces();
   const [name, setName] = useState(brief?.name ?? initial?.name ?? '');
   const [productName, setProductName] = useState(brief?.productName ?? initial?.productName ?? '');
   const [audience, setAudience] = useState(brief?.audience ?? initial?.audience ?? '');
@@ -318,14 +347,38 @@ function BriefForm({ brief, initial, onSaved, onCancel }: { brief: StudioBrief |
     </div>
   );
 
+  //? "flat stack of 6 identical rows" finding — a second/third brief re-typed everything from a blank
+  //? page every time. Offered only on a brand-new brief (not edit) when a brief already exists to copy.
+  const duplicateItems: DropdownItem[] = studioBriefs.map((b) => ({ id: b.id, value: b.id, item: `${b.name} — ${b.productName}` }));
+  const applyDuplicate = (id: string) => {
+    const source = studioBriefs.find((b) => b.id === id);
+    if (!source) return;
+    setName(source.name); setProductName(source.productName); setAudience(source.audience); setTone(source.tone); setGoals(source.goals); setNotes(source.notes ?? '');
+  };
+
   return (
     <div className={`p-4 md:p-6 max-w-2xl flex flex-col gap-4`}>
       <div className={`text-lg font-semibold text-title`}>{translate({ key: brief ? 'workspaces.studio.editBrief' : 'workspaces.studio.newBrief' })}</div>
       <div className={`text-sm text-muted -mt-2`}>{translate({ key: 'workspaces.studio.briefIntro' })}</div>
-      {field(translate({ key: 'workspaces.studio.fieldName' }), name, setName, translate({ key: 'workspaces.studio.fieldNamePlaceholder' }))}
-      {field(translate({ key: 'workspaces.studio.fieldProduct' }), productName, setProductName, translate({ key: 'workspaces.studio.fieldProductPlaceholder' }))}
-      {field(translate({ key: 'workspaces.studio.fieldAudience' }), audience, setAudience, translate({ key: 'workspaces.studio.fieldAudiencePlaceholder' }))}
-      {field(translate({ key: 'workspaces.studio.fieldTone' }), tone, setTone, translate({ key: 'workspaces.studio.fieldTonePlaceholder' }))}
+      {!brief && studioBriefs.length > 0 && (
+        <div className={`flex flex-col gap-1`}>
+          <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.studio.duplicateFromLabel' })}</span>
+          <Dropdown width="full" items={duplicateItems} placeholder={translate({ key: 'workspaces.studio.duplicateFromPlaceholder' })} onChange={(it) => { applyDuplicate(String(it.id)); }} />
+        </div>
+      )}
+      {/* grouped into two visually distinct clusters instead of six identical label+input rows */}
+      <SectionCard title={translate({ key: 'workspaces.studio.identitySection' })}>
+        <div className={`flex flex-col gap-4`}>
+          {field(translate({ key: 'workspaces.studio.fieldName' }), name, setName, translate({ key: 'workspaces.studio.fieldNamePlaceholder' }))}
+          {field(translate({ key: 'workspaces.studio.fieldProduct' }), productName, setProductName, translate({ key: 'workspaces.studio.fieldProductPlaceholder' }))}
+        </div>
+      </SectionCard>
+      <SectionCard title={translate({ key: 'workspaces.studio.targetingSection' })}>
+        <div className={`flex flex-col gap-4`}>
+          {field(translate({ key: 'workspaces.studio.fieldAudience' }), audience, setAudience, translate({ key: 'workspaces.studio.fieldAudiencePlaceholder' }))}
+          {field(translate({ key: 'workspaces.studio.fieldTone' }), tone, setTone, translate({ key: 'workspaces.studio.fieldTonePlaceholder' }))}
+        </div>
+      </SectionCard>
       {field(translate({ key: 'workspaces.studio.fieldGoals' }), goals, setGoals, translate({ key: 'workspaces.studio.fieldGoalsPlaceholder' }), true)}
       {field(translate({ key: 'workspaces.studio.fieldNotes' }), notes, setNotes, translate({ key: 'workspaces.studio.fieldNotesPlaceholder' }), true)}
       <div className={`flex items-center justify-end gap-2 pt-1`}>
@@ -339,12 +392,20 @@ function BriefForm({ brief, initial, onSaved, onCancel }: { brief: StudioBrief |
 //? ---- Artifact card ----
 //? Promoted, point-of-the-card actions (Use as brand / Send to Content / Publish live) stay visible
 //? and labelled; secondary ones (Copy HTML, Download PNG, Regenerate, Delete) live in the overflow menu.
-function ArtifactCard({ artifact, busy, onDelete, onRegenerate, onPromote, onSendToContent, onPublishLive }: { artifact: StudioArtifact; busy: boolean; onDelete: () => void; onRegenerate: () => void; onPromote?: () => void; onSendToContent?: () => void; onPublishLive?: () => void }) {
+function ArtifactCard({ artifact, busy, pendingRefine, onDelete, onRegenerate, onPromote, onSendToContent, onPublishLive }: { artifact: StudioArtifact; busy: boolean; pendingRefine: string; onDelete: () => void; onRegenerate: () => void; onPromote?: () => void; onSendToContent?: () => void; onPublishLive?: () => void }) {
   const translate = useTranslator();
   const c = asRecord(artifact.content);
   const when = new Date(artifact.createdAt).toLocaleString();
   const html = asStr(c.html);
   const htmlKind = artifact.kind === 'landing' || artifact.kind === 'component' || artifact.kind === 'thumbnail';
+  //? I4 bug fix — the refine that PRODUCED this card (persisted, historical) vs. the refine that WILL
+  //? apply if Regenerate is clicked now (the live shared box) are two different things; show both
+  //? instead of leaving the user to guess which one a stale box silently reapplies.
+  const usedRefine = getArtifactRefine(artifact.id);
+  const trimmedPending = pendingRefine.trim();
+  const regenerateLabel = trimmedPending.length > 0
+    ? translate({ key: 'workspaces.studio.regenerateWithRefine', params: [{ key: 'refine', value: trimmedPending.length > 28 ? `${trimmedPending.slice(0, 27)}…` : trimmedPending }] })
+    : translate({ key: 'workspaces.studio.regenerate' });
   const menu: PopMenuItem[] = [
     ...(htmlKind && artifact.status === 'ready' && html.trim().length > 0
       ? [
@@ -354,7 +415,7 @@ function ArtifactCard({ artifact, busy, onDelete, onRegenerate, onPromote, onSen
       ]
       : []),
     //? Regenerate shares the generate mutual-exclusion: inert while any generation is busy.
-    { icon: 'arrows-rotate', label: translate({ key: 'workspaces.studio.regenerate' }), onClick: () => { if (!busy) onRegenerate(); } },
+    { icon: 'arrows-rotate', label: regenerateLabel, onClick: () => { if (!busy) onRegenerate(); } },
     { divider: true },
     { icon: 'trash', label: translate({ key: 'workspaces.studio.deleteArtifact' }), danger: true, onClick: onDelete },
   ];
@@ -377,9 +438,12 @@ function ArtifactCard({ artifact, busy, onDelete, onRegenerate, onPromote, onSen
         {artifact.status === 'error' && <div className={`text-sm text-muted`}>{artifact.error ?? translate({ key: 'workspaces.studio.failed' })}</div>}
         {artifact.status === 'ready' && <ArtifactBody kind={artifact.kind} c={c} />}
       </div>
-      {/* demoted metadata: one muted line; the provider hides behind a tooltip on the kind label */}
-      <div className={`px-4 py-2 border-t border-divider text-[11px] text-disabled flex items-center gap-2`}>
-        <span {...(artifact.providerId ? { title: artifact.providerId } : {})}>{translate({ key: `workspaces.studio.kind.${artifact.kind}` })}</span>
+      {/* demoted metadata: one line; provider is real content (provenance), so it stays always-visible
+          text rather than a hover-only title — touch/screen-reader users need it too (text-meta token). */}
+      <div className={`px-4 py-2 border-t border-divider text-[11px] text-meta flex items-center gap-2`}>
+        <span>{translate({ key: `workspaces.studio.kind.${artifact.kind}` })}</span>
+        {artifact.providerId && <span>· {artifact.providerId}</span>}
+        {usedRefine && <span className={`truncate max-w-[10rem]`} title={usedRefine}>· {translate({ key: 'workspaces.studio.refinedWith', params: [{ key: 'refine', value: usedRefine }] })}</span>}
         <span className={`ml-auto`}>{when}</span>
       </div>
     </div>

@@ -306,7 +306,7 @@ function DesignerShell() {
       <WsButton variant={usePrimary ? 'primary' : 'secondary'} icon={useBusy ? 'spinner' : 'circle-check'} disabled={useBusy} className={useBusy ? '[&_svg]:animate-spin' : ''} onClick={useInProjectNow}>{translate({ key: 'workspaces.designer.useInProject' })}</WsButton>
       <PopMenu ariaLabel={translate({ key: 'workspaces.designer.moreActions' })} items={[
         { label: translate({ key: 'workspaces.designer.saveToLibrary' }), icon: 'box-archive', onClick: saveToLibNow },
-        { label: translate({ key: 'workspaces.designer.applyTokens' }), icon: 'bolt', onClick: applyTokensNow },
+        { label: translate({ key: 'workspaces.designer.applyTokens' }), icon: 'bolt', onClick: applyTokensNow, disabled: !activeProjectId, disabledReason: translate({ key: 'workspaces.designer.applyTokensNeedsProject' }) },
       ]} />
     </div>
   );

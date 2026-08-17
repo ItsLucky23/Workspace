@@ -126,12 +126,16 @@ const BTN_VARIANT: Record<BtnVariant, string> = {
   ghost: 'text-common hover:bg-container2 hover:text-title',
   danger: 'bg-wrong text-white hover:bg-wrong-hover shadow-xs hover:shadow-sm',
 };
-export function WsButton({ variant = 'primary', icon, children, onClick, title, type = 'button', className = '', disabled = false }: {
-  variant?: BtnVariant; icon?: IconName; children?: ReactNode; onClick?: () => void; title?: string; type?: 'button' | 'submit'; className?: string; disabled?: boolean;
+//? `ariaLabel` exists because half the call sites hide the text label on phones
+//? (`hidden md:inline`), which removes it from the accessibility tree too — the button then
+//? announces as nothing at all. It falls back to `title` so the many buttons that already pass
+//? a tooltip get a name for free.
+export function WsButton({ variant = 'primary', icon, children, onClick, title, ariaLabel, type = 'button', className = '', disabled = false }: {
+  variant?: BtnVariant; icon?: IconName; children?: ReactNode; onClick?: () => void; title?: string; ariaLabel?: string; type?: 'button' | 'submit'; className?: string; disabled?: boolean;
 }) {
   return (
     <button
-      type={type} onClick={onClick} title={title} disabled={disabled}
+      type={type} onClick={onClick} title={title} aria-label={ariaLabel ?? title} disabled={disabled}
       className={`inline-flex items-center justify-center gap-2 rounded-xl px-3.5 h-9 text-sm font-semibold tracking-[-0.01em] transition-[color,background-color,box-shadow,border-color,transform] duration-150 ease-[var(--ease-soft)] cursor-pointer ${FOCUS_RING} focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none motion-safe:active:scale-[0.97] ${BTN_VARIANT[variant]} ${className}`}
     >
       {icon && <Icon name={icon} />}
@@ -140,12 +144,16 @@ export function WsButton({ variant = 'primary', icon, children, onClick, title, 
   );
 }
 
-export function IconButton({ icon, onClick, title, active, className = '' }: { icon: IconName; onClick?: () => void; title?: string; active?: boolean; className?: string }) {
+//? `touch` is the 44px minimum a finger can reliably hit. This product is phone-first, yet every
+//? icon-only control shipped at 28-32px — small enough that the audit found users mis-tapping the
+//? neighbouring control. Use `touch` for anything a thumb reaches in a bar, sheet or card header.
+const ICON_BTN_SIZE = { sm: 'w-8 h-8', md: 'w-9 h-9', touch: 'w-11 h-11' } as const;
+export function IconButton({ icon, onClick, title, active, size = 'md', className = '' }: { icon: IconName; onClick?: () => void; title?: string; active?: boolean; size?: keyof typeof ICON_BTN_SIZE; className?: string }) {
   return (
     <button
       //? a11y (gap-fix): icon-only → the title doubles as the accessible name (falls back to the icon name).
       type="button" onClick={onClick} title={title} aria-label={title ?? icon}
-      className={`inline-flex items-center justify-center w-9 h-9 rounded-xl text-muted transition-[color,background-color,transform] duration-150 ease-[var(--ease-soft)] cursor-pointer hover:bg-container2 hover:text-title ${FOCUS_RING} motion-safe:active:scale-90 ${active ? 'bg-container2 text-title' : ''} ${className}`}
+      className={`inline-flex items-center justify-center ${ICON_BTN_SIZE[size]} rounded-xl text-muted transition-[color,background-color,transform] duration-150 ease-[var(--ease-soft)] cursor-pointer hover:bg-container2 hover:text-title ${FOCUS_RING} motion-safe:active:scale-90 ${active ? 'bg-container2 text-title' : ''} ${className}`}
     >
       <Icon name={icon} />
     </button>
@@ -285,7 +293,10 @@ export function InfoDot({ title, body, align = 'right' }: { title?: string; body
 }
 
 /* ----------------------------------------------------------------- pop menu */
-export interface PopMenuItem { label?: string; icon?: IconName; danger?: boolean; divider?: boolean; onClick?: () => void }
+//? `disabled` + `disabledReason`: menu actions that cannot run today (Designer's "Apply tokens")
+//? were rendered as normal rows and silently did nothing when clicked — the user reads that as a
+//? broken product. A greyed, unclickable row that carries WHY in its tooltip is honest instead.
+export interface PopMenuItem { label?: string; icon?: IconName; danger?: boolean; divider?: boolean; disabled?: boolean; disabledReason?: string; onClick?: () => void }
 //? `label` renders a text + chevron trigger (e.g. "Advanced ▾") instead of the icon-only button, for a
 //? progressive-disclosure menu that reads as a labelled control. Omit it → the original icon-only trigger.
 export function PopMenu({ items, align = 'right', icon = 'ellipsis', label, ariaLabel, triggerClass, onOpenChange }: { items: PopMenuItem[]; align?: 'left' | 'right'; icon?: IconName; label?: string; ariaLabel?: string; triggerClass?: string; onOpenChange?: (open: boolean) => void }) {
@@ -314,8 +325,11 @@ export function PopMenu({ items, align = 'right', icon = 'ellipsis', label, aria
             <button
               // eslint-disable-next-line react-x/no-array-index-key -- static menu; positional index is the item identity
               key={i} type="button"
+              disabled={it.disabled ?? false} title={it.disabled === true ? it.disabledReason : undefined}
               onClick={(e) => { e.stopPropagation(); change(false); it.onClick?.(); }}
-              className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors cursor-pointer ${it.danger ? 'text-wrong hover:bg-wrong/10' : 'text-common hover:bg-container2'}`}
+              className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${it.disabled === true
+                ? 'text-disabled cursor-not-allowed'
+                : `cursor-pointer ${it.danger === true ? 'text-wrong hover:bg-wrong/10' : 'text-common hover:bg-container2'}`}`}
             >
               {it.icon && <Icon name={it.icon} className="w-4 text-center opacity-80" />}
               {it.label}
@@ -347,4 +361,60 @@ export function Disclosure({ summary, defaultOpen = false, children, className =
       <Collapse open={open}><div className="px-4 pb-4 pt-0">{children}</div></Collapse>
     </div>
   );
+}
+
+/* ----------------------------------------------------------------- clickable card / row */
+//? WHY: five pages ship things that ARE buttons but were built as plain divs — content PieceCard
+//? and the library thumbnails, the studio brief rail, documents rows, the answers entity list.
+//? They had no cursor-pointer (so nothing said "click me"), no hover feedback, and no tabIndex at
+//? all, which meant a keyboard user literally could not reach the page's primary interaction.
+//? This bakes in the KanbanCard treatment — the one card in the app that already feels right.
+//?
+//? It renders a div with explicit button semantics rather than a real <button>: these cards carry
+//? their own ⋯ menus and inline actions, and a button inside a button is invalid DOM that browsers
+//? silently reparent. The keyboard contract is therefore implemented by hand.
+export interface ClickableCardProps {
+  onClick: () => void;
+  /** `card` = padded tile in a grid; `row` = tighter line in a list. Padding + radius only. */
+  as?: 'card' | 'row';
+  /** Marks the active item in a rail/list; emits `aria-current` so it is not colour-only. */
+  selected?: boolean;
+  /** Required when the content is not self-describing text (a bare thumbnail, an avatar, a glyph). */
+  ariaLabel?: string;
+  className?: string;
+  children: ReactNode;
+}
+
+export function ClickableCard({ onClick, as = 'card', selected = false, ariaLabel, className = '', children }: ClickableCardProps) {
+  const downAt = useRef(0);
+  return (
+    <div
+      role="button" tabIndex={0} aria-label={ariaLabel} aria-current={selected ? true : undefined}
+      onPointerDown={() => { downAt.current = Date.now(); }}
+      //? Activate only on a deliberate, quick click. Cards hold selectable text, and without this a
+      //? user who drags to select a title gets navigated away instead (KanbanCard's proven guard).
+      onClick={() => {
+        if (Date.now() - downAt.current > 350) return;
+        if ((globalThis.getSelection()?.toString() ?? '') !== '') return;
+        onClick();
+      }}
+      //? Space must be prevented before it acts, otherwise the page scrolls under the user.
+      onKeyDown={(e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        onClick();
+      }}
+      //? The lift on hover animates transform + box-shadow ONLY — never width/height/padding, which
+      //? would reflow the whole grid on every mouse-over.
+      className={`group relative w-full text-left cursor-pointer border bg-container1 shadow-2xs transition-[border-color,box-shadow,transform] duration-150 ease-[var(--ease-soft)] hover:border-container2-border hover:shadow-md motion-safe:hover:-translate-y-px ${FOCUS_RING} focus-visible:ring-offset-2 focus-visible:ring-offset-background ${as === 'card' ? 'rounded-xl p-3' : 'rounded-lg px-3 py-2'} ${selected ? 'border-primary/60 ring-1 ring-primary/30' : 'border-container1-border'} ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+//? Same contract, list padding — a named export so a rail of rows reads as rows at the call site
+//? instead of `<ClickableCard as="row">` repeated twenty times.
+export function InteractiveRow(props: Omit<ClickableCardProps, 'as'>) {
+  return <ClickableCard {...props} as="row" />;
 }

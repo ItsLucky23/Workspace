@@ -230,6 +230,7 @@ Every entry below is callable inside an API or sync handler's `main({ data, user
 
 | File | Exports |
 | --- | --- |
+| `src/_components/AuthShell.tsx` | `default: AuthShell` — `AUTH_BUTTON_CLASS`, `AUTH_INPUT_CLASS`, `AUTH_STEP_MOTION: object`, `PasswordField` |
 | `src/_components/Avatar.tsx` | `default: Avatar` |
 | `src/_components/ConfirmMenu.tsx` | `ConfirmMenu({ title, content, input, resolve }: ConfirmMenuProps)`, `interface ConfirmMenuProps` |
 | `src/_components/ErrorPage.tsx` | `default: ErrorPage` |

@@ -9,7 +9,9 @@ import { useTranslator } from '@luckystack/core/client';
 
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
-import { Disclosure, SectionCard, WsButton } from '../../_components/primitives';
+import Icon from '../../_components/Icon';
+import { Disclosure, SectionCard, Toggle, WsButton } from '../../_components/primitives';
+import { FormSection, SettingRow } from '../../_components/settings';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { SavedNote } from './SavedNote';
 import { fieldCls, PUBLISH_PLATFORMS } from './shared';
@@ -25,49 +27,53 @@ const AI_PROVIDERS: { id: string; nameKey: string; descKey: string }[] = [
   { id: 'gemini', nameKey: 'workspaces.content.providerGemini', descKey: 'workspaces.content.providerGeminiDesc' },
 ];
 
-//? One write-only key row: the input clears after save and a transient "saved" note confirms it.
+//? One write-only key row via the shared SettingRow grammar (was its own bespoke label/desc/input
+//? stack — the audit found three different row shapes in this one tab, this is one of them). The
+//? input clears after save and the row's SavePill confirms it, same as every other setting row.
 function KeyRow({ name, desc, onSave }: { name: string; desc: string; onSave: (key: string) => void }) {
   const translate = useTranslator();
   const [value, setValue] = useState('');
   const [saved, setSaved] = useState(false);
   return (
-    <div className={`flex flex-col gap-1.5 py-3 border-b border-divider last:border-0`}>
-      <div className={`flex items-baseline justify-between gap-2`}>
-        <span className={`text-sm font-medium text-title`}>{name}</span>
-        <span className={`text-xs text-muted`}>{desc}</span>
-      </div>
-      <div className={`flex items-center gap-2`}>
-        <input
-          type="password" value={value} onChange={(e) => { setValue(e.target.value); setSaved(false); }}
-          placeholder={translate({ key: 'workspaces.content.keyPlaceholder' })}
-          className={`flex-1 min-w-0 ${fieldCls}`}
-        />
-        <WsButton className={`min-h-11 shrink-0`} disabled={value.trim().length === 0} onClick={() => { onSave(value.trim()); setValue(''); setSaved(true); }}>{translate({ key: 'workspaces.content.saveKey' })}</WsButton>
-      </div>
-      {saved && <SavedNote text={`${translate({ key: 'workspaces.content.savedFor' })} ${name}`} />}
-    </div>
+    <SettingRow
+      label={name}
+      help={desc}
+      status={saved ? 'saved' : 'idle'}
+      stacked
+      control={(
+        <div className={`flex items-center gap-2`}>
+          <input
+            type="password" value={value} onChange={(e) => { setValue(e.target.value); setSaved(false); }}
+            placeholder={translate({ key: 'workspaces.content.keyPlaceholder' })}
+            className={`flex-1 min-w-0 ${fieldCls}`}
+          />
+          <WsButton className={`min-h-11 shrink-0`} disabled={value.trim().length === 0} onClick={() => { onSave(value.trim()); setValue(''); setSaved(true); }}>{translate({ key: 'workspaces.content.saveKey' })}</WsButton>
+        </div>
+      )}
+    />
   );
 }
 
-//? Provider keys — stored ENCRYPTED, never shown back. Media providers first, then the AI text provider
-//? (Gemini — drives the script/analysis features, Q5). Both save via the dual-shape saveMediaProvider
+//? Provider keys — stored ENCRYPTED, never shown back. Media providers and the AI text provider
+//? (Gemini — drives the script/analysis features, Q5) get their own FormSection so the split reads as
+//? two groups, not a sub-heading glued mid-card. Both save via the dual-shape saveMediaProvider
 //? ({providerId, apiKey} for keys; {feature, model} is the model-override shape below).
 function KeysCard() {
   const translate = useTranslator();
   const { saveMediaProvider } = useWorkspaces();
   return (
-    <SectionCard title={translate({ key: 'workspaces.content.keysTitle' })} desc={translate({ key: 'workspaces.content.keysTeach' })}>
-      {MEDIA_PROVIDERS.map((p) => (
-        <KeyRow key={p.id} name={translate({ key: p.nameKey })} desc={translate({ key: p.descKey })} onSave={(key) => { saveMediaProvider({ providerId: p.id, apiKey: key }); }} />
-      ))}
-      <div className={`mt-4`}>
-        <div className={`text-sm font-semibold text-title`}>{translate({ key: 'workspaces.content.aiKeysTitle' })}</div>
-        <div className={`text-sm text-muted mt-0.5`}>{translate({ key: 'workspaces.content.aiKeysDesc' })}</div>
-      </div>
-      {AI_PROVIDERS.map((p) => (
-        <KeyRow key={p.id} name={translate({ key: p.nameKey })} desc={translate({ key: p.descKey })} onSave={(key) => { saveMediaProvider({ providerId: p.id, apiKey: key }); }} />
-      ))}
-    </SectionCard>
+    <>
+      <FormSection title={translate({ key: 'workspaces.content.keysTitle' })} desc={translate({ key: 'workspaces.content.keysTeach' })}>
+        {MEDIA_PROVIDERS.map((p) => (
+          <KeyRow key={p.id} name={translate({ key: p.nameKey })} desc={translate({ key: p.descKey })} onSave={(key) => { saveMediaProvider({ providerId: p.id, apiKey: key }); }} />
+        ))}
+      </FormSection>
+      <FormSection title={translate({ key: 'workspaces.content.aiKeysTitle' })} desc={translate({ key: 'workspaces.content.aiKeysDesc' })}>
+        {AI_PROVIDERS.map((p) => (
+          <KeyRow key={p.id} name={translate({ key: p.nameKey })} desc={translate({ key: p.descKey })} onSave={(key) => { saveMediaProvider({ providerId: p.id, apiKey: key }); }} />
+        ))}
+      </FormSection>
+    </>
   );
 }
 
@@ -75,7 +81,7 @@ function KeysCard() {
 //? disabled while the cap is off; € → cents rounding + the 0–100 alert clamp happen on save.
 function BudgetCard() {
   const translate = useTranslator();
-  const { content, editMediaBudget } = useWorkspaces();
+  const { content, editMediaBudget, navigate } = useWorkspaces();
   const budget = content.mediaBudget;
   const [enabled, setEnabled] = useState(budget.enabled);
   const [capEuros, setCapEuros] = useState((budget.capCents / 100).toString());
@@ -106,6 +112,16 @@ function BudgetCard() {
         <WsButton className={`min-h-11`} onClick={save}>{translate({ key: 'workspaces.content.budgetSave' })}</WsButton>
         {saved && <SavedNote text={translate({ key: 'workspaces.content.budgetSaved' })} />}
       </div>
+      {/* Audit finding: this cap and the workspace-wide AI/token caps on Usage look like the same
+          concept but are two separate budgets (media generation spend vs metered API spend) — say so
+          instead of leaving the user to guess which one a given spend counts against. */}
+      <div className={`mt-3 flex flex-wrap items-center gap-1.5 text-xs text-muted`}>
+        <Icon name="circle-info" />
+        <span>{translate({ key: 'workspaces.content.budgetScopeNote' })}</span>
+        <button type="button" onClick={() => { navigate('usage'); }} className={`text-primary hover:underline cursor-pointer inline-flex items-center gap-1`}>
+          {translate({ key: 'workspaces.content.budgetOtherCapsLink' })} <Icon name="arrow-right" />
+        </button>
+      </div>
     </SectionCard>
   );
 }
@@ -121,13 +137,16 @@ const MODEL_FEATURES: { feature: string; def: string }[] = [
   { feature: 'avatar', def: 'fal-ai/ltx-video' },
   { feature: 'music', def: 'V5' },
 ];
+//? Same SettingRow grammar as KeyRow above — this used to be its own label-left/input-right shape,
+//? the second of the tab's three row grammars. `-mx-4` on the parent list cancels the Disclosure
+//? body's own px-4 so SettingRow's px-5 becomes the single source of horizontal inset.
 function MediaModelRow({ feature, def, current, onSave }: { feature: string; def: string; current: string; onSave: (model: string) => void }) {
   const [value, setValue] = useState(current);
   return (
-    <div className={`flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 py-2 border-b border-divider last:border-0`}>
-      <span className={`text-sm text-common sm:w-40 shrink-0`}>{feature}</span>
-      <input value={value} onChange={(e) => { setValue(e.target.value); }} onBlur={() => { if (value.trim() !== current) onSave(value.trim()); }} placeholder={def} className={`w-full sm:flex-1 min-w-0 rounded-lg border border-container2-border bg-container2 px-3 py-1.5 text-base md:text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring font-mono`} />
-    </div>
+    <SettingRow
+      label={feature}
+      control={<input value={value} onChange={(e) => { setValue(e.target.value); }} onBlur={() => { if (value.trim() !== current) onSave(value.trim()); }} placeholder={def} className={`w-full rounded-lg border border-container2-border bg-container2 px-3 py-1.5 text-base md:text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring font-mono`} />}
+    />
   );
 }
 function ModelOverridesBody() {
@@ -135,45 +154,47 @@ function ModelOverridesBody() {
   const { content, saveMediaProvider } = useWorkspaces();
   const currentOf = (feature: string): string => content.mediaModels.find((m) => m.feature === feature)?.model ?? '';
   return (
-    <div>
-      <div className={`text-sm text-muted mb-2`}>{translate({ key: 'workspaces.content.modelsDesc' })}</div>
-      {MODEL_FEATURES.map((m) => (
-        <MediaModelRow key={m.feature} feature={m.feature} def={m.def} current={currentOf(m.feature)} onSave={(model) => { saveMediaProvider({ feature: m.feature, model: model || 'default' }); }} />
-      ))}
+    <div className={`-mx-4`}>
+      <div className={`text-sm text-muted px-5 mb-1`}>{translate({ key: 'workspaces.content.modelsDesc' })}</div>
+      <div className={`divide-y divide-divider`}>
+        {MODEL_FEATURES.map((m) => (
+          <MediaModelRow key={m.feature} feature={m.feature} def={m.def} current={currentOf(m.feature)} onSave={(model) => { saveMediaProvider({ feature: m.feature, model: model || 'default' }); }} />
+        ))}
+      </div>
     </div>
   );
 }
 
 //? Workspace-wide media generation defaults — each overrides its host-env fallback (WS_MEDIA_CHEAP /
 //? WS_SCENE_CONTINUITY / ELEVENLABS_VOICE_ID). The toggles save immediately (source of truth = the snapshot,
-//? refetched after the write); the default voice id saves on BLUR like the model overrides.
+//? refetched after the write); the default voice id saves on BLUR like the model overrides. Third of the
+//? tab's three row grammars, now unified on SettingRow too — was a bare checkbox+label with the help text
+//? indented below it.
 function GenerationDefaultsCard() {
   const translate = useTranslator();
   const { content, saveMediaProvider } = useWorkspaces();
   const prefs = content.mediaPrefs;
   const [voiceId, setVoiceId] = useState(prefs.voiceId);
+  const onOffLabel = (on: boolean) => translate({ key: on ? 'workspaces.account.enabled' : 'workspaces.account.off' });
   return (
-    <SectionCard title={translate({ key: 'workspaces.content.genDefaultsTitle' })} desc={translate({ key: 'workspaces.content.genDefaultsDesc' })}>
-      <div className={`py-2`}>
-        <label className={`flex items-center gap-2 cursor-pointer`}>
-          <input type="checkbox" checked={prefs.cheap} onChange={(e) => { saveMediaProvider({ cheap: e.target.checked }); }} className={`accent-primary`} />
-          <span className={`text-sm text-title`}>{translate({ key: 'workspaces.content.cheapLabel' })}</span>
-        </label>
-        <div className={`text-xs text-muted pl-6 mt-0.5`}>{translate({ key: 'workspaces.content.cheapDesc' })}</div>
-      </div>
-      <div className={`py-2 border-t border-divider`}>
-        <label className={`flex items-center gap-2 cursor-pointer`}>
-          <input type="checkbox" checked={prefs.sceneContinuity} onChange={(e) => { saveMediaProvider({ sceneContinuity: e.target.checked }); }} className={`accent-primary`} />
-          <span className={`text-sm text-title`}>{translate({ key: 'workspaces.content.sceneContinuityLabel' })}</span>
-        </label>
-        <div className={`text-xs text-muted pl-6 mt-0.5`}>{translate({ key: 'workspaces.content.sceneContinuityDesc' })}</div>
-      </div>
-      <div className={`flex flex-col gap-1 py-2 border-t border-divider`}>
-        <span className={`text-sm text-title`}>{translate({ key: 'workspaces.content.voiceIdLabel' })}</span>
-        <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.content.voiceIdDesc' })}</span>
-        <input value={voiceId} onChange={(e) => { setVoiceId(e.target.value); }} onBlur={() => { if (voiceId.trim() !== prefs.voiceId) saveMediaProvider({ voiceId: voiceId.trim() }); }} placeholder={translate({ key: 'workspaces.content.voiceIdPlaceholder' })} className={`w-full mt-1 ${fieldCls}`} />
-      </div>
-    </SectionCard>
+    <FormSection title={translate({ key: 'workspaces.content.genDefaultsTitle' })} desc={translate({ key: 'workspaces.content.genDefaultsDesc' })}>
+      <SettingRow
+        label={translate({ key: 'workspaces.content.cheapLabel' })}
+        help={translate({ key: 'workspaces.content.cheapDesc' })}
+        control={<Toggle on={prefs.cheap} onChange={(next) => { saveMediaProvider({ cheap: next }); }} label={onOffLabel(prefs.cheap)} />}
+      />
+      <SettingRow
+        label={translate({ key: 'workspaces.content.sceneContinuityLabel' })}
+        help={translate({ key: 'workspaces.content.sceneContinuityDesc' })}
+        control={<Toggle on={prefs.sceneContinuity} onChange={(next) => { saveMediaProvider({ sceneContinuity: next }); }} label={onOffLabel(prefs.sceneContinuity)} />}
+      />
+      <SettingRow
+        label={translate({ key: 'workspaces.content.voiceIdLabel' })}
+        help={translate({ key: 'workspaces.content.voiceIdDesc' })}
+        stacked
+        control={<input value={voiceId} onChange={(e) => { setVoiceId(e.target.value); }} onBlur={() => { if (voiceId.trim() !== prefs.voiceId) saveMediaProvider({ voiceId: voiceId.trim() }); }} placeholder={translate({ key: 'workspaces.content.voiceIdPlaceholder' })} className={`w-full ${fieldCls}`} />}
+      />
+    </FormSection>
   );
 }
 
@@ -193,7 +214,7 @@ function PlatformCredentialsBody() {
     <div className={`flex flex-col gap-2`}>
       <div className={`text-sm text-muted`}>{translate({ key: 'workspaces.content.appCredDesc' })}</div>
       <div className={`flex flex-wrap items-center gap-2`}>
-        <Dropdown size="md" value={platformItems.find((i) => i.id === platform)} items={platformItems} onChange={(it) => { setPlatform(String(it.id)); setSaved(false); }} />
+        <Dropdown size="md" width="full" value={platformItems.find((i) => i.id === platform)} items={platformItems} onChange={(it) => { setPlatform(String(it.id)); setSaved(false); }} />
         <span className={`text-xs ${source === 'none' ? 'text-muted' : 'text-correct'}`}>{translate({ key: `workspaces.content.appCredSource_${source}` })}</span>
       </div>
       <div className={`flex flex-wrap items-center gap-2`}>

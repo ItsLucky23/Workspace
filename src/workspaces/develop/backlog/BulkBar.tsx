@@ -10,14 +10,14 @@ import { useTranslator } from '@luckystack/core/client';
 
 import Icon, { type IconName } from '../../_components/Icon';
 import { Popover } from '../../_components/motion';
-import { useClickAway } from '../../_components/primitives';
+import { FOCUS_RING, useClickAway } from '../../_components/primitives';
 
 export interface PickerItem { label: string; onClick: () => void }
 export interface BulkPicker { icon: IconName; label: string; items: PickerItem[] }
 
 function BarBtn({ icon, label, danger, onClick }: { icon: IconName; label: string; danger?: boolean; onClick?: () => void }) {
   return (
-    <button type="button" onClick={onClick} className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 h-8 text-sm cursor-pointer transition-colors whitespace-nowrap ${danger ? 'text-wrong hover:bg-wrong/10' : 'text-common hover:bg-container2'}`}>
+    <button type="button" onClick={onClick} className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 h-8 text-sm cursor-pointer transition-colors whitespace-nowrap ${FOCUS_RING} ${danger ? 'text-wrong hover:bg-wrong/10' : 'text-common hover:bg-container2'}`}>
       <Icon name={icon} /> {label}
     </button>
   );
@@ -93,7 +93,7 @@ export function BulkActionsBar({ count, pickers, onArchive, onClear }: {
       <div className={`flex sm:hidden`}>
         <PhoneActionsButton pickers={pickers} onArchive={onArchive} />
       </div>
-      <button type="button" onClick={onClear} className={`w-7 h-7 flex items-center justify-center rounded-lg text-muted hover:bg-container2 cursor-pointer ml-1 shrink-0`}><Icon name="xmark" /></button>
+      <button type="button" onClick={onClear} aria-label={translate({ key: 'workspaces.backlog.clearSelection' })} className={`w-7 h-7 flex items-center justify-center rounded-lg text-muted hover:bg-container2 cursor-pointer ml-1 shrink-0 ${FOCUS_RING}`}><Icon name="xmark" /></button>
     </div>
   );
 }

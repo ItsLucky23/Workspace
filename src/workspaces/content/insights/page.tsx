@@ -1,15 +1,22 @@
 //? intent: content insights — a tabbed KISS dashboard: Performance (pieces made/done/published + AI cost),
-//? Links & A/B (create trackable short links, watch clicks, spot the A/B winner), and Brand voice (the
-//? per-channel brand editor that feeds brand-RAG, with the read-only style library behind a disclosure).
+//? Links & A/B (create trackable short links, watch clicks, spot the A/B winner), and Brand voice (a
+//? read-only view of each channel's brand voice that feeds brand-RAG — edited in Content settings →
+//? Channels, the single owner — with the read-only style library behind a disclosure).
 
 import { useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
 import Icon from '../../_components/Icon';
-import { Disclosure, EmptyState, Segmented, WsButton } from '../../_components/primitives';
+import { Reveal } from '../../_components/motion';
+import { Disclosure, EmptyState, IconButton, Segmented, WsButton } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { ContentChannelSummary } from '../../_data/types';
+
+//? Owner decision (2026-08-17): Content settings → Channels is the single owner of a channel's brand
+//? voice (it also carries defaultStyleId / aiDisclosureDefault / defaultAccountId / autopilot, which
+//? live nowhere near this page). This card used to write straight to the channel via a separate sync
+//? op with no cross-link — now it only reads, and "Edit full channel" deep-links to the real editor.
 
 export const template = 'workspaces';
 
@@ -29,31 +36,32 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function BrandCard({ channel, onSave }: { channel: ContentChannelSummary; onSave: (voice: string) => void }) {
+function BrandCard({ channel }: { channel: ContentChannelSummary }) {
   const translate = useTranslator();
-  const [voice, setVoice] = useState(channel.brandVoice);
-  const [saved, setSaved] = useState(false);
+  const { focusSetup } = useWorkspaces();
   return (
     <div className={`rounded-xl border border-container2-border bg-container2 p-3 flex flex-col gap-2`}>
       <div className={`flex items-center gap-2`}>
         <span className={`text-sm font-medium text-title`}>{channel.name}</span>
         <span className={`rounded-full bg-container1 px-2 py-0.5 text-[11px] text-muted capitalize`}>{channel.platform}</span>
       </div>
-      <textarea
-        value={voice} onChange={(e) => { setVoice(e.target.value); setSaved(false); }} rows={2}
-        placeholder={translate({ key: 'workspaces.content.brandVoicePlaceholder' })}
-        className={`rounded-lg border border-container1-border bg-container1 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring resize-none`}
-      />
-      <div className={`flex items-center gap-2`}>
-        <button type="button" onClick={() => { onSave(voice.trim()); setSaved(true); }} className={`rounded-lg bg-primary text-title-primary px-3 py-1.5 text-sm font-medium hover:bg-primary-hover cursor-pointer`}>{translate({ key: 'workspaces.content.brandSave' })}</button>
-        {saved && <span className={`text-xs text-correct flex items-center gap-1`}><Icon name="circle-check" /> {translate({ key: 'workspaces.content.brandSaved' })}</span>}
-      </div>
+      {channel.brandVoice.trim().length > 0
+        ? <p className={`text-sm text-common`}>{channel.brandVoice}</p>
+        : <p className={`text-sm text-disabled italic`}>{translate({ key: 'workspaces.content.brandVoiceEmpty' })}</p>}
+      {/* Read-only here on purpose — Content settings → Channels owns this field (+ its 4 sibling fields). */}
+      <button
+        type="button"
+        onClick={() => { focusSetup({ view: 'content/settings', tab: 'channels' }); }}
+        className={`self-start text-xs text-primary hover:underline cursor-pointer flex items-center gap-1`}
+      >
+        {translate({ key: 'workspaces.content.brandEditFull' })} <Icon name="arrow-right" />
+      </button>
     </div>
   );
 }
 
 export default function ContentInsights() {
-  const { content, editChannelBrand, navigate, runContentOp } = useWorkspaces();
+  const { content, navigate, runContentOp } = useWorkspaces();
   const translate = useTranslator();
   const [tab, setTab] = useState<InsightsTab>('performance');
   //? shortlink-create (was UI-less): create a trackable /l/<slug> link from a target URL.
@@ -70,9 +78,7 @@ export default function ContentInsights() {
   return (
     <div className={`flex flex-col h-full min-h-0`}>
       <div className={`px-4 md:px-6 py-3 md:py-4 flex items-center gap-3`}>
-        <button type="button" onClick={() => { navigate('content'); }} title={translate({ key: 'workspaces.content.backToBoard' })} className={`w-8 h-8 rounded-lg hover:bg-container2 text-muted hover:text-common flex items-center justify-center cursor-pointer`}>
-          <Icon name="arrow-left" />
-        </button>
+        <IconButton icon="arrow-left" title={translate({ key: 'workspaces.content.backToBoard' })} onClick={() => { navigate('content'); }} />
         <div>
           <h1 className={`text-xl font-semibold text-title`}>{translate({ key: 'workspaces.content.insightsTitle' })}</h1>
           <span className={`text-sm text-muted`}>{translate({ key: 'workspaces.content.insightsSubtitle' })}</span>
@@ -101,6 +107,8 @@ export default function ContentInsights() {
             />
           </div>
 
+          {/* Keyed on tab so switching Performance/Links/Brand fades+lifts instead of cutting. */}
+          <Reveal key={tab} className={`flex flex-col gap-4`}>
           {/* ------------------------------------------------ Performance (default) */}
           {tab === 'performance' && (a.totalPieces === 0 ? (
             <div className={`rounded-2xl border border-container1-border bg-container1`}>
@@ -190,11 +198,12 @@ export default function ContentInsights() {
                     icon="wand-magic-sparkles"
                     title={translate({ key: 'workspaces.content.brandEmpty' })}
                     sub={translate({ key: 'workspaces.content.brandEmptySub' })}
+                    action={<WsButton icon="plus" onClick={() => { navigate('content/settings'); }}>{translate({ key: 'workspaces.content.brandEmptyAction' })}</WsButton>}
                   />
                 ) : (
                   <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3`}>
                     {content.channels.map((c) => (
-                      <BrandCard key={c.id} channel={c} onSave={(voice) => { editChannelBrand(c.id, voice); }} />
+                      <BrandCard key={c.id} channel={c} />
                     ))}
                   </div>
                 )}
@@ -216,6 +225,7 @@ export default function ContentInsights() {
               </Disclosure>
             </>
           )}
+          </Reveal>
         </div>
       </div>
     </div>

@@ -84,7 +84,7 @@ export function StyleEditorForm({ workspaceId, initial, onSave }: {
     <div className={`w-full flex flex-col gap-3 p-5`}>
       <div className={`text-base font-semibold text-title`}>{translate({ key: initial ? 'workspaces.content.styleEdit' : 'workspaces.content.styleNew' })}</div>
       <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2`}>
-        <Dropdown size="md" value={featureItems.find((i) => i.id === feature)} items={featureItems} onChange={(it) => { setFeature(String(it.id)); }} />
+        <Dropdown size="md" width="full" value={featureItems.find((i) => i.id === feature)} items={featureItems} onChange={(it) => { setFeature(String(it.id)); }} />
         <input value={key} onChange={(e) => { setKey(e.target.value); }} placeholder={translate({ key: 'workspaces.content.styleKeyPlaceholder' })} className={fieldCls} />
       </div>
       <input value={label} onChange={(e) => { setLabel(e.target.value); }} placeholder={translate({ key: 'workspaces.content.styleLabelPlaceholder' })} className={fieldCls} />

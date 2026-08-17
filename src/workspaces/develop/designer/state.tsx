@@ -6,7 +6,7 @@
 //? item can be renamed, duplicated and (for non-seeds) removed. Persistence lands in a later phase.
 
 /* eslint-disable react-refresh/only-export-components -- context module: the useDesigner hook is co-exported with the DesignerProvider by design (dev-only fast-refresh rule) */
-import { createContext, use, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, use, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { apiRequest, tryCatch } from '@luckystack/core/client';
 
@@ -120,6 +120,21 @@ export function DesignerProvider({ children }: { children: ReactNode }) {
     setStyles((prev) => mergeById(prev, parsed.styles));
     setAnims((prev) => mergeById(prev, parsed.anims));
   }, [designArtifacts]);
+
+  //? gap-fix (duplicate-concept "active theme"): activeThemeId was seeded from LUCKYSTACK_THEME.id and
+  //? never synced to whichever design artifact the workspace actually flags `active:true` — every page
+  //? previewed the default palette even when a custom theme was running in project. Sync ONCE, the moment
+  //? the active artifact's id resolves to a theme already in the (seed + persisted) library — a later
+  //? manual pick via setActiveThemeId is never overridden, and with no active artifact the seed stands.
+  const activeThemeArtifactId = designArtifacts.find((a) => a.kind === 'theme' && a.active)?.id ?? null;
+  const themeSyncedRef = useRef(false);
+  useEffect(() => {
+    if (themeSyncedRef.current || activeThemeArtifactId === null) return;
+    const match = themes.find((t) => t.id === activeThemeArtifactId);
+    if (!match) return;
+    themeSyncedRef.current = true;
+    setActiveThemeId(match.id);
+  }, [activeThemeArtifactId, themes]);
 
   const ctx = useMemo<DesignerCtx>(() => {
     const activeTheme = themes.find((t) => t.id === activeThemeId) ?? LUCKYSTACK_THEME;

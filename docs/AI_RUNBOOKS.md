@@ -55,7 +55,7 @@ Full spec: `docs/ARCHITECTURE_SYNC.md`.
 **Goal:** shared logic in `src/_functions/` or a UI primitive in `src/_components/`.
 
 1. FIRST check `docs/AI_CAPABILITIES.md` — the helper/component may already exist (Rule 12). Extend it rather than rolling a parallel one.
-2. Helper: copy the existing `_functions/confetti.ts` as your starting point. Component: copy the existing `_components/Avatar.tsx` as your starting point.
+2. Helper: copy the existing `_functions/confetti.ts` as your starting point. Component: copy the existing `_components/AuthShell.tsx` as your starting point.
 3. After adding any new export, run `npm run ai:capabilities` (autonomous) so the snapshot sees it.
 4. **Verify:** `npm run lint && npm run build`; the new export shows up in `docs/AI_CAPABILITIES.md`.
 

@@ -1,5 +1,3 @@
-import { faMoon, faRightFromBracket, faSun, faTrash, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import Avatar from "src/_components/Avatar";
@@ -16,6 +14,9 @@ import type { PageMiddleware } from "@luckystack/core/client";
 import { menuHandler } from "src/_functions/menuHandler";
 import { apiRequest } from "src/_sockets/apiRequest";
 
+import Icon from "../workspaces/_components/Icon";
+import { EmptyState, Segmented, WsButton } from "../workspaces/_components/primitives";
+import { FormSection, SettingRow, useAutosave } from "../workspaces/_components/settings";
 import { backendUrl, SessionLayout } from "../../config";
 
 const stripAvatarVersion = (url: string) => url.replace(/[?&]v=\d+/, '');
@@ -26,8 +27,8 @@ const LANGUAGES = ['nl', 'en', 'de', 'fr'] as const;
 type Language = typeof LANGUAGES[number];
 
 const THEMES = [
-  { value: 'light', icon: faSun },
-  { value: 'dark', icon: faMoon },
+  { value: 'light', icon: 'sun' },
+  { value: 'dark', icon: 'moon' },
 ] as const;
 type Theme = typeof THEMES[number]['value'];
 
@@ -56,20 +57,8 @@ export const middleware: PageMiddleware<SessionLayout> = ({ session }) => {
   return { success: true };
 };
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="bg-container1 border border-container1-border rounded-xl p-5 flex flex-col gap-3">
-      <h2 className="text-base font-semibold text-title">{title}</h2>
-      <div className="flex flex-col gap-3">{children}</div>
-    </section>
-  );
-}
-
-const segmentedClass = (active: boolean) =>
-  `flex-1 h-9 rounded-md text-sm font-medium border transition-colors cursor-pointer
-   ${active
-      ? 'bg-primary border-primary text-white'
-      : 'bg-container2 border-container2-border text-common hover:bg-container2-hover hover:text-title'}`;
+//? Shared field style — mirrors the settings-row field look used elsewhere (`workspace/page.tsx`'s `fieldCls`).
+const fieldCls = "h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 disabled:opacity-60 disabled:cursor-not-allowed transition-colors";
 
 export default function Home() {
   const { session } = useSession<SessionLayout>();
@@ -88,6 +77,46 @@ export default function Home() {
   const [preferences, setPreferences] = useState<UserPreferences>(
     (session?.preferences as UserPreferences | undefined) ?? {},
   );
+  const [deletePassword, setDeletePassword] = useState<string>('');
+
+  //? ADR 0309 — autosave with a per-row pill instead of a Save button. The three fields persist
+  //? through one op (same shape as `workspace/page.tsx`'s `aiStatus`), so they share one status;
+  //? switching account (sign-out/sign-in as someone else) re-seeds without writing.
+  const saveProfileFields = useCallback(async () => {
+    if (!session) return;
+    const diff: { language?: Language; name?: string; theme?: Theme } = {
+      language: newLanguage === session.language ? undefined : newLanguage,
+      name: newName === session.name ? undefined : newName,
+      theme: newTheme === session.theme ? undefined : newTheme,
+    };
+    if (diff.language === undefined && diff.name === undefined && diff.theme === undefined) return;
+
+    const response = await apiRequest({ name: "settings/updateUser", version: 'v1', data: diff });
+    if (response.status !== 'success') {
+      notify.error({ key: response.errorCode });
+      throw new Error(response.errorCode);
+    }
+  }, [newLanguage, newName, newTheme, session]);
+
+  const profileStatus = useAutosave(
+    [newName, newLanguage, newTheme],
+    saveProfileFields,
+    { resetKey: session?.id ?? '' },
+  );
+
+  //? Avatar upload is its own discrete action (picking a file IS the change event, unlike typing) —
+  //? it persists immediately with its own toast rather than joining the debounced pill above.
+  const saveAvatar = useCallback(async (newAvatar: string) => {
+    if (!session) return;
+    if (stripAvatarVersion(newAvatar) === stripAvatarVersion(session.avatar)) return;
+
+    const response = await apiRequest({ name: "settings/updateUser", version: 'v1', data: { avatar: newAvatar } });
+    if (response.status === 'success') {
+      notify.success({ key: 'settings.updatedUser' });
+    } else {
+      notify.error({ key: 'settings.failedUpdateUser' });
+    }
+  }, [session]);
 
   //? Email change routes through a confirmation email + one-shot token
   //? rather than being applied directly. The actual write happens on the
@@ -122,41 +151,6 @@ export default function Home() {
     }
   }, [newEmail, session, emailChangePassword]);
 
-  const saveProfile = useCallback(async (newAvatar?: string) => {
-    if (!session) return;
-
-    const avatarChanged = newAvatar
-      ? stripAvatarVersion(newAvatar) !== stripAvatarVersion(session.avatar)
-      : false;
-    const avatarToSave = avatarChanged ? newAvatar : undefined;
-
-    if (
-      newLanguage === session.language
-      && newName === session.name
-      && newTheme === session.theme
-      && !newAvatar
-    ) {
-      notify.info({ key: 'settings.noChangesMade' });
-      return;
-    }
-
-    const response = await apiRequest({
-      name: "settings/updateUser",
-      version: 'v1',
-      data: {
-        language: newLanguage === session.language ? undefined : newLanguage,
-        avatar: avatarToSave,
-        name: newName === session.name ? undefined : newName,
-        theme: newTheme === session.theme ? undefined : newTheme,
-      },
-    });
-    if (response.status === 'success') {
-      notify.success({ key: 'settings.updatedUser' });
-    } else {
-      notify.error({ key: 'settings.failedUpdateUser' });
-    }
-  }, [newLanguage, newName, newTheme, session]);
-
   const handleAvatarFile = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -173,11 +167,11 @@ export default function Home() {
     reader.addEventListener('load', () => {
       const result = reader.result;
       if (typeof result === 'string') {
-        void saveProfile(`${result}?v=${String(Date.now())}`);
+        void saveAvatar(`${result}?v=${String(Date.now())}`);
       }
     });
     reader.readAsDataURL(file);
-  }, [saveProfile]);
+  }, [saveAvatar]);
 
   const refreshSessions = useCallback(async () => {
     const response = await apiRequest({
@@ -204,12 +198,6 @@ export default function Home() {
   const passwordNewRef = useRef<HTMLInputElement>(null);
   const passwordConfirmRef = useRef<HTMLInputElement>(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
-
-  //? Credentials accounts must reconfirm with their password before the
-  //? server (`deleteAccount_v1`) will erase them — collected here and sent as
-  //? `data.password`. OAuth-only accounts have no hash, so the field is hidden
-  //? and the server skips the check.
-  const deletePasswordRef = useRef<HTMLInputElement>(null);
 
   const handleChangePassword = async (event: React.SyntheticEvent) => {
     event.preventDefault();
@@ -306,12 +294,11 @@ export default function Home() {
     //? OAuth-only accounts have no hash, so the field is hidden and we send
     //? `undefined` (server skips the check).
     const isCredentials = session?.provider === 'credentials';
-    const password = deletePasswordRef.current?.value ?? '';
 
     const response = await apiRequest({
       name: 'settings/deleteAccount',
       version: 'v1',
-      data: { confirmation: 'DELETE', password: isCredentials ? password : undefined },
+      data: { confirmation: 'DELETE', password: isCredentials ? deletePassword : undefined },
     });
     if (response.status === 'success') {
       notify.success({ key: 'settings.deleteAccountDone' });
@@ -325,237 +312,249 @@ export default function Home() {
   const displayUrl = session.avatar.startsWith('http')
     ? session.avatar
     : `${backendUrl}/uploads/${session.avatar}`;
-
-  const inputClass = "w-full h-9 bg-container2 border border-container2-border rounded-md px-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-colors";
+  const isCredentialsAccount = session.provider === 'credentials';
 
   return (
     <div className='w-full h-full overflow-y-auto bg-background'>
       <div className="max-w-2xl mx-auto p-6 flex flex-col gap-5">
 
-        {/* Profile section */}
-        <Section title={translate({ key: 'settings.name' })}>
-          <div className="flex gap-4 items-center">
-            <div className="rounded-xl w-20 h-20 aspect-square select-none">
-              <Avatar
-                user={{ name: session.name ?? '', avatar: displayUrl, avatarFallback: session.avatarFallback }}
-                textSize="text-2xl"
-              />
-            </div>
-            <div className="flex flex-col gap-2 flex-1">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleAvatarFile}
-              />
-              <button
-                type="button"
-                className="w-full h-9 px-3 bg-container2 border border-container2-border hover:bg-container2-hover rounded-md text-title text-sm font-medium transition-colors cursor-pointer"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                {translate({ key: 'settings.changeAvatar' })}
-              </button>
-              <div className="text-xs text-common">
-                {translate({ key: 'settings.changeAvatarDescription' })}
+        <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'settings.pageTitle' })}</h1>
+
+        {/* Profile section — ADR 0309: one autosave model for the whole card, no Save button. */}
+        <FormSection title={translate({ key: 'settings.profileSection' })}>
+          <SettingRow
+            stacked
+            label={translate({ key: 'settings.avatarLabel' })}
+            help={translate({ key: 'settings.changeAvatarDescription' })}
+            control={(
+              <div className="flex items-center gap-3">
+                <div className="rounded-xl w-14 h-14 aspect-square select-none shrink-0">
+                  <Avatar
+                    user={{ name: session.name ?? '', avatar: displayUrl, avatarFallback: session.avatarFallback }}
+                    textSize="text-lg"
+                  />
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarFile}
+                />
+                <WsButton variant="secondary" onClick={() => fileInputRef.current?.click()}>
+                  {translate({ key: 'settings.changeAvatar' })}
+                </WsButton>
               </div>
-            </div>
-          </div>
+            )}
+          />
 
-          <div className="flex flex-col gap-1">
-            <label htmlFor="settings-name" className="text-xs font-medium">{translate({ key: 'settings.name' })}</label>
-            <input id="settings-name" className={inputClass} value={newName} onChange={(e) => { setNewName(e.target.value); }} />
-          </div>
+          <SettingRow
+            label={translate({ key: 'settings.name' })}
+            status={profileStatus}
+            control={<input id="settings-name" className={`${fieldCls} w-full`} value={newName} onChange={(e) => { setNewName(e.target.value); }} />}
+          />
 
-          <div className="flex flex-col gap-1">
-            <label htmlFor="settings-email" className="text-xs font-medium">{translate({ key: 'settings.email' })}</label>
-            <div className="flex gap-2">
-              <input
-                id="settings-email"
-                type="email"
-                className={inputClass}
-                value={newEmail}
-                onChange={(e) => { setNewEmail(e.target.value); }}
-                disabled={emailChangePending}
-              />
-              <button
-                type="button"
-                onClick={() => void handleRequestEmailChange()}
-                disabled={emailChangePending || !newEmail.trim() || newEmail.trim().toLowerCase() === session.email.toLowerCase() || (session.provider === 'credentials' && !emailChangePassword)}
-                className="h-9 px-3 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors cursor-pointer disabled:opacity-60 whitespace-nowrap"
-              >
-                {translate({ key: 'settings.emailChange.button' })}
-              </button>
-            </div>
-            {session.provider === 'credentials' && (
-              <input
-                id="settings-email-password"
-                type="password"
-                autoComplete="current-password"
-                className={inputClass}
-                placeholder={translate({ key: 'settings.currentPassword' })}
-                value={emailChangePassword}
-                onChange={(e) => { setEmailChangePassword(e.target.value); }}
-                disabled={emailChangePending}
+          <SettingRow
+            label={translate({ key: 'settings.language.title' })}
+            status={profileStatus}
+            control={(
+              <Dropdown
+                width="full"
+                items={languageItems}
+                value={selectedLanguageItem}
+                onChange={(item) => {
+                  const lang = item.value as Language;
+                  setNewLanguage(lang);
+                  setLanguage(lang);
+                }}
               />
             )}
-            <p className="text-xs text-common">{translate({ key: 'settings.emailChange.label' })}</p>
-          </div>
+          />
 
-          <div className="flex flex-col gap-1">
-            <div className="text-xs font-medium">{translate({ key: 'settings.language.title' })}</div>
-            <Dropdown
-              items={languageItems}
-              value={selectedLanguageItem}
-              onChange={(item) => {
-                const lang = item.value as Language;
-                setNewLanguage(lang);
-                setLanguage(lang);
-              }}
-            />
-          </div>
+          <SettingRow
+            label={translate({ key: 'settings.theme.title' })}
+            status={profileStatus}
+            control={(
+              <Segmented
+                options={THEMES.map(({ value, icon }) => ({
+                  id: value,
+                  label: <span className="inline-flex items-center gap-1.5"><Icon name={icon} />{translate({ key: `settings.theme.${value}` })}</span>,
+                }))}
+                value={newTheme}
+                onChange={(value) => { setNewTheme(value); updateTheme(value); }}
+              />
+            )}
+          />
 
-          <div className="flex flex-col gap-1">
-            <div className="text-xs font-medium">{translate({ key: 'settings.theme.title' })}</div>
-            <div className="flex w-full gap-2">
-              {THEMES.map(({ value, icon }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => { setNewTheme(value); updateTheme(value); }}
-                  className={`${segmentedClass(newTheme === value)} flex items-center justify-center gap-2`}
-                >
-                  <FontAwesomeIcon icon={icon} />
-                  {translate({ key: `settings.theme.${value}` })}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <button
-            type="button"
-            className="w-full h-9 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-md transition-colors cursor-pointer"
-            onClick={() => void saveProfile()}
-          >
-            {translate({ key: 'settings.saveChanges' })}
-          </button>
-        </Section>
-
-        {/* Password change — only relevant for credentials accounts */}
-        {session.provider === 'credentials' && (
-          <Section title={translate({ key: 'settings.passwordSection' })}>
-            <form onSubmit={(e) => void handleChangePassword(e)} className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium" htmlFor="current-pw">{translate({ key: 'settings.currentPassword' })}</label>
-                <input id="current-pw" type="password" autoComplete="current-password" ref={passwordCurrentRef} className={inputClass} required />
+          <SettingRow
+            stacked
+            label={translate({ key: 'settings.email' })}
+            help={translate({ key: 'settings.emailChange.label' })}
+            control={(
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <input
+                    id="settings-email"
+                    type="email"
+                    className={`${fieldCls} w-full`}
+                    value={newEmail}
+                    onChange={(e) => { setNewEmail(e.target.value); }}
+                    disabled={emailChangePending}
+                  />
+                  <WsButton
+                    variant="secondary"
+                    onClick={() => void handleRequestEmailChange()}
+                    disabled={emailChangePending || !newEmail.trim() || newEmail.trim().toLowerCase() === session.email.toLowerCase() || (isCredentialsAccount && !emailChangePassword)}
+                    className="whitespace-nowrap"
+                  >
+                    {translate({ key: 'settings.emailChange.button' })}
+                  </WsButton>
+                </div>
+                {isCredentialsAccount && (
+                  <input
+                    id="settings-email-password"
+                    type="password"
+                    autoComplete="current-password"
+                    className={`${fieldCls} w-full`}
+                    placeholder={translate({ key: 'settings.currentPassword' })}
+                    value={emailChangePassword}
+                    onChange={(e) => { setEmailChangePassword(e.target.value); }}
+                    disabled={emailChangePending}
+                  />
+                )}
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium" htmlFor="new-pw">{translate({ key: 'settings.newPassword' })}</label>
-                <input id="new-pw" type="password" autoComplete="new-password" ref={passwordNewRef} className={inputClass} required />
+            )}
+          />
+        </FormSection>
+
+        {/* Password change — only relevant for credentials accounts. Its own deliberate confirm flow (ADR 0309 exception). */}
+        {isCredentialsAccount && (
+          <form onSubmit={(e) => void handleChangePassword(e)}>
+            <FormSection title={translate({ key: 'settings.passwordSection' })}>
+              <SettingRow
+                stacked
+                label={translate({ key: 'settings.currentPassword' })}
+                control={<input id="current-pw" type="password" autoComplete="current-password" ref={passwordCurrentRef} className={`${fieldCls} w-full`} required />}
+              />
+              <SettingRow
+                stacked
+                label={translate({ key: 'settings.newPassword' })}
+                control={<input id="new-pw" type="password" autoComplete="new-password" ref={passwordNewRef} className={`${fieldCls} w-full`} required />}
+              />
+              <SettingRow
+                stacked
+                label={translate({ key: 'settings.confirmNewPassword' })}
+                control={<input id="confirm-pw" type="password" autoComplete="new-password" ref={passwordConfirmRef} className={`${fieldCls} w-full`} required />}
+              />
+              <div className="px-5 py-4">
+                <WsButton type="submit" disabled={passwordLoading}>
+                  {translate({ key: 'settings.changePassword' })}
+                </WsButton>
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium" htmlFor="confirm-pw">{translate({ key: 'settings.confirmNewPassword' })}</label>
-                <input id="confirm-pw" type="password" autoComplete="new-password" ref={passwordConfirmRef} className={inputClass} required />
-              </div>
-              <button
-                type="submit"
-                disabled={passwordLoading}
-                className="self-start h-9 px-4 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-md transition-colors cursor-pointer disabled:opacity-60"
-              >
-                {translate({ key: 'settings.changePassword' })}
-              </button>
-            </form>
-          </Section>
+            </FormSection>
+          </form>
         )}
 
-        {/* Two-factor authentication (ADR 0024) — TOTP enrollment + recovery codes. */}
-        <Section title={translate({ key: 'settings.twoFactorSection' })}>
-          <TwoFactorSection />
-        </Section>
+        {/* Two-factor authentication (ADR 0024) — TOTP enrollment + recovery codes. Its own deliberate confirm flow (ADR 0309 exception). */}
+        <FormSection title={translate({ key: 'settings.twoFactorSection' })}>
+          <div className="px-5 py-4">
+            <TwoFactorSection />
+          </div>
+        </FormSection>
 
         {/* Active sessions */}
-        <Section title={translate({ key: 'settings.sessionsSection' })}>
+        <FormSection title={translate({ key: 'settings.sessionsSection' })}>
           {activeSessions.length === 0
-            ? <div className="text-sm text-common">{translate({ key: 'settings.sessionsEmpty' })}</div>
-            : (
-              <ul className="flex flex-col gap-2">
-                {activeSessions.map((s) => (
-                  <li key={s.handle} className="flex items-center gap-3 p-3 rounded-md border border-container1-border">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-title">
-                        {s.isCurrent ? translate({ key: 'settings.currentSession' }) : `…${s.handle.slice(-8)}`}
-                      </div>
-                      {s.expiresInSeconds !== null && (
-                        <div className="text-xs text-common">
-                          {translate({ key: 'settings.sessionExpiresIn', params: [{ key: 'hours', value: String(Math.round(s.expiresInSeconds / 3600)) }] })}
-                        </div>
-                      )}
-                    </div>
-                    {!s.isCurrent && (
-                      <button
-                        type="button"
-                        onClick={() => void handleRevokeSession(s.handle)}
-                        className="h-9 px-3 rounded-md bg-container2 hover:bg-container2-hover border border-container2-border text-title text-sm font-medium transition-colors cursor-pointer"
-                      >
-                        {translate({ key: 'settings.revokeSession' })}
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-        </Section>
+            ? <EmptyState icon="shield-halved" title={translate({ key: 'settings.sessionsEmpty' })} />
+            : activeSessions.map((s) => (
+              <SettingRow
+                key={s.handle}
+                label={s.isCurrent ? translate({ key: 'settings.currentSession' }) : `…${s.handle.slice(-8)}`}
+                help={s.expiresInSeconds === null
+                  ? undefined
+                  : translate({ key: 'settings.sessionExpiresIn', params: [{ key: 'hours', value: String(Math.round(s.expiresInSeconds / 3600)) }] })}
+                control={!s.isCurrent && (
+                  <WsButton variant="secondary" onClick={() => void handleRevokeSession(s.handle)}>
+                    {translate({ key: 'settings.revokeSession' })}
+                  </WsButton>
+                )}
+              />
+            ))}
+        </FormSection>
 
         {/* Notification preferences */}
-        <Section title={translate({ key: 'settings.preferencesSection' })}>
-          <PreferenceToggle
+        <FormSection title={translate({ key: 'settings.preferencesSection' })}>
+          <SettingRow
             label={translate({ key: 'settings.prefNotifySignIn' })}
-            checked={preferences.notifyOnNewSignIn ?? false}
-            onToggle={() => void togglePreference('notifyOnNewSignIn', preferences.notifyOnNewSignIn ?? false)}
+            control={(
+              <PreferenceToggle
+                ariaLabel={translate({ key: 'settings.prefNotifySignIn' })}
+                checked={preferences.notifyOnNewSignIn ?? false}
+                onToggle={() => void togglePreference('notifyOnNewSignIn', preferences.notifyOnNewSignIn ?? false)}
+              />
+            )}
           />
-          <PreferenceToggle
+          <SettingRow
             label={translate({ key: 'settings.prefNotifyPassword' })}
-            checked={preferences.notifyOnPasswordChange ?? false}
-            onToggle={() => void togglePreference('notifyOnPasswordChange', preferences.notifyOnPasswordChange ?? false)}
+            control={(
+              <PreferenceToggle
+                ariaLabel={translate({ key: 'settings.prefNotifyPassword' })}
+                checked={preferences.notifyOnPasswordChange ?? false}
+                onToggle={() => void togglePreference('notifyOnPasswordChange', preferences.notifyOnPasswordChange ?? false)}
+              />
+            )}
           />
-          <PreferenceToggle
+          <SettingRow
             label={translate({ key: 'settings.prefNotifyAssignment' })}
-            checked={preferences.notifyOnAssignment ?? true}
-            onToggle={() => void togglePreference('notifyOnAssignment', preferences.notifyOnAssignment ?? true)}
+            control={(
+              <PreferenceToggle
+                ariaLabel={translate({ key: 'settings.prefNotifyAssignment' })}
+                checked={preferences.notifyOnAssignment ?? true}
+                onToggle={() => void togglePreference('notifyOnAssignment', preferences.notifyOnAssignment ?? true)}
+              />
+            )}
           />
-        </Section>
+        </FormSection>
 
-        {/* Danger zone */}
-        <Section title={translate({ key: 'settings.dangerSection' })}>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => void handleSignOutEverywhere()}
-              className="h-9 px-4 rounded-md bg-container2 border border-container2-border hover:bg-container2-hover text-title text-sm font-medium transition-colors cursor-pointer flex items-center gap-2"
-            >
-              <FontAwesomeIcon icon={faRightFromBracket} />
-              {translate({ key: 'settings.signOutEverywhere' })}
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleDeleteAccount()}
-              className="h-9 px-4 rounded-md bg-wrong hover:bg-wrong-hover text-white text-sm font-medium transition-colors cursor-pointer flex items-center gap-2"
-            >
-              <FontAwesomeIcon icon={faTrash} />
-              {translate({ key: 'settings.deleteAccount' })}
-            </button>
-          </div>
-          {session.provider === 'credentials' && (
-            <div className="flex flex-col gap-1">
-              <label htmlFor="delete-pw" className="text-xs font-medium">{translate({ key: 'settings.currentPassword' })}</label>
-              <input id="delete-pw" type="password" autoComplete="current-password" ref={deletePasswordRef} className={inputClass} />
-            </div>
-          )}
-          <p className="text-xs text-common flex items-center gap-2">
-            <FontAwesomeIcon icon={faTriangleExclamation} />
-            {translate({ key: 'settings.deleteAccountConfirm' })}
-          </p>
-        </Section>
+        {/* Danger zone — a colored ring (not a competing border-color utility) marks it as the one destructive card among six otherwise-identical ones. */}
+        <FormSection
+          className="ring-1 ring-wrong/25 ring-inset"
+          title={<span className="inline-flex items-center gap-2 text-wrong"><Icon name="triangle-exclamation" />{translate({ key: 'settings.dangerSection' })}</span>}
+        >
+          <SettingRow
+            label={translate({ key: 'settings.signOutEverywhere' })}
+            help={translate({ key: 'settings.signOutEverywhereConfirm' })}
+            control={<WsButton variant="secondary" icon="right-from-bracket" onClick={() => void handleSignOutEverywhere()}>{translate({ key: 'settings.signOutEverywhere' })}</WsButton>}
+          />
+          <SettingRow
+            stacked
+            label={translate({ key: 'settings.deleteAccount' })}
+            help={translate({ key: 'settings.deleteAccountConfirm' })}
+            control={(
+              <div className="flex flex-col gap-2 items-start">
+                {isCredentialsAccount && (
+                  <input
+                    id="delete-pw"
+                    type="password"
+                    autoComplete="current-password"
+                    placeholder={translate({ key: 'settings.currentPassword' })}
+                    className={`${fieldCls} w-full`}
+                    value={deletePassword}
+                    onChange={(e) => { setDeletePassword(e.target.value); }}
+                  />
+                )}
+                <WsButton
+                  variant="danger"
+                  icon="trash"
+                  disabled={isCredentialsAccount && !deletePassword}
+                  onClick={() => void handleDeleteAccount()}
+                >
+                  {translate({ key: 'settings.deleteAccount' })}
+                </WsButton>
+              </div>
+            )}
+          />
+        </FormSection>
 
       </div>
     </div>
@@ -563,29 +562,30 @@ export default function Home() {
 }
 
 interface PreferenceToggleProps {
-  label: string;
+  ariaLabel: string;
   checked: boolean;
   onToggle: () => void;
 }
 
-function PreferenceToggle({ label, checked, onToggle }: PreferenceToggleProps) {
+//? A thin switch tuned for a SettingRow control slot (right-aligned, no inline label — the row's
+//? own label already names it). Kept local rather than pulled from `_components/primitives` because
+//? that shared `Toggle` renders its own label alongside the knob; this page's rows already have one.
+function PreferenceToggle({ ariaLabel, checked, onToggle }: PreferenceToggleProps) {
   return (
-    <label className="flex items-center justify-between gap-3 cursor-pointer text-sm text-title">
-      <span>{label}</span>
+    <span
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      tabIndex={0}
+      onClick={onToggle}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}
+      className={`focus-ring relative inline-flex h-6 w-10 items-center rounded-full transition-colors cursor-pointer
+        ${checked ? 'bg-primary' : 'bg-container2 border border-container2-border'}`}
+    >
       <span
-        role="switch"
-        aria-checked={checked}
-        tabIndex={0}
-        onClick={onToggle}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}
-        className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors
-          ${checked ? 'bg-primary' : 'bg-container2 border border-container2-border'}`}
-      >
-        <span
-          className={`absolute h-5 w-5 rounded-full bg-white shadow transition-transform
-            ${checked ? 'translate-x-4' : 'translate-x-0.5'}`}
-        />
-      </span>
-    </label>
+        className={`absolute h-5 w-5 rounded-full bg-white shadow transition-transform
+          ${checked ? 'translate-x-4' : 'translate-x-0.5'}`}
+      />
+    </span>
   );
 }

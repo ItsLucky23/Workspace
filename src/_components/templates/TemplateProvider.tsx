@@ -8,7 +8,6 @@
 //? once here so every template inherits them.
 
 import { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
 
 import { SocketStatusIndicator } from '@luckystack/presence/client';
 import { useTheme, useSession, useTranslator } from '@luckystack/core/client';
@@ -47,7 +46,6 @@ export default function TemplateProvider({
   const TemplateComponent = Templates[template];
 
   const { session } = useSession<SessionLayout>();
-  const reactLocation = useLocation();
   const { setTheme } = useTheme();
   const { socketStatus } = useSocketStatus();
   const translate = useTranslator();
@@ -58,7 +56,7 @@ export default function TemplateProvider({
     if (session?.theme === 'light' || session?.theme === 'dark') {
       setTheme(session.theme);
     }
-  }, [session?.theme, setTheme, reactLocation]);
+  }, [session?.theme, setTheme]);
 
   return (
     <div className='w-full h-full relative'>

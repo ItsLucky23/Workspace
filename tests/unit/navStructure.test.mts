@@ -63,7 +63,14 @@ eq(NAV_BOTTOM.length, 2, 'the assistant and settings stay out of the groups (the
 /* ------------------------------------------------------------ the collapsed-rail regression */
 
 const shell = read('src/workspaces/_shell/Shell.tsx');
-assert(shell.includes('{expanded && open && ('), 'sub-items render ONLY in the expanded rail');
+//? The guard is "sub-items exist only inside the expanded rail", not one particular expression:
+//? the sub-list moved from `{expanded && open && (…)}` to `{expanded && (<Collapse open={open}>…)}`
+//? when the rail gained an animated open/close. Same condition, same regression covered — Collapse
+//? mounts its children only while `open`, so a collapsed rail still renders zero sub-items.
+assert(
+  shell.includes('{expanded && open && (') || /\{expanded && \(\s*<Collapse open=\{open\}>/.test(shell),
+  'sub-items render ONLY in the expanded rail',
+);
 assert(!shell.includes('{(open || !expanded) && ('), 'the collapsed rail no longer renders every sub-item (that made it 19 icons)');
 assert(shell.includes('if ((!expanded || !open) && !holdsView && first) navigate(first.id)'), 'a collapsed group click still navigates — there is no sub-list to reveal');
 

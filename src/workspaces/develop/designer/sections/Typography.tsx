@@ -6,6 +6,7 @@ import type { CSSProperties } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
+import { Disclosure } from '../../../_components/primitives';
 import { useDesigner } from '../state';
 import { themeVars } from '../themes';
 import { FontPicker, SectionHead, inputCls } from '../ui';
@@ -33,13 +34,12 @@ export default function Typography() {
         <FontPicker label={translate({ key: 'workspaces.designer.fontHeading' })} value={s.fontHeading} onChange={(v) => { d.setStyle({ fontHeading: v }); }} />
         <FontPicker label={translate({ key: 'workspaces.designer.fontBody' })} value={s.fontBody} onChange={(v) => { d.setStyle({ fontBody: v }); }} />
       </div>
-      <details className="rounded-lg border border-container1-border bg-container1 px-3 py-2">
-        <summary className="text-xs text-muted cursor-pointer">{translate({ key: 'workspaces.designer.customStack' })}</summary>
-        <div className="grid sm:grid-cols-2 gap-4 mt-3">
+      <Disclosure summary={translate({ key: 'workspaces.designer.customStack' })}>
+        <div className="grid sm:grid-cols-2 gap-4">
           <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">{translate({ key: 'workspaces.designer.fontHeading' })}</span><input value={s.fontHeading} onChange={(e) => { d.setStyle({ fontHeading: e.target.value }); }} className={`text-xs font-mono ${inputCls}`} /></label>
           <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">{translate({ key: 'workspaces.designer.fontBody' })}</span><input value={s.fontBody} onChange={(e) => { d.setStyle({ fontBody: e.target.value }); }} className={`text-xs font-mono ${inputCls}`} /></label>
         </div>
-      </details>
+      </Disclosure>
 
       <div className="rounded-2xl border border-container1-border overflow-hidden" style={themeVars(d.tokens)}>
         <div className="bg-background p-6 md:p-8 flex flex-col gap-5">

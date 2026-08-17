@@ -11,6 +11,7 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Dropdown from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../../_components/Icon';
+import { Collapse } from '../../_components/motion';
 import { EmptyState, PopMenu, WsButton } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import TemplateManager from './TemplateManager';
@@ -38,9 +39,13 @@ export default function DocumentsPage() {
   const [showTplManager, setShowTplManager] = useState(false);
   //? C7 — archived documents are hidden by default but never lost.
   const [showArchived, setShowArchived] = useState(false);
+  //? Filter only earns its keep once scrolling-and-reading stops being the fastest way to find a doc.
+  const [query, setQuery] = useState('');
   const titleInputRef = useRef<HTMLInputElement>(null);
   const archivedCount = documents.filter((d) => d.archived === true).length;
-  const visibleDocuments = showArchived ? documents : documents.filter((d) => d.archived !== true);
+  const scopedDocuments = showArchived ? documents : documents.filter((d) => d.archived !== true);
+  const q = query.trim().toLowerCase();
+  const visibleDocuments = q.length === 0 ? scopedDocuments : scopedDocuments.filter((d) => d.title.toLowerCase().includes(q) || d.content.toLowerCase().includes(q));
 
   //? Blank + one item per template (builtins virtual + user); picking one seeds the doc's kind + skeleton.
   const templateItems = [
@@ -81,21 +86,34 @@ export default function DocumentsPage() {
           <Icon name="caret-down" className={`transition-transform motion-reduce:transition-none ${showTemplates ? 'rotate-180' : ''}`} />
           {selectedTemplate ? selectedTemplate.name : translate({ key: 'workspaces.documents.useTemplate' })}
         </button>
-        {showTemplates && (
+        <Collapse open={showTemplates}>
           <div className={`flex flex-col gap-2`}>
             <div className={`flex items-center gap-2 flex-wrap`}>
               <div className={`w-full sm:w-56`}>
-                <Dropdown size="sm" value={templateItems.find((t) => t.id === templateSlug)} items={templateItems} onChange={(it) => { setTemplateSlug(String(it.id)); }} />
+                <Dropdown size="sm" width="full" value={templateItems.find((t) => t.id === templateSlug)} items={templateItems} onChange={(it) => { setTemplateSlug(String(it.id)); }} />
               </div>
               <WsButton variant="ghost" icon="sliders" onClick={() => { setShowTplManager((v) => !v); }}>{translate({ key: 'workspaces.documents.manageTemplates' })}</WsButton>
             </div>
             {/* Template manager (option B — user-authorable). Inline (no portal) so it has context access. */}
-            {showTplManager && <TemplateManager onSaved={() => { setShowTplManager(false); }} />}
+            <Collapse open={showTplManager}>
+              <TemplateManager onSaved={() => { setShowTplManager(false); }} />
+            </Collapse>
           </div>
-        )}
+        </Collapse>
       </div>
 
-      {visibleDocuments.length === 0 && (
+      {/* Only earns its place once scanning the list stops being the fastest way to find a doc. */}
+      {documents.length > 8 && (
+        <input
+          value={query} onChange={(e) => { setQuery(e.target.value); }}
+          placeholder={translate({ key: 'workspaces.documents.searchPlaceholder' })} className={`${fieldCls} w-full sm:max-w-md`}
+        />
+      )}
+
+      {visibleDocuments.length === 0 && q.length > 0 && (
+        <EmptyState icon="file-lines" title={translate({ key: 'workspaces.search.noMatches' })} />
+      )}
+      {visibleDocuments.length === 0 && q.length === 0 && (
         <EmptyState
           icon="file-lines"
           title={translate({ key: 'workspaces.documents.emptyTitle' })}
@@ -112,6 +130,7 @@ export default function DocumentsPage() {
               <div className={`flex items-center gap-2`}>
                 <Icon name="file-lines" className={`text-muted shrink-0`} />
                 <span className={`text-sm font-semibold text-title truncate`}>{d.title}</span>
+                {d.archived === true && <span className={`text-[10px] uppercase tracking-wide rounded-full bg-container2 text-muted px-1.5 py-0.5 shrink-0`}>{translate({ key: 'workspaces.documents.archivedBadge' })}</span>}
                 {d.aiDraft !== null && <span className={`text-[10px] uppercase tracking-wide rounded-full bg-warning/15 text-warning px-1.5 py-0.5 shrink-0`}>{translate({ key: 'workspaces.documents.draftBadge' })}</span>}
                 {d.assets.length > 0 && <span className={`text-[10px] rounded-full bg-container2 text-muted px-1.5 py-0.5 shrink-0 inline-flex items-center gap-1`}>{String(d.assets.length)}<Icon name="image" /></span>}
               </div>

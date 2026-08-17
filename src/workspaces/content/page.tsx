@@ -11,7 +11,8 @@ import { apiRequest, useTranslator, i18nNotify as notify } from '@luckystack/cor
 import { menuHandler } from 'src/_functions/menuHandler';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import Icon from '../_components/Icon';
-import { EmptyState, IconButton, PopMenu, WsButton, type PopMenuItem } from '../_components/primitives';
+import { Collapse } from '../_components/motion';
+import { ClickableCard, EmptyState, FOCUS_RING, IconButton, PopMenu, WsButton, type PopMenuItem } from '../_components/primitives';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { ContentAssetSummary, ContentPieceSummary, SocialCommentSummary } from '../_data/types';
 import { backendUrl } from '../../../config';
@@ -31,7 +32,7 @@ function LibraryThumb({ asset, pieceTitle }: { asset: ContentAssetSummary; piece
 //? Gap-fix — "use in piece": a compact piece-picker under each library asset (content-import-asset).
 function LibraryUsePicker({ pieces, onPick, translate }: { pieces: ContentPieceSummary[]; onPick: (pieceId: string) => void; translate: ReturnType<typeof useTranslator> }) {
   const items: DropdownItem[] = [{ id: '', value: '', item: translate({ key: 'workspaces.content.libraryUseIn' }) }, ...pieces.map((p) => ({ id: p.id, value: p.id, item: p.title }))];
-  return <Dropdown size="sm" value={items[0]} items={items} onChange={(it) => { const id = String(it.id); if (id) onPick(id); }} />;
+  return <Dropdown size="sm" width="full" value={items[0]} items={items} onChange={(it) => { const id = String(it.id); if (id) onPick(id); }} />;
 }
 
 //? #125 — create a content piece from a brief (title + brief + format), the first UI create path (the
@@ -58,7 +59,7 @@ function NewPieceForm({ onCreate, initialTitle = '', initialBrief = '' }: { onCr
       <textarea value={brief} onChange={(e) => { setBrief(e.target.value); }} rows={4} placeholder={translate({ key: 'workspaces.content.newPieceBriefPlaceholder' })} className={`${fieldCls} h-auto py-2 resize-y`} />
       <div className={`flex flex-col gap-1`}>
         <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.content.newPieceFormat' })}</span>
-        <Dropdown size="sm" items={formatItems} value={formatItems.find((i) => i.id === format)} onChange={(it) => { setFormat(String(it.id)); }} />
+        <Dropdown size="sm" width="full" items={formatItems} value={formatItems.find((i) => i.id === format)} onChange={(it) => { setFormat(String(it.id)); }} />
       </div>
       <div className={`flex items-center justify-end gap-2`}>
         <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
@@ -89,10 +90,7 @@ const euros = (cents: number): string => `€${(cents / 100).toFixed(2)}`;
 
 function PieceCard({ piece, onOpen }: { piece: ContentPieceSummary; onOpen: () => void }) {
   return (
-    <button
-      type="button" onClick={onOpen}
-      className={`w-full text-left rounded-xl border border-container1-border bg-container1 p-3 hover:bg-container2/50 hover:border-container2-border transition-colors cursor-pointer`}
-    >
+    <ClickableCard onClick={onOpen}>
       <div className={`flex items-start justify-between gap-2`}>
         <span className={`text-sm font-medium text-title line-clamp-2`}>{piece.title}</span>
         <span className={`mt-1 w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[piece.status] ?? 'bg-muted'}`} />
@@ -100,7 +98,7 @@ function PieceCard({ piece, onOpen }: { piece: ContentPieceSummary; onOpen: () =
       <div className={`mt-2`}>
         <span className={`inline-block rounded-md bg-container2 px-1.5 py-0.5 text-[11px] font-medium text-muted capitalize`}>{piece.format}</span>
       </div>
-    </button>
+    </ClickableCard>
   );
 }
 
@@ -142,7 +140,7 @@ function PanelHeader({ icon, label, badge, onClose, closeTitle }: { icon: string
 type ContentView = 'board' | 'comments' | 'library' | 'archived';
 
 export default function Content() {
-  const { content, navigate, createContentPiece, runContentOp, copilotPrefill, consumeCopilotPrefill, refreshComments, markCommentsRead, replyToComment, activeWorkspace } = useWorkspaces();
+  const { content, navigate, focusSetup, createContentPiece, runContentOp, copilotPrefill, consumeCopilotPrefill, refreshComments, markCommentsRead, replyToComment, activeWorkspace } = useWorkspaces();
   const translate = useTranslator();
   const [view, setView] = useState<ContentView>('board');
   const openNewPiece = () => { void menuHandler.open(<NewPieceForm onCreate={createContentPiece} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
@@ -266,6 +264,7 @@ export default function Content() {
           <button
             type="button"
             onClick={() => { if (view === 'comments') { setView('board'); } else { refreshComments(); setView('comments'); } }}
+            aria-label={translate({ key: 'workspaces.comments.tab' })}
             className={`relative h-9 px-3 rounded-lg border text-sm flex items-center gap-2 cursor-pointer ${view === 'comments' ? 'border-primary bg-primary/10 text-primary' : 'border-container1-border bg-container1 hover:bg-container2 text-muted hover:text-common'}`}
           >
             <Icon name="comment" /> <span className={`hidden md:inline`}>{translate({ key: 'workspaces.comments.tab' })}</span>
@@ -276,9 +275,11 @@ export default function Content() {
           <WsButton icon="plus" onClick={openNewPiece}>{translate({ key: 'workspaces.content.newPiece' })}</WsButton>
         </div>
       </div>
-      {/* The budget detail — disclosed from the chip: exact figures, or the no-cap state. */}
-      {budgetOpen && (
-        <div className={`mx-4 md:mx-6 mb-3 max-w-md rounded-xl border border-container1-border bg-container1 px-3 py-2`}>
+      {/* The budget detail — disclosed from the chip: exact figures, or the no-cap state. Read-only by
+          design (audit finding: this same figure shows up here, in AdminTab and on insights/usage with
+          no link between any of them) — Content settings → Admin owns the write path. */}
+      <Collapse open={budgetOpen} className={`mx-4 md:mx-6`}>
+        <div className={`mb-3 max-w-md rounded-xl border border-container1-border bg-container1 px-3 py-2`}>
           <div className={`flex items-center justify-between gap-3 text-xs`}>
             <span className={`text-muted`}>{translate({ key: 'workspaces.content.budgetTitle' })}</span>
             <span className={`text-title font-medium tabular-nums`}>
@@ -290,8 +291,15 @@ export default function Content() {
               <div className={`h-full rounded-full ${budget.overAlert ? 'bg-warning' : 'bg-primary'}`} style={{ width: `${String(pct)}%` }} />
             </div>
           )}
+          <button
+            type="button"
+            onClick={() => { focusSetup({ view: 'content/settings', tab: 'admin' }); }}
+            className={`mt-2 text-xs text-primary hover:underline cursor-pointer flex items-center gap-1`}
+          >
+            {translate({ key: 'workspaces.content.budgetManageCaps' })} <Icon name="arrow-right" />
+          </button>
         </div>
-      )}
+      </Collapse>
 
       <div className={`flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-8`}>
         {view === 'comments' && (
@@ -323,7 +331,7 @@ export default function Content() {
                       <button type="button" onClick={() => { openReply(c.id); }} className={`text-xs text-primary hover:underline cursor-pointer`}>{translate({ key: 'workspaces.comments.reply' })}</button>
                       {!c.read && <button type="button" onClick={() => { markCommentsRead(c.id); }} className={`text-xs text-muted hover:text-title cursor-pointer`}>{translate({ key: 'workspaces.comments.markRead' })}</button>}
                     </div>
-                    {replyFor === c.id && (
+                    <Collapse open={replyFor === c.id}>
                       <div className={`flex flex-col gap-2 mt-2 pl-3 border-l border-divider`}>
                         <textarea
                           value={replyText} onChange={(e) => { setReplyText(e.target.value); }} rows={2}
@@ -339,7 +347,7 @@ export default function Content() {
                           <WsButton variant="ghost" onClick={() => { setReplyFor(null); setReplyText(''); }}>{translate({ key: 'workspaces.comments.cancel' })}</WsButton>
                         </div>
                       </div>
-                    )}
+                    </Collapse>
                   </div>
                 ))}
               </div>
@@ -360,7 +368,7 @@ export default function Content() {
             <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3`}>
               {libraryFiltered.map(({ asset, pieceId, pieceTitle }) => (
                 <div key={asset.id} className={`rounded-xl border border-container1-border bg-container1 overflow-hidden flex flex-col`}>
-                  <button type="button" onClick={() => { navigate(`content/${pieceId}`); }} aria-label={pieceTitle} className={`aspect-video bg-container2 flex items-center justify-center overflow-hidden cursor-pointer`}>
+                  <button type="button" onClick={() => { navigate(`content/${pieceId}`); }} aria-label={pieceTitle} className={`aspect-video bg-container2 flex items-center justify-center overflow-hidden cursor-pointer ${FOCUS_RING}`}>
                     <LibraryThumb asset={asset} pieceTitle={pieceTitle} />
                   </button>
                   <div className={`p-2 flex flex-col gap-1.5`}>

@@ -15,7 +15,12 @@ import Icon from '../../_components/Icon';
 import { Disclosure, EmptyState, PopMenu, WsButton } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { isSectionEnabled } from '../../_data/modules';
-import type { StudioArtifactKind, StudioBrief } from '../../_data/types';
+import type { StudioArtifact, StudioArtifactKind, StudioBrief } from '../../_data/types';
+import { BrandDiffList } from '../studio/BrandDiffList';
+import { buildBrandDiff } from '../studio/brandDiff';
+import { recordBrandProvenance } from '../studio/brandProvenance';
+import { ContentPromptPreview } from '../studio/promptStack';
+import { recordArtifactRefine } from '../studio/refineHistory';
 import { ArtifactCard } from './cards';
 import { MARKETER_KINDS } from './kinds';
 import { BrandPanel, BriefForm } from './panels';
@@ -28,7 +33,7 @@ type View = 'main' | 'brand' | 'form';
 
 export default function Marketing() {
   const translate = useTranslator();
-  const { studioBriefs, studioArtifacts, generateArtifact, deleteBrief, deleteArtifact, promoteBrand, runContentOp, activeWorkspace } = useWorkspaces();
+  const { studioBriefs, studioArtifacts, studioBrand, generateArtifact, deleteBrief, deleteArtifact, promoteBrand, runContentOp, activeWorkspace } = useWorkspaces();
   //? Send-to-Content: only offered when the content lane is enabled for this workspace.
   const contentOn = isSectionEnabled(activeWorkspace.enabledSections, 'content');
 
@@ -53,8 +58,15 @@ export default function Marketing() {
   const runGenerate = async (kind: StudioArtifactKind) => {
     if (!selected) return;
     setBusyKind(kind);
-    await generateArtifact(selected.id, kind, refine.trim() || undefined);
+    const trimmedRefine = refine.trim();
+    const res = await generateArtifact(selected.id, kind, trimmedRefine || undefined);
+    //? I4 bug fix — persist which refine text produced this artifact, so a later card can never
+    //? silently be mistaken for having used a different (stale or since-cleared) refine.
+    if (res.artifactId) recordArtifactRefine(res.artifactId, trimmedRefine);
     setBusyKind(null);
+    //? Consume the refine text on use — otherwise it silently reapplies to Regenerate on a
+    //? completely different, older card with no record of which text produced which result.
+    setRefine('');
   };
 
   //? GAP_SCAN G3 — put a generated landing page live at /s/<slug>. Re-publishing keeps the same URL,
@@ -66,6 +78,22 @@ export default function Marketing() {
   const sendToContent = (artifactId: string) => {
     runContentOp('studio-send-to-content', '', { artifactId });
     notify.success({ key: 'workspaces.studio.sentToContent' });
+  };
+
+  //? Owner decision 6 — promoting overwrites the central Brand Library (palette/typography/voice/
+  //? taglines/logoIdeas); the confirm shows a real before/after field diff instead of generic copy,
+  //? and a successful promote records provenance so the Brand panel can say where it was set from.
+  const promote = (artifact: StudioArtifact) => {
+    const rows = buildBrandDiff(studioBrand, artifact.content);
+    void menuHandler.confirm({
+      title: translate({ key: 'workspaces.studio.promoteBrandTitle' }),
+      content: (
+        <div className={`flex flex-col gap-2`}>
+          <p className={`text-sm text-common`}>{translate({ key: 'workspaces.studio.promoteBrandBody' })}</p>
+          <BrandDiffList rows={rows} />
+        </div>
+      ),
+    }).then((ok) => { if (ok) { void promoteBrand(artifact.id); recordBrandProvenance(activeWorkspace.id, artifact.title); } });
   };
 
   const removeBrief = (b: StudioBrief) => void menuHandler.confirm({
@@ -164,6 +192,8 @@ export default function Marketing() {
                       <Icon name="wand-magic-sparkles" className={`text-disabled`} />
                       {translate({ key: 'workspaces.studio.generateHeading' })}
                     </div>
+                    {/* duplicateConcepts #2 — the second AI prompt stack, visible before you generate */}
+                    <ContentPromptPreview briefTone={selected.tone} brandVoice={studioBrand?.voice ?? ''} refine={refine} />
                     <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2`}>
                       {MARKETER_KINDS.map(({ kind, icon }) => (
                         <button
@@ -203,10 +233,10 @@ export default function Marketing() {
                         <div className={`flex flex-col gap-4`}>
                           {artifacts.map((a) => (
                             <ArtifactCard
-                              key={a.id} artifact={a} busy={busyKind !== null}
+                              key={a.id} artifact={a} busy={busyKind !== null} pendingRefine={refine}
                               onDelete={() => { deleteArtifact(a.id); }}
                               onRegenerate={() => { void runGenerate(a.kind); }}
-                              {...(a.kind === 'brand' && a.status === 'ready' ? { onPromote: () => { void promoteBrand(a.id); } } : {})}
+                              {...(a.kind === 'brand' && a.status === 'ready' ? { onPromote: () => { promote(a); } } : {})}
                               {...(contentOn && a.status === 'ready' ? { onSendToContent: () => { sendToContent(a.id); } } : {})}
                               {...(a.kind === 'landing' && a.status === 'ready' ? { onPublishLive: () => { publishLive(a.id); } } : {})}
                             />

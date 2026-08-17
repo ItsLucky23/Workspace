@@ -165,7 +165,7 @@ function ReferenceLibraryBody() {
       <div className={`rounded-xl border border-dashed border-divider p-3 flex flex-col gap-2`}>
         <div className={`text-sm font-medium text-title`}>{translate({ key: 'workspaces.content.refNew' })}</div>
         <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2`}>
-          <Dropdown size="md" value={kindItems.find((i) => i.id === kind)} items={kindItems} onChange={(it) => { setKind(String(it.id)); }} />
+          <Dropdown size="md" width="full" value={kindItems.find((i) => i.id === kind)} items={kindItems} onChange={(it) => { setKind(String(it.id)); }} />
           <input value={title} onChange={(e) => { setTitle(e.target.value); }} placeholder={translate({ key: 'workspaces.content.refTitlePlaceholder' })} className={fieldCls} />
         </div>
         <textarea value={description} onChange={(e) => { setDescription(e.target.value); }} rows={2} placeholder={translate({ key: 'workspaces.content.refDescPlaceholder' })} className={`${fieldCls} resize-none`} />
@@ -219,8 +219,8 @@ function OutputTemplatesBody() {
       <div className={`rounded-xl border border-dashed border-divider p-3 flex flex-col gap-2`}>
         <input value={name} onChange={(e) => { setName(e.target.value); }} placeholder={translate({ key: 'workspaces.content.outputTemplateNamePlaceholder' })} className={fieldCls} />
         <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2`}>
-          <Dropdown size="md" value={formatItems.find((i) => i.id === format)} items={formatItems} onChange={(it) => { setFormat(String(it.id)); }} />
-          <Dropdown size="md" value={wmItems.find((i) => i.id === watermark)} items={wmItems} onChange={(it) => { setWatermark(String(it.id)); }} />
+          <Dropdown size="md" width="full" value={formatItems.find((i) => i.id === format)} items={formatItems} onChange={(it) => { setFormat(String(it.id)); }} />
+          <Dropdown size="md" width="full" value={wmItems.find((i) => i.id === watermark)} items={wmItems} onChange={(it) => { setWatermark(String(it.id)); }} />
         </div>
         <WsButton className={`self-start min-h-11`} disabled={name.trim().length === 0} onClick={submit}>{translate({ key: 'workspaces.content.outputTemplateSave' })}</WsButton>
       </div>

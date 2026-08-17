@@ -75,6 +75,7 @@
     "noReason": "Kein Grund angegeben.",
     "signInTitle": "Bei deinem Konto anmelden",
     "registerTitle": "Neues Konto erstellen",
+    "tagline": "Ticket schreiben, Plan freigeben, Ergebnis ausliefern.",
     "noAccount": "Noch kein Konto? ",
     "haveAccount": "Bereits ein Konto? ",
     "createAccount": "Jetzt eines erstellen",
@@ -84,8 +85,10 @@
     "name": "Name",
     "emailAddress": "E-Mail-Adresse",
     "password": "Passwort",
+    "passwordHint": "Mindestens 8 Zeichen.",
     "confirmPassword": "Passwort bestätigen",
     "forgotPassword": "Passwort vergessen?",
+    "twoFactorAfterEmailCode": "E-Mail-Code akzeptiert. Nur noch ein Schritt bis zur Anmeldung.",
     "twoFactorPrompt": "Gib den 6-stelligen Code aus deiner Authenticator-App ein (oder einen Wiederherstellungscode).",
     "twoFactorPlaceholder": "123456",
     "twoFactorVerify": "Bestätigen",
@@ -94,6 +97,7 @@
     "emailRequired": "Gib zuerst deine E-Mail ein.",
     "emailCodeSent": "Falls das Konto existiert, ist ein Code unterwegs.",
     "emailCodeLabel": "Login-Code",
+    "emailCodePrompt": "Gib den 6-stelligen Code ein, den wir dir per E-Mail geschickt haben.",
     "emailCodeSend": "Code per E-Mail senden",
     "emailCodeVerify": "Code bestätigen",
     "useEmailCode": "Stattdessen mit E-Mail-Code anmelden",
@@ -200,7 +204,10 @@
     "signOutEverywhereDone": "Überall abgemeldet.",
     "deleteAccount": "Konto löschen",
     "deleteAccountConfirm": "Dies löscht dein Konto und alle zugehörigen Daten dauerhaft. Tippe DELETE zum Bestätigen.",
-    "deleteAccountDone": "Konto gelöscht."
+    "deleteAccountDone": "Konto gelöscht.",
+    "pageTitle": "Einstellungen",
+    "profileSection": "Profil",
+    "avatarLabel": "Avatar"
   },
   "avatar": {
     "uploadFailed": "Avatar konnte nicht hochgeladen werden.",
@@ -283,7 +290,11 @@
     "apisSmall": "APIS",
     "syncsSmall": "SYNCS",
     "doc": "DOKUM",
-    "syncSmall": "SYNC"
+    "syncSmall": "SYNC",
+    "emptyStateTitle": "Jede API- oder Sync-Route durchsuchen und testen",
+    "overwritePayloadTitle": "Payload überschreiben?",
+    "overwritePayloadContent": "Die Zufallsvorlage ersetzt, was du eingegeben hast. Dies kann nicht rückgängig gemacht werden.",
+    "leaveRoomNamed": "Raum {{room}} verlassen"
   },
   "admin": {
     "title": "Admin"
@@ -669,7 +680,14 @@
       "warnWriteAccess": "{{name}} hat Schreibzugriff auf einen Service — normalerweise braucht das nur die Implementierung.",
       "warnNetworkOff": "{{name}} hat das Netzwerk aus, nutzt aber Skills, die evtl. Egress brauchen.",
       "warnRagMismatch": "Refined lädt RAG, Plan aber nicht — die Entscheidungs-Stage braucht meist mehr Kontext, nicht weniger.",
-      "hookRequired": "immer aktiv"
+      "hookRequired": "immer aktiv",
+      "removeCommand": "Befehl entfernen",
+      "removeProcess": "Prozess entfernen",
+      "removeCommandLine": "Befehlszeile entfernen",
+      "removeEnvVar": "Umgebungsvariable entfernen",
+      "removeModelRule": "Eskalationsband entfernen",
+      "removeStatus": "Status „{{name}}“ entfernen",
+      "removeDomain": "{{name}} entfernen"
     },
     "settings": {
       "saving": "Wird gespeichert…",
@@ -691,7 +709,17 @@
       "composedTitle": "Zusammengesetzter Prompt",
       "composedEmpty": "Noch nichts gesetzt — die KI läuft mit ihren Standardwerten.",
       "noteFirst": "Ebene 1 von {{total}} — läuft zuerst",
-      "noteAfter": "Ebene {{n}} von {{total}} — läuft nach {{before}}"
+      "noteAfter": "Ebene {{n}} von {{total}} — läuft nach {{before}}",
+      "briefTone": "Briefing-Ton",
+      "brandVoice": "Markenstimme",
+      "refine": "Verfeinerungsanweisung",
+      "channelVoice": "Kanalstimme",
+      "sourceBrief": "dieses Briefing",
+      "sourceBrand": "Markenbibliothek",
+      "sourceRefine": "diese Generierung",
+      "sourceChannel": "Kanaleinstellungen",
+      "contentPreviewHelp": "Diese werden in dieser Reihenfolge zu einem Prompt kombiniert — die Verfeinerung hat die stärkste, unmittelbarste Wirkung.",
+      "channelNotApplicable": "Hier nicht verwendet — die Kanalstimme wirkt nur auf Beiträge, die auf einem Kanal veröffentlicht werden. Bearbeiten unter Content-Einstellungen → Kanäle."
     },
     "workspaceSettings": {
       "tabMembers": "Mitglieder",
@@ -934,7 +962,19 @@
       },
       "cloneWorkspace": "Workspace duplizieren",
       "cloneWorkspaceDesc": "Starte einen neuen Workspace mit dieser Einrichtung: Pipeline, Skills, Stile, Kanäle und Trigger. Tickets, Inhalte, Zugangsdaten und Mitglieder werden nicht kopiert.",
-      "clone": "Duplizieren"
+      "clone": "Duplizieren",
+      "member": "Mitglied",
+      "role": "Rolle",
+      "email": "E-Mail",
+      "sentColumn": "Gesendet",
+      "removeVariable": "Variable entfernen",
+      "envKeyColumn": "Schlüssel",
+      "envValueColumn": "Wert",
+      "removeIntegration": "Integration entfernen",
+      "auditAction": "Aktion",
+      "auditWhen": "Wann",
+      "starterDescriptionLocked": "Kuratierte Konventionen, denen die KI in jeder Phase folgt — verwalte und schalte sie auf der Sources-Seite.",
+      "manageInSources": "Kontextdokumente in Sources verwalten"
     },
     "services": {
       "title": "Services",
@@ -969,7 +1009,8 @@
       "issue": "Token ausstellen",
       "revoke": "Widerrufen",
       "empty": "Noch keine API-Tokens.",
-      "copyNow": "Kopiere dieses Token jetzt — es wird nicht erneut angezeigt:"
+      "copyNow": "Kopiere dieses Token jetzt — es wird nicht erneut angezeigt:",
+      "colToken": "Token"
     },
     "dataExport": {
       "title": "Workspace-Daten",
@@ -1081,7 +1122,9 @@
       "push_error": "Push konnte nicht aktiviert werden. Bitte erneut versuchen.",
       "pushIosHint": "Füge die App auf dem iPhone zuerst zum Home-Bildschirm hinzu.",
       "installIos": "Teilen → Zum Home-Bildschirm",
-      "rollback": "Zurückrollen"
+      "rollback": "Zurückrollen",
+      "summaryDesc": "Eine schreibgeschützte Übersicht — bearbeite dies in deinen Kontoeinstellungen.",
+      "sessionsCount": "{{count}} aktiv"
     },
     "modules": {
       "pickHeading": "Welche Module möchtest du?",
@@ -1222,7 +1265,8 @@
       "accept": "Annehmen",
       "dismiss": "Verwerfen",
       "snooze": "Später",
-      "projectBriefPh": "Describe the app to scaffold its starting UI (optional)…"
+      "projectBriefPh": "Describe the app to scaffold its starting UI (optional)…",
+      "menu": "Menü"
     },
     "publish": {
       "title": "Auf {{platform}} veröffentlichen",
@@ -1598,7 +1642,19 @@
       "thumbDesc": "Eine fette Überschrift über einem Hintergrund. Hintergrund leer lassen für die kostenlose Vorlage.",
       "thumbBgPlaceholder": "KI-Hintergrund (optional, kostet eine Generierung)",
       "thumbCompose": "Thumbnail erstellen",
-      "thumbComposeAi": "Mit KI-Hintergrund erstellen"
+      "thumbComposeAi": "Mit KI-Hintergrund erstellen",
+      "brandCrossLinkNote": "Auch bearbeitbar in",
+      "brandCrossLinkAction": "Content-Einstellungen → Kanäle",
+      "brandEmptyAction": "Kanal hinzufügen",
+      "toolCapture": "Demo-Aufnahme",
+      "toolAnalyze": "Referenzvideo",
+      "toolSeo": "SEO",
+      "toolThumb": "Thumbnail",
+      "brandVoiceEmpty": "Noch keine Markenstimme festgelegt.",
+      "brandEditFull": "Vollständigen Kanal bearbeiten",
+      "budgetManageCaps": "Limits verwalten",
+      "budgetScopeNote": "Dies begrenzt nur die Ausgaben für die Medienerstellung.",
+      "budgetOtherCapsLink": "Workspace-weite KI-Ausgabenlimits"
     },
     "knowledge": {
       "emptyTeach": "Das ist die Wissenskarte deines Workspace: jede Kontextquelle, jedes Ticket und jeder Inhalt erscheint als Punkt, verbunden mit verwandter Arbeit. Füge Quellen hinzu oder erstelle Tickets und Inhalte, und aktualisiere dann, um die Verbindungen entstehen zu sehen.",
@@ -1621,7 +1677,9 @@
       "legendSources": "Quellen",
       "legendTickets": "Tickets",
       "legendPieces": "Inhalte",
-      "hint": "Klicke auf einen Knoten, um ihn und seine Verbindungen zu fokussieren."
+      "hint": "Klicke auf einen Knoten, um ihn und seine Verbindungen zu fokussieren.",
+      "nodeCapNotice": "Zeigt die {{shown}} am besten vernetzten von {{total}} Knoten, damit der Graph lesbar bleibt.",
+      "nodeAriaLabel": "{{type}}: {{label}}"
     },
     "usage": {
       "costValue": "€{{n}}",
@@ -1692,7 +1750,20 @@
       "subscriptionBadge": "Abo",
       "byAiEmptyTitle": "Noch keine KI-Nutzung",
       "byAiEmptySub": "Sobald eine KI eine Aufgabe ausführt, erscheinen hier Tokenverbrauch und Kosten.",
-      "runawayNote": "Die Runaway-Kontrolle (Stuck-/Idle-Erkennung) eskaliert eine Session zu „Eingabe nötig“ — unabhängig von jedem Ausgabenlimit."
+      "runawayNote": "Die Runaway-Kontrolle (Stuck-/Idle-Erkennung) eskaliert eine Session zu „Eingabe nötig“ — unabhängig von jedem Ausgabenlimit.",
+      "diagnoseExample1": "Checkout gibt seit heute Morgen 500er zurück",
+      "diagnoseExample2": "Deployment hängt im Status \"ausstehend\"",
+      "diagnoseExample3": "API-Latenz ist nach dem letzten Merge stark gestiegen",
+      "diagnosePendingHint": "Diagnose läuft — das Ergebnis erscheint hier oder im KI-Panel.",
+      "diagnoseOpenPanel": "KI-Panel öffnen",
+      "diagnoseHistoryTitle": "Letzte Diagnosen",
+      "diagnoseAwaiting": "Wartet auf Prüfung",
+      "diagnoseResolved": "Erledigt",
+      "capAlertStripNamed": "{{name}} nähert sich dem Limit",
+      "budgetPrimaryLabel": "Hauptbudget",
+      "budgetUnnamedCap": "Unbenanntes Limit",
+      "budgetScopeNote": "Dies begrenzt die gemessenen KI-/API-Ausgaben für den gesamten Workspace.",
+      "budgetMediaCapsLink": "Medienerstellungslimits"
     },
     "timetravel": {
       "button": "Alte Version",
@@ -1805,7 +1876,12 @@
       "noStageHistory": "Noch kein Stage-Verlauf",
       "sending": "Wird gesendet…",
       "serviceLabel": "Service",
-      "serviceRoot": "Ganzes Projekt"
+      "serviceRoot": "Ganzes Projekt",
+      "unlinkArtifact": "Artefakt entkoppeln",
+      "aiAgentTab": "ai-agent",
+      "aiAgentTailHint": "Schreibgeschützte Ansicht der Live-Ausgabe des Agenten — derselbe Stream wie die Inline-Vorschau unter Übersicht.",
+      "liveAgentOpenTerminal": "In Terminal öffnen",
+      "branchChipLabel": "{{branch}} · Arbeitsbranch"
     },
     "terminals": {
       "subtitle": "Eine Live-Shell in jedem laufenden Ticket-Container — sieh der KI zu oder greif selbst ein.",
@@ -1828,7 +1904,9 @@
       "emptyTitle": "Keine Terminals aktiv",
       "maximizeTitle": "Maximieren",
       "restoreTitle": "Zurück zum Raster",
-      "resizeTitle": "Ziehen, um die Höhe anzupassen"
+      "resizeTitle": "Ziehen, um die Höhe anzupassen",
+      "newShell": "Neue Shell",
+      "newShellPlaceholder": "Shell-Name…"
     },
     "sources": {
       "subtitle": "Kontextdokumente werden vor jedem AI-Lauf vollständig geladen · Skills & MCP-Tools werden bei Bedarf aufgerufen.",
@@ -2064,7 +2142,24 @@
       "vsNote": "Skript + Storyboard generiert — vollständiges Video-Rendering braucht einen Media-/Video-API-Key.",
       "publishLive": "Live schalten",
       "publishLiveHint": "Diese Seite unter einer öffentlichen URL bereitstellen",
-      "publishedLive": "Wird veröffentlicht — die URL erscheint gleich."
+      "publishedLive": "Wird veröffentlicht — die URL erscheint gleich.",
+      "removeColour": "Farbe entfernen",
+      "colourSwatch": "Farbmuster für {{name}}",
+      "refinePrecedenceHint": "Wird zusätzlich zum Ton dieses Briefings und der Markenstimme unten angewendet — eine Verfeinerungsanweisung gewinnt bei einem Konflikt.",
+      "voicePrecedenceHint": "Wird als Fallback verwendet, wenn ein Briefing keinen eigenen Ton festlegt — der Ton eines Briefings und jede Verfeinerungsanweisung haben Vorrang.",
+      "identitySection": "Identität",
+      "targetingSection": "Zielgruppe",
+      "duplicateFromLabel": "Von einem bestehenden Briefing ausgehen (optional)",
+      "duplicateFromPlaceholder": "Leeres Briefing",
+      "optionalDetails": "Optionale Details",
+      "promoteBrandTitle": "Als Marke übernehmen?",
+      "promoteBrandBody": "Das ersetzt Palette, Schriftarten, Tonalität und Taglines in deiner Marken-Bibliothek. Fortfahren?",
+      "brandDiffUnset": "(nicht festgelegt)",
+      "brandDiffNoChanges": "Keine Änderungen — dieses Artefakt entspricht deiner aktuellen Markenbibliothek.",
+      "brandProvenanceLabel": "Zuletzt festgelegt von: {{source}} · {{date}}",
+      "brandProvenanceManual": "manuelle Bearbeitung",
+      "refinedWith": "verfeinert: „{{refine}}“",
+      "regenerateWithRefine": "Neu generieren — verfeinert: „{{refine}}“"
     },
     "uiReview": {
       "emptyTitle": "Noch kein UI-Feedback.",
@@ -2280,7 +2375,10 @@
       "elevation": "Elevation",
       "radiusScale": "Radius scale",
       "spacing": "Spacing",
-      "applyTokens": "Apply tokens"
+      "applyTokens": "Apply tokens",
+      "previewLight": "Vorschau im hellen Modus",
+      "previewDark": "Vorschau im dunklen Modus",
+      "applyTokensNeedsProject": "Wähle zuerst ein Projekt aus"
     },
     "interviewer": {
       "emptyTitle": "Frag mich alles über diese Codebase",
@@ -2307,7 +2405,10 @@
       "high": "Hoch",
       "linkedTicket": "Ticket erstellt",
       "makeTicket": "Ticket erstellen",
-      "dismiss": "Verwerfen"
+      "dismiss": "Verwerfen",
+      "generateStartedFocus": "Verbesserungsideen werden generiert — Fokus: {{focus}}. Sie erscheinen hier, sobald sie fertig sind.",
+      "severityLow": "Niedrig",
+      "severityNormal": "Normal"
     },
     "scheduledPosts": {
       "emptyTitle": "Noch nichts eingeplant",
@@ -2318,7 +2419,9 @@
       "title": "Geplante Beiträge",
       "tagline": "Veröffentlichungen, die für einen bestimmten Zeitpunkt eingeplant sind.",
       "empty": "Noch keine geplanten Beiträge. Plane eine Veröffentlichung aus einem Content-Stück, um sie hier zu sehen.",
-      "failed": "failed"
+      "failed": "failed",
+      "today": "Heute",
+      "tomorrow": "Morgen"
     },
     "scheduled": {
       "emptyTitle": "Noch nichts geplant",
@@ -2362,7 +2465,10 @@
       "channels": "Channels",
       "channelsPlaceholder": "All channels (none selected)",
       "channelsSelected": "{{count}} channels",
-      "channelsHint": "The role runs once per selected channel — one failing channel never blocks the others."
+      "channelsHint": "The role runs once per selected channel — one failing channel never blocks the others.",
+      "runsAtInvalid": "Ungültiger Zeitplan – Ausdruck prüfen",
+      "runsAtSimple": "Läuft täglich um {{time}} Uhr",
+      "advancedSummary": "Erweitert — Fokus & Kanäle"
     },
     "automation": {
       "title": "Automatisierung",
@@ -2411,7 +2517,19 @@
       "debounceLabel": "Entprellung (Sekunden)",
       "runNow": "Jetzt ausführen",
       "deleteConfirmTitle": "Automatisierung löschen?",
-      "deleteConfirmBody": "\"{{name}}\" löschen? Dies kann nicht rückgängig gemacht werden."
+      "deleteConfirmBody": "\"{{name}}\" löschen? Dies kann nicht rückgängig gemacht werden.",
+      "matchStageHelpStage": "Beschränkt diesen Trigger auf das Ereignis dieser Stage — andere Stages lösen ihn nicht aus.",
+      "matchStageHelpTicket": "Filtert nach der Stage, in der sich das Ticket gerade befindet, nicht nach der Stage aus dem Ereignis.",
+      "previewPlaceholder": "…",
+      "previewNotify": "Benachrichtigung \"{{title}}\" senden",
+      "previewEmitSignal": "Signal \"{{kind}}\" auslösen",
+      "previewStartStage": "Ticket zu {{stage}} verschieben",
+      "previewInvokeRole": "Agentenrolle {{role}} ausführen",
+      "previewInvokeAi": "Workspace-AI fragen: \"{{prompt}}\"",
+      "previewRunCommand": "\"{{command}}\" ausführen",
+      "previewWebhook": "Webhook {{url}} aufrufen",
+      "previewCron": "nach Zeitplan \"{{cron}}\"",
+      "previewTemplate": "Wenn {{event}} → {{detail}}"
     },
     "automations": {
       "title": "Automatisierungen",
@@ -2419,7 +2537,10 @@
     },
     "components": {
       "title": "Komponenten",
-      "tagline": "Jede UI-Komponente, die wir ausliefern — live unter deinem Design-Theme."
+      "tagline": "Jede UI-Komponente, die wir ausliefern — live unter deinem Design-Theme.",
+      "openInDesigner": "In Designer öffnen",
+      "previewOnly": "Nur Vorschau",
+      "previewOnlyBody": "Die Wahl eines Themes oder Hell/Dunkel ändert hier nur, was DU in dieser Galerie siehst — es wird nie gespeichert und ändert nie, womit der Coding-Agent baut."
     },
     "code": {
       "title": "Code",
@@ -2430,7 +2551,10 @@
       "binaryFile": "Binärdatei — keine Vorschau verfügbar.",
       "truncated": "Große Datei — erste 200 KB werden angezeigt.",
       "treeError": "Der Dateibaum konnte nicht geladen werden.",
-      "fileError": "Diese Datei konnte nicht geöffnet werden."
+      "fileError": "Diese Datei konnte nicht geöffnet werden.",
+      "branchInfoTitle": "Baseline-Branch",
+      "branchInfoBody": "Dies zeigt den schreibgeschützten Baseline-Branch des Repositorys – nicht den eigenen Arbeits-Branch des Tickets, den du im Editor dieses Tickets siehst.",
+      "baselineReadOnly": "Baseline · schreibgeschützt"
     },
     "board": {
       "filterSprint": "Sprint",
@@ -2482,7 +2606,9 @@
       "filterAssignee": "Zuständig",
       "allStatuses": "Alle Status",
       "allAssignees": "Alle Zuständigen",
-      "clearFilters": "Filter zurücksetzen"
+      "clearFilters": "Filter zurücksetzen",
+      "legendTitle": "Phase vs. Status",
+      "legendBody": "Spalten zeigen die Pipeline-Phase — wo sich ein Ticket im KI-Workflow befindet. Das Pill-Element auf jeder Karte zeigt den Status — was der Agent gerade in dieser Phase tut."
     },
     "activity": {
       "sub": "Alles, was in deinen Tickets passiert, in Echtzeit — klicke auf eine Ticket-ID, um das Ticket zu öffnen.",
@@ -2550,7 +2676,8 @@
       "archiveConfirmTitle": "{{count}} Tickets archivieren?",
       "archiveConfirmContent": "Sie wandern aus dem aktiven Board.",
       "noAi": "Keine AI",
-      "creatorAssignee": "Ersteller · Zuständiger"
+      "creatorAssignee": "Ersteller · Zuständiger",
+      "clearSelection": "Auswahl aufheben"
     },
     "placeholder": {
       "comingNext": "{{title}} — kommt als Nächstes",
@@ -2562,6 +2689,7 @@
     },
     "common": {
       "plusCount": "+{{count}}",
+      "tableEmpty": "Hier ist noch nichts.",
       "statusNeedsInput": "Eingabe nötig",
       "statusBusy": "Beschäftigt",
       "statusDone": "Fertig",
@@ -2680,7 +2808,12 @@
       "reuseExisting": "Vorhandenes Bild wiederverwenden",
       "reuseHide": "Vorhandene Bilder ausblenden",
       "reuseThis": "Dieses Asset anhängen",
-      "reuseEmpty": "Noch keine wiederverwendbaren Bilder in diesem Workspace."
+      "reuseEmpty": "Noch keine wiederverwendbaren Bilder in diesem Workspace.",
+      "archivedBadge": "Archiviert",
+      "searchPlaceholder": "Dokumente durchsuchen…",
+      "aiProviderChip": "Verwendet {{provider}}",
+      "aiProviderInfoTitle": "Fester Anbieter",
+      "aiProviderInfo": "Dokument-KI läuft immer auf Gemini – das ist fest eingestellt und wird nicht von Pipeline-Stage-Personas oder der funktionsspezifischen Provider-Liste beeinflusst. Sie übernimmt aber deine Workspace-KI-Anweisung und aktivierten Skills, die du unter Workspace → KI verwaltest."
     },
     "inspire": {
       "title": "Inspiration",
@@ -2764,7 +2897,9 @@
       "daysLeft": "noch {{days}} Tage verfügbar",
       "restore": "Wiederherstellen",
       "purge": "Endgültig löschen",
-      "purgeConfirm": "Diese Datei endgültig löschen? Das lässt sich nicht rückgängig machen."
+      "purgeConfirm": "Diese Datei endgültig löschen? Das lässt sich nicht rückgängig machen.",
+      "colFile": "Datei",
+      "colExpires": "Läuft ab"
     },
     "deployHistory": {
       "title": "Deploy-Verlauf",
@@ -2789,7 +2924,9 @@
       "waitedMinutes": "{{n}}m wartend",
       "waitedHours": "{{n}}h wartend",
       "waitedDays": "{{n}}T wartend",
-      "moreOpen": "+{{n}} weitere"
+      "moreOpen": "+{{n}} weitere",
+      "staleTooltip": "Wartet seit über 2 Std. — die Pipeline ist dadurch blockiert.",
+      "sameAsTicket": "Hier zu antworten bewirkt genau dasselbe wie auf dem Ticket zu antworten."
     }
   }
 }

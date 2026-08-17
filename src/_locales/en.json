@@ -75,6 +75,7 @@
     "noReason": "No reason provided.",
     "signInTitle": "Sign in to your account",
     "registerTitle": "Create a new account",
+    "tagline": "Write a ticket, approve the plan, ship the result.",
     "noAccount": "Don't have an account yet? ",
     "haveAccount": "Already have an account? ",
     "createAccount": "Create one now",
@@ -84,8 +85,10 @@
     "name": "Name",
     "emailAddress": "Email address",
     "password": "Password",
+    "passwordHint": "At least 8 characters.",
     "confirmPassword": "Confirm password",
     "forgotPassword": "Forgot Password? ",
+    "twoFactorAfterEmailCode": "Email code accepted. One more step to finish signing in.",
     "twoFactorPrompt": "Enter the 6-digit code from your authenticator app (or a recovery code).",
     "twoFactorPlaceholder": "123456",
     "twoFactorVerify": "Verify",
@@ -94,6 +97,7 @@
     "emailRequired": "Enter your email first.",
     "emailCodeSent": "If that account exists, a code is on its way.",
     "emailCodeLabel": "Login code",
+    "emailCodePrompt": "Enter the 6-digit code we emailed you.",
     "emailCodeSend": "Email me a code",
     "emailCodeVerify": "Verify code",
     "useEmailCode": "Log in with an email code instead",
@@ -200,7 +204,10 @@
     "signOutEverywhereDone": "Signed out from all devices.",
     "deleteAccount": "Delete account",
     "deleteAccountConfirm": "This permanently deletes your account and all associated data. Type DELETE below to confirm.",
-    "deleteAccountDone": "Account deleted."
+    "deleteAccountDone": "Account deleted.",
+    "pageTitle": "Settings",
+    "profileSection": "Profile",
+    "avatarLabel": "Avatar"
   },
   "avatar": {
     "uploadFailed": "Failed to upload avatar.",
@@ -283,7 +290,11 @@
     "apisSmall": "APIs",
     "syncsSmall": "Syncs",
     "doc": "DOC",
-    "syncSmall": "SYNC"
+    "syncSmall": "SYNC",
+    "emptyStateTitle": "Browse and test any API or sync route",
+    "overwritePayloadTitle": "Overwrite the request payload?",
+    "overwritePayloadContent": "The random preset will replace what you've typed. This cannot be undone.",
+    "leaveRoomNamed": "Leave room {{room}}"
   },
   "admin": {
     "title": "Admin"
@@ -669,7 +680,14 @@
       "warnWriteAccess": "{{name}} has write access to a service — usually only Implementatie needs that.",
       "warnNetworkOff": "{{name}} has network off but uses skills that may need egress.",
       "warnRagMismatch": "Refined loads RAG but Plan does not — the decision stage usually needs more context, not less.",
-      "hookRequired": "always on"
+      "hookRequired": "always on",
+      "removeCommand": "Remove command",
+      "removeProcess": "Remove process",
+      "removeCommandLine": "Remove command line",
+      "removeEnvVar": "Remove environment variable",
+      "removeModelRule": "Remove escalation band",
+      "removeStatus": "Remove status “{{name}}”",
+      "removeDomain": "Remove {{name}}"
     },
     "settings": {
       "saving": "Saving…",
@@ -691,7 +709,17 @@
       "composedTitle": "Composed prompt",
       "composedEmpty": "Nothing set yet — the AI runs on its defaults.",
       "noteFirst": "layer 1 of {{total}} — runs first",
-      "noteAfter": "layer {{n}} of {{total}} — runs after {{before}}"
+      "noteAfter": "layer {{n}} of {{total}} — runs after {{before}}",
+      "briefTone": "Brief tone",
+      "brandVoice": "Brand voice",
+      "refine": "Refine instruction",
+      "channelVoice": "Channel voice",
+      "sourceBrief": "this brief",
+      "sourceBrand": "brand library",
+      "sourceRefine": "this generation",
+      "sourceChannel": "channel settings",
+      "contentPreviewHelp": "These combine into one prompt in this order — refine has the strongest, most immediate effect.",
+      "channelNotApplicable": "Not used here — channel voice only shapes posts published to a channel. Edit in Content settings → Channels."
     },
     "workspaceSettings": {
       "tabMembers": "Members",
@@ -934,7 +962,19 @@
       },
       "cloneWorkspace": "Duplicate workspace",
       "cloneWorkspaceDesc": "Start a new workspace from this one's setup: pipeline, skills, styles, channels and triggers. No tickets, content, credentials or members are copied.",
-      "clone": "Duplicate"
+      "clone": "Duplicate",
+      "member": "Member",
+      "role": "Role",
+      "email": "Email",
+      "sentColumn": "Sent",
+      "removeVariable": "Remove variable",
+      "envKeyColumn": "Key",
+      "envValueColumn": "Value",
+      "removeIntegration": "Remove integration",
+      "auditAction": "Action",
+      "auditWhen": "When",
+      "starterDescriptionLocked": "Curated conventions the AI follows in every stage — manage and toggle them on the Sources page.",
+      "manageInSources": "Manage context docs in Sources"
     },
     "services": {
       "title": "Services",
@@ -969,7 +1009,8 @@
       "issue": "Issue token",
       "revoke": "Revoke",
       "empty": "No API tokens yet.",
-      "copyNow": "Copy this token now — it will not be shown again:"
+      "copyNow": "Copy this token now — it will not be shown again:",
+      "colToken": "Token"
     },
     "dataExport": {
       "title": "Workspace data",
@@ -1081,7 +1122,9 @@
       "push_error": "Could not enable push. Try again.",
       "pushIosHint": "On iPhone, add the app to your home screen first.",
       "installIos": "Share → Add to Home Screen",
-      "rollback": "Roll back"
+      "rollback": "Roll back",
+      "summaryDesc": "A read-only summary — edit these in your account settings.",
+      "sessionsCount": "{{count}} active"
     },
     "modules": {
       "pickHeading": "Which modules do you want?",
@@ -1222,7 +1265,8 @@
       "accept": "Accept",
       "dismiss": "Dismiss",
       "snooze": "Snooze",
-      "projectBriefPh": "Describe the app to scaffold its starting UI (optional)…"
+      "projectBriefPh": "Describe the app to scaffold its starting UI (optional)…",
+      "menu": "Menu"
     },
     "publish": {
       "title": "Publish to {{platform}}",
@@ -1598,7 +1642,19 @@
       "thumbDesc": "A bold headline over a background. Leave the background empty for the free template.",
       "thumbBgPlaceholder": "AI background (optional, costs a generation)",
       "thumbCompose": "Compose thumbnail",
-      "thumbComposeAi": "Compose with AI background"
+      "thumbComposeAi": "Compose with AI background",
+      "brandCrossLinkNote": "Also editable in",
+      "brandCrossLinkAction": "Content settings → Channels",
+      "brandEmptyAction": "Add a channel",
+      "toolCapture": "Demo recorder",
+      "toolAnalyze": "Reference video",
+      "toolSeo": "SEO",
+      "toolThumb": "Thumbnail",
+      "brandVoiceEmpty": "No brand voice set yet.",
+      "brandEditFull": "Edit full channel",
+      "budgetManageCaps": "Manage caps",
+      "budgetScopeNote": "This caps media generation spend only.",
+      "budgetOtherCapsLink": "Workspace-wide AI spend caps"
     },
     "knowledge": {
       "emptyTeach": "This is your workspace's knowledge map: every context source, ticket and content piece appears as a dot, connected to related work. Add sources or create tickets and content, then refresh to see the connections form.",
@@ -1621,7 +1677,9 @@
       "legendSources": "Sources",
       "legendTickets": "Tickets",
       "legendPieces": "Content",
-      "hint": "Click a node to focus it and its connections."
+      "hint": "Click a node to focus it and its connections.",
+      "nodeCapNotice": "Showing the {{shown}} most-connected of {{total}} nodes to keep the graph readable.",
+      "nodeAriaLabel": "{{type}}: {{label}}"
     },
     "usage": {
       "costValue": "€{{n}}",
@@ -1692,7 +1750,20 @@
       "subscriptionBadge": "subscription",
       "byAiEmptyTitle": "No AI usage yet",
       "byAiEmptySub": "Once an AI runs a task, its token use and cost show up here.",
-      "runawayNote": "Runaway control (stuck/idle detection) escalates a session to “needs input” — independent of any spend cap."
+      "runawayNote": "Runaway control (stuck/idle detection) escalates a session to “needs input” — independent of any spend cap.",
+      "diagnoseExample1": "Checkout returns 500s since this morning",
+      "diagnoseExample2": "Deploy stuck in pending",
+      "diagnoseExample3": "API latency spiked after the last merge",
+      "diagnosePendingHint": "Diagnosing — the result will appear here, or in the AI panel.",
+      "diagnoseOpenPanel": "Open AI panel",
+      "diagnoseHistoryTitle": "Recent diagnoses",
+      "diagnoseAwaiting": "Awaiting review",
+      "diagnoseResolved": "Handled",
+      "capAlertStripNamed": "{{name}} is near its cap",
+      "budgetPrimaryLabel": "Primary budget",
+      "budgetUnnamedCap": "Unnamed cap",
+      "budgetScopeNote": "This caps metered AI/API spend workspace-wide.",
+      "budgetMediaCapsLink": "Media generation caps"
     },
     "timetravel": {
       "button": "Past version",
@@ -1805,7 +1876,12 @@
       "noStageHistory": "No stage history yet",
       "sending": "Sending…",
       "serviceLabel": "Service",
-      "serviceRoot": "Whole project"
+      "serviceRoot": "Whole project",
+      "unlinkArtifact": "Unlink artifact",
+      "aiAgentTab": "ai-agent",
+      "aiAgentTailHint": "Read-only tail of the agent's live output — this is the same stream as the inline preview on Overview.",
+      "liveAgentOpenTerminal": "Open in Terminal",
+      "branchChipLabel": "{{branch}} · working branch"
     },
     "terminals": {
       "subtitle": "A live shell inside each running ticket container — watch the AI work, or step in and type yourself.",
@@ -1828,7 +1904,9 @@
       "emptyTitle": "No terminals running",
       "maximizeTitle": "Maximize",
       "restoreTitle": "Back to grid",
-      "resizeTitle": "Drag to resize height"
+      "resizeTitle": "Drag to resize height",
+      "newShell": "New shell",
+      "newShellPlaceholder": "Shell name…"
     },
     "sources": {
       "subtitle": "Context docs are loaded whole before each AI run · skills & MCP tools are called on demand.",
@@ -2064,7 +2142,24 @@
       "vsNote": "Script + storyboard generated — full video rendering needs a media/video API key.",
       "publishLive": "Publish live",
       "publishLiveHint": "Serve this page on a public URL",
-      "publishedLive": "Publishing — the page URL appears shortly."
+      "publishedLive": "Publishing — the page URL appears shortly.",
+      "removeColour": "Remove colour",
+      "colourSwatch": "Colour swatch for {{name}}",
+      "refinePrecedenceHint": "Applies on top of this brief's tone and the brand voice below — a refine instruction wins if it conflicts.",
+      "voicePrecedenceHint": "Used as a fallback when a brief doesn't set its own tone — a brief's tone and any refine instruction take priority over this.",
+      "identitySection": "Identity",
+      "targetingSection": "Targeting",
+      "duplicateFromLabel": "Start from an existing brief (optional)",
+      "duplicateFromPlaceholder": "Blank brief",
+      "optionalDetails": "Optional details",
+      "promoteBrandTitle": "Use this as your brand?",
+      "promoteBrandBody": "This replaces the palette, fonts, voice and taglines in your Brand Library. Continue?",
+      "brandDiffUnset": "(not set)",
+      "brandDiffNoChanges": "No changes — this artifact matches your current Brand Library.",
+      "brandProvenanceLabel": "Last set from: {{source}} · {{date}}",
+      "brandProvenanceManual": "manual edit",
+      "refinedWith": "refined: “{{refine}}”",
+      "regenerateWithRefine": "Regenerate — refined: “{{refine}}”"
     },
     "uiReview": {
       "emptyTitle": "No UI feedback yet.",
@@ -2280,7 +2375,10 @@
       "elevation": "Elevation",
       "radiusScale": "Radius scale",
       "spacing": "Spacing",
-      "applyTokens": "Apply tokens"
+      "applyTokens": "Apply tokens",
+      "previewLight": "Preview in light mode",
+      "previewDark": "Preview in dark mode",
+      "applyTokensNeedsProject": "Select a project first"
     },
     "interviewer": {
       "emptyTitle": "Ask me anything about this codebase",
@@ -2307,7 +2405,10 @@
       "high": "High",
       "linkedTicket": "Ticket created",
       "makeTicket": "Make ticket",
-      "dismiss": "Dismiss"
+      "dismiss": "Dismiss",
+      "generateStartedFocus": "Generating improvement ideas — focus: {{focus}}. They'll appear here when ready.",
+      "severityLow": "Low",
+      "severityNormal": "Normal"
     },
     "scheduledPosts": {
       "emptyTitle": "Nothing scheduled yet",
@@ -2318,7 +2419,9 @@
       "title": "Scheduled posts",
       "tagline": "Publishes queued to go out at a set time.",
       "empty": "No scheduled posts yet. Schedule a publish from a content piece to see it here.",
-      "failed": "failed"
+      "failed": "failed",
+      "today": "Today",
+      "tomorrow": "Tomorrow"
     },
     "scheduled": {
       "emptyTitle": "Nothing scheduled yet",
@@ -2362,7 +2465,10 @@
       "channels": "Channels",
       "channelsPlaceholder": "All channels (none selected)",
       "channelsSelected": "{{count}} channels",
-      "channelsHint": "The role runs once per selected channel — one failing channel never blocks the others."
+      "channelsHint": "The role runs once per selected channel — one failing channel never blocks the others.",
+      "runsAtInvalid": "Invalid schedule — check the expression",
+      "runsAtSimple": "Runs daily at {{time}}",
+      "advancedSummary": "Advanced — focus & channels"
     },
     "automation": {
       "title": "Automation",
@@ -2411,7 +2517,19 @@
       "debounceLabel": "Debounce (seconds)",
       "runNow": "Run now",
       "deleteConfirmTitle": "Delete automation?",
-      "deleteConfirmBody": "Delete \"{{name}}\"? This cannot be undone."
+      "deleteConfirmBody": "Delete \"{{name}}\"? This cannot be undone.",
+      "matchStageHelpStage": "Narrows this trigger to only that stage's event — other stages won't fire it.",
+      "matchStageHelpTicket": "Filters by the stage the ticket is currently in, not the stage from the event.",
+      "previewPlaceholder": "…",
+      "previewNotify": "notify \"{{title}}\"",
+      "previewEmitSignal": "emit signal \"{{kind}}\"",
+      "previewStartStage": "move the ticket to {{stage}}",
+      "previewInvokeRole": "run the {{role}} agent role",
+      "previewInvokeAi": "ask Workspace-AI \"{{prompt}}\"",
+      "previewRunCommand": "run \"{{command}}\"",
+      "previewWebhook": "call the webhook {{url}}",
+      "previewCron": "on schedule \"{{cron}}\"",
+      "previewTemplate": "When {{event}} → {{detail}}"
     },
     "automations": {
       "title": "Automations",
@@ -2419,7 +2537,10 @@
     },
     "components": {
       "title": "Components",
-      "tagline": "Every UI component we ship, live under your design theme."
+      "tagline": "Every UI component we ship, live under your design theme.",
+      "openInDesigner": "Open in Designer",
+      "previewOnly": "Preview only",
+      "previewOnlyBody": "Picking a theme or light/dark here only changes what YOU see in this gallery — it never saves and never changes what the coding agent builds with."
     },
     "code": {
       "title": "Code",
@@ -2430,7 +2551,10 @@
       "binaryFile": "Binary file — no preview available.",
       "truncated": "Large file — showing the first 200 KB.",
       "treeError": "Could not load the file tree.",
-      "fileError": "Could not open this file."
+      "fileError": "Could not open this file.",
+      "branchInfoTitle": "Baseline branch",
+      "branchInfoBody": "This shows the repository's read-only baseline branch — not the ticket's own working branch, which you see inside that ticket's editor.",
+      "baselineReadOnly": "baseline · read-only"
     },
     "board": {
       "filterSprint": "Sprint",
@@ -2482,7 +2606,9 @@
       "filterAssignee": "Assignee",
       "allStatuses": "All statuses",
       "allAssignees": "All assignees",
-      "clearFilters": "Clear filters"
+      "clearFilters": "Clear filters",
+      "legendTitle": "Stage vs. status",
+      "legendBody": "Columns show the pipeline stage — where a ticket is in the AI workflow. The pill on each card shows its status — what the agent is doing right now within that stage."
     },
     "activity": {
       "sub": "Everything that happens across your tickets, as it happens — click a ticket id to jump into that ticket.",
@@ -2550,7 +2676,8 @@
       "archiveConfirmTitle": "Archive {{count}} tickets?",
       "archiveConfirmContent": "They move out of the active board.",
       "noAi": "No AI",
-      "creatorAssignee": "Creator · assignee"
+      "creatorAssignee": "Creator · assignee",
+      "clearSelection": "Clear selection"
     },
     "placeholder": {
       "comingNext": "{{title}} — coming next",
@@ -2562,6 +2689,7 @@
     },
     "common": {
       "plusCount": "+{{count}}",
+      "tableEmpty": "Nothing here yet.",
       "statusNeedsInput": "Needs input",
       "statusBusy": "Busy",
       "statusDone": "Done",
@@ -2680,7 +2808,12 @@
       "reuseExisting": "Reuse an existing image",
       "reuseHide": "Hide existing images",
       "reuseThis": "Attach this asset",
-      "reuseEmpty": "No reusable images in this workspace yet."
+      "reuseEmpty": "No reusable images in this workspace yet.",
+      "archivedBadge": "Archived",
+      "searchPlaceholder": "Search documents…",
+      "aiProviderChip": "Using {{provider}}",
+      "aiProviderInfoTitle": "Fixed provider",
+      "aiProviderInfo": "Document AI always runs on Gemini — this is fixed and isn't affected by pipeline stage personas or the per-feature provider list. It does inherit your workspace AI instruction and enabled skills, which you can manage in Workspace → AI."
     },
     "inspire": {
       "title": "Inspiration",
@@ -2764,7 +2897,9 @@
       "daysLeft": "still here for {{days}} days",
       "restore": "Restore",
       "purge": "Delete permanently",
-      "purgeConfirm": "Delete this file permanently? This cannot be undone."
+      "purgeConfirm": "Delete this file permanently? This cannot be undone.",
+      "colFile": "File",
+      "colExpires": "Expires"
     },
     "deployHistory": {
       "title": "Deploy history",
@@ -2789,7 +2924,9 @@
       "waitedMinutes": "{{n}}m waiting",
       "waitedHours": "{{n}}h waiting",
       "waitedDays": "{{n}}d waiting",
-      "moreOpen": "+{{n}} more"
+      "moreOpen": "+{{n}} more",
+      "staleTooltip": "Waiting over 2h — the pipeline is blocked on this answer.",
+      "sameAsTicket": "Answering here does exactly the same thing as answering on the ticket."
     }
   }
 }

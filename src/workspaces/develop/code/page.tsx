@@ -16,6 +16,8 @@ import { getPalette, loadThemeId } from 'src/_components/editor/editorThemes';
 import Icon from '../../_components/Icon';
 import { SetupNotice } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
+import { Collapse } from '../../_components/motion';
+import { InfoDot, WsButton } from '../../_components/primitives';
 
 //? Lazy so Monaco (multi-MB) only loads once a file is actually opened.
 const LazyMonacoEditor = lazy(() => import('src/_components/editor/MonacoEditor').then((m) => ({ default: m.MonacoEditor })));
@@ -34,14 +36,23 @@ function CodeHeader({ branch, onToggleFiles }: { branch: string | null; onToggle
       <div className={`min-w-0`}>
         <div className={`flex items-center gap-3 flex-wrap`}>
           <h1 className={`text-xl md:text-2xl font-semibold text-title`}>{translate({ key: 'workspaces.code.title' })}</h1>
-          {branch !== null && <span className={`inline-flex items-center gap-1.5 rounded-lg bg-container2 px-2 h-7 text-xs font-medium text-common`}><Icon name="code-branch" /> {branch}</span>}
+          {branch !== null && (
+            <span className={`inline-flex items-center gap-1.5`}>
+              {/* "branch" means something different here than on a ticket: this is the read-only default
+                  branch of the repo, not any ticket's in-flight work — say so on the chip itself. */}
+              <span className={`inline-flex items-center gap-1.5 rounded-lg bg-container2 px-2 h-7 text-xs font-medium text-common`}>
+                <Icon name="code-branch" /> {branch} <span className={`text-meta`}>· {translate({ key: 'workspaces.code.baselineReadOnly' })}</span>
+              </span>
+              <InfoDot title={translate({ key: 'workspaces.code.branchInfoTitle' })} body={translate({ key: 'workspaces.code.branchInfoBody' })} />
+            </span>
+          )}
         </div>
         <p className={`text-sm text-muted mt-0.5`}>{translate({ key: 'workspaces.code.subtitle' })}</p>
       </div>
       {onToggleFiles !== null && (
-        <button type="button" onClick={onToggleFiles} className={`md:hidden inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-container2 px-3 h-9 text-sm font-medium text-common hover:bg-container2-hover cursor-pointer`}>
-          <Icon name="bars" /> {translate({ key: 'workspaces.code.files' })}
-        </button>
+        <WsButton variant="secondary" icon="bars" onClick={onToggleFiles} className={`md:hidden shrink-0`}>
+          {translate({ key: 'workspaces.code.files' })}
+        </WsButton>
       )}
     </div>
   );
@@ -163,7 +174,9 @@ export default function CodeBrowser() {
         {/* Desktop: a fixed tree column. */}
         <div className={`hidden md:block md:w-72 shrink-0 min-h-0`}>{treePanel}</div>
         {/* Phone: the tree is a disclosure ABOVE the preview, toggled from the header. */}
-        {drawerOpen && <div className={`md:hidden h-64 shrink-0`}>{treePanel}</div>}
+        <Collapse open={drawerOpen} className={`md:hidden shrink-0`}>
+          <div className={`h-64`}>{treePanel}</div>
+        </Collapse>
         {/* Preview */}
         <div className={`flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden rounded-lg border border-container1-border`} style={{ background: palette.bg }}>
           <div className={`flex items-center gap-2 px-3 h-9 shrink-0 border-b border-divider`}>

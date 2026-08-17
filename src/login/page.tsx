@@ -1,12 +1,24 @@
+import { Link } from "react-router-dom";
+
+import { useTranslator } from "@luckystack/core/client";
+import AuthShell from "src/_components/AuthShell";
 import LoginForm from "src/_components/LoginForm";
 
 export const template = 'plain';
 export default function App() {
+  const translate = useTranslator();
   return (
-    <div className="w-full h-full overflow-y-auto bg-background">
-      <div className="min-h-full w-full flex flex-col items-center justify-center p-4">
-        <LoginForm formType="login" />
-      </div>
-    </div>
+    <AuthShell
+      footer={
+        <>
+          {translate({ key: 'login.noAccount' })}
+          <Link to="/register" className="text-primary hover:text-primary-hover font-medium cursor-pointer">
+            {translate({ key: 'login.createAccount' })}
+          </Link>
+        </>
+      }
+    >
+      <LoginForm formType="login" />
+    </AuthShell>
   )
 }

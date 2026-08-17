@@ -17,7 +17,7 @@ import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../../_components/Icon';
 import { Popover } from '../../_components/motion';
-import { Disclosure, PopMenu, WsButton, useClickAway } from '../../_components/primitives';
+import { Disclosure, InfoDot, PopMenu, WsButton, useClickAway } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { TicketPriority, TicketStatus } from '../../_data/types';
 import { PRIORITY_LABEL_KEY, PRIORITY_ORDER } from '../../_functions/priority';
@@ -118,7 +118,7 @@ function FilterMenu({ isMobile, filters, onChange }: { isMobile: boolean; filter
 
   return (
     <div className={`relative`} ref={ref}>
-      <WsButton variant="secondary" icon="filter" onClick={() => { setOpen((o) => !o); }} className={active ? `ring-2 ring-primary/40` : ``}>
+      <WsButton variant="secondary" icon="filter" ariaLabel={translate({ key: 'workspaces.board.filter' })} onClick={() => { setOpen((o) => !o); }} className={active ? `ring-2 ring-primary/40` : ``}>
         {isMobile ? '' : translate({ key: 'workspaces.board.filter' })}
       </WsButton>
       <Popover open={open} className={`absolute right-0 mt-1 z-30 w-64 rounded-xl border border-container1-border bg-container1 p-3 shadow-lg flex flex-col gap-3`}>
@@ -167,6 +167,7 @@ export function BoardHeader({ isMobile, filters, onFiltersChange }: { isMobile: 
     <div className={`flex items-center justify-between gap-3 px-4 md:px-6 py-3 md:py-4`}>
       <div className={`flex items-baseline gap-2 min-w-0`}>
         <h1 className={`text-xl md:text-2xl font-semibold text-title`}>{translate({ key: 'workspaces.board.title' })}</h1>
+        <InfoDot title={translate({ key: 'workspaces.board.legendTitle' })} body={translate({ key: 'workspaces.board.legendBody' })} align="left" />
         {!isMobile && <span className={`text-sm text-muted`}>{ctx.activeWorkspace.name}</span>}
         {/* #105/#19 — engine occupancy chip (only when something is running or queued). */}
         {ctx.capacity && (ctx.capacity.active > 0 || ctx.capacity.queued > 0) && (
@@ -200,7 +201,7 @@ export function BoardHeader({ isMobile, filters, onFiltersChange }: { isMobile: 
             Unrefined column's inline quick-add button, so a role/name query alone is ambiguous — a
             `contents` wrapper (no layout effect) gives Playwright a stable, unambiguous hook. */}
         <span data-testid="ws-board-new-ticket" className="contents">
-          <WsButton icon="plus" onClick={openNewTicket}>{isMobile ? '' : translate({ key: 'workspaces.board.ticket' })}</WsButton>
+          <WsButton icon="plus" ariaLabel={translate({ key: 'workspaces.board.ticket' })} onClick={openNewTicket}>{isMobile ? '' : translate({ key: 'workspaces.board.ticket' })}</WsButton>
         </span>
       </div>
     </div>

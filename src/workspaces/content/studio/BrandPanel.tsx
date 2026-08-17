@@ -10,6 +10,7 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Icon from '../../_components/Icon';
 import { PopMenu, WsButton } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
+import { getBrandProvenance, recordBrandProvenance } from './brandProvenance';
 import { inputCls } from './content';
 
 //? #164 — paste a portable brand-kit JSON (from another workspace's Export) to import it. Rendered in
@@ -68,15 +69,30 @@ export function BrandPanel() {
   const save = async () => {
     setSaving(true);
     await saveBrand({ palette: palette.filter((p) => p.hex.trim().length > 0), typography: { heading: heading.trim(), body: body.trim() }, voice: voice.trim(), taglines: taglines.split('\n').map((t) => t.trim()).filter(Boolean) });
+    //? Owner decision 6 — provenance covers manual edits too, not only "Use as brand" promotions.
+    recordBrandProvenance(activeWorkspace.id, 'manual');
     setSaving(false);
   };
   const setColor = (i: number, patch: Partial<{ name: string; hex: string }>) => { setPalette((p) => p.map((c, j) => (j === i ? { ...c, ...patch } : c))); };
+  const provenance = getBrandProvenance(activeWorkspace.id);
 
   return (
     <div className={`p-4 md:p-6 max-w-2xl flex flex-col gap-5`}>
       <div>
         <div className={`text-xl font-semibold text-title`}>{translate({ key: 'workspaces.studio.brandLibrary' })}</div>
         <div className={`text-sm text-muted mt-0.5`}>{translate({ key: 'workspaces.studio.brandIntro' })}</div>
+        {/* Owner decision 6 — provenance; only shown once this browser has recorded one. */}
+        {provenance && (
+          <div className={`text-xs text-meta mt-1`}>
+            {translate({
+              key: 'workspaces.studio.brandProvenanceLabel',
+              params: [
+                { key: 'source', value: provenance.source === 'manual' ? translate({ key: 'workspaces.studio.brandProvenanceManual' }) : provenance.source },
+                { key: 'date', value: new Date(provenance.at).toLocaleDateString() },
+              ],
+            })}
+          </div>
+        )}
       </div>
 
       {/* palette editor */}
@@ -86,15 +102,18 @@ export function BrandPanel() {
         </div>
         <div className={`flex flex-col gap-2`}>
           {palette.length === 0 && <div className={`text-sm text-muted`}>{translate({ key: 'workspaces.studio.brandEmptyPalette' })}</div>}
-          {palette.map((c, i) => (
-            // eslint-disable-next-line react-x/no-array-index-key -- an editable positional list; a value-key would lose input focus on edit
-            <div key={i} className={`flex flex-wrap items-center gap-2`}>
-              <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(c.hex) ? c.hex : '#000000'} onChange={(e) => { setColor(i, { hex: e.target.value }); }} className={`w-9 h-9 rounded-lg border border-container1-border cursor-pointer bg-transparent p-0.5`} />
-              <input value={c.name} onChange={(e) => { setColor(i, { name: e.target.value }); }} placeholder={translate({ key: 'workspaces.studio.colourName' })} className={`flex-1 min-w-28 ${inputCls}`} />
-              <input value={c.hex} onChange={(e) => { setColor(i, { hex: e.target.value }); }} placeholder="#4B3FDE" className={`w-28 font-mono ${inputCls}`} />
-              <button type="button" onClick={() => { setPalette((p) => p.filter((_, j) => j !== i)); }} className={`text-muted hover:text-wrong cursor-pointer shrink-0`}><Icon name="trash" className={`text-xs`} /></button>
-            </div>
-          ))}
+          {palette.map((c, i) => {
+            const swatchLabel = c.name.trim().length > 0 ? c.name : String(i + 1);
+            return (
+              // eslint-disable-next-line react-x/no-array-index-key -- an editable positional list; a value-key would lose input focus on edit
+              <div key={i} className={`flex flex-wrap items-center gap-2`}>
+                <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(c.hex) ? c.hex : '#000000'} onChange={(e) => { setColor(i, { hex: e.target.value }); }} aria-label={translate({ key: 'workspaces.studio.colourSwatch', params: [{ key: 'name', value: swatchLabel }] })} className={`w-9 h-9 rounded-lg border border-container1-border cursor-pointer bg-transparent p-0.5`} />
+                <input value={c.name} onChange={(e) => { setColor(i, { name: e.target.value }); }} placeholder={translate({ key: 'workspaces.studio.colourName' })} className={`flex-1 min-w-28 ${inputCls}`} />
+                <input value={c.hex} onChange={(e) => { setColor(i, { hex: e.target.value }); }} placeholder="#4B3FDE" className={`w-28 font-mono ${inputCls}`} />
+                <button type="button" onClick={() => { setPalette((p) => p.filter((_, j) => j !== i)); }} aria-label={translate({ key: 'workspaces.studio.removeColour' })} className={`text-muted hover:text-wrong cursor-pointer shrink-0`}><Icon name="trash" className={`text-xs`} /></button>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -102,7 +121,12 @@ export function BrandPanel() {
         <div className={`flex flex-col gap-1`}><span className={`text-xs text-muted`}>{translate({ key: 'workspaces.studio.fontHeading' })}</span><input value={heading} onChange={(e) => { setHeading(e.target.value); }} placeholder="Sora" className={inputCls} /></div>
         <div className={`flex flex-col gap-1`}><span className={`text-xs text-muted`}>{translate({ key: 'workspaces.studio.fontBody' })}</span><input value={body} onChange={(e) => { setBody(e.target.value); }} placeholder="Inter" className={inputCls} /></div>
       </div>
-      <div className={`flex flex-col gap-1`}><span className={`text-xs text-muted`}>{translate({ key: 'workspaces.studio.voice' })}</span><textarea value={voice} onChange={(e) => { setVoice(e.target.value); }} rows={3} placeholder={translate({ key: 'workspaces.studio.voicePlaceholder' })} className={`${inputCls} h-auto py-2 resize-y`} /></div>
+      <div className={`flex flex-col gap-1`}>
+        <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.studio.voice' })}</span>
+        <textarea value={voice} onChange={(e) => { setVoice(e.target.value); }} rows={3} placeholder={translate({ key: 'workspaces.studio.voicePlaceholder' })} className={`${inputCls} h-auto py-2 resize-y`} />
+        {/* IA-conflict finding — this is workspace-wide and only a fallback; say so, since nothing else does. */}
+        <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.studio.voicePrecedenceHint' })}</span>
+      </div>
       <div className={`flex flex-col gap-1`}><span className={`text-xs text-muted`}>{translate({ key: 'workspaces.studio.taglinesOnePerLine' })}</span><textarea value={taglines} onChange={(e) => { setTaglines(e.target.value); }} rows={3} className={`${inputCls} h-auto py-2 resize-y`} /></div>
 
       <div className={`flex flex-wrap items-center justify-between gap-2 pt-1`}>

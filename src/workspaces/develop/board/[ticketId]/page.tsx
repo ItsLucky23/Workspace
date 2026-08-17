@@ -17,7 +17,7 @@ import TerminalPanel from './TerminalPanel';
 import TimeTravelForm, { type TravelSpec } from './TimeTravelForm';
 import MrReviewPanel from '../../../_components/MrReviewPanel';
 import Icon from '../../../_components/Icon';
-import { AvatarBubble, AvatarStack, Disclosure, EmptyState, LabelChip, PopMenu, StatusPill, Tabs, WsButton, type PopMenuItem, type TabDef } from '../../../_components/primitives';
+import { AvatarBubble, AvatarStack, Disclosure, EmptyState, IconButton, LabelChip, PopMenu, StatusPill, Tabs, WsButton, type PopMenuItem, type TabDef } from '../../../_components/primitives';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import { useWorkspaces } from '../../../_shell/WorkspacesContext';
 import { isModuleEnabled } from '../../../_data/modules';
@@ -89,7 +89,7 @@ export default function TicketPage({ params }: { params: Record<string, string |
       {/* #16 (W2) — non-blocking advisory questions: confirm the agent's assumption or correct it. */}
       {ticket.advisoryQuestions && ticket.advisoryQuestions.length > 0 && <AdvisoryList ticketKey={ticket.id} advisories={ticket.advisoryQuestions} />}
 
-      <TicketControls ticket={ticket} primary={standingPrimary} />
+      <TicketControls ticket={ticket} primary={standingPrimary} onOpenTerminal={() => { setTab('terminal'); }} />
 
       {/* e2e: "Activity"/"Code" etc. collide with the AI panel's own nav (a `role="complementary"`
           aside elsewhere on the page carries a same-named "Activity" button) — scope tab clicks to
@@ -117,12 +117,13 @@ export default function TicketPage({ params }: { params: Record<string, string |
 //? it is the standing primary action (`primary`) whenever no answer/promote card is showing.
 //? Everything else (agent lifecycle, terminal, GitLab, time-travel, kill, teardown) lives
 //? in the "…" menu so the ticket isn't a wall of dev-verbs.
-function TicketControls({ ticket, primary }: { ticket: Ticket; primary: boolean }) {
+function TicketControls({ ticket, primary, onOpenTerminal }: { ticket: Ticket; primary: boolean; onOpenTerminal: () => void }) {
   const translate = useTranslator();
   const ctx = useWorkspaces();
   const [preview, setPreview] = useState<{ loading: boolean; url?: string; err?: boolean }>({ loading: false });
-  //? #20 — the live agent PTY tail for this ticket (empty when no live turn is streaming).
-  const [showLive, setShowLive] = useState(false);
+  //? #20 — the live agent PTY tail for this ticket (empty when no live turn is streaming). The tail itself now
+  //? renders inside the Terminal tab's "ai-agent" process (TerminalPanel) — this is only the jump-off point, so a
+  //? user reading Overview isn't left wondering whether it's the same stream as the Terminal tab's or a different one.
   const liveOutput = ctx.agentTerm[ticket.id] ?? '';
 
   //? Feature 24: the existing Admin+ `kill` ControlOp IS the destructive container
@@ -203,7 +204,8 @@ function TicketControls({ ticket, primary }: { ticket: Ticket; primary: boolean 
         <WsButton variant="ghost" icon="circle-stop" onClick={() => { ctx.closePreview(ticket.id); setPreview({ loading: false }); }}>{translate({ key: 'workspaces.ticket.stopPreview' })}</WsButton>
       )}
       {preview.err === true && (
-        <div className="flex items-center gap-1.5 text-xs text-wrong">
+        <div className="inline-flex items-center gap-1.5 rounded-lg bg-wrong/10 text-wrong px-2 h-7 text-xs">
+          <Icon name="triangle-exclamation" className="text-[11px]" />
           <span>{translate({ key: 'workspaces.ticket.previewFailed' })}</span>
           {/* #39 — actionable pointer: a failed preview usually means the dev command isn't set. */}
           <button type="button" onClick={() => { ctx.navigate('workspace'); }} className="text-primary hover:underline cursor-pointer">{translate({ key: 'workspaces.ticket.previewSetDevCommand' })}</button>
@@ -216,15 +218,14 @@ function TicketControls({ ticket, primary }: { ticket: Ticket; primary: boolean 
         <iframe title={translate({ key: 'workspaces.ticket.openPreview' })} src={preview.url} className="w-full h-[60vh] rounded-xl border border-container1-border bg-container1" />
       </div>
     )}
-    {/* #20 — Live agent: tail the code agent's PTY output as the turn runs. Only offered once output arrives. */}
+    {/* #20 — Live agent: the PTY tail itself now lives in the Terminal tab (an "ai-agent" process, same
+        stream). This is just the pointer so Overview doesn't dead-end into a guess. */}
     {liveOutput.length > 0 && (
-      <div className="px-4 md:px-6 pb-3 flex flex-col gap-2">
-        <button type="button" onClick={() => { setShowLive((v) => !v); }} className="self-start text-xs text-muted hover:text-common cursor-pointer inline-flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-correct animate-pulse" />{translate({ key: showLive ? 'workspaces.ticket.liveAgentHide' : 'workspaces.ticket.liveAgentShow' })}
+      <div className="px-4 md:px-6 pb-3">
+        <button type="button" onClick={onOpenTerminal} className="text-xs text-muted hover:text-common cursor-pointer inline-flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-correct animate-pulse" />{translate({ key: 'workspaces.ticket.liveAgentOpenTerminal' })}
+          <Icon name="arrow-right" className="text-[10px]" />
         </button>
-        {showLive && (
-          <pre className="w-full max-h-80 overflow-auto rounded-xl border border-container1-border bg-container2/60 p-3 text-[11px] leading-snug font-mono text-common whitespace-pre-wrap break-words">{liveOutput}</pre>
-        )}
       </div>
     )}
     </>
@@ -279,7 +280,9 @@ function TicketHeader({ ticket }: { ticket: Ticket }) {
           ) : (
             <div className="flex items-center gap-2 mt-1.5">
               <h1 className="text-xl md:text-2xl font-semibold text-title leading-snug">{ticket.title}</h1>
-              <button type="button" onClick={startRename} title={translate({ key: 'workspaces.ticket.editTitle' })} className="text-xs text-muted hover:text-title cursor-pointer shrink-0">{translate({ key: 'workspaces.workspaceSettings.edit' })}</button>
+              <button type="button" onClick={startRename} aria-label={translate({ key: 'workspaces.ticket.editTitle' })} title={translate({ key: 'workspaces.ticket.editTitle' })} className="inline-flex items-center gap-1 text-xs text-muted hover:text-title cursor-pointer shrink-0">
+                <Icon name="pen" />{translate({ key: 'workspaces.workspaceSettings.edit' })}
+              </button>
             </div>
           )}
         </div>
@@ -314,7 +317,9 @@ function TicketMeta({ ticket }: { ticket: Ticket }) {
   const translate = useTranslator();
   return (
     <>
-      {ticket.branch && <MetaChip icon="diagram-project" text={ticket.branch} />}
+      {/* Labelled as THIS ticket's own working branch (vs the read-only baseline chip on /develop/code) —
+          "branch" otherwise means two different things on two screens with no visual distinction. */}
+      {ticket.branch && <MetaChip icon="diagram-project" text={translate({ key: 'workspaces.ticket.branchChipLabel', params: [{ key: 'branch', value: ticket.branch }] })} />}
       {ticket.mr && ticket.mr !== '—' && <MetaChip icon="code-merge" text={ticket.mr} />}
       {ticket.costLabel && <MetaChip icon="chart-column" text={ticket.costLabel} />}
       <MetaChip icon="up-right-from-square" text={translate({ key: 'workspaces.ticket.previewLive' })} tone="correct" />
@@ -489,7 +494,9 @@ function OverviewTab({ ticket, stage }: { ticket: Ticket; stage?: string }) {
                 }}
               />
               {(ticket.priority ?? 'normal') === 'urgent' && (
-                <span className="text-xs text-wrong">{translate({ key: 'workspaces.priority.urgentHint' })}</span>
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-wrong/10 text-wrong px-1.5 h-6 text-xs">
+                  <Icon name="triangle-exclamation" className="text-[10px]" />{translate({ key: 'workspaces.priority.urgentHint' })}
+                </span>
               )}
             </div>
           </SettingSection>
@@ -566,10 +573,10 @@ function LinkedArtifactsSection({ ticketKey }: { ticketKey: string }) {
           <div key={l.id} className="flex items-center gap-2 rounded-lg border border-container1-border bg-container2/40 px-2.5 py-1.5">
             <Icon name={l.artifactKind === 'design' ? 'palette' : (l.artifactKind === 'ui-review' ? 'display' : 'bullhorn')} className="text-primary text-sm shrink-0" />
             <span className="text-sm text-common truncate flex-1">{l.name}</span>
-            <button type="button" onClick={() => { ctx.unlinkArtifact(l.id); }} className="text-muted hover:text-wrong cursor-pointer shrink-0"><Icon name="xmark" className="text-xs" /></button>
+            <IconButton icon="xmark" size="sm" title={translate({ key: 'workspaces.ticket.unlinkArtifact' })} onClick={() => { ctx.unlinkArtifact(l.id); }} className="hover:text-wrong shrink-0" />
           </div>
         ))}
-        {options.length > 0 && <Dropdown size="sm" items={options} placeholder={translate({ key: 'workspaces.ticket.linkArtifactPlaceholder' })} onChange={onPick} />}
+        {options.length > 0 && <Dropdown width="full" items={options} placeholder={translate({ key: 'workspaces.ticket.linkArtifactPlaceholder' })} onChange={onPick} />}
       </div>
     </SettingSection>
   );

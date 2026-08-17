@@ -13,7 +13,7 @@ import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon, { type IconName } from '../../_components/Icon';
 import { MediaUploadButton } from '../../_components/MediaUploadButton';
-import { Disclosure, EmptyState, PopMenu, SectionCard, Toggle, WsButton, type PopMenuItem } from '../../_components/primitives';
+import { Disclosure, EmptyState, FOCUS_RING, IconButton, PopMenu, SectionCard, Segmented, Toggle, WsButton, type PopMenuItem } from '../../_components/primitives';
 import { SetupNotice } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import ImageRegionEditor from '../../_components/ImageRegionEditor';
@@ -169,6 +169,9 @@ export default function ContentPiece({ params }: { params: Record<string, string
   const [editRegionAsset, setEditRegionAsset] = useState<ContentAssetSummary | null>(null);
   const [editImageAsset, setEditImageAsset] = useState<ContentAssetSummary | null>(null);
   const [showTimeline, setShowTimeline] = useState(false);
+  //? Which occasional tool is showing inside the Tools panel — a single active panel (Segmented) instead
+  //? of four more nested Disclosures, so "Tools" never goes three accordions deep.
+  const [activeTool, setActiveTool] = useState<'capture' | 'analyze' | 'seo' | 'thumb'>('capture');
   //? GAP_SCAN F2 — the caption LOOK, sent with the pipeline run (burn-in only; sidecar/soft ignore it).
   const [ccSize, setCcSize] = useState('28');
   const [ccColor, setCcColor] = useState('ffffff');
@@ -373,7 +376,7 @@ export default function ContentPiece({ params }: { params: Record<string, string
   const genChip = (a: GenAction) => {
     const label = costLabel(a);
     return (
-      <button key={a.op} type="button" onClick={() => { fire(a); }} className={`flex items-center gap-3 rounded-xl border border-container2-border bg-container2 hover:bg-container2-hover px-3 py-2.5 text-left cursor-pointer transition-colors motion-safe:active:scale-[0.98]`}>
+      <button key={a.op} type="button" onClick={() => { fire(a); }} className={`flex items-center gap-3 rounded-xl border border-container2-border bg-container2 hover:bg-container2-hover px-3 py-2.5 text-left cursor-pointer transition-colors motion-safe:active:scale-[0.98] ${FOCUS_RING}`}>
         <span className={`w-8 h-8 rounded-lg bg-container1 text-primary flex items-center justify-center shrink-0`}><Icon name={a.icon} /></span>
         <span className={`text-sm font-medium text-title`}>{translate({ key: a.labelKey })}</span>
         {label ? <span className={`ml-auto text-[11px] font-medium text-muted tabular-nums`}>{label}</span> : <Icon name="wand-magic-sparkles" className={`ml-auto text-muted`} />}
@@ -384,9 +387,7 @@ export default function ContentPiece({ params }: { params: Record<string, string
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="px-4 md:px-6 py-3 md:py-4 flex items-center gap-3">
-        <button type="button" onClick={() => { navigate('content'); }} title={translate({ key: 'workspaces.content.backToBoard' })} className="w-8 h-8 rounded-lg hover:bg-container2 text-muted hover:text-common flex items-center justify-center cursor-pointer">
-          <Icon name="arrow-left" />
-        </button>
+        <IconButton icon="arrow-left" size="sm" title={translate({ key: 'workspaces.content.backToBoard' })} onClick={() => { navigate('content'); }} />
         <div className="min-w-0">
           <h1 className="text-xl font-semibold text-title truncate">{piece.title}</h1>
           <div className="flex items-center gap-2 text-xs text-muted mt-0.5">
@@ -437,6 +438,7 @@ export default function ContentPiece({ params }: { params: Record<string, string
             />
           </div>
         )}
+        <div className={`w-full flex flex-col items-center gap-4`}>
         <div className={`max-w-3xl mx-auto w-full flex flex-col gap-4`}>
           {/* THE primary action — the one-shot whole-video pipeline, dominant above everything else. */}
           <section className={`rounded-2xl border border-container1-border bg-container1 p-5 flex flex-col gap-3`}>
@@ -465,7 +467,7 @@ export default function ContentPiece({ params }: { params: Record<string, string
               <label className="flex flex-col gap-1 text-sm">
                 <span className="text-muted">{translate({ key: 'workspaces.content.styleLabel' })}</span>
                 {/* Q3: pick a known style by name (deduped across features) instead of guessing a magic string. */}
-                <Dropdown size="md" value={styleItems.find((i) => i.id === styleKey)} items={styleItems} onChange={(it) => { setStyleKey(String(it.id)); }} />
+                <Dropdown size="md" width="full" value={styleItems.find((i) => i.id === styleKey)} items={styleItems} onChange={(it) => { setStyleKey(String(it.id)); }} />
                 {/* M1 — a thumbnail preview of the chosen style's look, when the style carries a preview asset.
                     Prefer a video-gen style's preview (the piece is a video), and prefix backend-relative /media URLs. */}
                 {(() => {
@@ -487,11 +489,11 @@ export default function ContentPiece({ params }: { params: Record<string, string
                 <div className={`flex flex-col gap-3`}>
                   <label className="flex flex-col gap-1 text-sm">
                     <span className="text-muted">{translate({ key: 'workspaces.content.durationLabel' })}</span>
-                    <Dropdown size="md" value={durationItems.find((i) => i.id === durationKey)} items={durationItems} onChange={(it) => { setDurationKey(String(it.id)); }} />
+                    <Dropdown size="md" width="full" value={durationItems.find((i) => i.id === durationKey)} items={durationItems} onChange={(it) => { setDurationKey(String(it.id)); }} />
                   </label>
                   <label className="flex flex-col gap-1 text-sm">
                     <span className="text-muted">{translate({ key: 'workspaces.content.captionLabel' })}</span>
-                    <Dropdown size="md" value={captionItems.find((i) => i.id === captionKey)} items={captionItems} onChange={(it) => { setCaptionKey(String(it.id)); }} />
+                    <Dropdown size="md" width="full" value={captionItems.find((i) => i.id === captionKey)} items={captionItems} onChange={(it) => { setCaptionKey(String(it.id)); }} />
                   </label>
                   {/* GAP_SCAN F2 — how burned-in captions LOOK. Only meaningful with caption delivery on 'burn';
                       a soft track is styled by the player, and sidecar files carry no styling at all. */}
@@ -521,12 +523,12 @@ export default function ContentPiece({ params }: { params: Record<string, string
                   )}
                   <label className="flex flex-col gap-1 text-sm">
                     <span className="text-muted">{translate({ key: 'workspaces.content.aspectLabel' })}</span>
-                    <Dropdown size="md" value={aspectItems.find((i) => i.id === aspectKey)} items={aspectItems} onChange={(it) => { setAspectKey(String(it.id)); }} />
+                    <Dropdown size="md" width="full" value={aspectItems.find((i) => i.id === aspectKey)} items={aspectItems} onChange={(it) => { setAspectKey(String(it.id)); }} />
                   </label>
                   {templateItems.length > 1 && (
                     <label className="flex flex-col gap-1 text-sm">
                       <span className="text-muted">{translate({ key: 'workspaces.content.templateLabel' })}</span>
-                      <Dropdown size="md" value={templateItems.find((i) => i.id === templateKey) ?? templateItems[0]} items={templateItems} onChange={(it) => { setTemplateKey(String(it.id)); }} />
+                      <Dropdown size="md" width="full" value={templateItems.find((i) => i.id === templateKey) ?? templateItems[0]} items={templateItems} onChange={(it) => { setTemplateKey(String(it.id)); }} />
                     </label>
                   )}
                   <label className="flex flex-col gap-1 text-sm">
@@ -543,8 +545,12 @@ export default function ContentPiece({ params }: { params: Record<string, string
               </Disclosure>
             </div>
           </SectionCard>
+        </div>
 
-          {/* Assets — everything this piece has produced (or imported). */}
+          {/* Assets — everything this piece has produced (or imported). The assets ARE the visual product of
+              this page, so this container grows well past the narrow text column above instead of squeezing
+              the grid into the same 768px as the creative-direction form. */}
+          <div className={`max-w-6xl mx-auto w-full flex flex-col gap-4`}>
           <SectionCard
             title={translate({ key: 'workspaces.content.assetsTitle' })}
             right={
@@ -577,40 +583,51 @@ export default function ContentPiece({ params }: { params: Record<string, string
                 }
               />
             ) : (
-              <div className={`grid grid-cols-2 sm:grid-cols-3 gap-2`}>
+              <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2`}>
                 {piece.assets.map((a) => <AssetCard key={a.id} asset={a} connectedPlatforms={connectedPlatforms} onPublish={requestPublish} onUnpublish={unpublish} onRegenerate={regenerate} onEditRegion={setEditRegionAsset} onEditImage={setEditImageAsset} onCritique={critique} onInstructEdit={instructEdit} onRestyle={restyle} onTranscode={transcode} onTrimAudio={trimAudio} translate={translate} />)}
               </div>
             )}
           </SectionCard>
+          </div>
 
+          <div className={`max-w-3xl mx-auto w-full flex flex-col gap-4`}>
           {/* The occasional tools, grouped behind ONE disclosure so they never stack between the core inputs. */}
           <Disclosure summary={translate({ key: 'workspaces.content.toolsTitle' })}>
-            <div className={`flex flex-col gap-2`}>
+            <div className={`flex flex-col gap-3`}>
               <div className={`text-xs text-muted`}>{translate({ key: 'workspaces.content.toolsDesc' })}</div>
-              {/* capture-run (I1/I2 demo recorder). */}
-              <Disclosure summary={translate({ key: 'workspaces.content.captureTitle' })}>
-                <div className="flex flex-col gap-2">
+              {/* Single active tool panel (Segmented) instead of four more nested Disclosures — the audit's
+                  "three layers of identical accordions" finding. Two levels now: this Disclosure, then the
+                  panel below in a visibly lighter shell. */}
+              <Segmented
+                options={[
+                  { id: 'capture', ariaLabel: translate({ key: 'workspaces.content.toolCapture' }), label: <><Icon name="display" /><span className="hidden sm:inline">{translate({ key: 'workspaces.content.toolCapture' })}</span></> },
+                  { id: 'analyze', ariaLabel: translate({ key: 'workspaces.content.toolAnalyze' }), label: <><Icon name="eye" /><span className="hidden sm:inline">{translate({ key: 'workspaces.content.toolAnalyze' })}</span></> },
+                  { id: 'seo', ariaLabel: translate({ key: 'workspaces.content.toolSeo' }), label: <><Icon name="magnifying-glass" /><span className="hidden sm:inline">{translate({ key: 'workspaces.content.toolSeo' })}</span></> },
+                  { id: 'thumb', ariaLabel: translate({ key: 'workspaces.content.toolThumb' }), label: <><Icon name="image" /><span className="hidden sm:inline">{translate({ key: 'workspaces.content.toolThumb' })}</span></> },
+                ]}
+                value={activeTool}
+                onChange={setActiveTool}
+              />
+              <div className={`rounded-xl border border-container2-border bg-container2/50 p-3 flex flex-col gap-2`}>
+                {activeTool === 'capture' && (<>
+                  {/* capture-run (I1/I2 demo recorder). */}
                   <div className="text-xs text-muted">{translate({ key: 'workspaces.content.captureDesc' })}</div>
-                  <input value={captureUrl} onChange={(e) => { setCaptureUrl(e.target.value); }} placeholder={translate({ key: 'workspaces.content.captureUrlPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
-                  <input value={captureGoal} onChange={(e) => { setCaptureGoal(e.target.value); }} placeholder={translate({ key: 'workspaces.content.captureGoalPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
-                  <button type="button" disabled={!/^https?:\/\//.test(captureUrl.trim())} onClick={() => { runContentOp('capture-run', piece.id, { url: captureUrl.trim(), ...(captureGoal.trim() ? { goal: captureGoal.trim() } : {}) }); setCaptureUrl(''); setCaptureGoal(''); }} className="self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">{translate({ key: 'workspaces.content.captureBtn' })}</button>
-                </div>
-              </Disclosure>
-              {/* content-analyze-reference-video — seed a script from a reference video. */}
-              <Disclosure summary={translate({ key: 'workspaces.content.analyzeVideoTitle' })}>
-                <div className="flex flex-col gap-2">
+                  <input value={captureUrl} onChange={(e) => { setCaptureUrl(e.target.value); }} placeholder={translate({ key: 'workspaces.content.captureUrlPlaceholder' })} className="rounded-lg border border-container1-border bg-container1 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+                  <input value={captureGoal} onChange={(e) => { setCaptureGoal(e.target.value); }} placeholder={translate({ key: 'workspaces.content.captureGoalPlaceholder' })} className="rounded-lg border border-container1-border bg-container1 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+                  <button type="button" disabled={!/^https?:\/\//.test(captureUrl.trim())} onClick={() => { runContentOp('capture-run', piece.id, { url: captureUrl.trim(), ...(captureGoal.trim() ? { goal: captureGoal.trim() } : {}) }); setCaptureUrl(''); setCaptureGoal(''); }} className={`self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${FOCUS_RING}`}>{translate({ key: 'workspaces.content.captureBtn' })}</button>
+                </>)}
+                {activeTool === 'analyze' && (<>
+                  {/* content-analyze-reference-video — seed a script from a reference video. */}
                   <div className="text-xs text-muted">{translate({ key: 'workspaces.content.analyzeVideoDesc' })}</div>
-                  <input value={analyzeVideoUrl} onChange={(e) => { setAnalyzeVideoUrl(e.target.value); }} placeholder={translate({ key: 'workspaces.content.analyzeVideoUrlPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
-                  <textarea value={analyzeStory} onChange={(e) => { setAnalyzeStory(e.target.value); }} rows={2} placeholder={translate({ key: 'workspaces.content.analyzeStoryPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring resize-none" />
-                  <button type="button" disabled={!/^https?:\/\//.test(analyzeVideoUrl.trim()) || analyzeStory.trim().length === 0} onClick={() => { runContentOp('content-analyze-reference-video', piece.id, { referenceVideoUrl: analyzeVideoUrl.trim(), newStory: analyzeStory.trim() }); setAnalyzeVideoUrl(''); setAnalyzeStory(''); }} className="self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">{translate({ key: 'workspaces.content.analyzeVideoBtn' })}</button>
-                </div>
-              </Disclosure>
-              {/* GAP_SCAN F3 — title/description/tag suggestions, scored against THIS account's own view
-                  counts. The deterministic score works with no key; the alternatives need a provider. */}
-              <Disclosure summary={translate({ key: 'workspaces.content.seoTitle' })}>
-                <div className="flex flex-col gap-2">
+                  <input value={analyzeVideoUrl} onChange={(e) => { setAnalyzeVideoUrl(e.target.value); }} placeholder={translate({ key: 'workspaces.content.analyzeVideoUrlPlaceholder' })} className="rounded-lg border border-container1-border bg-container1 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+                  <textarea value={analyzeStory} onChange={(e) => { setAnalyzeStory(e.target.value); }} rows={2} placeholder={translate({ key: 'workspaces.content.analyzeStoryPlaceholder' })} className="rounded-lg border border-container1-border bg-container1 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring resize-none" />
+                  <button type="button" disabled={!/^https?:\/\//.test(analyzeVideoUrl.trim()) || analyzeStory.trim().length === 0} onClick={() => { runContentOp('content-analyze-reference-video', piece.id, { referenceVideoUrl: analyzeVideoUrl.trim(), newStory: analyzeStory.trim() }); setAnalyzeVideoUrl(''); setAnalyzeStory(''); }} className={`self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${FOCUS_RING}`}>{translate({ key: 'workspaces.content.analyzeVideoBtn' })}</button>
+                </>)}
+                {activeTool === 'seo' && (<>
+                  {/* GAP_SCAN F3 — title/description/tag suggestions, scored against THIS account's own view
+                      counts. The deterministic score works with no key; the alternatives need a provider. */}
                   <div className="text-xs text-muted">{translate({ key: 'workspaces.content.seoDesc' })}</div>
-                  <button type="button" disabled={seoBusy} onClick={loadSeo} className="self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
+                  <button type="button" disabled={seoBusy} onClick={loadSeo} className={`self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${FOCUS_RING}`}>
                     {translate({ key: seoBusy ? 'workspaces.content.seoBusy' : 'workspaces.content.seoAnalyze' })}
                   </button>
                   {seo && (
@@ -627,28 +644,27 @@ export default function ContentPiece({ params }: { params: Record<string, string
                       {seo.titles.length > 0 && (
                         <div className="flex flex-col gap-1">
                           <span className="text-xs font-medium text-muted">{translate({ key: 'workspaces.content.seoAlternatives' })}</span>
-                          {seo.titles.map((t) => <div key={t} className="text-sm text-title rounded-lg border border-container2-border bg-container2 px-2.5 py-1.5">{t}</div>)}
+                          {seo.titles.map((t) => <div key={t} className="text-sm text-title rounded-lg border border-container1-border bg-container1 px-2.5 py-1.5">{t}</div>)}
                         </div>
                       )}
                       {seo.tags.length > 0 && <div className="text-xs text-muted">{translate({ key: 'workspaces.content.seoTags' })}{': '}{seo.tags.join(', ')}</div>}
                     </div>
                   )}
-                </div>
-              </Disclosure>
-              {/* GAP_SCAN F1 — compose a thumbnail: headline over a background. The template path is FREE
-                  (no key, no spend); adding a background prompt makes it a paid image-gen, cost-confirmed. */}
-              <Disclosure summary={translate({ key: 'workspaces.content.thumbTitle' })}>
-                <div className="flex flex-col gap-2">
+                </>)}
+                {activeTool === 'thumb' && (<>
+                  {/* GAP_SCAN F1 — compose a thumbnail: headline over a background. The template path is FREE
+                      (no key, no spend); adding a background prompt makes it a paid image-gen, cost-confirmed. */}
                   <div className="text-xs text-muted">{translate({ key: 'workspaces.content.thumbDesc' })}</div>
-                  <input value={thumbHeadline} onChange={(e) => { setThumbHeadline(e.target.value); }} placeholder={piece.title} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
-                  <input value={thumbPrompt} onChange={(e) => { setThumbPrompt(e.target.value); }} placeholder={translate({ key: 'workspaces.content.thumbBgPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
-                  <button type="button" onClick={composeThumbnail} className="self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover cursor-pointer flex items-center gap-1.5">
+                  <input value={thumbHeadline} onChange={(e) => { setThumbHeadline(e.target.value); }} placeholder={piece.title} className="rounded-lg border border-container1-border bg-container1 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+                  <input value={thumbPrompt} onChange={(e) => { setThumbPrompt(e.target.value); }} placeholder={translate({ key: 'workspaces.content.thumbBgPlaceholder' })} className="rounded-lg border border-container1-border bg-container1 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />
+                  <button type="button" onClick={composeThumbnail} className={`self-start rounded-lg bg-primary text-title-primary px-3 py-2 text-sm font-medium hover:bg-primary-hover cursor-pointer flex items-center gap-1.5 ${FOCUS_RING}`}>
                     <Icon name="image" /> {translate({ key: thumbPrompt.trim().length > 0 ? 'workspaces.content.thumbComposeAi' : 'workspaces.content.thumbCompose' })}
                   </button>
-                </div>
-              </Disclosure>
+                </>)}
+              </div>
             </div>
           </Disclosure>
+          </div>
         </div>
       </div>
       {editRegionAsset && <ImageRegionEditor pieceId={piece.id} asset={{ id: editRegionAsset.id, url: editRegionAsset.url }} onClose={() => { setEditRegionAsset(null); }} />}

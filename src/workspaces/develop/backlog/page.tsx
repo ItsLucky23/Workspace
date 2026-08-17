@@ -16,8 +16,8 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Dropdown from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../../_components/Icon';
-import { SPRING_SOFT } from '../../_components/motion';
-import { AvatarStack, EmptyState, IconButton, LabelChip, PopMenu, Segmented, StatusPill, WsButton, type PopMenuItem } from '../../_components/primitives';
+import { Collapse, SPRING_SOFT } from '../../_components/motion';
+import { AvatarStack, EmptyState, FOCUS_RING, IconButton, LabelChip, PopMenu, Segmented, StatusPill, WsButton, type PopMenuItem } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { Ticket, TicketStatus } from '../../_data/types';
 import { BulkActionsBar, type BulkPicker, type PickerItem } from './BulkBar';
@@ -183,7 +183,7 @@ export default function Backlog() {
           </div>
           <IconButton icon="filter" title={translate({ key: 'workspaces.backlog.filters' })} active={filtersOpen || filtersActive} onClick={() => { setFiltersOpen((o) => !o); }} />
         </div>
-        {filtersOpen && (
+        <Collapse open={filtersOpen}>
           <div className={`flex flex-wrap items-center gap-x-4 gap-y-3 rounded-xl border border-container1-border bg-container1 px-3 py-2.5`}>
             <div className={`sm:hidden`}>
               <Segmented<Quick> value={quick} onChange={setQuick} options={quickOptions} />
@@ -193,7 +193,7 @@ export default function Backlog() {
               <Dropdown size="sm" value={personItems.find((p) => p.id === person)} items={personItems} onChange={(it) => { setPerson(String(it.id)); }} />
             </div>
           </div>
-        )}
+        </Collapse>
       </div>
 
       <div className={`flex-1 min-h-0 overflow-auto px-4 md:px-6 pb-24`}>
@@ -209,7 +209,12 @@ export default function Backlog() {
             />
           )}
           {tickets.length > 0 && filtered.length === 0 && (
-            <EmptyState icon="magnifying-glass" title={translate({ key: 'workspaces.backlog.emptyTitle' })} sub={translate({ key: 'workspaces.backlog.emptySub' })} />
+            <EmptyState
+              icon="magnifying-glass"
+              title={translate({ key: 'workspaces.backlog.emptyTitle' })}
+              sub={translate({ key: 'workspaces.backlog.emptySub' })}
+              action={<WsButton variant="secondary" icon="xmark" onClick={() => { setQ(''); setQuick('all'); setPerson('all'); }}>{translate({ key: 'workspaces.board.clearFilters' })}</WsButton>}
+            />
           )}
           {filtered.length > 0 && groups.map(({ sprint, rows }) => {
             const open = openSprints[sprint.id] ?? true;
@@ -217,7 +222,7 @@ export default function Backlog() {
               <div key={sprint.id} className={`rounded-2xl border border-container1-border bg-container1`}>
                 <div className={`w-full flex items-center rounded-t-2xl hover:bg-container1-hover transition-colors ${open ? '' : 'rounded-b-2xl'}`}>
                   <button type="button" onClick={() => { setOpenSprints((p) => ({ ...p, [sprint.id]: !open })); }}
-                    className={`flex-1 min-w-0 flex items-center justify-between gap-3 px-4 h-12 cursor-pointer`}>
+                    className={`flex-1 min-w-0 flex items-center justify-between gap-3 px-4 h-12 cursor-pointer ${FOCUS_RING}`}>
                     <span className={`flex items-center gap-2 min-w-0`}>
                       <motion.span animate={{ rotate: open ? 0 : -90 }} transition={SPRING_SOFT} className={`inline-flex w-4 justify-center text-muted shrink-0`}><Icon name="angle-down" /></motion.span>
                       <span className={`text-sm font-semibold text-title whitespace-nowrap`}>{sprint.name}</span>
@@ -252,7 +257,7 @@ export default function Backlog() {
                         <Row key={t.id} ticket={t} selectMode={selectMode} selected={selected.has(t.id)} onToggle={() => { toggleRow(t.id); }} onOpen={() => { openTicket(t.id); }} />
                       ))}
                       <button type="button" onClick={() => { openNewTicket(sprint.id === 'backlog' ? undefined : sprint.id); }}
-                        className={`w-full flex items-center gap-2 px-4 py-2.5 border-t border-divider text-sm text-muted hover:bg-container2/40 cursor-pointer transition-colors`}>
+                        className={`w-full flex items-center gap-2 px-4 py-2.5 border-t border-divider text-sm text-muted hover:bg-container2/40 cursor-pointer transition-colors ${FOCUS_RING}`}>
                         <Icon name="plus" /> {translate({ key: 'workspaces.backlog.addTicket' })}
                       </button>
                     </motion.div>
@@ -265,7 +270,7 @@ export default function Backlog() {
               list (same op as the overflow-menu entry). */}
           {filtered.length > 0 && (
             <button type="button" onClick={openNewSprint}
-              className={`w-full flex items-center justify-center gap-2 rounded-2xl border border-dashed border-container1-border px-4 py-3 text-sm text-muted hover:text-title hover:bg-container1 cursor-pointer transition-colors`}>
+              className={`w-full flex items-center justify-center gap-2 rounded-2xl border border-dashed border-container1-border px-4 py-3 text-sm text-muted hover:text-title hover:bg-container1 cursor-pointer transition-colors ${FOCUS_RING}`}>
               <Icon name="plus" /> {translate({ key: 'workspaces.backlog.newSprint' })}
             </button>
           )}

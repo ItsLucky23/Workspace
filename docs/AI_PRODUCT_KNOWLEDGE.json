@@ -1,6 +1,6 @@
 {
-  "hash": "5c07fa968d25140f",
-  "chunkCount": 244,
+  "hash": "cd64eb93a87809ed",
+  "chunkCount": 245,
   "chunks": [
     {
       "id": "cap-001",
@@ -1465,6 +1465,12 @@
       "kind": "decision",
       "title": "Settings autosave per row, and one canonical account page",
       "text": "ADR 0309: Settings autosave per row, and one canonical account page. The UI audit found three unrelated persistence models coexisting, sometimes on one card: - `src/settings/page.tsx` — a Save-button flow where the avatar autosaves anyway, and theme and language apply instantly but only persist on Save, with no dirty indicator at all. - `src/workspaces/settings/page.tsx` Account tab — the same account fields, autosaving via `settings/updateUser`, reachable from the other page by a \"Full Settings\" link that lands on what looks like the same controls. - Various workspace tabs — a mix, with one Admin tab carrying three different row grammars for the same \"labelled setting\" concept. Separately, the audit's single loudest structural finding was that most pages degenerate into heading + paragraph + input repeated down the page, because no shared row/section primitive existed for authors to reach for. Decision: **One row grammar.** `SettingRow` + `FormSection` in `src/workspaces/_components/settings.tsx` are the way a setting is rendered: label and quiet help text on the left, control right-aligned on the right, hairline-separated rows inside a titled group. Long explanations go behind the row's `info` disclosure, not into a competing paragraph. `stacked` handles textareas and anything needing the full width. **Autosave everywhere, with a per-row status pill.** `SaveStatus` / `SavePill` give each row its own `saving` / `saved` / `error` affordance; a settled row shows nothing. No Sa"
+    },
+    {
+      "id": "adr-0310",
+      "kind": "decision",
+      "title": "Each duplicated concept gets one owning surface",
+      "text": "ADR 0310: Each duplicated concept gets one owning surface. The UI audit (`src/workspaces/_docs/UI_AUDIT_2026-08-17.md`) found ten concepts implemented on more than one screen with no stated relationship. The owner could see the symptom on one of them (an \"AI persona\" field on every pipeline stage plus a global system prompt on `/workspace`) and asked what the rest were. Common failure shape: two screens write the same record through different paths, and neither mentions the other, so a user cannot tell whether editing here changes something there. ADR 0308 settled the AI-prompt case. This decision settles the remaining six the owner ruled on. Decision: **One owner per concept, and the non-owner says so on screen.** 1. **Budget caps** — `insights/usage` owns them. Caps become deletable, and the near-cap alert now evaluates *every* named cap and names which one is over. The content header chip and the content Admin tab link to the owner. (This one also carried a real bug: the alert watched only the legacy single `budget`, so a secondary named cap could run to its limit silently — the exact case caps exist to prevent.) 2. **Context documents** — `develop/sources` owns them; the `aiEditable` toggle is removed from the workspace-settings starter-doc list, which now links out. They also get archive + confirm-gated delete, mirroring `content/documents`. 3. **Brand library** — \"Use as brand\" overwrites, but only behind a confirm showing a before/after field diff, with provenance (\"la"
     }
   ]
 }

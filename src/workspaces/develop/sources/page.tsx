@@ -16,7 +16,7 @@ import { menuHandler } from 'src/_functions/menuHandler';
 
 import Icon from '../../_components/Icon';
 import { Sheet } from '../../_components/motion';
-import { Disclosure, EmptyState, PopMenu, Tabs, Toggle, WsButton, type PopMenuItem, type TabDef } from '../../_components/primitives';
+import { Disclosure, EmptyState, FOCUS_RING, IconButton, PopMenu, Tabs, Toggle, WsButton, type PopMenuItem, type TabDef } from '../../_components/primitives';
 import type { InfoDoc, RagIndexStatus, SkillEntry } from '../../_data/types';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 
@@ -28,12 +28,21 @@ const SOURCE_TINT: Record<InfoDoc['source'], string> = {
   'design-system': 'bg-correct/15 text-correct',
 };
 
-function StageChips({ stages }: { stages?: string[] }) {
+//? A stage chip is a cross-reference, not decoration: tapping it should get you to that
+//? stage's config, not leave you to memorize the name and go find it yourself.
+function StageChips({ stages, onOpenStage }: { stages?: string[]; onOpenStage: (stage: string) => void }) {
   const translate = useTranslator();
   if (!stages || stages.length === 0) return <span className={`text-sm text-muted`}>{translate({ key: 'workspaces.sources.noStages' })}</span>;
   return (
     <div className={`flex flex-wrap gap-1`}>
-      {stages.map((s) => <span key={s} className={`rounded-md bg-container2 px-1.5 py-0.5 text-[11px] text-common`}>{s}</span>)}
+      {stages.map((s) => (
+        <button
+          key={s} type="button" onClick={() => { onOpenStage(s); }}
+          className={`rounded-md bg-container2 px-1.5 py-0.5 text-[11px] text-common hover:bg-container2-hover hover:text-title transition-colors cursor-pointer ${FOCUS_RING}`}
+        >
+          {s}
+        </button>
+      ))}
     </div>
   );
 }
@@ -51,7 +60,7 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 //? toggle op is injected as a prop (lesson 0011: never useWorkspaces in here).
 //? Local state keeps the toggle live across taps; `next` (not a stale doc closure)
 //? is what reaches toggleSkill, so double-toggling stays correct.
-function DocDetail({ doc, onSetAiEditable }: { doc: InfoDoc; onSetAiEditable: (next: boolean) => void }) {
+function DocDetail({ doc, onSetAiEditable, onOpenStage }: { doc: InfoDoc; onSetAiEditable: (next: boolean) => void; onOpenStage: (stage: string) => void }) {
   const translate = useTranslator();
   const [aiEditable, setAiEditable] = useState(doc.aiEditable);
   return (
@@ -61,10 +70,10 @@ function DocDetail({ doc, onSetAiEditable }: { doc: InfoDoc; onSetAiEditable: (n
       <DetailRow label={translate({ key: 'workspaces.sources.source' })}>{doc.source}</DetailRow>
       <DetailRow label={translate({ key: 'workspaces.sources.lastUpdated' })}>{doc.updated} · {doc.note}</DetailRow>
       {doc.pendingBranches && <DetailRow label={translate({ key: 'workspaces.sources.notYetProcessed' })}><span className={`text-warning`}>{doc.pendingBranches.join(', ')}</span></DetailRow>}
-      <DetailRow label={translate({ key: 'workspaces.sources.loadedByStages' })}><StageChips stages={doc.usedByStages} /></DetailRow>
+      <DetailRow label={translate({ key: 'workspaces.sources.loadedByStages' })}><StageChips stages={doc.usedByStages} onOpenStage={onOpenStage} /></DetailRow>
       <DetailRow label={translate({ key: 'workspaces.sources.aiEditable' })}>
         <div className={`flex flex-col gap-1.5`}>
-          <Toggle on={aiEditable} onChange={(next) => { setAiEditable(next); onSetAiEditable(next); }} />
+          <Toggle on={aiEditable} onChange={(next) => { setAiEditable(next); onSetAiEditable(next); }} ariaLabel={doc.name} />
           <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.sources.aiEditableHint' })}</span>
         </div>
       </DetailRow>
@@ -72,7 +81,7 @@ function DocDetail({ doc, onSetAiEditable }: { doc: InfoDoc; onSetAiEditable: (n
   );
 }
 
-function SkillDetail({ skill }: { skill: SkillEntry }) {
+function SkillDetail({ skill, onOpenStage }: { skill: SkillEntry; onOpenStage: (stage: string) => void }) {
   const translate = useTranslator();
   return (
     <div className={`p-5 w-full`}>
@@ -81,16 +90,17 @@ function SkillDetail({ skill }: { skill: SkillEntry }) {
       <DetailRow label={translate({ key: 'workspaces.sources.type' })}>{skill.kind === 'frozen' ? translate({ key: 'workspaces.sources.frozenPerCommit' }) : translate({ key: 'workspaces.sources.live' })}{skill.model ? ` · ${skill.model}` : ''}</DetailRow>
       <DetailRow label={translate({ key: 'workspaces.sources.status' })}>{skill.status}</DetailRow>
       <DetailRow label={translate({ key: 'workspaces.sources.lastIndexed' })}>{skill.lastIndexed ?? '—'}</DetailRow>
-      <DetailRow label={translate({ key: 'workspaces.sources.enabledByStages' })}><StageChips stages={skill.usedByStages} /></DetailRow>
+      <DetailRow label={translate({ key: 'workspaces.sources.enabledByStages' })}><StageChips stages={skill.usedByStages} onOpenStage={onOpenStage} /></DetailRow>
     </div>
   );
 }
 
 function DetailHead({ title }: { title: string }) {
+  const translate = useTranslator();
   return (
     <div className={`flex items-center justify-between gap-2 mb-2`}>
       <span className={`font-mono text-sm font-semibold text-title truncate`}>{title}</span>
-      <button type="button" onClick={() => menuHandler.close()} className={`w-7 h-7 flex items-center justify-center rounded-lg text-muted hover:bg-container2 cursor-pointer`}><Icon name="xmark" /></button>
+      <IconButton icon="xmark" onClick={() => { menuHandler.close(); }} title={translate({ key: 'workspaces.knowledge.detailClose' })} size="sm" />
     </div>
   );
 }
@@ -124,10 +134,10 @@ function CodeIndexStatus({ ragIndex }: { ragIndex: RagIndexStatus | null }) {
   );
 }
 
-function DocCard({ doc, onOpen, onSetAiEditable }: { doc: InfoDoc; onOpen: () => void; onSetAiEditable: (next: boolean) => void }) {
+function DocCard({ doc, onOpen, onSetAiEditable, onOpenStage }: { doc: InfoDoc; onOpen: () => void; onSetAiEditable: (next: boolean) => void; onOpenStage: (stage: string) => void }) {
   const translate = useTranslator();
   const { scanDocs } = useWorkspaces();
-  const menuItems: PopMenuItem[] = [{ label: translate({ key: 'workspaces.sources.details' }), onClick: () => { openDetail(<DocDetail doc={doc} onSetAiEditable={onSetAiEditable} />); } }];
+  const menuItems: PopMenuItem[] = [{ label: translate({ key: 'workspaces.sources.details' }), onClick: () => { openDetail(<DocDetail doc={doc} onSetAiEditable={onSetAiEditable} onOpenStage={onOpenStage} />); } }];
   //? #66 — 'Regenerate' re-runs the doc scan (the available action in the frozen surface; no per-doc op).
   if (doc.source !== 'uploaded') menuItems.push({ label: translate({ key: 'workspaces.sources.regenerate' }), icon: 'wave-square', onClick: () => { scanDocs(); notify.success({ key: 'workspaces.sources.regenerateQueued' }); } });
   return (
@@ -155,10 +165,10 @@ function DocCard({ doc, onOpen, onSetAiEditable }: { doc: InfoDoc; onOpen: () =>
   );
 }
 
-function SkillRow({ skill, onToggle }: { skill: SkillEntry; onToggle: () => void }) {
+function SkillRow({ skill, onToggle, onOpenStage }: { skill: SkillEntry; onToggle: () => void; onOpenStage: (stage: string) => void }) {
   const translate = useTranslator();
   const { scanIndex } = useWorkspaces();
-  const menuItems: PopMenuItem[] = [{ label: translate({ key: 'workspaces.sources.details' }), onClick: () => { openDetail(<SkillDetail skill={skill} />); } }];
+  const menuItems: PopMenuItem[] = [{ label: translate({ key: 'workspaces.sources.details' }), onClick: () => { openDetail(<SkillDetail skill={skill} onOpenStage={onOpenStage} />); } }];
   //? #66 — 'Reindex' rebuilds the RAG code index (workspace-level scan-index; no per-skill op).
   if (skill.kind === 'frozen') menuItems.push({ label: translate({ key: 'workspaces.sources.reindex' }), icon: 'database', onClick: () => { scanIndex(); notify.success({ key: 'workspaces.sources.reindexQueued' }); } });
   return (
@@ -171,7 +181,7 @@ function SkillRow({ skill, onToggle }: { skill: SkillEntry; onToggle: () => void
         </div>
         <div className={`text-xs text-muted truncate`}>{skill.status}{skill.model ? ` · ${skill.model}` : ''}</div>
       </div>
-      <Toggle on={skill.on} onChange={onToggle} />
+      <Toggle on={skill.on} onChange={onToggle} ariaLabel={skill.name} />
       <PopMenu items={menuItems} ariaLabel={skill.name} />
     </div>
   );
@@ -181,7 +191,7 @@ export const template = 'workspaces';
 
 export default function Sources() {
   const translate = useTranslator();
-  const { docs, skills, toggleSkill, scanDocs, scanIndex, ragIndex, repo, addInfoDoc, indexMemory } = useWorkspaces();
+  const { docs, skills, toggleSkill, scanDocs, scanIndex, ragIndex, repo, addInfoDoc, indexMemory, focusSetup } = useWorkspaces();
   const [tab, setTab] = useState('docs');
   const [preview, setPreview] = useState<InfoDoc | null>(null);
   const [reindexing, setReindexing] = useState(false);
@@ -195,6 +205,9 @@ export default function Sources() {
   };
   const openUpload = () => { fileRef.current?.click(); };
   const startReindex = () => { setReindexing(true); scanIndex(); };
+  //? Jump from a stage chip to that stage's Pipeline config; closing the dialog first so the
+  //? navigation doesn't leave it stranded open behind the new page.
+  const onOpenStage = (stage: string) => { menuHandler.close(); focusSetup({ view: 'pipeline', tab: stage }); };
   //? Clear the pending state once the reindex delta lands (the RAG status updates).
   useEffect(() => { setReindexing(false); }, [ragIndex]);
 
@@ -221,12 +234,12 @@ export default function Sources() {
           <h1 className={`text-xl md:text-2xl font-semibold text-title`}>{translate({ key: 'workspaces.sources.title' })}</h1>
           <p className={`mt-1 text-sm text-muted`}>{translate({ key: 'workspaces.sources.subtitle' })}</p>
         </div>
-        {tab === 'docs' && (
-          <div className={`flex items-center gap-2 shrink-0`}>
-            <PopMenu items={maintenanceItems} label={translate({ key: 'workspaces.sources.maintenance' })} />
-            <WsButton icon="plus" onClick={openUpload} className={`flex-1 md:flex-initial`}>{translate({ key: 'workspaces.sources.uploadSpec' })}</WsButton>
-          </div>
-        )}
+        <div className={`flex items-center gap-2 shrink-0`}>
+          {/* Maintenance (scan repo / reindex code / reindex memory) also affects the Skills tab's own
+              data — the RAG code index feeds `skills` — so it stays available regardless of active tab. */}
+          <PopMenu items={maintenanceItems} label={translate({ key: 'workspaces.sources.maintenance' })} />
+          {tab === 'docs' && <WsButton icon="plus" onClick={openUpload} className={`flex-1 md:flex-initial`}>{translate({ key: 'workspaces.sources.uploadSpec' })}</WsButton>}
+        </div>
       </div>
 
       <div className={`px-4 md:px-6`}>
@@ -251,7 +264,7 @@ export default function Sources() {
                   )}
                 />
               )
-              : <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3`}>{docs.map((d) => <DocCard key={d.id} doc={d} onOpen={() => { setPreview(d); }} onSetAiEditable={(next) => { toggleSkill(d.id, next); }} />)}</div>}
+              : <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3`}>{docs.map((d) => <DocCard key={d.id} doc={d} onOpen={() => { setPreview(d); }} onSetAiEditable={(next) => { toggleSkill(d.id, next); }} onOpenStage={onOpenStage} />)}</div>}
           </div>
         )}
         {tab === 'skills' && (
@@ -269,7 +282,7 @@ export default function Sources() {
             : (
               <div className={`grid grid-cols-1 lg:grid-cols-2 gap-2`}>
                 {skills.map((s) => (
-                  <SkillRow key={s.id} skill={s} onToggle={() => { toggleSkill(s.id, !s.on); }} />
+                  <SkillRow key={s.id} skill={s} onToggle={() => { toggleSkill(s.id, !s.on); }} onOpenStage={onOpenStage} />
                 ))}
               </div>
             )
@@ -281,7 +294,7 @@ export default function Sources() {
           <>
             <div className={`flex items-center justify-between gap-2 px-4 h-14 border-b border-divider shrink-0`}>
               <span className={`font-mono text-sm text-title truncate`}>{preview.name}</span>
-              <button type="button" onClick={() => { setPreview(null); }} className={`w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:bg-container2 cursor-pointer`}><Icon name="xmark" /></button>
+              <IconButton icon="xmark" onClick={() => { setPreview(null); }} title={translate({ key: 'workspaces.knowledge.detailClose' })} size="sm" />
             </div>
             <div className={`flex-1 min-h-0 overflow-y-auto p-4`}>
               <pre className={`whitespace-pre-wrap font-mono text-xs text-common leading-relaxed`}>{preview.content}</pre>

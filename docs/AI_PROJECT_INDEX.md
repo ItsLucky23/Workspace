@@ -213,10 +213,11 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | `confetti.ts` | `_functions/confetti.ts` | default | — |
 | `menuHandler.ts` | `_functions/menuHandler.ts` | menuHandler, setMenuHandlerRef | — |
 
-## Components — `src/_components/` (61 exports across 22 files)
+## Components — `src/_components/` (66 exports across 23 files)
 
 | File | Path | Exports | Summary |
 | --- | --- | --- | --- |
+| `AuthShell.tsx` | `_components/AuthShell.tsx` | AUTH_BUTTON_CLASS, AUTH_INPUT_CLASS, AUTH_STEP_MOTION, PasswordField, +1 | The auth surfaces (/login, /register, /reset-password) each rendered a bare card in an empty |
 | `Avatar.tsx` | `_components/Avatar.tsx` | default | — |
 | `ConfirmMenu.tsx` | `_components/ConfirmMenu.tsx` | ConfirmMenu, ConfirmMenuProps | — |
 | `ErrorPage.tsx` | `_components/ErrorPage.tsx` | default | — |
@@ -262,6 +263,11 @@ _(no cross-references detected)_
 
 | Component | Path |
 | --- | --- |
+| `AUTH_BUTTON_CLASS` | `_components/AuthShell.tsx` |
+| `AUTH_INPUT_CLASS` | `_components/AuthShell.tsx` |
+| `AUTH_STEP_MOTION` | `_components/AuthShell.tsx` |
+| `default` | `_components/AuthShell.tsx` |
+| `PasswordField` | `_components/AuthShell.tsx` |
 | `default` | `_components/Avatar.tsx` |
 | `ConfirmMenu` | `_components/ConfirmMenu.tsx` |
 | `ConfirmMenuProps` | `_components/ConfirmMenu.tsx` |

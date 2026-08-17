@@ -1,21 +1,42 @@
 import { useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { faCircleCheck } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { loginPageUrl } from 'config';
 import { i18nNotify as notify, useTranslator } from '@luckystack/core/client';
+import AuthShell, { AUTH_BUTTON_CLASS, AUTH_INPUT_CLASS, AUTH_STEP_MOTION, PasswordField } from 'src/_components/AuthShell';
 import { apiRequest } from 'src/_sockets/apiRequest';
 
 export const template = 'plain';
 
 export default function ResetPasswordPage() {
+  const translate = useTranslator();
   const [params] = useSearchParams();
   const token = useMemo(() => params.get('token') ?? '', [params]);
 
   return (
-    <div className="w-full h-full overflow-y-auto bg-background">
-      <div className="min-h-full w-full flex flex-col items-center justify-center p-4">
-        {token ? <ConfirmForm token={token} /> : <RequestForm />}
-      </div>
+    <AuthShell
+      footer={
+        <Link to={loginPageUrl} className="text-primary hover:text-primary-hover font-medium cursor-pointer">
+          {translate({ key: 'login.resetBackToLogin' })}
+        </Link>
+      }
+    >
+      {token ? <ConfirmForm token={token} /> : <RequestForm />}
+    </AuthShell>
+  );
+}
+
+//? Both success states used to be a plain body paragraph — identical in weight and colour to the
+//? intro copy above them, so the one durable confirmation a user gets (the toast expires) was easy
+//? to skim straight past. A check icon + the semantic `correct` colour makes it read as a state.
+function SuccessNote({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-2 rounded-lg border border-container1-border bg-container2 p-3 text-sm text-correct">
+      <FontAwesomeIcon icon={faCircleCheck} className="mt-0.5 shrink-0" />
+      <span className="font-medium">{children}</span>
     </div>
   );
 }
@@ -49,47 +70,39 @@ function RequestForm() {
   };
 
   return (
-    <form
-      onSubmit={(e) => void handleSubmit(e)}
-      className="p-6 bg-container1 border border-container1-border rounded-xl shadow-sm text-title flex flex-col gap-5 max-w-[360px] w-full"
-    >
+    <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-5 w-full">
       <div className="flex flex-col gap-1">
         <h1 className="text-lg font-semibold">{translate({ key: 'login.resetTitle' })}</h1>
         <p className="text-xs text-common">{translate({ key: 'login.resetIntro' })}</p>
       </div>
 
-      {submitted ? (
-        <p className="text-sm text-common">{translate({ key: 'login.resetCheckInbox' })}</p>
-      ) : (
-        <>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="reset-email" className="font-medium text-xs">
-              {translate({ key: 'login.emailAddress' })}
-            </label>
-            <input
-              id="reset-email"
-              ref={inputRef}
-              type="email"
-              required
-              placeholder="you@example.com"
-              className="rounded-md w-full h-9 border border-container1-border bg-container1 px-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-colors"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="h-9 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors cursor-pointer disabled:opacity-60"
-          >
-            {loading ? 'Loading...' : translate({ key: 'login.resetSendLink' })}
-          </button>
-        </>
-      )}
-
-      <div className="text-xs text-common text-center">
-        <Link to={loginPageUrl} className="text-primary hover:text-primary-hover font-medium cursor-pointer">
-          {translate({ key: 'login.resetBackToLogin' })}
-        </Link>
-      </div>
+      <AnimatePresence mode="wait" initial={false}>
+        {submitted ? (
+          <motion.div key="sent" {...AUTH_STEP_MOTION}>
+            <SuccessNote>{translate({ key: 'login.resetCheckInbox' })}</SuccessNote>
+          </motion.div>
+        ) : (
+          <motion.div key="form" {...AUTH_STEP_MOTION} className="flex flex-col gap-5">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="reset-email" className="font-medium text-xs">
+                {translate({ key: 'login.emailAddress' })}
+              </label>
+              <input
+                id="reset-email"
+                ref={inputRef}
+                type="email"
+                autoComplete="email"
+                required
+                placeholder="you@example.com"
+                className={AUTH_INPUT_CLASS}
+              />
+            </div>
+            <button type="submit" disabled={loading} className={AUTH_BUTTON_CLASS}>
+              {loading ? translate({ key: 'login.loading' }) : translate({ key: 'login.resetSendLink' })}
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </form>
   );
 }
@@ -100,8 +113,14 @@ function ConfirmForm({ token }: { token: string }) {
   const [done, setDone] = useState(false);
   const passwordRef = useRef<HTMLInputElement>(null);
   const confirmRef = useRef<HTMLInputElement>(null);
+  //? `null` until the confirm field has something in it — a mismatch warning on an empty field would
+  //? shout at the user before they've typed. Live so the mismatch shows up before the round-trip.
+  const [matches, setMatches] = useState<boolean | null>(null);
 
-  const inputClass = 'rounded-md w-full h-9 border border-container1-border bg-container1 px-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-colors';
+  const checkMatch = () => {
+    const confirmValue = confirmRef.current?.value ?? '';
+    setMatches(confirmValue.length === 0 ? null : confirmValue === (passwordRef.current?.value ?? ''));
+  };
 
   const handleSubmit = async (event: React.SyntheticEvent) => {
     event.preventDefault();
@@ -131,48 +150,55 @@ function ConfirmForm({ token }: { token: string }) {
   };
 
   return (
-    <form
-      onSubmit={(e) => void handleSubmit(e)}
-      className="p-6 bg-container1 border border-container1-border rounded-xl shadow-sm text-title flex flex-col gap-5 max-w-[360px] w-full"
-    >
+    <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-5 w-full">
       <div className="flex flex-col gap-1">
         <h1 className="text-lg font-semibold">{translate({ key: 'login.resetChooseTitle' })}</h1>
         <p className="text-xs text-common">{translate({ key: 'login.resetChooseIntro' })}</p>
       </div>
 
-      {done ? (
-        <>
-          <p className="text-sm text-common">{translate({ key: 'login.resetSuccess' })}</p>
-          <Link
-            to={loginPageUrl}
-            className="h-9 flex items-center justify-center rounded-md bg-primary hover:bg-primary-hover text-white text-sm font-medium transition-colors"
-          >
-            {translate({ key: 'login.resetGoLogin' })}
-          </Link>
-        </>
-      ) : (
-        <>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="reset-new" className="font-medium text-xs">
-              {translate({ key: 'login.password' })}
-            </label>
-            <input id="reset-new" ref={passwordRef} type="password" required className={inputClass} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="reset-confirm" className="font-medium text-xs">
-              {translate({ key: 'login.confirmPassword' })}
-            </label>
-            <input id="reset-confirm" ref={confirmRef} type="password" required className={inputClass} />
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="h-9 rounded-md bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors cursor-pointer disabled:opacity-60"
-          >
-            {loading ? 'Loading...' : translate({ key: 'login.resetConfirm' })}
-          </button>
-        </>
-      )}
+      <AnimatePresence mode="wait" initial={false}>
+        {done ? (
+          <motion.div key="done" {...AUTH_STEP_MOTION} className="flex flex-col gap-5">
+            <SuccessNote>{translate({ key: 'login.resetSuccess' })}</SuccessNote>
+            <Link
+              to={loginPageUrl}
+              className={`${AUTH_BUTTON_CLASS} flex items-center justify-center`}
+            >
+              {translate({ key: 'login.resetGoLogin' })}
+            </Link>
+          </motion.div>
+        ) : (
+          <motion.div key="form" {...AUTH_STEP_MOTION} className="flex flex-col gap-5">
+            <PasswordField
+              id="reset-new"
+              label={translate({ key: 'login.password' })}
+              autoComplete="new-password"
+              inputRef={passwordRef}
+              hint={translate({ key: 'login.passwordHint' })}
+              onChange={checkMatch}
+              required
+            />
+            <div className="flex flex-col gap-1">
+              <PasswordField
+                id="reset-confirm"
+                label={translate({ key: 'login.confirmPassword' })}
+                autoComplete="new-password"
+                inputRef={confirmRef}
+                onChange={checkMatch}
+                required
+              />
+              {matches !== null && (
+                <p className={`text-xs ${matches ? 'text-correct' : 'text-wrong'}`}>
+                  {translate({ key: matches ? 'login.passwordsMatch' : 'login.passwordNotMatch' })}
+                </p>
+              )}
+            </div>
+            <button type="submit" disabled={loading} className={AUTH_BUTTON_CLASS}>
+              {loading ? translate({ key: 'login.loading' }) : translate({ key: 'login.resetConfirm' })}
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </form>
   );
 }

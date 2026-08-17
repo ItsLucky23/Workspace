@@ -35,6 +35,50 @@ function cronLabel(cron: string): string {
   return found ? found.id : cron;
 }
 
+//? Short relative format ("2h ago") so a row's last-run time survives phone-width truncation
+//? instead of the full locale date/time string, which was the first thing clipped off the line.
+function timeAgo(iso: string): string {
+  const ms = Date.parse(iso);
+  if (Number.isNaN(ms)) return iso;
+  const diff = Date.now() - ms;
+  const mins = Math.round(diff / 60_000);
+  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+  if (mins < 60) return rtf.format(-mins, 'minute');
+  if (mins < 60 * 24) return rtf.format(-Math.round(mins / 60), 'hour');
+  return rtf.format(-Math.round(mins / (60 * 24)), 'day');
+}
+
+//? Structural cron validation — 5 space-separated fields, each a wildcard/number/range/list/step.
+//? No month or weekday names, since the presets above (and everything this form ever writes) are
+//? numeric. Catches the "0 9 * * 8" class of typo before it silently saves and never fires.
+const CRON_FIELD_RANGES: [number, number][] = [[0, 59], [0, 23], [1, 31], [1, 12], [0, 7]];
+function isValidCronField(field: string, [min, max]: [number, number]): boolean {
+  return field.split(',').every((part) => {
+    const match = /^(\*|\d+(?:-\d+)?)(?:\/(\d+))?$/.exec(part);
+    if (!match) return false;
+    const [, range, step] = match;
+    if (range === undefined) return false;
+    if (step !== undefined && Number(step) <= 0) return false;
+    if (range === '*') return true;
+    const bounds = range.split('-').map(Number);
+    return bounds.every((n) => n >= min && n <= max) && (bounds.length === 1 || (bounds[0] ?? 0) <= (bounds[1] ?? 0));
+  });
+}
+function isValidCron(cron: string): boolean {
+  const fields = cron.trim().split(/\s+/);
+  return fields.length === 5 && fields.every((field, i) => isValidCronField(field, CRON_FIELD_RANGES[i] ?? [0, 59]));
+}
+
+//? Best-effort plain-language preview for the common "run at this time, every day" shape a typed
+//? custom cron usually is; anything with ranges/lists/steps in minute or hour returns null so the
+//? caller falls back to the raw (now-validated) expression instead of a wrong paraphrase.
+function describeSimpleCron(cron: string): string | null {
+  const [min, hour, dom, month, dow] = cron.trim().split(/\s+/);
+  if (min === undefined || hour === undefined || !/^\d+$/.test(min) || !/^\d+$/.test(hour)) return null;
+  if (dom !== '*' || month !== '*' || dow !== '*') return null;
+  return `${hour.padStart(2, '0')}:${min.padStart(2, '0')}`;
+}
+
 export default function Scheduled() {
   const translate = useTranslator();
   const { triggers, agentRoles, toggleTrigger, deleteTrigger, runTrigger } = useWorkspaces();
@@ -83,10 +127,12 @@ export default function Scheduled() {
                   <div className={`text-xs text-muted truncate`}>
                     {cadenceText}
                     {roleLabel ? ` · ${roleLabel}` : (t.action === 'notify' ? ` · ${translate({ key: 'workspaces.scheduled.actNotify' })}` : '')}
-                    {t.lastFiredAt ? ` · ${translate({ key: 'workspaces.scheduled.lastRun', params: [{ key: 'when', value: new Date(t.lastFiredAt).toLocaleString() }] })}` : ''}
                   </div>
+                  {/*? #3 — its own non-truncating slot + a short relative format, so the most useful piece of
+                      row state survives phone width instead of being the first thing the truncated line clips. */}
+                  {t.lastFiredAt && <div className={`text-xs text-meta mt-0.5`}>{translate({ key: 'workspaces.scheduled.lastRun', params: [{ key: 'when', value: timeAgo(t.lastFiredAt) }] })}</div>}
                 </div>
-                <Toggle on={t.enabled} onChange={(on) => { toggleTrigger(t.id, on); }} />
+                <Toggle on={t.enabled} onChange={(on) => { toggleTrigger(t.id, on); }} ariaLabel={t.name} />
                 {/*? Run-now + Delete live behind the kebab so a phone-width row stays name + toggle; the delete keeps its #93 confirm gate. */}
                 <PopMenu
                   ariaLabel={translate({ key: 'workspaces.scheduled.taskMenu' })}
@@ -122,7 +168,12 @@ function CreateForm({ onDone }: { onDone: () => void }) {
 
   const cron = cadence === 'custom' ? customCron.trim() : (CADENCES.find((c) => c.id === cadence)?.cron ?? '0 9 * * *');
   const role = agentRoles.find((r) => r.key === roleKey);
-  const canSave = name.trim().length > 0 && cron.length > 0 && (mode === 'notify' ? notifyTitle.trim().length > 0 : roleKey.length > 0);
+  //? #1 — a typo'd custom cron (e.g. "0 9 * * 8") used to save silently and never fire; validate
+  //? before Create is even enabled.
+  const cronOk = cadence !== 'custom' || isValidCron(cron);
+  const canSave = name.trim().length > 0 && cron.length > 0 && cronOk && (mode === 'notify' ? notifyTitle.trim().length > 0 : roleKey.length > 0);
+  const presetLabel = cadence === 'custom' ? null : translate({ key: `workspaces.scheduled.cadence.${cadence}` });
+  const simpleTime = cadence === 'custom' && cronOk ? describeSimpleCron(cron) : null;
 
   const roleItems: DropdownItem[] = agentRoles.map((r) => ({ id: r.key, value: r.key, item: r.label, searchText: r.label }));
   const activeRoleItem = roleItems.find((i) => i.id === roleKey);
@@ -153,7 +204,16 @@ function CreateForm({ onDone }: { onDone: () => void }) {
           <div className={`inline-flex flex-wrap gap-0.5 rounded-xl bg-container2 p-0.5`}>
             {CADENCES.map((c) => <button key={c.id} type="button" onClick={() => { setCadence(c.id); }} className={`rounded-lg px-3 h-8 text-sm font-medium cursor-pointer transition-colors ${cadence === c.id ? 'bg-container1 text-title shadow-sm' : 'text-muted hover:text-common'}`}>{translate({ key: `workspaces.scheduled.cadence.${c.id}` })}</button>)}
           </div>
-          {cadence === 'custom' && <input value={customCron} onChange={(e) => { setCustomCron(e.target.value); }} placeholder="0 9 * * *" className={`mt-2 font-mono ${inputCls}`} />}
+          {cadence === 'custom' && (
+            <>
+              <input
+                value={customCron} onChange={(e) => { setCustomCron(e.target.value); }} placeholder="0 9 * * *"
+                className={`mt-2 font-mono ${inputCls} ${cronOk ? '' : 'border-wrong focus:border-wrong focus:ring-wrong/30'}`}
+                aria-invalid={!cronOk} aria-describedby={cronOk ? undefined : 'scheduled-cron-error'}
+              />
+              {!cronOk && <div id="scheduled-cron-error" className={`text-xs text-wrong mt-1`}>{translate({ key: 'workspaces.scheduled.runsAtInvalid' })}</div>}
+            </>
+          )}
         </Field>
 
         <Field label={translate({ key: 'workspaces.scheduled.doLabel' })}>
@@ -165,11 +225,18 @@ function CreateForm({ onDone }: { onDone: () => void }) {
         {mode === 'role' ? (
           <>
             <Field label={translate({ key: 'workspaces.scheduled.role' })}>
-              <BaseDropdown items={roleItems} {...(activeRoleItem ? { value: activeRoleItem } : {})} placeholder={translate({ key: 'workspaces.scheduled.rolePlaceholder' })} onChange={(i) => { setRoleKey(String(i.id)); }} size="lg" />
+              <BaseDropdown items={roleItems} {...(activeRoleItem ? { value: activeRoleItem } : {})} placeholder={translate({ key: 'workspaces.scheduled.rolePlaceholder' })} onChange={(i) => { setRoleKey(String(i.id)); }} size="md" width="full" />
               {role && <div className={`text-xs text-muted mt-1`}>{role.description}{role.mutates ? ` · ${translate({ key: 'workspaces.scheduled.needsApproval' })}` : ''}</div>}
             </Field>
-            {/*? Focus + channel fan-out are power options — collapsed so the everyday path stays Name + Cadence + Role. */}
-            <Disclosure summary={translate({ key: 'workspaces.scheduled.advanced' })}>
+            {/*? Focus + channel fan-out are power options — collapsed so the everyday path stays Name + Cadence + Role.
+                #5 — the summary now names what it hides + a live channel-count badge, so a collapsed row still
+                communicates active configuration instead of reading as an empty, unconfigured "Advanced". */}
+            <Disclosure summary={
+              <span className={`inline-flex items-center gap-2`}>
+                {translate({ key: 'workspaces.scheduled.advancedSummary' })}
+                {channelIds.length > 0 && <span className={`rounded-full bg-container2 text-muted text-[10px] font-medium px-1.5 py-0.5`}>{translate({ key: 'workspaces.scheduled.channelsSelected', params: [{ key: 'count', value: String(channelIds.length) }] })}</span>}
+              </span>
+            }>
               <div className={`flex flex-col gap-4`}>
                 <Field label={translate({ key: 'workspaces.scheduled.focus' })}>
                   <input value={focus} onChange={(e) => { setFocus(e.target.value); }} placeholder={translate({ key: 'workspaces.scheduled.focusPlaceholder' })} className={inputCls} />
@@ -182,7 +249,7 @@ function CreateForm({ onDone }: { onDone: () => void }) {
                       value={channelItems.filter((i) => channelIds.includes(String(i.id)))}
                       onChange={(sel) => { setChannelIds(sel.map((i) => String(i.id))); }}
                       placeholder={translate({ key: 'workspaces.scheduled.channelsPlaceholder' })}
-                      size="lg" showSearch
+                      size="md" width="full" showSearch
                       selectedCountText={(n) => translate({ key: 'workspaces.scheduled.channelsSelected', params: [{ key: 'count', value: String(n) }] })}
                     />
                     <div className={`text-xs text-muted mt-1`}>{translate({ key: 'workspaces.scheduled.channelsHint' })}</div>
@@ -203,7 +270,18 @@ function CreateForm({ onDone }: { onDone: () => void }) {
         )}
 
         <div className={`flex items-center justify-between gap-2 pt-1`}>
-          <div className={`text-xs text-muted flex items-center gap-1.5`}><Icon name="clock" className={`text-primary`} />{translate({ key: 'workspaces.scheduled.runsAt', params: [{ key: 'cron', value: cron }] })}</div>
+          {/*? #1 — the footer used to echo the raw cron string back even for the plain-language presets
+              ("Runs on: 0 9 * * *"), which isn't more readable than what was typed. Presets now reuse
+              their own translated label; a parseable custom expression gets a real time; anything else
+              still shows the raw (now-validated) expression, and an invalid one shows the error instead. */}
+          <div className={`text-xs flex items-center gap-1.5 ${cronOk ? 'text-muted' : 'text-wrong'}`}>
+            <Icon name="clock" className={cronOk ? 'text-primary' : 'text-wrong'} />
+            {cronOk
+              ? (presetLabel ?? (simpleTime
+                ? translate({ key: 'workspaces.scheduled.runsAtSimple', params: [{ key: 'time', value: simpleTime }] })
+                : translate({ key: 'workspaces.scheduled.runsAt', params: [{ key: 'cron', value: cron }] })))
+              : translate({ key: 'workspaces.scheduled.runsAtInvalid' })}
+          </div>
           <WsButton icon="check" onClick={save} disabled={!canSave}>{translate({ key: 'workspaces.scheduled.create' })}</WsButton>
         </div>
       </div>

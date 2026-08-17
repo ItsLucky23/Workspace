@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (227)
+## Decisions (228)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -240,6 +240,7 @@
 | 0307 | The UI identity lives in the token layer, not in components | 🟢 accepted | ui, design-system, tokens, tailwind | — | `docs/decisions/0307-the-ui-identity-lives-in-the-token-layer-not-in-components.md` |
 | 0308 | AI prompt layers stack strictly, and are shown as one effective prompt | 🟢 accepted | ai, pipeline, ia, ux | — | `docs/decisions/0308-ai-prompt-layers-stack-strictly-and-are-shown-as-one-effective-prompt.md` |
 | 0309 | Settings autosave per row, and one canonical account page | 🟢 accepted | ui, settings, ia, forms | — | `docs/decisions/0309-settings-autosave-per-row-and-one-canonical-account-page.md` |
+| 0310 | Each duplicated concept gets one owning surface | 🟢 accepted | ia, ux, ownership, content, budgets | — | `docs/decisions/0310-each-duplicated-concept-gets-one-owning-surface.md` |
 
 ## Summaries
 
@@ -2074,6 +2075,14 @@ Fix the design at the token layer first, and keep component changes secondary. C
 *One row grammar.** `SettingRow` + `FormSection` in `src/workspaces/_components/settings.tsx` are the way a setting is rendered: label and quiet help text on the left, control right-aligned on the right, hairline-separated rows inside a titled group. Long explanations go behind the row's `info` disclosure, not into a competing paragraph. `stacked` handles textareas and anything needing the full width.
 
 → `docs/decisions/0309-settings-autosave-per-row-and-one-canonical-account-page.md`
+
+### 0310 — Each duplicated concept gets one owning surface
+
+**0310** · accepted · tags: ia, ux, ownership, content, budgets · 2026-08-17
+
+*One owner per concept, and the non-owner says so on screen.**
+
+→ `docs/decisions/0310-each-duplicated-concept-gets-one-owning-surface.md`
 
 ## Code governed by decisions
 

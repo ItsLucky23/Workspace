@@ -8,8 +8,11 @@ import { useEffect, useState } from 'react';
 
 import { apiRequest, tryCatch, useTranslator } from '@luckystack/core/client';
 
+import { AnimatePresence, motion } from 'motion/react';
+
 import Icon from '../../_components/Icon';
-import { EmptyState, Segmented, statusColorVar } from '../../_components/primitives';
+import { SPRING_SOFT } from '../../_components/motion';
+import { EmptyState, FOCUS_RING, Segmented, statusColorVar } from '../../_components/primitives';
 import { SetupNotice } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import TerminalPanel from './TerminalPanel';
@@ -115,7 +118,7 @@ export default function Terminals() {
           <div className={`flex items-center gap-1 mb-3 shrink-0 overflow-x-auto ws-no-scrollbar`}>
             {terminals.map((t) => (
               <button key={t.ticketId} type="button" onClick={() => { setActiveTab(t.ticketId); }}
-                className={`flex items-center gap-2 rounded-lg px-3 h-8 text-sm font-mono whitespace-nowrap cursor-pointer transition-colors ${shownTab === t.ticketId ? 'bg-container1 text-title shadow-sm' : 'text-muted hover:text-common'}`}>
+                className={`flex items-center gap-2 rounded-lg px-3 h-8 text-sm font-mono whitespace-nowrap cursor-pointer transition-colors ${FOCUS_RING} ${shownTab === t.ticketId ? 'bg-container1 text-title shadow-sm' : 'text-muted hover:text-common'}`}>
                 <span className={`w-1.5 h-1.5 rounded-full`} style={{ background: statusColorVar(termStatus(t)) }} />
                 {t.ticketId}
               </button>
@@ -125,20 +128,31 @@ export default function Terminals() {
         </div>
       )}
 
-      {terminals.length > 0 && layout === 'grid' && maximizedId !== null && (
-        <div className={`flex-1 min-h-0 flex flex-col px-4 md:px-6 pb-6`}>
-          {terminals.filter((t) => t.ticketId === maximizedId).map((t) => (
-            <TerminalPanel key={t.ticketId} workspaceId={activeWorkspace.id} terminal={t} viewerName={currentUser.name} fill isMaximized onToggleMaximize={() => { setMaximizedId(null); }} />
-          ))}
-        </div>
-      )}
-
-      {terminals.length > 0 && layout === 'grid' && maximizedId === null && (
-        <div className={`flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-6`}>
-          <div className={`grid grid-cols-1 xl:grid-cols-2 gap-3`}>
-            {terminals.map((t) => <TerminalPanel key={t.ticketId} workspaceId={activeWorkspace.id} terminal={t} viewerName={currentUser.name} onToggleMaximize={() => { setMaximizedId(t.ticketId); }} />)}
-          </div>
-        </div>
+      {/* gap-fix: maximize/restore used to swap the whole content area with an unconditional
+          replace — the same jarring 'options block' pop the audit flagged elsewhere, at page-region
+          scale. A fade+scale AnimatePresence around the two branches makes both directions read as
+          one panel growing/shrinking instead of a hard cut (a shared layoutId was ruled out — see
+          board/page.tsx's note on that crashing React 19's reconciler across an unmount boundary). */}
+      {terminals.length > 0 && layout === 'grid' && (
+        // mode="wait": both branches are flex-1 flex items, so overlapping an exit+enter would
+        // double up in the flex row for a frame (see PageTransition's identical note in motion.tsx).
+        <AnimatePresence mode="wait" initial={false}>
+          {maximizedId === null ? (
+            <motion.div key="grid" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }} transition={SPRING_SOFT}
+              className={`flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-6`}>
+              <div className={`grid grid-cols-1 xl:grid-cols-2 gap-3`}>
+                {terminals.map((t) => <TerminalPanel key={t.ticketId} workspaceId={activeWorkspace.id} terminal={t} viewerName={currentUser.name} onToggleMaximize={() => { setMaximizedId(t.ticketId); }} />)}
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div key="maximized" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }} transition={SPRING_SOFT}
+              className={`flex-1 min-h-0 flex flex-col px-4 md:px-6 pb-6`}>
+              {terminals.filter((t) => t.ticketId === maximizedId).map((t) => (
+                <TerminalPanel key={t.ticketId} workspaceId={activeWorkspace.id} terminal={t} viewerName={currentUser.name} fill isMaximized onToggleMaximize={() => { setMaximizedId(null); }} />
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       )}
     </div>
   );

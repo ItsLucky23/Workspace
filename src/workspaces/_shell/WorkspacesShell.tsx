@@ -13,7 +13,7 @@ import { MobileHeader } from './MobileChrome';
 import { Onboarding } from './Onboarding';
 import { useWorkspaces } from './WorkspacesContext';
 import SearchPalette from '../_components/SearchPalette';
-import { PageTransition } from '../_components/motion';
+import { PageTransition, Sheet } from '../_components/motion';
 import Icon from '../_components/Icon';
 import { GATEABLE_SECTIONS, isSectionEnabled } from '../_data/modules';
 import { WsButton } from '../_components/primitives';
@@ -25,7 +25,9 @@ const CONTENT_FAB_VIEWS = new Set<string>(['content', 'scheduled-posts', 'source
 
 //? Mobile FAB action — a minimal bottom-sheet: one title input, creating the thing that fits the
 //? current view (board/backlog/… → quick-add ticket, content-ish views → content piece).
-function MobileFabSheet({ onClose }: { onClose: () => void }) {
+//? Reuses the shared `Sheet` primitive (bottom slide + backdrop) instead of a raw conditional div —
+//? every sibling sheet in this app already animates in; this one popped in/out instantly.
+function MobileFabSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const translate = useTranslator();
   const { view, activeWorkspace, quickAdd, createContentPiece, navigate } = useWorkspaces();
   const [title, setTitle] = useState('');
@@ -44,18 +46,15 @@ function MobileFabSheet({ onClose }: { onClose: () => void }) {
     onClose();
   };
   return (
-    <div className="md:hidden fixed inset-0 z-50" onClick={onClose}>
-      <div className="absolute inset-0 bg-overlay/60" />
-      <div className="absolute left-0 right-0 bottom-0 rounded-t-2xl border-t border-container1-border bg-container1 p-4 pb-6 flex flex-col gap-3" onClick={(e) => { e.stopPropagation(); }}>
-        <div className="text-sm font-medium text-title">{translate({ key: kind === 'ticket' ? 'workspaces.wsShell.fabNewTicket' : 'workspaces.wsShell.fabNewPiece' })}</div>
-        {/* eslint-disable-next-line jsx-a11y/no-autofocus -- the sheet exists only to type this title; focusing it is the intent */}
-        <input autoFocus value={title} onChange={(e) => { setTitle(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} placeholder={translate({ key: 'workspaces.wsShell.fabTitlePlaceholder' })} className="h-11 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
-        <div className="flex items-center justify-end gap-2">
-          <button type="button" onClick={onClose} className="h-9 px-3 rounded-lg text-sm text-muted hover:text-common cursor-pointer">{translate({ key: 'workspaces.wsShell.fabCancel' })}</button>
-          <WsButton icon="plus" disabled={title.trim().length === 0} onClick={submit}>{translate({ key: 'workspaces.wsShell.fabCreate' })}</WsButton>
-        </div>
+    <Sheet open={open} onClose={onClose} side="bottom" className="md:hidden p-4 pb-6 flex flex-col gap-3">
+      <div className="text-sm font-medium text-title">{translate({ key: kind === 'ticket' ? 'workspaces.wsShell.fabNewTicket' : 'workspaces.wsShell.fabNewPiece' })}</div>
+      {/* eslint-disable-next-line jsx-a11y/no-autofocus -- the sheet exists only to type this title; focusing it is the intent */}
+      <input autoFocus value={title} onChange={(e) => { setTitle(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} placeholder={translate({ key: 'workspaces.wsShell.fabTitlePlaceholder' })} className="h-11 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30" />
+      <div className="flex items-center justify-end gap-2">
+        <button type="button" onClick={onClose} className="h-9 px-3 rounded-lg text-sm text-muted hover:text-common cursor-pointer">{translate({ key: 'workspaces.wsShell.fabCancel' })}</button>
+        <WsButton icon="plus" disabled={title.trim().length === 0} onClick={submit}>{translate({ key: 'workspaces.wsShell.fabCreate' })}</WsButton>
       </div>
-    </div>
+    </Sheet>
   );
 }
 
@@ -144,7 +143,7 @@ export function WorkspacesShell({ children }: { children: React.ReactNode }) {
           <MobileBottomBar onFab={() => { setFabOpen(true); }} />
         </div>
       </div>
-      {fabOpen && <MobileFabSheet onClose={() => { setFabOpen(false); }} />}
+      <MobileFabSheet open={fabOpen} onClose={() => { setFabOpen(false); }} />
       <SearchPalette open={searchOpen} onClose={() => { setSearchOpen(false); }} />
     </MotionConfig>
   );

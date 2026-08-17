@@ -4821,3 +4821,21 @@ Tijdens het loggen bleek mijn eigen `npm install` onder npm 11.6.1 te hebben ged
 **Verificatie:** `npm run lint` groen, `npx tsc --noEmit` groen, `npm run build` groen, `npm run ai:lint` groen. Geen browserverificatie — server-start is een developer-actie.
 
 **Open:** `resolveAiLayers()` beschrijft de bedoelde volgorde; of de SERVER-kant precies zo componeert is NIET geverifieerd — dat moet nagelopen worden voordat de preview als waarheid verkocht wordt. Verder: /settings, /develop/automations en /content/settings staan nog op de oude vorm, en 6 productbeslissingen uit het auditrapport liggen nog open.
+
+## 2026-08-17 23:20 — Ultracode-bouwronde: hele UI op de gedeelde laag + alle duplicaat-concepten
+
+**User prompt:** eerst de zes productbeslissingen beantwoorden, daarna alles in één keer uitvoeren met ultracode.
+
+**Beslissingen (eigenaar, alle zes het advies gevolgd):** budget-caps verwijderbaar + alert over álle caps · contextdocs archiveren + verwijderen achter confirm · "gebruik als merk" overschrijft achter confirm met veld-diff · Content-instellingen → Kanalen bezit de brandvoice · antwoorden-inbox toont de echte telling · kennisgraaf blijft klein met lijstweergave op mobiel. Vastgelegd in ADR 0310.
+
+**Wat ik deed:** eerst het bestaande werk gecommit (479031c) zodat de parallelle run terug te draaien is. Daarna workflow `workspaces-ui-rebuild`: 43 agents in 5 fasen — fundament (ClickableCard/InteractiveRow, Table, SectionLabel, 44px-IconButton, AuthShell) → 30 pagina-agents parallel (elk alleen z'n eigen map, gedeelde laag bevroren) → 9 concept-agents voor de duplicaten → 1 i18n-agent die alle 132 sleutels in en/nl/de/fr zette → 1 verificatie/reparatie-agent.
+
+**Resultaat:** 61 bestanden, +3761/−2114 regels. Elke pagina op de gedeelde formuliertaal, Collapse overal waar iets opensprong, iconen met toegankelijke namen en 44px-targets, tabellen door één primitive. Concepten: budget-alert-bug gefixt (secundaire caps liepen ongemerkt vol), Content/Studio kreeg zijn eigen promptlagen-preview (volgorde geverifieerd tegen `server/studio/generate.ts` — refine werkt LAATST, niet eerst), refine wordt per artefact bewaard, brandvoice-eigenaarschap verplaatst, actief-thema gesynchroniseerd, de drie "live meekijken"-panelen op een ticket samengevoegd tot één terminal-tab, `openQuestionCount` toegevoegd aan de snapshot-mapper, en document-AI blijkt écht onafhankelijk van de provider-registry (staat nu op het scherm i.p.v. giswerk).
+
+**Files touched:** 61 bestanden — o.a. `src/_components/{AuthShell,LoginForm}.tsx`, `src/workspaces/_components/{dataDisplay,primitives}.tsx`, `src/workspaces/_functions/aiLayers.ts` (content-profiel), alle pagina's onder `src/workspaces/`, `src/{login,register,reset-password,settings,docs}/page.tsx`, `src/_locales/*.json`, `server/read/mappers.ts`, `tests/unit/navStructure.test.mts`, `docs/decisions/0310-*.md`.
+
+**Verificatie (zelf gedraaid, niet alleen de agent geloofd):** `npx tsc --noEmit` groen · `npm run lint` groen · `npm run build` groen · `npm run ai:lint` groen · locale-pariteit 2704 sleutels in alle 4 talen, 0 ontbrekend/extra · `npm run test:unit` 120/120. Eén test faalde eerst (`navStructure`): die controleerde op de letterlijke broncode `{expanded && open && (` in Shell.tsx, wat de shell-agent verving door `{expanded && (<Collapse open={open}>`. Gedrag identiek (Collapse mount z'n kinderen alleen bij open) — bewaker aangepast, gedrag niet.
+
+**NIET af (bewust, met reden):** contextdoc-archiveren/verwijderen (beslissing 5a) is alleen aan de UI-kant gedaan. De backend ontbreekt: `InfoSource` heeft geen `archived`-veld en er bestaan geen archive/delete-control-ops. Dat vraagt een Prisma-migratie (developer-actie, Rule 8) plus nieuwe ops in opCatalog/RBAC/Conductor (invariant B-23). Verder: 42 `text-disabled`-gebruiken op echte content wachten op een per-plek-oordeel, en de 2FA-sectie (`src/_components/TwoFactorSection.tsx`) animeert nog niet omdat die buiten elke agent-scope viel.
+
+**Geen browserverificatie** — server-start is een developer-actie.

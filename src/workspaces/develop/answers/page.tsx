@@ -20,7 +20,10 @@
 import { useTranslator } from '@luckystack/core/client';
 
 import Icon from '../../_components/Icon';
+import { Collapse } from '../../_components/motion';
 import { EmptyState, StatusPill, WsButton } from '../../_components/primitives';
+import type { TicketPriority } from '../../_data/types';
+import { PRIORITY_DOT, PRIORITY_LABEL_KEY, isBadgedPriority } from '../../_functions/priority';
 import { parseStructuredQuestion } from '../../_functions/structuredQuestion';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -48,7 +51,7 @@ function isStale(iso: string | undefined): boolean {
 
 //? One waiting question. Deliberately the same interaction as the ticket's own banner — a user who learned
 //? it in one place should not have to relearn it in the other.
-function QueueCard({ item }: { item: { ticketKey: string; title: string; question: string; priority: string; stageId: string; waitingSince?: string; openCount: number } }) {
+function QueueCard({ item }: { item: { ticketKey: string; title: string; question: string; priority: TicketPriority; stageId: string; waitingSince?: string; openQuestionCount?: number } }) {
   const translate = useTranslator();
   const { answerInput, isAnswerPending, openTicket } = useWorkspaces();
   const [reply, setReply] = useState('');
@@ -89,11 +92,26 @@ function QueueCard({ item }: { item: { ticketKey: string; title: string; questio
             {/* The ticket key stays a link: answering is the common case, but "what IS this?" needs an exit. */}
             <button type="button" onClick={() => { openTicket(item.ticketKey); }} className={`text-xs font-mono text-primary hover:underline cursor-pointer`}>{item.ticketKey}</button>
             <StatusPill status="needs-input" />
+            {/* The list sorts by priority first, so the sort key needs a visible anchor on the card itself —
+                without this, urgent and normal cards looked identical except for position. */}
+            {isBadgedPriority(item.priority) && (
+              <span className={`inline-flex items-center gap-1 text-[11px] font-semibold ${item.priority === 'urgent' ? 'text-wrong' : 'text-warning'}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${PRIORITY_DOT[item.priority]}`} />
+                {translate({ key: PRIORITY_LABEL_KEY[item.priority] })}
+              </span>
+            )}
+            {/* The whole value of this inbox is seeing WHERE the blockage is — a ticket parked on more than
+                one question needs that visible here, not behind the Details disclosure. */}
+            {item.openQuestionCount !== undefined && item.openQuestionCount > 1 && (
+              <span className={`text-[11px] font-medium text-meta`}>
+                {translate({ key: 'workspaces.answers.moreOpen', params: [{ key: 'n', value: String(item.openQuestionCount - 1) }] })}
+              </span>
+            )}
           </div>
           <div className={`text-sm font-medium text-title truncate`}>{item.title}</div>
         </div>
         {waited !== null && (
-          <span className={`text-xs shrink-0 ${stale ? 'text-warning' : 'text-muted'}`}>
+          <span title={stale ? translate({ key: 'workspaces.answers.staleTooltip' }) : undefined} className={`text-xs shrink-0 ${stale ? 'text-warning' : 'text-muted'}`}>
             {stale && <Icon name="triangle-exclamation" className={`mr-1`} />}{waited}
           </span>
         )}
@@ -111,13 +129,13 @@ function QueueCard({ item }: { item: { ticketKey: string; title: string; questio
               <Icon name={noteOpen ? 'xmark' : 'plus'} />{translate({ key: 'workspaces.answers.addNote' })}
             </button>
           </div>
-          {noteOpen && (
+          <Collapse open={noteOpen}>
             <input
               ref={noteRef} value={note} onChange={(e) => { setNote(e.target.value); }} disabled={pending}
               placeholder={translate({ key: 'workspaces.ticket.notePlaceholder' })}
-              className={`h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary disabled:opacity-50`}
+              className={`w-full h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary disabled:opacity-50`}
             />
-          )}
+          </Collapse>
         </div>
       )}
 
@@ -147,14 +165,11 @@ function QueueCard({ item }: { item: { ticketKey: string; title: string; questio
           <Icon name="caret-down" className={`transition-transform motion-reduce:transition-none ${detailsOpen ? 'rotate-180' : ''}`} />
           {translate({ key: 'workspaces.answers.details' })}
         </button>
-        {detailsOpen && (
+        <Collapse open={detailsOpen}>
           <div className={`flex items-center gap-2 flex-wrap text-xs text-muted`}>
             <span>{translate({ key: 'workspaces.answers.stageLabel', params: [{ key: 's', value: item.stageId }] })}</span>
-            {item.openCount > 1 && (
-              <span className={`text-[11px] rounded-md bg-container2 px-1.5 py-0.5`}>{translate({ key: 'workspaces.answers.moreOpen', params: [{ key: 'n', value: String(item.openCount - 1) }] })}</span>
-            )}
           </div>
-        )}
+        </Collapse>
       </div>
     </div>
   );
@@ -189,9 +204,7 @@ export default function Answers() {
       ticketKey: t.id, title: t.title, question: t.needsInput ?? '',
       priority: t.priority ?? 'normal', stageId: t.stageId,
       ...(t.lastActivityAt === undefined ? {} : { waitingSince: t.lastActivityAt }),
-      //? The banner shows ONE question; a ticket may hold several. Without the server's set we cannot know
-      //? how many follow, so the card simply does not claim a count rather than guessing at one.
-      openCount: 1,
+      ...(t.openQuestionCount === undefined ? {} : { openQuestionCount: t.openQuestionCount }),
     }))
     .toSorted((a, b) => {
       const byPriority = (PRIORITY_RANK[b.priority] ?? 1) - (PRIORITY_RANK[a.priority] ?? 1);
@@ -204,6 +217,9 @@ export default function Answers() {
       <div className={`px-4 md:px-6 py-3 md:py-4`}>
         <h1 className={`text-xl md:text-2xl font-semibold text-title`}>{translate({ key: 'workspaces.answers.heading' })}</h1>
         <p className={`text-sm text-muted mt-0.5`}>{translate({ key: 'workspaces.answers.sub' })}</p>
+        {/* The ticket's own banner offers the identical control — a user who finds both independently
+            should not read them as two places state can drift. */}
+        <p className={`text-xs text-muted mt-1`}>{translate({ key: 'workspaces.answers.sameAsTicket' })}</p>
       </div>
       <div className={`flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-8`}>
         <div className={`max-w-2xl mx-auto w-full flex flex-col gap-3`}>

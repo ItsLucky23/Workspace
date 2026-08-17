@@ -13,6 +13,10 @@ import { i18nNotify as notify, useTranslator } from '@luckystack/core/client';
 import { apiRequest } from 'src/_sockets/apiRequest';
 import { joinRoom, leaveRoom } from 'src/_sockets/socketInitializer';
 import { syncRequest, useSyncEvents } from 'src/_sockets/syncRequest';
+import { menuHandler } from 'src/_functions/menuHandler';
+import { Collapse, PageTransition } from 'src/workspaces/_components/motion';
+import { SectionLabel } from 'src/workspaces/_components/dataDisplay';
+import { EmptyState, IconButton } from 'src/workspaces/_components/primitives';
 
 import apiDocs from './apiDocs.generated.json';
 
@@ -693,14 +697,25 @@ export default function DocsPage() {
   };
 
   const applyRandomPreset = () => {
-    if (selectedApi) {
-      setInputData(JSON.stringify(generateRandomInput(selectedApi.input), null, 2));
+    let nextInput: Record<string, unknown> | null = null;
+    if (selectedApi) nextInput = generateRandomInput(selectedApi.input);
+    else if (selectedSync) nextInput = generateRandomInput(selectedSync.clientInput);
+    if (!nextInput) return;
+
+    const trimmed = inputData.trim();
+    //? A hand-typed payload is real work — silently overwriting it with no undo was the finding.
+    //? Only the empty/default '{}' payload gets replaced without asking first.
+    if (trimmed !== '' && trimmed !== '{}') {
+      void menuHandler.confirm({
+        title: translate({ key: 'docs.overwritePayloadTitle' }),
+        content: translate({ key: 'docs.overwritePayloadContent' }),
+      }).then((confirmed) => {
+        if (confirmed) setInputData(JSON.stringify(nextInput, null, 2));
+      });
       return;
     }
 
-    if (selectedSync) {
-      setInputData(JSON.stringify(generateRandomInput(selectedSync.clientInput), null, 2));
-    }
+    setInputData(JSON.stringify(nextInput, null, 2));
   };
 
   const joinSelectedRoom = async () => {
@@ -721,8 +736,8 @@ export default function DocsPage() {
     }
   };
 
-  const leaveSelectedRoom = async () => {
-    const room = roomToLeave.trim();
+  const leaveSelectedRoom = async (roomCode: string) => {
+    const room = roomCode.trim();
     if (!room) {
       notify.error({ key: 'docs.roomCodeRequired' });
       return;
@@ -755,7 +770,7 @@ export default function DocsPage() {
         <div className="sticky top-0 z-10 bg-container1 border-b border-container1-border px-5 py-4">
           <h2 className="text-base font-bold tracking-tight text-title">{translate({ key: 'docs.documentation' })}</h2>
           <div className="mt-2 flex flex-col gap-1.5">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.joinedRooms' })}</div>
+            <SectionLabel>{translate({ key: 'docs.joinedRooms' })}</SectionLabel>
             <div className="flex flex-wrap gap-1.5">
               {joinedRooms.length === 0 && (
                 <div className="text-[10px] px-2 py-0.5 rounded-full bg-container2 border border-container2-border text-common/60 font-medium">
@@ -763,8 +778,14 @@ export default function DocsPage() {
                 </div>
               )}
               {joinedRooms.map((room) => (
-                <div key={room} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary/20 text-secondary border border-secondary/30 font-semibold">
-                  {room}
+                <div key={room} className="flex items-center gap-0.5 pl-2 pr-0.5 py-0.5 rounded-full bg-secondary/20 text-secondary border border-secondary/30">
+                  <span className="text-[10px] font-semibold">{room}</span>
+                  <IconButton
+                    icon="xmark"
+                    size="sm"
+                    title={translate({ key: 'docs.leaveRoomNamed', params: [{ key: 'room', value: room }] })}
+                    onClick={() => { void leaveSelectedRoom(room); }}
+                  />
                 </div>
               ))}
             </div>
@@ -854,227 +875,235 @@ export default function DocsPage() {
 
       {/* ── Main content ── */}
       <div className="flex-1 overflow-y-auto bg-background">
-        {!selectedPath && (
-          <div className="h-full flex flex-col items-center justify-center gap-3 text-meta select-none">
-            <div className="text-5xl">{translate({ key: 'docs.doc' })}</div>
-            <div className="text-sm font-medium">{translate({ key: 'docs.selectApiOrSync' })}</div>
-          </div>
-        )}
+        <PageTransition routeKey={selectedPath ?? 'empty'}>
+          {!selectedPath && (
+            <div className="h-full flex items-center justify-center">
+              <EmptyState
+                icon="book-open"
+                title={translate({ key: 'docs.emptyStateTitle' })}
+                sub={translate({ key: 'docs.selectApiOrSync' })}
+              />
+            </div>
+          )}
 
-        {selectedApi && (
-          <div className="max-w-4xl mx-auto px-8 py-8 flex flex-col gap-5">
-            {/* Header card */}
-            <div className="bg-container1 border border-container1-border rounded-xl px-6 py-5 flex items-start justify-between gap-4">
-              <div className="flex flex-col gap-1.5 min-w-0">
+          {selectedApi && (
+            <div className="max-w-4xl mx-auto px-8 py-8 flex flex-col gap-5">
+              {/* Header card */}
+              <div className="bg-container1 border border-container1-border rounded-xl px-6 py-5 flex items-start justify-between gap-4">
+                <div className="flex flex-col gap-1.5 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full shrink-0 ${methodBadgeClass(selectedApi.method)}`}>
+                      {selectedApi.method}
+                    </span>
+                    <h1 className="text-xl font-bold text-title">{selectedApi.name}</h1>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                    <div className="flex flex-col gap-1.5 min-w-0">
+                      <SectionLabel>{translate({ key: 'docs.fetchRequestExample' })}</SectionLabel>
+                      <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre bg-container2 border border-container2-border rounded-lg p-3 text-common">{buildApiFetchExample(selectedApi, inputData)}</pre>
+                    </div>
+                    <div className="flex flex-col gap-1.5 min-w-0">
+                      <SectionLabel>{translate({ key: 'docs.socketRequestExample' })}</SectionLabel>
+                      <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre bg-container2 border border-container2-border rounded-lg p-3 text-common">{buildApiSocketExample(selectedApi, inputData)}</pre>
+                    </div>
+                  </div>
+                  {selectedApi.description && (
+                    <div className="text-xs text-common/70">{selectedApi.description}</div>
+                  )}
+                  {/* Status badge — inline in header */}
+                  <div className="flex items-center gap-2 pt-0.5">
+                    <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${statusBadgeClass(status)}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${statusDotClass(status)}`} />
+                      {translate({ key: 'docs.status' })} {status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Meta row */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* Rate limit */}
+                <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-1.5">
+                  <SectionLabel>{translate({ key: 'docs.rateLimit' })}</SectionLabel>
+                  <div className="text-sm font-semibold text-title">{rateLimitText}</div>
+                </div>
+
+                {/* Auth */}
+                <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-1.5">
+                  <SectionLabel>{translate({ key: 'docs.auth' })}</SectionLabel>
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${selectedApiNeedsLogin ? 'bg-warning' : 'bg-correct'}`} />
+                    <span className="text-sm font-semibold text-title">
+                      {selectedApiNeedsLogin ? translate({ key: 'docs.loginRequired' }) : translate({ key: 'docs.loginOptional' })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Additional permissions */}
+                <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-1.5">
+                  <SectionLabel>{translate({ key: 'docs.additionalPermissions' })}</SectionLabel>
+                  {selectedApiAdditional.length === 0
+                    ? <div className="text-xs text-common/50">{translate({ key: 'docs.none' })}</div>
+                    : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedApiAdditional.map((item) => {
+                          const label = getAdditionalPermissionLabel(item);
+                          return (
+                            <div key={`${item.key}-${label}`} className="text-[10px] px-2 py-0.5 rounded-full bg-warning/20 text-warning border border-warning/30 font-semibold">
+                              {label}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                </div>
+              </div>
+
+              {/* Type schema cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-2">
+                  <SectionLabel>{translate({ key: 'docs.input' })}</SectionLabel>
+                  <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre-wrap break-words text-common bg-container2 rounded-lg p-3">{formatTypeText(selectedApi.input)}</pre>
+                </div>
+                <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-2">
+                  <SectionLabel>{translate({ key: 'docs.output' })}</SectionLabel>
+                  <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre-wrap break-words text-common bg-container2 rounded-lg p-3">{formatTypeText(selectedApi.output)}</pre>
+                </div>
+              </div>
+
+              {/* Run panel */}
+              <div className="bg-container1 border border-container1-border rounded-xl p-5 flex flex-col gap-3">
+                <div className="flex flex-wrap gap-2">
+                  <button className="text-xs px-3 py-1.5 rounded-md bg-container2 text-common hover:bg-container2-hover transition-colors font-medium border border-container2-border" onClick={applyRandomPreset}>{translate({ key: 'docs.randomPreset' })}</button>
+                  <button className="text-xs px-3 py-1.5 rounded-md bg-correct text-title-primary hover:bg-correct-hover transition-colors font-semibold" onClick={runApiWithSocket}>{translate({ key: 'docs.runSocket' })}</button>
+                  <button className="text-xs px-3 py-1.5 rounded-md bg-primary text-title-primary hover:bg-primary-hover transition-colors font-semibold" onClick={() => { void runApiWithHttp(); }}>{translate({ key: 'docs.runHttp' })}</button>
+                </div>
+                <SectionLabel>{translate({ key: 'docs.requestPayload' })}</SectionLabel>
+                <textarea
+                  value={inputData}
+                  onChange={(event) => { setInputData(event.target.value); }}
+                  onBlur={normalizeInputData}
+                  spellCheck={false}
+                  className="w-full h-36 bg-container2 border border-container2-border rounded-lg p-3 text-[11px] font-mono leading-5 text-common resize-y focus:outline-none focus-ring"
+                />
+                <Collapse open={apiResult !== null}>
+                  {apiResult && (
+                    <div className="flex flex-col gap-1.5 pt-1">
+                      <SectionLabel>{translate({ key: 'docs.responsePayload' })}</SectionLabel>
+                      <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre bg-container2 border border-container2-border rounded-lg p-3 text-common">{JSON.stringify(apiResult, null, 2)}</pre>
+                    </div>
+                  )}
+                </Collapse>
+              </div>
+            </div>
+          )}
+
+          {selectedSync && (
+            <div className="max-w-4xl mx-auto px-8 py-8 flex flex-col gap-5">
+              {/* Header card */}
+              <div className="bg-container1 border border-container1-border rounded-xl px-6 py-5 flex flex-col gap-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full shrink-0 ${methodBadgeClass(selectedApi.method)}`}>
-                    {selectedApi.method}
-                  </span>
-                  <h1 className="text-xl font-bold text-title">{selectedApi.name}</h1>
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full shrink-0 bg-secondary text-title-secondary">{translate({ key: 'docs.syncSmall' })}</span>
+                  <h1 className="text-xl font-bold text-title">{selectedSync.name}</h1>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                   <div className="flex flex-col gap-1.5 min-w-0">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.fetchRequestExample' })}</div>
-                    <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre bg-container2 border border-container2-border rounded-lg p-3 text-common">{buildApiFetchExample(selectedApi, inputData)}</pre>
+                    <SectionLabel>{translate({ key: 'docs.fetchRequestExample' })}</SectionLabel>
+                    <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre bg-container2 border border-container2-border rounded-lg p-3 text-common">{buildSyncFetchExample(selectedSync, inputData)}</pre>
                   </div>
                   <div className="flex flex-col gap-1.5 min-w-0">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.socketRequestExample' })}</div>
-                    <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre bg-container2 border border-container2-border rounded-lg p-3 text-common">{buildApiSocketExample(selectedApi, inputData)}</pre>
+                    <SectionLabel>{translate({ key: 'docs.socketRequestExample' })}</SectionLabel>
+                    <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre bg-container2 border border-container2-border rounded-lg p-3 text-common">{buildSyncSocketExample(selectedSync, inputData, receiver, ignoreSelf)}</pre>
                   </div>
                 </div>
-                {selectedApi.description && (
-                  <div className="text-xs text-common/70">{selectedApi.description}</div>
-                )}
-                {/* Status badge — inline in header */}
-                <div className="flex items-center gap-2 pt-0.5">
-                  <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${statusBadgeClass(status)}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${statusDotClass(status)}`} />
-                    {translate({ key: 'docs.status' })} {status}
-                  </span>
+              </div>
+
+              {/* Schema cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-2">
+                  <SectionLabel>{translate({ key: 'docs.clientInput' })}</SectionLabel>
+                  <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre-wrap break-words text-common bg-container2 rounded-lg p-3">{formatTypeText(selectedSync.clientInput)}</pre>
                 </div>
-              </div>
-            </div>
-
-            {/* Meta row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {/* Rate limit */}
-              <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-1.5">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.rateLimit' })}</div>
-                <div className="text-sm font-semibold text-title">{rateLimitText}</div>
-              </div>
-
-              {/* Auth */}
-              <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-1.5">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.auth' })}</div>
-                <div className="flex items-center gap-2">
-                  <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${selectedApiNeedsLogin ? 'bg-warning' : 'bg-correct'}`} />
-                  <span className="text-sm font-semibold text-title">
-                    {selectedApiNeedsLogin ? translate({ key: 'docs.loginRequired' }) : translate({ key: 'docs.loginOptional' })}
-                  </span>
+                <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-2">
+                  <SectionLabel>{translate({ key: 'docs.serverOutput' })}</SectionLabel>
+                  <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre-wrap break-words text-common bg-container2 rounded-lg p-3">{formatTypeText(selectedSync.serverOutput)}</pre>
+                </div>
+                <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-2">
+                  <SectionLabel>{translate({ key: 'docs.clientOutput' })}</SectionLabel>
+                  <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre-wrap break-words text-common bg-container2 rounded-lg p-3">{formatTypeText(selectedSync.clientOutput)}</pre>
                 </div>
               </div>
 
-              {/* Additional permissions */}
-              <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-1.5">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.additionalPermissions' })}</div>
-                {selectedApiAdditional.length === 0
-                  ? <div className="text-xs text-common/50">{translate({ key: 'docs.none' })}</div>
-                  : (
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedApiAdditional.map((item) => {
-                        const label = getAdditionalPermissionLabel(item);
-                        return (
-                          <div key={`${item.key}-${label}`} className="text-[10px] px-2 py-0.5 rounded-full bg-warning/20 text-warning border border-warning/30 font-semibold">
-                            {label}
-                          </div>
-                        );
-                      })}
+              {/* Run panel */}
+              <div className="bg-container1 border border-container1-border rounded-xl p-5 flex flex-col gap-3">
+                <div className="flex flex-wrap gap-2 items-center">
+                  <button className="text-xs px-3 py-1.5 rounded-md bg-container2 text-common hover:bg-container2-hover transition-colors font-medium border border-container2-border" onClick={applyRandomPreset}>{translate({ key: 'docs.randomPreset' })}</button>
+                  <button className="text-xs px-3 py-1.5 rounded-md bg-correct text-title-primary hover:bg-correct-hover transition-colors font-semibold" onClick={runSyncWithSocket}>{translate({ key: 'docs.runSocket' })}</button>
+                  <button className="text-xs px-3 py-1.5 rounded-md bg-primary text-title-primary hover:bg-primary-hover transition-colors font-semibold" onClick={() => { void runSyncWithHttp(); }}>{translate({ key: 'docs.runHttp' })}</button>
+                </div>
+                <SectionLabel>{translate({ key: 'docs.syncReceiverHeader' })}</SectionLabel>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <input
+                    value={receiver}
+                    onChange={(event) => { setReceiver(event.target.value); }}
+                    className="bg-container2 border border-container2-border rounded-lg px-3 py-1.5 text-[11px] font-mono flex-1 text-common focus:outline-none focus-ring"
+                    placeholder={translate({ key: 'docs.roomCode' })}
+                  />
+                  <label className="text-xs flex items-center gap-2 text-common/70 cursor-pointer select-none">
+                    <input type="checkbox" checked={ignoreSelf} onChange={(event) => { setIgnoreSelf(event.target.checked); }} />
+                    {translate({ key: 'docs.ignoreSelf' })}
+                  </label>
+                </div>
+                <SectionLabel>{translate({ key: 'docs.syncJoinHeader' })}</SectionLabel>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <input
+                    value={joinedRoom}
+                    onChange={(event) => { setJoinedRoom(event.target.value); }}
+                    className="bg-container2 border border-container2-border rounded-lg px-3 py-1.5 text-[11px] font-mono flex-1 text-common focus:outline-none focus-ring"
+                    placeholder={translate({ key: 'docs.roomToJoin' })}
+                  />
+                  <button
+                    className="text-xs px-3 py-1.5 rounded-md bg-secondary text-title-secondary hover:bg-secondary-hover transition-colors font-semibold"
+                    onClick={() => { void joinSelectedRoom(); }}
+                  >
+                    {translate({ key: 'docs.joinRoom' })}
+                  </button>
+                </div>
+                <SectionLabel>{translate({ key: 'docs.syncLeaveHeader' })}</SectionLabel>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <input
+                    value={roomToLeave}
+                    onChange={(event) => { setRoomToLeave(event.target.value); }}
+                    className="bg-container2 border border-container2-border rounded-lg px-3 py-1.5 text-[11px] font-mono flex-1 text-common focus:outline-none focus-ring"
+                    placeholder={translate({ key: 'docs.roomToLeave' })}
+                  />
+                  <button
+                    className="text-xs px-3 py-1.5 rounded-md bg-wrong text-title-primary hover:bg-wrong-hover transition-colors font-semibold"
+                    onClick={() => { void leaveSelectedRoom(roomToLeave); }}
+                  >
+                    {translate({ key: 'docs.leaveRoom' })}
+                  </button>
+                </div>
+                <SectionLabel>{translate({ key: 'docs.requestPayload' })}</SectionLabel>
+                <textarea
+                  value={inputData}
+                  onChange={(event) => { setInputData(event.target.value); }}
+                  onBlur={normalizeInputData}
+                  spellCheck={false}
+                  className="w-full h-36 bg-container2 border border-container2-border rounded-lg p-3 text-[11px] font-mono leading-5 text-common resize-y focus:outline-none focus-ring"
+                />
+                <Collapse open={syncResult !== null}>
+                  {syncResult && (
+                    <div className="flex flex-col gap-1.5 pt-1">
+                      <SectionLabel>{translate({ key: 'docs.responsePayload' })}</SectionLabel>
+                      <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre bg-container2 border border-container2-border rounded-lg p-3 text-common">{JSON.stringify(syncResult, null, 2)}</pre>
                     </div>
                   )}
+                </Collapse>
               </div>
             </div>
-
-            {/* Type schema cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-2">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.input' })}</div>
-                <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre-wrap break-words text-common bg-container2 rounded-lg p-3">{formatTypeText(selectedApi.input)}</pre>
-              </div>
-              <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-2">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.output' })}</div>
-                <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre-wrap break-words text-common bg-container2 rounded-lg p-3">{formatTypeText(selectedApi.output)}</pre>
-              </div>
-            </div>
-
-            {/* Run panel */}
-            <div className="bg-container1 border border-container1-border rounded-xl p-5 flex flex-col gap-3">
-              <div className="flex flex-wrap gap-2">
-                <button className="text-xs px-3 py-1.5 rounded-md bg-container2 text-common hover:bg-container2-hover transition-colors font-medium border border-container2-border" onClick={applyRandomPreset}>{translate({ key: 'docs.randomPreset' })}</button>
-                <button className="text-xs px-3 py-1.5 rounded-md bg-correct text-title-primary hover:bg-correct-hover transition-colors font-semibold" onClick={runApiWithSocket}>{translate({ key: 'docs.runSocket' })}</button>
-                <button className="text-xs px-3 py-1.5 rounded-md bg-primary text-title-primary hover:bg-primary-hover transition-colors font-semibold" onClick={() => { void runApiWithHttp(); }}>{translate({ key: 'docs.runHttp' })}</button>
-              </div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.requestPayload' })}</div>
-              <textarea
-                value={inputData}
-                onChange={(event) => { setInputData(event.target.value); }}
-                onBlur={normalizeInputData}
-                spellCheck={false}
-                className="w-full h-36 bg-container2 border border-container2-border rounded-lg p-3 text-[11px] font-mono leading-5 text-common resize-y focus:outline-none focus:border-primary/50"
-              />
-              {apiResult && (
-                <div className="flex flex-col gap-1.5">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.responsePayload' })}</div>
-                  <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre bg-container2 border border-container2-border rounded-lg p-3 text-common">{JSON.stringify(apiResult, null, 2)}</pre>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {selectedSync && (
-          <div className="max-w-4xl mx-auto px-8 py-8 flex flex-col gap-5">
-            {/* Header card */}
-            <div className="bg-container1 border border-container1-border rounded-xl px-6 py-5 flex flex-col gap-1.5">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full shrink-0 bg-secondary text-title-secondary">{translate({ key: 'docs.syncSmall' })}</span>
-                <h1 className="text-xl font-bold text-title">{selectedSync.name}</h1>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                <div className="flex flex-col gap-1.5 min-w-0">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.fetchRequestExample' })}</div>
-                  <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre bg-container2 border border-container2-border rounded-lg p-3 text-common">{buildSyncFetchExample(selectedSync, inputData)}</pre>
-                </div>
-                <div className="flex flex-col gap-1.5 min-w-0">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.socketRequestExample' })}</div>
-                  <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre bg-container2 border border-container2-border rounded-lg p-3 text-common">{buildSyncSocketExample(selectedSync, inputData, receiver, ignoreSelf)}</pre>
-                </div>
-              </div>
-            </div>
-
-            {/* Schema cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-2">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.clientInput' })}</div>
-                <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre-wrap break-words text-common bg-container2 rounded-lg p-3">{formatTypeText(selectedSync.clientInput)}</pre>
-              </div>
-              <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-2">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.serverOutput' })}</div>
-                <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre-wrap break-words text-common bg-container2 rounded-lg p-3">{formatTypeText(selectedSync.serverOutput)}</pre>
-              </div>
-              <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-2">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.clientOutput' })}</div>
-                <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre-wrap break-words text-common bg-container2 rounded-lg p-3">{formatTypeText(selectedSync.clientOutput)}</pre>
-              </div>
-            </div>
-
-            {/* Run panel */}
-            <div className="bg-container1 border border-container1-border rounded-xl p-5 flex flex-col gap-3">
-              <div className="flex flex-wrap gap-2 items-center">
-                <button className="text-xs px-3 py-1.5 rounded-md bg-container2 text-common hover:bg-container2-hover transition-colors font-medium border border-container2-border" onClick={applyRandomPreset}>{translate({ key: 'docs.randomPreset' })}</button>
-                <button className="text-xs px-3 py-1.5 rounded-md bg-correct text-title-primary hover:bg-correct-hover transition-colors font-semibold" onClick={runSyncWithSocket}>{translate({ key: 'docs.runSocket' })}</button>
-                <button className="text-xs px-3 py-1.5 rounded-md bg-primary text-title-primary hover:bg-primary-hover transition-colors font-semibold" onClick={() => { void runSyncWithHttp(); }}>{translate({ key: 'docs.runHttp' })}</button>
-              </div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.syncReceiverHeader' })}</div>
-              <div className="flex flex-wrap gap-2 items-center">
-                <input
-                  value={receiver}
-                  onChange={(event) => { setReceiver(event.target.value); }}
-                  className="bg-container2 border border-container2-border rounded-lg px-3 py-1.5 text-[11px] font-mono flex-1 text-common focus:outline-none focus:border-secondary/50"
-                  placeholder={translate({ key: 'docs.roomCode' })}
-                />
-                <label className="text-xs flex items-center gap-2 text-common/70 cursor-pointer select-none">
-                  <input type="checkbox" checked={ignoreSelf} onChange={(event) => { setIgnoreSelf(event.target.checked); }} />
-                  {translate({ key: 'docs.ignoreSelf' })}
-                </label>
-              </div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.syncJoinHeader' })}</div>
-              <div className="flex flex-wrap gap-2 items-center">
-                <input
-                  value={joinedRoom}
-                  onChange={(event) => { setJoinedRoom(event.target.value); }}
-                  className="bg-container2 border border-container2-border rounded-lg px-3 py-1.5 text-[11px] font-mono flex-1 text-common focus:outline-none focus:border-secondary/50"
-                  placeholder={translate({ key: 'docs.roomToJoin' })}
-                />
-                <button
-                  className="text-xs px-3 py-1.5 rounded-md bg-secondary text-title-secondary hover:bg-secondary-hover transition-colors font-semibold"
-                  onClick={() => { void joinSelectedRoom(); }}
-                >
-                  {translate({ key: 'docs.joinRoom' })}
-                </button>
-              </div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.syncLeaveHeader' })}</div>
-              <div className="flex flex-wrap gap-2 items-center">
-                <input
-                  value={roomToLeave}
-                  onChange={(event) => { setRoomToLeave(event.target.value); }}
-                  className="bg-container2 border border-container2-border rounded-lg px-3 py-1.5 text-[11px] font-mono flex-1 text-common focus:outline-none focus:border-secondary/50"
-                  placeholder={translate({ key: 'docs.roomToLeave' })}
-                />
-                <button
-                  className="text-xs px-3 py-1.5 rounded-md bg-wrong text-title-primary hover:bg-wrong-hover transition-colors font-semibold"
-                  onClick={() => { void leaveSelectedRoom(); }}
-                >
-                  {translate({ key: 'docs.leaveRoom' })}
-                </button>
-              </div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.requestPayload' })}</div>
-              <textarea
-                value={inputData}
-                onChange={(event) => { setInputData(event.target.value); }}
-                onBlur={normalizeInputData}
-                spellCheck={false}
-                className="w-full h-36 bg-container2 border border-container2-border rounded-lg p-3 text-[11px] font-mono leading-5 text-common resize-y focus:outline-none focus:border-secondary/50"
-              />
-              {syncResult && (
-                <div className="flex flex-col gap-1.5">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.responsePayload' })}</div>
-                  <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre bg-container2 border border-container2-border rounded-lg p-3 text-common">{JSON.stringify(syncResult, null, 2)}</pre>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
+          )}
+        </PageTransition>
       </div>
     </div>
   );

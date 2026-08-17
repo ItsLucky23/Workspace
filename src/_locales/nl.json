@@ -75,6 +75,7 @@
     "noReason": "Geen reden opgegeven.",
     "signInTitle": "Inloggen op je account",
     "registerTitle": "Nieuw account aanmaken",
+    "tagline": "Schrijf een ticket, keur het plan goed, lever het resultaat.",
     "noAccount": "Nog geen account? ",
     "haveAccount": "Al een account? ",
     "createAccount": "Maak er nu een aan",
@@ -84,8 +85,10 @@
     "name": "Naam",
     "emailAddress": "E-mailadres",
     "password": "Wachtwoord",
+    "passwordHint": "Minimaal 8 tekens.",
     "confirmPassword": "Wachtwoord bevestigen",
     "forgotPassword": "Wachtwoord vergeten?",
+    "twoFactorAfterEmailCode": "E-mailcode geaccepteerd. Nog één stap om in te loggen.",
     "twoFactorPrompt": "Voer de 6-cijferige code uit je authenticator-app in (of een recovery code).",
     "twoFactorPlaceholder": "123456",
     "twoFactorVerify": "Verifiëren",
@@ -94,6 +97,7 @@
     "emailRequired": "Voer eerst je e-mailadres in.",
     "emailCodeSent": "Als dat account bestaat, is er een code onderweg.",
     "emailCodeLabel": "Inlogcode",
+    "emailCodePrompt": "Voer de 6-cijferige code in die we je gemaild hebben.",
     "emailCodeSend": "Mail me een code",
     "emailCodeVerify": "Code verifiëren",
     "useEmailCode": "Log in met een e-mailcode",
@@ -200,7 +204,10 @@
     "signOutEverywhereDone": "Overal uitgelogd.",
     "deleteAccount": "Account verwijderen",
     "deleteAccountConfirm": "Hiermee wordt je account en alle bijbehorende gegevens permanent verwijderd. Typ DELETE om te bevestigen.",
-    "deleteAccountDone": "Account verwijderd."
+    "deleteAccountDone": "Account verwijderd.",
+    "pageTitle": "Instellingen",
+    "profileSection": "Profiel",
+    "avatarLabel": "Avatar"
   },
   "avatar": {
     "uploadFailed": "Uploaden van avatar is mislukt.",
@@ -283,7 +290,11 @@
     "apisSmall": "APIS",
     "syncsSmall": "SYNCS",
     "doc": "DOC",
-    "syncSmall": "SYNC"
+    "syncSmall": "SYNC",
+    "emptyStateTitle": "Blader door en test elke API- of sync-route",
+    "overwritePayloadTitle": "Payload overschrijven?",
+    "overwritePayloadContent": "De willekeurige preset vervangt wat je hebt getypt. Dit kan niet ongedaan worden gemaakt.",
+    "leaveRoomNamed": "Room {{room}} verlaten"
   },
   "admin": {
     "title": "Admin"
@@ -669,7 +680,14 @@
       "warnWriteAccess": "{{name}} heeft schrijftoegang tot een service — meestal heeft alleen Implementatie dat nodig.",
       "warnNetworkOff": "{{name}} heeft netwerk uit maar gebruikt skills die mogelijk egress nodig hebben.",
       "warnRagMismatch": "Refined laadt RAG maar Plan niet — de beslisstage heeft meestal meer context nodig, niet minder.",
-      "hookRequired": "altijd aan"
+      "hookRequired": "altijd aan",
+      "removeCommand": "Verwijder commando",
+      "removeProcess": "Verwijder proces",
+      "removeCommandLine": "Verwijder commandoregel",
+      "removeEnvVar": "Verwijder omgevingsvariabele",
+      "removeModelRule": "Verwijder escalatieband",
+      "removeStatus": "Verwijder status “{{name}}”",
+      "removeDomain": "Verwijder {{name}}"
     },
     "settings": {
       "saving": "Opslaan…",
@@ -691,7 +709,17 @@
       "composedTitle": "Samengestelde prompt",
       "composedEmpty": "Nog niets ingevuld — de AI draait op zijn standaardgedrag.",
       "noteFirst": "laag 1 van {{total}} — draait als eerste",
-      "noteAfter": "laag {{n}} van {{total}} — draait na {{before}}"
+      "noteAfter": "laag {{n}} van {{total}} — draait na {{before}}",
+      "briefTone": "Toon van de briefing",
+      "brandVoice": "Merkstem",
+      "refine": "Verfijningsinstructie",
+      "channelVoice": "Kanaalstem",
+      "sourceBrief": "deze briefing",
+      "sourceBrand": "merkbibliotheek",
+      "sourceRefine": "deze generatie",
+      "sourceChannel": "kanaalinstellingen",
+      "contentPreviewHelp": "Deze worden in deze volgorde tot één prompt gecombineerd — verfijnen heeft het sterkste, meest directe effect.",
+      "channelNotApplicable": "Hier niet gebruikt — kanaalstem bepaalt alleen posts die naar een kanaal worden gepubliceerd. Bewerk via Content-instellingen → Kanalen."
     },
     "workspaceSettings": {
       "tabMembers": "Leden",
@@ -934,7 +962,19 @@
       },
       "cloneWorkspace": "Workspace dupliceren",
       "cloneWorkspaceDesc": "Begin een nieuwe workspace met deze setup: pipeline, skills, stijlen, kanalen en triggers. Tickets, content, sleutels en leden gaan niet mee.",
-      "clone": "Dupliceren"
+      "clone": "Dupliceren",
+      "member": "Lid",
+      "role": "Rol",
+      "email": "E-mail",
+      "sentColumn": "Verzonden",
+      "removeVariable": "Variabele verwijderen",
+      "envKeyColumn": "Sleutel",
+      "envValueColumn": "Waarde",
+      "removeIntegration": "Integratie verwijderen",
+      "auditAction": "Actie",
+      "auditWhen": "Wanneer",
+      "starterDescriptionLocked": "Doordachte richtlijnen die de AI in elke fase volgt — beheer en schakel ze op de Sources-pagina.",
+      "manageInSources": "Beheer contextdocumenten in Sources"
     },
     "services": {
       "title": "Services",
@@ -969,7 +1009,8 @@
       "issue": "Token uitgeven",
       "revoke": "Intrekken",
       "empty": "Nog geen API-tokens.",
-      "copyNow": "Kopieer dit token nu — het wordt niet opnieuw getoond:"
+      "copyNow": "Kopieer dit token nu — het wordt niet opnieuw getoond:",
+      "colToken": "Token"
     },
     "dataExport": {
       "title": "Workspace-data",
@@ -1081,7 +1122,9 @@
       "push_error": "Push kon niet worden ingeschakeld. Probeer opnieuw.",
       "pushIosHint": "Zet de app op een iPhone eerst op je beginscherm.",
       "installIos": "Deel → Zet op beginscherm",
-      "rollback": "Terugdraaien"
+      "rollback": "Terugdraaien",
+      "summaryDesc": "Een alleen-lezen overzicht — bewerk dit in je accountinstellingen.",
+      "sessionsCount": "{{count}} actief"
     },
     "modules": {
       "pickHeading": "Welke modules wil je?",
@@ -1222,7 +1265,8 @@
       "accept": "Accepteren",
       "dismiss": "Negeren",
       "snooze": "Snoozen",
-      "projectBriefPh": "Beschrijf de app om de start-UI te genereren (optioneel)…"
+      "projectBriefPh": "Beschrijf de app om de start-UI te genereren (optioneel)…",
+      "menu": "Menu"
     },
     "publish": {
       "title": "Publiceren naar {{platform}}",
@@ -1598,7 +1642,19 @@
       "thumbDesc": "Een vette kop over een achtergrond. Laat de achtergrond leeg voor het gratis sjabloon.",
       "thumbBgPlaceholder": "AI-achtergrond (optioneel, kost een generatie)",
       "thumbCompose": "Thumbnail maken",
-      "thumbComposeAi": "Maken met AI-achtergrond"
+      "thumbComposeAi": "Maken met AI-achtergrond",
+      "brandCrossLinkNote": "Ook te bewerken in",
+      "brandCrossLinkAction": "Content-instellingen → Kanalen",
+      "brandEmptyAction": "Kanaal toevoegen",
+      "toolCapture": "Demo-opname",
+      "toolAnalyze": "Referentievideo",
+      "toolSeo": "SEO",
+      "toolThumb": "Thumbnail",
+      "brandVoiceEmpty": "Nog geen merkstem ingesteld.",
+      "brandEditFull": "Volledig kanaal bewerken",
+      "budgetManageCaps": "Limieten beheren",
+      "budgetScopeNote": "Dit beperkt alleen de uitgaven voor mediagenerering.",
+      "budgetOtherCapsLink": "Workspace-brede AI-uitgavenlimieten"
     },
     "knowledge": {
       "emptyTeach": "Dit is de kenniskaart van je workspace: elke contextbron, elk ticket en elk content-stuk verschijnt als een punt, verbonden met gerelateerd werk. Voeg bronnen toe of maak tickets en content aan, en vernieuw daarna om de verbindingen te zien ontstaan.",
@@ -1621,7 +1677,9 @@
       "legendSources": "Bronnen",
       "legendTickets": "Tickets",
       "legendPieces": "Content",
-      "hint": "Klik op een knoop om die en zijn verbindingen te focussen."
+      "hint": "Klik op een knoop om die en zijn verbindingen te focussen.",
+      "nodeCapNotice": "Toont de {{shown}} best verbonden knooppunten van de {{total}} om de graaf leesbaar te houden.",
+      "nodeAriaLabel": "{{type}}: {{label}}"
     },
     "usage": {
       "costValue": "€{{n}}",
@@ -1692,7 +1750,20 @@
       "subscriptionBadge": "abonnement",
       "byAiEmptyTitle": "Nog geen AI-gebruik",
       "byAiEmptySub": "Zodra een AI een taak uitvoert, verschijnt hier het tokengebruik en de kosten.",
-      "runawayNote": "Runaway-beheersing (vastloop-/idle-detectie) schaalt een sessie op naar “input nodig” — los van welke uitgavenlimiet dan ook."
+      "runawayNote": "Runaway-beheersing (vastloop-/idle-detectie) schaalt een sessie op naar “input nodig” — los van welke uitgavenlimiet dan ook.",
+      "diagnoseExample1": "Checkout geeft 500-fouten sinds vanochtend",
+      "diagnoseExample2": "Deploy blijft hangen op 'pending'",
+      "diagnoseExample3": "API-latency piekte na de laatste merge",
+      "diagnosePendingHint": "Bezig met diagnosticeren — het resultaat verschijnt hier, of in het AI-paneel.",
+      "diagnoseOpenPanel": "AI-paneel openen",
+      "diagnoseHistoryTitle": "Recente diagnoses",
+      "diagnoseAwaiting": "Wacht op beoordeling",
+      "diagnoseResolved": "Afgehandeld",
+      "capAlertStripNamed": "{{name}} nadert de limiet",
+      "budgetPrimaryLabel": "Hoofdbudget",
+      "budgetUnnamedCap": "Naamloze limiet",
+      "budgetScopeNote": "Dit beperkt de gemeten AI/API-uitgaven voor de hele workspace.",
+      "budgetMediaCapsLink": "Limieten voor mediagenerering"
     },
     "timetravel": {
       "button": "Oude versie",
@@ -1805,7 +1876,12 @@
       "noStageHistory": "Nog geen stage-historie",
       "sending": "Versturen…",
       "serviceLabel": "Service",
-      "serviceRoot": "Hele project"
+      "serviceRoot": "Hele project",
+      "unlinkArtifact": "Artefact ontkoppelen",
+      "aiAgentTab": "ai-agent",
+      "aiAgentTailHint": "Alleen-lezen weergave van de live output van de agent — dezelfde stream als de inline preview op Overzicht.",
+      "liveAgentOpenTerminal": "Openen in Terminal",
+      "branchChipLabel": "{{branch}} · werkbranch"
     },
     "terminals": {
       "subtitle": "Een live shell in elke draaiende ticket-container — kijk mee met de AI of grijp zelf in.",
@@ -1828,7 +1904,9 @@
       "emptyTitle": "Geen terminals actief",
       "maximizeTitle": "Maximaliseren",
       "restoreTitle": "Terug naar rooster",
-      "resizeTitle": "Sleep om de hoogte aan te passen"
+      "resizeTitle": "Sleep om de hoogte aan te passen",
+      "newShell": "Nieuwe shell",
+      "newShellPlaceholder": "Naam van de shell…"
     },
     "sources": {
       "subtitle": "Contextdocumenten worden vóór elke AI-run volledig geladen · skills & MCP-tools worden op aanvraag aangeroepen.",
@@ -2064,7 +2142,24 @@
       "vsNote": "Script + storyboard gegenereerd — volledige video-rendering vereist een media/video-API-key.",
       "publishLive": "Live zetten",
       "publishLiveHint": "Zet deze pagina op een publieke URL",
-      "publishedLive": "Bezig met publiceren — de URL verschijnt zo."
+      "publishedLive": "Bezig met publiceren — de URL verschijnt zo.",
+      "removeColour": "Kleur verwijderen",
+      "colourSwatch": "Kleurstaal voor {{name}}",
+      "refinePrecedenceHint": "Wordt bovenop de toon van deze briefing en de merkstem hieronder toegepast — een verfijningsinstructie wint bij een conflict.",
+      "voicePrecedenceHint": "Wordt als terugval gebruikt wanneer een briefing geen eigen toon instelt — de toon van een briefing en een verfijningsinstructie gaan hier vóór.",
+      "identitySection": "Identiteit",
+      "targetingSection": "Doelgroep",
+      "duplicateFromLabel": "Begin vanaf een bestaande briefing (optioneel)",
+      "duplicateFromPlaceholder": "Lege briefing",
+      "optionalDetails": "Optionele details",
+      "promoteBrandTitle": "Dit als merk gebruiken?",
+      "promoteBrandBody": "Dit vervangt het palet, de lettertypes, de merkstem en de taglines in je merkbibliotheek. Doorgaan?",
+      "brandDiffUnset": "(niet ingesteld)",
+      "brandDiffNoChanges": "Geen wijzigingen — dit artefact komt overeen met je huidige merkbibliotheek.",
+      "brandProvenanceLabel": "Laatst ingesteld vanuit: {{source}} · {{date}}",
+      "brandProvenanceManual": "handmatige bewerking",
+      "refinedWith": "verfijnd: “{{refine}}”",
+      "regenerateWithRefine": "Opnieuw genereren — verfijnd: “{{refine}}”"
     },
     "uiReview": {
       "emptyTitle": "Nog geen UI-feedback.",
@@ -2280,7 +2375,10 @@
       "elevation": "Elevatie",
       "radiusScale": "Radius-schaal",
       "spacing": "Witruimte",
-      "applyTokens": "Tokens toepassen"
+      "applyTokens": "Tokens toepassen",
+      "previewLight": "Voorbeeld in lichte modus",
+      "previewDark": "Voorbeeld in donkere modus",
+      "applyTokensNeedsProject": "Selecteer eerst een project"
     },
     "interviewer": {
       "emptyTitle": "Vraag me alles over deze codebase",
@@ -2307,7 +2405,10 @@
       "high": "Hoog",
       "linkedTicket": "Ticket gemaakt",
       "makeTicket": "Maak ticket",
-      "dismiss": "Negeren"
+      "dismiss": "Negeren",
+      "generateStartedFocus": "Verbeterideeën worden gegenereerd — focus: {{focus}}. Ze verschijnen hier zodra ze klaar zijn.",
+      "severityLow": "Laag",
+      "severityNormal": "Normaal"
     },
     "scheduledPosts": {
       "emptyTitle": "Nog niets ingepland",
@@ -2318,7 +2419,9 @@
       "title": "Geplande posts",
       "tagline": "Publicaties die klaarstaan om op een ingesteld moment te verschijnen.",
       "empty": "Nog geen geplande posts. Plan een publicatie vanuit een contentstuk om het hier te zien.",
-      "failed": "mislukt"
+      "failed": "mislukt",
+      "today": "Vandaag",
+      "tomorrow": "Morgen"
     },
     "scheduled": {
       "emptyTitle": "Nog niets ingepland",
@@ -2362,7 +2465,10 @@
       "channels": "Kanalen",
       "channelsPlaceholder": "Alle kanalen (niets geselecteerd)",
       "channelsSelected": "{{count}} kanalen",
-      "channelsHint": "De rol draait één keer per geselecteerd kanaal — een kanaal dat faalt blokkeert de rest nooit."
+      "channelsHint": "De rol draait één keer per geselecteerd kanaal — een kanaal dat faalt blokkeert de rest nooit.",
+      "runsAtInvalid": "Ongeldig schema — controleer de expressie",
+      "runsAtSimple": "Draait dagelijks om {{time}}",
+      "advancedSummary": "Geavanceerd — focus & kanalen"
     },
     "automation": {
       "title": "Automatisering",
@@ -2411,7 +2517,19 @@
       "debounceLabel": "Debounce (seconden)",
       "runNow": "Nu draaien",
       "deleteConfirmTitle": "Automatisering verwijderen?",
-      "deleteConfirmBody": "\"{{name}}\" verwijderen? Dit kan niet ongedaan worden gemaakt."
+      "deleteConfirmBody": "\"{{name}}\" verwijderen? Dit kan niet ongedaan worden gemaakt.",
+      "matchStageHelpStage": "Beperkt deze trigger tot alleen het event van deze stage — andere stages activeren hem niet.",
+      "matchStageHelpTicket": "Filtert op de stage waarin het ticket zich nu bevindt, niet op de stage uit het event.",
+      "previewPlaceholder": "…",
+      "previewNotify": "stuur melding \"{{title}}\"",
+      "previewEmitSignal": "geef signaal \"{{kind}}\" af",
+      "previewStartStage": "verplaats het ticket naar {{stage}}",
+      "previewInvokeRole": "voer de agentrol {{role}} uit",
+      "previewInvokeAi": "vraag Workspace-AI \"{{prompt}}\"",
+      "previewRunCommand": "voer \"{{command}}\" uit",
+      "previewWebhook": "roep de webhook {{url}} aan",
+      "previewCron": "op schema \"{{cron}}\"",
+      "previewTemplate": "Wanneer {{event}} → {{detail}}"
     },
     "automations": {
       "title": "Automatiseringen",
@@ -2419,7 +2537,10 @@
     },
     "components": {
       "title": "Componenten",
-      "tagline": "Elk UI-component dat we leveren, live onder jouw designthema."
+      "tagline": "Elk UI-component dat we leveren, live onder jouw designthema.",
+      "openInDesigner": "Openen in Designer",
+      "previewOnly": "Alleen preview",
+      "previewOnlyBody": "Een thema of licht/donker kiezen verandert hier alleen wat JIJ in deze galerij ziet — het wordt nooit opgeslagen en verandert nooit waarmee de coding-agent bouwt."
     },
     "code": {
       "title": "Code",
@@ -2430,7 +2551,10 @@
       "binaryFile": "Binair bestand — geen voorbeeld beschikbaar.",
       "truncated": "Groot bestand — eerste 200 KB weergegeven.",
       "treeError": "Kon de bestandsboom niet laden.",
-      "fileError": "Kon dit bestand niet openen."
+      "fileError": "Kon dit bestand niet openen.",
+      "branchInfoTitle": "Baseline-branch",
+      "branchInfoBody": "Dit toont de alleen-lezen baseline-branch van de repository — niet de eigen werkbranch van het ticket, die je in de editor van dat ticket ziet.",
+      "baselineReadOnly": "baseline · alleen-lezen"
     },
     "board": {
       "filterSprint": "Sprint",
@@ -2482,7 +2606,9 @@
       "filterAssignee": "Toegewezene",
       "allStatuses": "Alle statussen",
       "allAssignees": "Alle toegewezenen",
-      "clearFilters": "Filters wissen"
+      "clearFilters": "Filters wissen",
+      "legendTitle": "Fase vs. status",
+      "legendBody": "Kolommen tonen de pipelinefase — waar een ticket zich bevindt in de AI-workflow. De pil op elke kaart toont de status — wat de agent op dit moment doet binnen die fase."
     },
     "activity": {
       "sub": "Alles wat er in je tickets gebeurt, op het moment zelf — klik op een ticket-id om dat ticket te openen.",
@@ -2550,7 +2676,8 @@
       "archiveConfirmTitle": "{{count}} tickets archiveren?",
       "archiveConfirmContent": "Ze schuiven van het actieve board af.",
       "noAi": "Geen AI",
-      "creatorAssignee": "Aanmaker · toegewezene"
+      "creatorAssignee": "Aanmaker · toegewezene",
+      "clearSelection": "Selectie wissen"
     },
     "placeholder": {
       "comingNext": "{{title}} — komt hierna",
@@ -2562,6 +2689,7 @@
     },
     "common": {
       "plusCount": "+{{count}}",
+      "tableEmpty": "Hier is nog niets.",
       "statusNeedsInput": "Input nodig",
       "statusBusy": "Bezig",
       "statusDone": "Klaar",
@@ -2680,7 +2808,12 @@
       "reuseExisting": "Hergebruik bestaande afbeelding",
       "reuseHide": "Verberg bestaande afbeeldingen",
       "reuseThis": "Voeg dit bestand toe",
-      "reuseEmpty": "Nog geen herbruikbare afbeeldingen in deze workspace."
+      "reuseEmpty": "Nog geen herbruikbare afbeeldingen in deze workspace.",
+      "archivedBadge": "Gearchiveerd",
+      "searchPlaceholder": "Documenten zoeken…",
+      "aiProviderChip": "Gebruikt {{provider}}",
+      "aiProviderInfoTitle": "Vaste provider",
+      "aiProviderInfo": "Document-AI draait altijd op Gemini — dit staat vast en wordt niet beïnvloed door pipeline-stage-persona's of de per-functie providerlijst. Het gebruikt wel je workspace-AI-instructie en ingeschakelde skills, die je beheert via Workspace → AI."
     },
     "inspire": {
       "title": "Inspiratie",
@@ -2764,7 +2897,9 @@
       "daysLeft": "nog {{days}} dagen beschikbaar",
       "restore": "Terugzetten",
       "purge": "Definitief verwijderen",
-      "purgeConfirm": "Dit bestand definitief verwijderen? Dit kan niet ongedaan worden gemaakt."
+      "purgeConfirm": "Dit bestand definitief verwijderen? Dit kan niet ongedaan worden gemaakt.",
+      "colFile": "Bestand",
+      "colExpires": "Verloopt"
     },
     "deployHistory": {
       "title": "Deploy-historie",
@@ -2789,7 +2924,9 @@
       "waitedMinutes": "{{n}}m wachtend",
       "waitedHours": "{{n}}u wachtend",
       "waitedDays": "{{n}}d wachtend",
-      "moreOpen": "+{{n}} meer"
+      "moreOpen": "+{{n}} meer",
+      "staleTooltip": "Meer dan 2 uur wachtend — de pipeline zit hierop vast.",
+      "sameAsTicket": "Hier antwoorden doet precies hetzelfde als antwoorden op het ticket."
     }
   }
 }

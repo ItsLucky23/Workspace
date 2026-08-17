@@ -12,7 +12,8 @@ import Dropdown from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../../_components/Icon';
 import { EffectivePromptPreview, LayerNote } from '../../_components/EffectivePromptPreview';
-import { Disclosure, InfoDot, Segmented, Toggle, WsButton } from '../../_components/primitives';
+import { Collapse } from '../../_components/motion';
+import { Disclosure, IconButton, InfoDot, Segmented, Toggle, WsButton } from '../../_components/primitives';
 import { resolveAiLayers } from '../../_functions/aiLayers';
 import { CARRY_VARS, COMMAND_CATALOG, HOOK_CATALOG, NETWORK_CATEGORIES } from '../../_data/seed';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
@@ -82,30 +83,32 @@ export function GeneralTab({ s, update }: TabProps) {
         />
         <textarea rows={4} value={s.customInstructions} onChange={(e) => { update({ customInstructions: e.target.value }); }} className={areaCls} placeholder={translate({ key: 'workspaces.pipeline.customInstructionsPlaceholder' })} />
       </div>
-      <div>
-        <FieldLabel title={translate({ key: 'workspaces.pipeline.definitionOfDone' })} hint={translate({ key: 'workspaces.pipeline.definitionOfDoneHint' })} />
+      {/* secondary + optional relative to system prompt/custom instructions above — a disclosure
+          instead of a fourth identical textarea block gives it its own visual weight; starts open
+          when a stage already has one set, so nothing already configured looks hidden. */}
+      <Disclosure summary={translate({ key: 'workspaces.pipeline.definitionOfDone' })} defaultOpen={Boolean(s.definitionOfDone)}>
+        <div className="text-xs text-muted -mt-1 mb-2">{translate({ key: 'workspaces.pipeline.definitionOfDoneHint' })}</div>
         <textarea rows={2} value={s.definitionOfDone ?? ''} onChange={(e) => { update({ definitionOfDone: e.target.value }); }} className={areaCls} placeholder={translate({ key: 'workspaces.pipeline.definitionOfDonePlaceholder' })} />
-      </div>
+      </Disclosure>
       <div>
         <FieldLabel title={translate({ key: 'workspaces.pipeline.statuses' })} hint={translate({ key: 'workspaces.pipeline.statusesHint' })} />
         <div className="flex flex-wrap items-center gap-2">
           {s.statuses.map((st) => (
             <span key={st.key} className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${st.kind === 'base' ? 'bg-container2 text-common' : 'bg-primary/12 text-primary'}`}>
               {st.label}
-              {st.kind === 'custom' && <button type="button" onClick={() => { update({ statuses: s.statuses.filter((x) => x.key !== st.key) }); }} className="cursor-pointer hover:text-wrong"><Icon name="xmark" className="text-[10px]" /></button>}
+              {st.kind === 'custom' && <button type="button" onClick={() => { update({ statuses: s.statuses.filter((x) => x.key !== st.key) }); }} aria-label={translate({ key: 'workspaces.pipeline.removeStatus', params: [{ key: 'name', value: st.label }] })} className="cursor-pointer hover:text-wrong"><Icon name="xmark" className="text-[10px]" /></button>}
             </span>
           ))}
         </div>
         {/* KISS — the add-status input stays collapsed until asked for (same pattern as AddCommandForm). */}
-        {addingStatus
-          ? (
-            <div className="flex items-center gap-2 mt-2">
-              <input value={newStatus} onChange={(e) => { setNewStatus(e.target.value); }} placeholder={translate({ key: 'workspaces.pipeline.addStatusPlaceholder' })} className={inputCls} />
-              <WsButton variant="secondary" onClick={() => { const l = newStatus.trim(); if (!l) return; update({ statuses: [...s.statuses, { key: l.toLowerCase().replaceAll(/\s+/g, '-'), label: l, kind: 'custom' }] }); setNewStatus(''); setAddingStatus(false); }}>{translate({ key: 'workspaces.pipeline.add' })}</WsButton>
-              <WsButton variant="ghost" onClick={() => { setNewStatus(''); setAddingStatus(false); }}>{translate({ key: 'workspaces.pipeline.cancel' })}</WsButton>
-            </div>
-          )
-          : <div className="mt-2"><WsButton variant="secondary" icon="plus" onClick={() => { setAddingStatus(true); }}>{translate({ key: 'workspaces.pipeline.addStatus' })}</WsButton></div>}
+        {!addingStatus && <div className="mt-2"><WsButton variant="secondary" icon="plus" onClick={() => { setAddingStatus(true); }}>{translate({ key: 'workspaces.pipeline.addStatus' })}</WsButton></div>}
+        <Collapse open={addingStatus}>
+          <div className="flex items-center gap-2 mt-2">
+            <input value={newStatus} onChange={(e) => { setNewStatus(e.target.value); }} placeholder={translate({ key: 'workspaces.pipeline.addStatusPlaceholder' })} className={inputCls} />
+            <WsButton variant="secondary" onClick={() => { const l = newStatus.trim(); if (!l) return; update({ statuses: [...s.statuses, { key: l.toLowerCase().replaceAll(/\s+/g, '-'), label: l, kind: 'custom' }] }); setNewStatus(''); setAddingStatus(false); }}>{translate({ key: 'workspaces.pipeline.add' })}</WsButton>
+            <WsButton variant="ghost" onClick={() => { setNewStatus(''); setAddingStatus(false); }}>{translate({ key: 'workspaces.pipeline.cancel' })}</WsButton>
+          </div>
+        </Collapse>
       </div>
     </div>
   );
@@ -171,6 +174,7 @@ function ModeSwitch({ value, onChange }: { value: CommandMode | null; onChange: 
 }
 
 function CommandRow({ title, pattern, desc, mode, onMode, onDelete }: { title: string; pattern: string; desc?: string; mode: CommandMode | null; onMode: (m: CommandMode | null) => void; onDelete?: () => void }) {
+  const translate = useTranslator();
   return (
     <div className="flex items-center gap-3">
       <div className="min-w-0 flex-1">
@@ -181,7 +185,7 @@ function CommandRow({ title, pattern, desc, mode, onMode, onDelete }: { title: s
         <div className="font-mono text-[11px] text-muted truncate">{pattern}</div>
       </div>
       <ModeSwitch value={mode} onChange={onMode} />
-      {onDelete && <button type="button" onClick={onDelete} className="text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center shrink-0"><Icon name="trash" className="text-xs" /></button>}
+      {onDelete && <IconButton icon="trash" onClick={onDelete} size="md" title={translate({ key: 'workspaces.pipeline.removeCommand' })} className="shrink-0 hover:text-wrong" />}
     </div>
   );
 }
@@ -203,23 +207,27 @@ function AddCommandForm({ categories, onAdd }: { categories: string[]; onAdd: (c
     onAdd({ category, title: t, desc: desc.trim(), pattern: p });
     setTitle(''); setDesc(''); setPattern(''); setNewCat(''); setOpen(false);
   };
-  if (!open) return <WsButton variant="secondary" icon="plus" onClick={() => { setOpen(true); }}>{translate({ key: 'workspaces.pipeline.addCommand' })}</WsButton>;
   return (
-    <div className="rounded-xl border border-container1-border bg-container2/40 p-4 flex flex-col gap-3">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.pipeline.category' })}</div>
-          <Dropdown size="sm" value={items.find((i) => i.id === catId)} items={items} onChange={(it) => { setCatId(String(it.id)); }} />
+    <div className="flex flex-col gap-3">
+      {!open && <WsButton variant="secondary" icon="plus" onClick={() => { setOpen(true); }} className="self-start">{translate({ key: 'workspaces.pipeline.addCommand' })}</WsButton>}
+      <Collapse open={open}>
+        <div className="rounded-xl border border-container1-border bg-container2/40 p-4 flex flex-col gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.pipeline.category' })}</div>
+              <Dropdown size="sm" width="full" value={items.find((i) => i.id === catId)} items={items} onChange={(it) => { setCatId(String(it.id)); }} />
+            </div>
+            {isNew && <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.pipeline.newCategory' })}</div><input value={newCat} onChange={(e) => { setNewCat(e.target.value); }} placeholder={translate({ key: 'workspaces.pipeline.newCategoryPlaceholder' })} className={`w-full ${inputCls}`} /></div>}
+          </div>
+          <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.pipeline.title' })}</div><input value={title} onChange={(e) => { setTitle(e.target.value); }} placeholder={translate({ key: 'workspaces.pipeline.titlePlaceholder' })} className={`w-full ${inputCls}`} /></div>
+          <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.pipeline.description' })} <span className="text-muted/70">{translate({ key: 'workspaces.pipeline.optional' })}</span></div><input value={desc} onChange={(e) => { setDesc(e.target.value); }} placeholder={translate({ key: 'workspaces.pipeline.descriptionPlaceholder' })} className={`w-full ${inputCls}`} /></div>
+          <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.pipeline.command' })}</div><input value={pattern} onChange={(e) => { setPattern(e.target.value); }} placeholder="Bash(npm run migrate)" className={`w-full font-mono ${inputCls}`} /></div>
+          <div className="flex items-center gap-2">
+            <WsButton icon="plus" onClick={submit}>{translate({ key: 'workspaces.pipeline.add' })}</WsButton>
+            <WsButton variant="ghost" onClick={() => { setOpen(false); }}>{translate({ key: 'workspaces.pipeline.cancel' })}</WsButton>
+          </div>
         </div>
-        {isNew && <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.pipeline.newCategory' })}</div><input value={newCat} onChange={(e) => { setNewCat(e.target.value); }} placeholder={translate({ key: 'workspaces.pipeline.newCategoryPlaceholder' })} className={`w-full ${inputCls}`} /></div>}
-      </div>
-      <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.pipeline.title' })}</div><input value={title} onChange={(e) => { setTitle(e.target.value); }} placeholder={translate({ key: 'workspaces.pipeline.titlePlaceholder' })} className={`w-full ${inputCls}`} /></div>
-      <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.pipeline.description' })} <span className="text-muted/70">{translate({ key: 'workspaces.pipeline.optional' })}</span></div><input value={desc} onChange={(e) => { setDesc(e.target.value); }} placeholder={translate({ key: 'workspaces.pipeline.descriptionPlaceholder' })} className={`w-full ${inputCls}`} /></div>
-      <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.pipeline.command' })}</div><input value={pattern} onChange={(e) => { setPattern(e.target.value); }} placeholder="Bash(npm run migrate)" className={`w-full font-mono ${inputCls}`} /></div>
-      <div className="flex items-center gap-2">
-        <WsButton icon="plus" onClick={submit}>{translate({ key: 'workspaces.pipeline.add' })}</WsButton>
-        <WsButton variant="ghost" onClick={() => { setOpen(false); }}>{translate({ key: 'workspaces.pipeline.cancel' })}</WsButton>
-      </div>
+      </Collapse>
     </div>
   );
 }
@@ -348,7 +356,7 @@ export function ProcessTab({ s, update }: TabProps) {
               <span className="text-xs text-muted shrink-0">{translate({ key: 'workspaces.pipeline.cwd' })}</span>
               <input value={p.cwd} onChange={(e) => { setProc(p.id, { cwd: e.target.value }); }} placeholder="/app" className={`flex-1 min-w-0 font-mono ${inputCls}`} />
             </div>
-            <button type="button" onClick={() => { update({ processes: s.processes.filter((x) => x.id !== p.id) }); }} className="text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center shrink-0"><Icon name="trash" className="text-xs" /></button>
+            <IconButton icon="trash" onClick={() => { update({ processes: s.processes.filter((x) => x.id !== p.id) }); }} size="md" title={translate({ key: 'workspaces.pipeline.removeProcess' })} className="shrink-0 hover:text-wrong" />
           </div>
 
           <div className="pl-8 flex flex-col gap-1.5">
@@ -358,7 +366,7 @@ export function ProcessTab({ s, update }: TabProps) {
               <div key={ci} className="flex items-center gap-2">
                 <span className="text-[11px] text-muted font-mono w-4 shrink-0 text-right">{ci + 1}</span>
                 <input value={cmd} onChange={(e) => { setProc(p.id, { commands: p.commands.map((c, j) => (j === ci ? e.target.value : c)) }); }} className={`flex-1 min-w-0 font-mono ${inputCls}`} placeholder="cd packages/api && dotnet run" />
-                <button type="button" onClick={() => { setProc(p.id, { commands: p.commands.filter((_, j) => j !== ci) }); }} className="text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center shrink-0"><Icon name="xmark" className="text-xs" /></button>
+                <IconButton icon="xmark" onClick={() => { setProc(p.id, { commands: p.commands.filter((_, j) => j !== ci) }); }} size="md" title={translate({ key: 'workspaces.pipeline.removeCommandLine' })} className="shrink-0 hover:text-wrong" />
               </div>
             ))}
             <button type="button" onClick={() => { setProc(p.id, { commands: [...p.commands, ''] }); }} className="self-start text-xs text-primary hover:underline cursor-pointer">{translate({ key: 'workspaces.pipeline.addCommandLine' })}</button>
@@ -372,7 +380,7 @@ export function ProcessTab({ s, update }: TabProps) {
                 <input value={ev.key} onChange={(e) => { setProc(p.id, { env: p.env.map((x, j) => (j === ei ? { ...x, key: e.target.value } : x)) }); }} placeholder="KEY" className={`w-40 shrink-0 font-mono ${inputCls}`} />
                 <span className="text-muted">{translate({ key: 'workspaces.pipeline.equals' })}</span>
                 <input value={ev.value} onChange={(e) => { setProc(p.id, { env: p.env.map((x, j) => (j === ei ? { ...x, value: e.target.value } : x)) }); }} placeholder="value" className={`flex-1 min-w-0 font-mono ${inputCls}`} />
-                <button type="button" onClick={() => { setProc(p.id, { env: p.env.filter((_, j) => j !== ei) }); }} className="text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center shrink-0"><Icon name="xmark" className="text-xs" /></button>
+                <IconButton icon="xmark" onClick={() => { setProc(p.id, { env: p.env.filter((_, j) => j !== ei) }); }} size="md" title={translate({ key: 'workspaces.pipeline.removeEnvVar' })} className="shrink-0 hover:text-wrong" />
               </div>
             ))}
             <button type="button" onClick={() => { setProc(p.id, { env: [...p.env, { key: '', value: '' }] }); }} className="self-start text-xs text-primary hover:underline cursor-pointer">{translate({ key: 'workspaces.pipeline.addEnvVar' })}</button>
@@ -461,14 +469,16 @@ export function ModelTab({ s, update }: TabProps) {
         <Toggle on={m.autoEscalate} onChange={(v) => { update({ modelCfg: { ...m, autoEscalate: v } }); }} />
       </div>
 
-      {!m.autoEscalate && (
+      {/* the two branches below are mutually exclusive views of the same field — Collapse keeps the
+          swap from snapping (the whole point of the toggle right above it). */}
+      <Collapse open={!m.autoEscalate}>
         <div>
           <FieldLabel title={translate({ key: 'workspaces.pipeline.model' })} />
           <ChoiceControls choice={m.base} onChange={setBase} />
         </div>
-      )}
+      </Collapse>
 
-      {m.autoEscalate && (
+      <Collapse open={m.autoEscalate}>
         <div>
           <FieldLabel title={translate({ key: 'workspaces.pipeline.escalationBands' })} hint={translate({ key: 'workspaces.pipeline.escalationBandsHint' })} />
           <div className="flex flex-col gap-2">
@@ -478,7 +488,7 @@ export function ModelTab({ s, update }: TabProps) {
                   <span className="text-sm text-common">{translate({ key: 'workspaces.pipeline.scoreGte' })}</span>
                   <input type="number" min={1} max={10} value={r.minScore} onChange={(e) => { setRule(r.id, { minScore: Number(e.target.value) }); }} className={`w-16 ${inputCls}`} />
                   <span className="text-xs text-muted">{translate({ key: 'workspaces.pipeline.outOfTen' })}</span>
-                  <button type="button" onClick={() => { update({ modelCfg: { ...m, rules: m.rules.filter((x) => x.id !== r.id) } }); }} className="ml-auto text-muted hover:text-wrong cursor-pointer w-7 h-7 flex items-center justify-center"><Icon name="trash" className="text-xs" /></button>
+                  <IconButton icon="trash" onClick={() => { update({ modelCfg: { ...m, rules: m.rules.filter((x) => x.id !== r.id) } }); }} size="md" title={translate({ key: 'workspaces.pipeline.removeModelRule' })} className="ml-auto hover:text-wrong" />
                 </div>
                 <ChoiceControls choice={r} onChange={(p) => { setRule(r.id, p); }} />
               </div>
@@ -496,7 +506,7 @@ export function ModelTab({ s, update }: TabProps) {
             <WsButton variant="secondary" icon="plus" onClick={addRule}>{translate({ key: 'workspaces.pipeline.addBand' })}</WsButton>
           </div>
         </div>
-      )}
+      </Collapse>
 
       {/* #4 self-handoff: per-stage token budget (blank = the worker default). */}
       <div>
@@ -525,8 +535,8 @@ export function NetworkTab({ s, update }: TabProps) {
         <div className="flex-1"><div className="text-sm font-medium text-title">{translate({ key: 'workspaces.pipeline.networkEgress' })}</div><div className="text-xs text-muted mt-0.5">{translate({ key: 'workspaces.pipeline.networkEgressDesc' })}</div></div>
         <Toggle on={n.enabled} onChange={(v) => { update({ network: { ...n, enabled: v } }); }} />
       </div>
-      {n.enabled && (
-        <>
+      <Collapse open={n.enabled}>
+        <div className="flex flex-col gap-4">
           <div>
             <FieldLabel title={translate({ key: 'workspaces.pipeline.mode' })} />
             <Segmented<NetworkMode> value={n.mode} onChange={(v) => { update({ network: { ...n, mode: v } }); }} options={[{ id: 'whitelist', label: translate({ key: 'workspaces.pipeline.modeAllowOnly' }) }, { id: 'blacklist', label: translate({ key: 'workspaces.pipeline.modeBlock' }) }]} />
@@ -548,7 +558,7 @@ export function NetworkTab({ s, update }: TabProps) {
             <div className="flex flex-wrap items-center gap-2">
               {n.domains.map((d) => (
                 <span key={d} className="inline-flex items-center gap-1.5 rounded-full bg-container2 px-2.5 py-1 text-xs font-mono text-common">
-                  {d}<button type="button" onClick={() => { update({ network: { ...n, domains: n.domains.filter((x) => x !== d) } }); }} className="cursor-pointer hover:text-wrong"><Icon name="xmark" className="text-[10px]" /></button>
+                  {d}<button type="button" onClick={() => { update({ network: { ...n, domains: n.domains.filter((x) => x !== d) } }); }} aria-label={translate({ key: 'workspaces.pipeline.removeDomain', params: [{ key: 'name', value: d }] })} className="cursor-pointer hover:text-wrong"><Icon name="xmark" className="text-[10px]" /></button>
                 </span>
               ))}
             </div>
@@ -557,8 +567,8 @@ export function NetworkTab({ s, update }: TabProps) {
               <WsButton variant="secondary" icon="plus" onClick={() => { const d = newDomain.trim(); if (!d) return; update({ network: { ...n, domains: [...new Set([...n.domains, d])] } }); setNewDomain(''); }}>{translate({ key: 'workspaces.pipeline.add' })}</WsButton>
             </div>
           </div>
-        </>
-      )}
+        </div>
+      </Collapse>
     </div>
   );
 }
