@@ -1,3 +1,9 @@
+/*
+ * TYPEFACE — Plus Jakarta Sans (UI + headings) + JetBrains Mono (code, ids, metrics).
+ * Loaded from Google Fonts with `display=swap`; swap these two lines for
+ * `@fontsource-variable/*` imports if the deployment must stay offline.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 /*
@@ -25,7 +31,10 @@
  *   title             — high-contrast headings + emphasized text.
  *   common            — body text. Slightly de-emphasized vs. title.
  *   muted             — captions, tertiary metadata, "X items" counters.
- *   disabled          — text/icon for disabled inputs and buttons.
+ *   meta              — small text that is real CONTENT and must stay readable at 10-12px
+ *                       (timestamps, ids, provider names). NEVER use `disabled` or an opacity
+ *                       cut for this; both fail the 4.5:1 contrast minimum.
+ *   disabled          — text/icon for disabled inputs and buttons. Non-interactive only.
  *   overlay           — semi-transparent backdrop behind modals/menus.
  *   focus-ring        — outline color used by the focus-ring utility.
  *   divider           — hairline separator (lighter than container border).
@@ -36,98 +45,155 @@
  */
 
 @theme {
-  --color-background: #F5F5F5;
+  /* ---------------------------------------------------------------- surfaces
+     Warm neutrals ("paper"), not cold grey. The warmth is what separates a calm
+     content tool from the default Tailwind-slate dashboard look. */
+  --color-background: #FAF9F7;
 
   --color-container1: #FFFFFF;
-  --color-container1-hover: #F9F9F9;
-  --color-container1-border: #E5E5E5;
+  --color-container1-hover: #F8F6F3;
+  --color-container1-border: #E8E4DE;
 
-  --color-container2: #EFEFEF;
-  --color-container2-hover: #E5E5E5;
-  --color-container2-border: #DCDCDC;
+  --color-container2: #F3F1ED;
+  --color-container2-hover: #EBE8E2;
+  --color-container2-border: #E0DBD3;
 
-  --color-title: #1E1F21;
-  --color-common: #454648;
-  --color-muted: #6B7280;
-  --color-disabled: #9CA3AF;
+  --color-title: #1B1A18;
+  --color-common: #45423D;
+  --color-muted: #78736B;
+  --color-disabled: #A8A29A;
+  /* meta — small text that is real CONTENT and must stay readable (timestamps, ids, provider
+     names, counts). `disabled` (~2.3:1) and opacity cuts were being used for this; both fail
+     contrast. Verified ≥4.5:1 on `background` and on `container2`. */
+  --color-meta: #6E6A62;
 
-  --color-overlay: rgba(15, 23, 42, 0.45);
-  --color-focus-ring: #3B82F6;
-  --color-divider: #E5E7EB;
+  --color-overlay: rgba(27, 26, 24, 0.38);
+  --color-focus-ring: #0D9488;
+  --color-divider: #ECE8E2;
 
   /* color to layer over the primary color */
   --color-title-primary: #FFFFFF;
-  --color-common-primary: #DBEAFE;
+  --color-common-primary: #CCFBF1;
 
   --color-title-secondary: #FFFFFF;
-  --color-common-secondary: #DBEAFE;
+  --color-common-secondary: #FFEDD5;
 
-  --color-primary: #3B82F6;
-  --color-primary-hover: #2563EB;
-  --color-primary-border: #1D4ED8;
+  /* ------------------------------------------------------------------ accent
+     Teal = the calm "focus" accent (state, navigation, AI activity).
+     Terracotta-orange = the warm "action" accent, deliberately scarce so a real
+     call-to-action still reads as one. */
+  --color-primary: #0D9488;
+  --color-primary-hover: #0F766E;
+  --color-primary-border: #115E59;
 
-  --color-secondary: #3B82F6;
-  --color-secondary-hover: #2563EB;
-  --color-secondary-border: #1D4ED8;
+  --color-secondary: #EA580C;
+  --color-secondary-hover: #C2410C;
+  --color-secondary-border: #9A3412;
 
-  --color-correct: oklch(72.3% 0.219 149.579);
-  --color-correct-hover: oklch(62.7% 0.194 149.214);
+  --color-correct: oklch(64.8% 0.163 156.2);
+  --color-correct-hover: oklch(57.5% 0.148 156.5);
 
-  --color-warning: oklch(79.5% 0.184 86.047);
-  --color-warning-hover: oklch(68.1% 0.162 75.834);
+  --color-warning: oklch(74.5% 0.161 68.5);
+  --color-warning-hover: oklch(66.5% 0.155 60.5);
 
-  --color-wrong: oklch(63.7% 0.237 25.331);
-  --color-wrong-hover: oklch(57.7% 0.245 27.325);
+  --color-wrong: oklch(59.5% 0.222 27.3);
+  --color-wrong-hover: oklch(53.5% 0.213 27.8);
+
+  /* ------------------------------------------------------------- typography
+     One versatile UI sans + a mono for ids, code and metrics. `--font-sans`
+     drives Tailwind's `font-sans` AND the document default below. */
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* Tighter tracking as type grows — display text set at default tracking is the
+     single most common reason a UI reads as "unfinished". */
+  --tracking-tightest: -0.035em;
+
+  /* ------------------------------------------------------------------ shape
+     A slightly softer radius ladder than Tailwind's default: friendly without
+     tipping into the bubbly/consumer register. */
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.125rem;
+  --radius-3xl: 1.5rem;
+
+  /* ------------------------------------------------------------- elevation
+     Warm-tinted, two-part shadows (contact + ambient). A neutral-black shadow
+     over a warm surface is what makes cards look "pasted on". */
+  --shadow-2xs: 0 1px 1px rgba(41, 37, 32, 0.04);
+  --shadow-xs: 0 1px 2px rgba(41, 37, 32, 0.05);
+  --shadow-sm: 0 1px 2px rgba(41, 37, 32, 0.06), 0 1px 3px rgba(41, 37, 32, 0.04);
+  --shadow-md: 0 2px 4px -1px rgba(41, 37, 32, 0.06), 0 6px 14px -4px rgba(41, 37, 32, 0.08);
+  --shadow-lg: 0 4px 8px -2px rgba(41, 37, 32, 0.06), 0 16px 32px -10px rgba(41, 37, 32, 0.12);
+  --shadow-xl: 0 8px 16px -4px rgba(41, 37, 32, 0.07), 0 28px 56px -16px rgba(41, 37, 32, 0.16);
+
+  /* -------------------------------------------------------------- motion
+     Calm easing: quick out, soft settle. Durations stay in the 120-260ms band
+     the micro-interaction guidance calls for. */
+  --ease-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-emphasis: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .dark {
-  --color-background: #0B0F19;
+  /* Warm-neutral dark ("ink"), matching the light side's paper warmth rather
+     than flipping to a cold blue-black. */
+  --color-background: #131211;
 
-  --color-container1: #111827;
-  --color-container1-hover: #1E293B;
-  --color-container1-border: #1E293B;
+  --color-container1: #1B1A18;
+  --color-container1-hover: #232120;
+  --color-container1-border: #2C2A27;
 
-  --color-container2: #1E293B;
-  --color-container2-hover: #334155;
-  --color-container2-border: #334155;
+  --color-container2: #232120;
+  --color-container2-hover: #2C2A27;
+  --color-container2-border: #38352F;
 
-  --color-title: #F1F5F9;
-  --color-common: #CBD5E1;
-  --color-muted: #94A3B8;
-  --color-disabled: #475569;
+  --color-title: #F5F3F0;
+  --color-common: #D2CEC7;
+  --color-muted: #9A948B;
+  --color-disabled: #635E57;
+  --color-meta: #A8A29A;
 
-  --color-overlay: rgba(0, 0, 0, 0.6);
-  --color-focus-ring: #60A5FA;
-  --color-divider: #1E293B;
+  --color-overlay: rgba(8, 7, 6, 0.66);
+  --color-focus-ring: #2DD4BF;
+  --color-divider: #2A2825;
 
   /* color to layer over the primary color */
-  --color-title-primary: #FFFFFF;
-  --color-common-primary: #DBEAFE;
+  --color-title-primary: #032B27;
+  --color-common-primary: #0B3F39;
 
   --color-title-secondary: #FFFFFF;
-  --color-common-secondary: #DBEAFE;
+  --color-common-secondary: #FFEDD5;
 
-  --color-primary: #3B82F6;
-  --color-primary-hover: #60A5FA;
-  --color-primary-border: #1E40AF;
+  --color-primary: #2DD4BF;
+  --color-primary-hover: #5EEAD4;
+  --color-primary-border: #0F766E;
 
-  --color-secondary: #3B82F6;
-  --color-secondary-hover: #60A5FA;
-  --color-secondary-border: #1E40AF;
+  --color-secondary: #F97316;
+  --color-secondary-hover: #FB923C;
+  --color-secondary-border: #C2410C;
 
-  --color-correct: oklch(72.3% 0.219 149.579);
-  --color-correct-hover: oklch(62.7% 0.194 149.214);
+  --color-correct: oklch(74.5% 0.168 156.5);
+  --color-correct-hover: oklch(81% 0.155 157);
 
-  --color-warning: oklch(79.5% 0.184 86.047);
-  --color-warning-hover: oklch(68.1% 0.162 75.834);
+  --color-warning: oklch(80.5% 0.155 76);
+  --color-warning-hover: oklch(86% 0.145 82);
 
-  --color-wrong: oklch(63.7% 0.237 25.331);
-  --color-wrong-hover: oklch(57.7% 0.245 27.325);
+  --color-wrong: oklch(67.5% 0.205 24.5);
+  --color-wrong-hover: oklch(73.5% 0.185 24);
+
+  /* Elevation on dark can't rely on shadow alone — deepen the ambient part so
+     stacked surfaces still separate. */
+  --shadow-2xs: 0 1px 1px rgba(0, 0, 0, 0.3);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.36);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 4px -1px rgba(0, 0, 0, 0.4), 0 6px 14px -4px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 4px 8px -2px rgba(0, 0, 0, 0.45), 0 16px 32px -10px rgba(0, 0, 0, 0.55);
+  --shadow-xl: 0 8px 16px -4px rgba(0, 0, 0, 0.5), 0 28px 56px -16px rgba(0, 0, 0, 0.6);
 }
 
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
+  font-family: var(--font-sans);
+  line-height: 1.55;
   font-weight: 400;
 
   color-scheme: light dark;
@@ -151,9 +217,41 @@ html, body {
   height: 100%;
 }
 
+/*
+ * BASE TYPOGRAPHY
+ *
+ * Two things the app was missing and that read as "flat" more than any color
+ * choice: headings set at body tracking/weight, and no optical tightening as
+ * type grows. Applied at the element level so every page inherits it without
+ * touching a single className.
+ */
+@layer base {
+  h1, h2, h3, h4 {
+    color: var(--color-title);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+
+  h1 { letter-spacing: var(--tracking-tightest); font-weight: 700; }
+
+  /* Numbers in tables/metrics must line up in columns; proportional digits make
+     a live dashboard look like it's jittering. */
+  code, kbd, samp, pre { font-family: var(--font-mono); }
+  table, [data-numeric] { font-variant-numeric: tabular-nums; }
+}
+
 @layer utilities {
   .h-safe {
     height: calc(var(--vh, 1vh) * 100);
+  }
+
+  /* Text/icon-level focus affordance that matches the token ring. Use on custom
+     controls that aren't real <button>/<input> elements. */
+  .focus-ring:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
   }
 }
 

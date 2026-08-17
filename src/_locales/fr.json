@@ -671,6 +671,28 @@
       "warnRagMismatch": "Refined charge le RAG mais Plan non — l’étape de décision a généralement besoin de plus de contexte, pas moins.",
       "hookRequired": "toujours actif"
     },
+    "settings": {
+      "saving": "Enregistrement…",
+      "saved": "Enregistré",
+      "saveFailed": "Non enregistré"
+    },
+    "aiLayers": {
+      "workspace": "Instruction de l'espace",
+      "skills": "Compétences IA",
+      "stageSystemPrompt": "Persona de l'étape",
+      "stageInstructions": "Instructions de l'étape",
+      "carryOver": "Modèle de report",
+      "sourceWorkspace": "paramètres de l'espace",
+      "sourceStage": "cette étape",
+      "previewTitle": "Ce que l'IA reçoit réellement",
+      "contributingCount": "{{n}} sur {{total}} actives",
+      "previewHelp": "Ces couches sont toujours combinées dans cet ordre. Une étape ne remplace jamais l'instruction de l'espace — elle s'y ajoute.",
+      "layerEmpty": "non défini",
+      "composedTitle": "Prompt composé",
+      "composedEmpty": "Rien de défini — l'IA utilise ses valeurs par défaut.",
+      "noteFirst": "couche 1 sur {{total}} — s'exécute en premier",
+      "noteAfter": "couche {{n}} sur {{total}} — s'exécute après {{before}}"
+    },
     "workspaceSettings": {
       "tabMembers": "Membres",
       "tabPermissions": "Permissions",

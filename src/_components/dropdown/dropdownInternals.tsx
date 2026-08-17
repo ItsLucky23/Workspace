@@ -6,6 +6,8 @@ import { createPortal } from "react-dom";
 
 export type DropdownValue = string | number;
 export type DropdownSize = "sm" | "md" | "lg" | "xl";
+/** `"full"` = fill the container (the right default inside form rows and popovers); `"auto"` = keep the size's fixed trigger width. */
+export type DropdownWidth = "auto" | "full";
 export type DropdownDirection = "up" | "down";
 
 export interface DropdownItem {
@@ -312,6 +314,7 @@ export function useDropdownMenu({ showSearch }: UseDropdownMenuArgs): DropdownMe
 interface DropdownMenuShellProps {
   controller: DropdownMenuController;
   size?: DropdownSize;
+  width?: DropdownWidth;
   className?: string;
   menuClassName?: string;
   showSearch?: boolean;
@@ -331,6 +334,7 @@ interface DropdownMenuShellProps {
 export function DropdownMenuShell({
   controller,
   size,
+  width,
   className = "",
   menuClassName = "",
   showSearch = false,
@@ -345,8 +349,14 @@ export function DropdownMenuShell({
   children,
 }: DropdownMenuShellProps) {
   const sizeConfig = size ? SIZE_CONFIG[size] : undefined;
-  const containerWidthClass = sizeConfig ? "inline-flex" : "flex w-full";
-  const triggerWidthClass = sizeConfig?.triggerWidth ?? "w-full";
+  // `size` used to lock BOTH the option text-size AND the trigger width, so any caller who
+  // wanted readable options also got a fixed 160/220/320/420px box — which strands the control
+  // in a full-width form row and overflows a narrow popover. `width="full"` decouples the two:
+  // keep the size's text/icon scale, let the trigger fill its container, and let the menu match
+  // the measured trigger instead of the size's fixed pixel width.
+  const isFullWidth = width === "full";
+  const containerWidthClass = sizeConfig && !isFullWidth ? "inline-flex" : "flex w-full";
+  const triggerWidthClass = isFullWidth ? "w-full" : (sizeConfig?.triggerWidth ?? "w-full");
   const optionClass = sizeConfig?.option ?? DEFAULT_OPTION_CLASS;
   const iconClass = sizeConfig?.icon ?? DEFAULT_ICON_CLASS;
 
@@ -494,7 +504,9 @@ export function DropdownMenuShell({
           style={{
             top: controller.menuPosition.top,
             left: controller.menuPosition.left,
-            width: sizeConfig?.minWidthPx ?? controller.menuPosition.width,
+            width: isFullWidth
+              ? Math.max(controller.menuPosition.width, sizeConfig?.minWidthPx ?? 0)
+              : (sizeConfig?.minWidthPx ?? controller.menuPosition.width),
           }}
           className={`fixed z-[9999] rounded-md border border-container1-border bg-container1 shadow-lg
             ${controller.isMenuPositionReady ? "transition duration-200 ease-out" : ""}

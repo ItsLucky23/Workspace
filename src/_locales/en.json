@@ -671,6 +671,28 @@
       "warnRagMismatch": "Refined loads RAG but Plan does not — the decision stage usually needs more context, not less.",
       "hookRequired": "always on"
     },
+    "settings": {
+      "saving": "Saving…",
+      "saved": "Saved",
+      "saveFailed": "Not saved"
+    },
+    "aiLayers": {
+      "workspace": "Workspace instruction",
+      "skills": "AI skills",
+      "stageSystemPrompt": "Stage persona",
+      "stageInstructions": "Stage instructions",
+      "carryOver": "Carry-over template",
+      "sourceWorkspace": "workspace settings",
+      "sourceStage": "this stage",
+      "previewTitle": "What the AI actually receives",
+      "contributingCount": "{{n}} of {{total}} active",
+      "previewHelp": "These layers are always combined in this order. A stage never replaces the workspace instruction — it adds to it.",
+      "layerEmpty": "not set",
+      "composedTitle": "Composed prompt",
+      "composedEmpty": "Nothing set yet — the AI runs on its defaults.",
+      "noteFirst": "layer 1 of {{total}} — runs first",
+      "noteAfter": "layer {{n}} of {{total}} — runs after {{before}}"
+    },
     "workspaceSettings": {
       "tabMembers": "Members",
       "tabPermissions": "Permissions",

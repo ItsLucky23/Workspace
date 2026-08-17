@@ -671,6 +671,28 @@
       "warnRagMismatch": "Refined laadt RAG maar Plan niet — de beslisstage heeft meestal meer context nodig, niet minder.",
       "hookRequired": "altijd aan"
     },
+    "settings": {
+      "saving": "Opslaan…",
+      "saved": "Opgeslagen",
+      "saveFailed": "Niet opgeslagen"
+    },
+    "aiLayers": {
+      "workspace": "Workspace-instructie",
+      "skills": "AI-skills",
+      "stageSystemPrompt": "Stage-persona",
+      "stageInstructions": "Stage-instructies",
+      "carryOver": "Carry-over-sjabloon",
+      "sourceWorkspace": "workspace-instellingen",
+      "sourceStage": "deze stage",
+      "previewTitle": "Wat de AI daadwerkelijk krijgt",
+      "contributingCount": "{{n}} van {{total}} actief",
+      "previewHelp": "Deze lagen worden altijd in deze volgorde samengevoegd. Een stage vervangt de workspace-instructie nooit — hij vult die aan.",
+      "layerEmpty": "niet ingevuld",
+      "composedTitle": "Samengestelde prompt",
+      "composedEmpty": "Nog niets ingevuld — de AI draait op zijn standaardgedrag.",
+      "noteFirst": "laag 1 van {{total}} — draait als eerste",
+      "noteAfter": "laag {{n}} van {{total}} — draait na {{before}}"
+    },
     "workspaceSettings": {
       "tabMembers": "Leden",
       "tabPermissions": "Rechten",

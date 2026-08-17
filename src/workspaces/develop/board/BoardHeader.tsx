@@ -67,8 +67,10 @@ function NewTicketForm({ onCreate }: { onCreate: (input: { title: string; priori
         <div className={`flex flex-col gap-3`}>
           <div className={`flex flex-col gap-1`}>
             <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.priority.label' })}</span>
+            {/* No `size` prop: Dropdown then fills its container. `size="sm"` pins the trigger to a
+                fixed 160px, which inside a form column reads as a half-finished control. */}
             <Dropdown
-              size="sm" items={priorityItems} value={priorityItems.find((i) => i.id === priority)}
+              items={priorityItems} value={priorityItems.find((i) => i.id === priority)}
               onChange={(it) => { setPriority(PRIORITY_ORDER.find((p) => p === it.id) ?? 'normal'); }}
             />
           </div>
@@ -123,21 +125,20 @@ function FilterMenu({ isMobile, filters, onChange }: { isMobile: boolean; filter
         <div className={`flex flex-col gap-1`}>
           <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.board.filterStatus' })}</span>
           <Dropdown
-            size="sm" items={statusItems} value={statusItems.find((i) => i.id === filters.status)}
+            items={statusItems} value={statusItems.find((i) => i.id === filters.status)}
             onChange={(it) => { onChange({ ...filters, status: STATUS_FILTER_OPTIONS.find((s) => s === it.id) ?? 'all' }); }}
           />
         </div>
         <div className={`flex flex-col gap-1`}>
           <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.board.filterAssignee' })}</span>
           <Dropdown
-            size="sm" items={assigneeItems} value={assigneeItems.find((i) => i.id === filters.assigneeId)}
+            items={assigneeItems} value={assigneeItems.find((i) => i.id === filters.assigneeId)}
             onChange={(it) => { onChange({ ...filters, assigneeId: String(it.id) }); }}
           />
         </div>
         <div className={`flex flex-col gap-1`}>
           <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.board.filterSprint' })}</span>
           <Dropdown
-            size="sm"
             items={[allSprintsItem, ...sprintItems, { id: 'manage', value: 'manage', item: translate({ key: 'workspaces.board.manageSprints' }) }]}
             value={selectedSprint}
             onChange={(it) => {

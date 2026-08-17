@@ -100,7 +100,7 @@ export function ArtifactCard({ artifact, busy, onDelete, onRegenerate, onPromote
         {artifact.status === 'ready' && <ArtifactBody kind={artifact.kind} c={c} full={full} />}
       </div>
       {/* demoted metadata: one collapsed muted line */}
-      <div className={`px-4 py-2 border-t border-divider text-[11px] text-disabled flex items-center gap-2`}>
+      <div className={`px-4 py-2 border-t border-divider text-[11px] text-meta flex items-center gap-2`}>
         <span>{translate({ key: `workspaces.studio.kind.${artifact.kind}` })}</span>
         {artifact.providerId && <span>· {artifact.providerId}</span>}
         <span className={`ml-auto`}>{when}</span>
@@ -149,7 +149,7 @@ function BrandPreview({ c }: { c: Record<string, unknown> }) {
               <div key={`${asStr(p.hex)}-${String(i)}`} className={`flex flex-col items-center gap-1`}>
                 <div className={`w-14 h-14 rounded-lg border border-container1-border`} style={{ backgroundColor: asStr(p.hex) }} />
                 <span className={`text-[11px] text-muted`}>{asStr(p.name)}</span>
-                <span className={`text-[10px] text-disabled font-mono`}>{asStr(p.hex)}</span>
+                <span className={`text-[10px] text-meta font-mono`}>{asStr(p.hex)}</span>
               </div>
             ))}
           </div>

@@ -755,7 +755,7 @@ export default function DocsPage() {
         <div className="sticky top-0 z-10 bg-container1 border-b border-container1-border px-5 py-4">
           <h2 className="text-base font-bold tracking-tight text-title">{translate({ key: 'docs.documentation' })}</h2>
           <div className="mt-2 flex flex-col gap-1.5">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-common/40">{translate({ key: 'docs.joinedRooms' })}</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.joinedRooms' })}</div>
             <div className="flex flex-wrap gap-1.5">
               {joinedRooms.length === 0 && (
                 <div className="text-[10px] px-2 py-0.5 rounded-full bg-container2 border border-container2-border text-common/60 font-medium">
@@ -780,7 +780,7 @@ export default function DocsPage() {
             </div>
             {Object.entries(docs.apis).map(([page, apis]) => (
               <div key={page} className="mb-3">
-                <div className="text-[10px] font-semibold text-common/40 mb-1 px-2 uppercase tracking-wider">{page}</div>
+                <div className="text-[10px] font-semibold text-meta mb-1 px-2 uppercase tracking-wider">{page}</div>
                 <div className="space-y-0.5">
                   {apis.map((api) => (
                     <button
@@ -819,7 +819,7 @@ export default function DocsPage() {
             </div>
             {Object.entries(docs.syncs).map(([page, syncs]) => (
               <div key={page} className="mb-3">
-                <div className="text-[10px] font-semibold text-common/40 mb-1 px-2 uppercase tracking-wider">{page}</div>
+                <div className="text-[10px] font-semibold text-meta mb-1 px-2 uppercase tracking-wider">{page}</div>
                 <div className="space-y-0.5">
                   {syncs.map((sync) => (
                     <button
@@ -855,7 +855,7 @@ export default function DocsPage() {
       {/* ── Main content ── */}
       <div className="flex-1 overflow-y-auto bg-background">
         {!selectedPath && (
-          <div className="h-full flex flex-col items-center justify-center gap-3 text-common/40 select-none">
+          <div className="h-full flex flex-col items-center justify-center gap-3 text-meta select-none">
             <div className="text-5xl">{translate({ key: 'docs.doc' })}</div>
             <div className="text-sm font-medium">{translate({ key: 'docs.selectApiOrSync' })}</div>
           </div>
@@ -874,11 +874,11 @@ export default function DocsPage() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                   <div className="flex flex-col gap-1.5 min-w-0">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-common/40">{translate({ key: 'docs.fetchRequestExample' })}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.fetchRequestExample' })}</div>
                     <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre bg-container2 border border-container2-border rounded-lg p-3 text-common">{buildApiFetchExample(selectedApi, inputData)}</pre>
                   </div>
                   <div className="flex flex-col gap-1.5 min-w-0">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-common/40">{translate({ key: 'docs.socketRequestExample' })}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.socketRequestExample' })}</div>
                     <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre bg-container2 border border-container2-border rounded-lg p-3 text-common">{buildApiSocketExample(selectedApi, inputData)}</pre>
                   </div>
                 </div>
@@ -899,13 +899,13 @@ export default function DocsPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {/* Rate limit */}
               <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-1.5">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-common/40">{translate({ key: 'docs.rateLimit' })}</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.rateLimit' })}</div>
                 <div className="text-sm font-semibold text-title">{rateLimitText}</div>
               </div>
 
               {/* Auth */}
               <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-1.5">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-common/40">{translate({ key: 'docs.auth' })}</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.auth' })}</div>
                 <div className="flex items-center gap-2">
                   <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${selectedApiNeedsLogin ? 'bg-warning' : 'bg-correct'}`} />
                   <span className="text-sm font-semibold text-title">
@@ -916,7 +916,7 @@ export default function DocsPage() {
 
               {/* Additional permissions */}
               <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-1.5">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-common/40">{translate({ key: 'docs.additionalPermissions' })}</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.additionalPermissions' })}</div>
                 {selectedApiAdditional.length === 0
                   ? <div className="text-xs text-common/50">{translate({ key: 'docs.none' })}</div>
                   : (
@@ -937,11 +937,11 @@ export default function DocsPage() {
             {/* Type schema cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-2">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-common/40">{translate({ key: 'docs.input' })}</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.input' })}</div>
                 <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre-wrap break-words text-common bg-container2 rounded-lg p-3">{formatTypeText(selectedApi.input)}</pre>
               </div>
               <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-2">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-common/40">{translate({ key: 'docs.output' })}</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.output' })}</div>
                 <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre-wrap break-words text-common bg-container2 rounded-lg p-3">{formatTypeText(selectedApi.output)}</pre>
               </div>
             </div>
@@ -953,7 +953,7 @@ export default function DocsPage() {
                 <button className="text-xs px-3 py-1.5 rounded-md bg-correct text-title-primary hover:bg-correct-hover transition-colors font-semibold" onClick={runApiWithSocket}>{translate({ key: 'docs.runSocket' })}</button>
                 <button className="text-xs px-3 py-1.5 rounded-md bg-primary text-title-primary hover:bg-primary-hover transition-colors font-semibold" onClick={() => { void runApiWithHttp(); }}>{translate({ key: 'docs.runHttp' })}</button>
               </div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-common/40">{translate({ key: 'docs.requestPayload' })}</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.requestPayload' })}</div>
               <textarea
                 value={inputData}
                 onChange={(event) => { setInputData(event.target.value); }}
@@ -963,7 +963,7 @@ export default function DocsPage() {
               />
               {apiResult && (
                 <div className="flex flex-col gap-1.5">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-common/40">{translate({ key: 'docs.responsePayload' })}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.responsePayload' })}</div>
                   <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre bg-container2 border border-container2-border rounded-lg p-3 text-common">{JSON.stringify(apiResult, null, 2)}</pre>
                 </div>
               )}
@@ -981,11 +981,11 @@ export default function DocsPage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                 <div className="flex flex-col gap-1.5 min-w-0">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-common/40">{translate({ key: 'docs.fetchRequestExample' })}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.fetchRequestExample' })}</div>
                   <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre bg-container2 border border-container2-border rounded-lg p-3 text-common">{buildSyncFetchExample(selectedSync, inputData)}</pre>
                 </div>
                 <div className="flex flex-col gap-1.5 min-w-0">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-common/40">{translate({ key: 'docs.socketRequestExample' })}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.socketRequestExample' })}</div>
                   <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre bg-container2 border border-container2-border rounded-lg p-3 text-common">{buildSyncSocketExample(selectedSync, inputData, receiver, ignoreSelf)}</pre>
                 </div>
               </div>
@@ -994,15 +994,15 @@ export default function DocsPage() {
             {/* Schema cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-2">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-common/40">{translate({ key: 'docs.clientInput' })}</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.clientInput' })}</div>
                 <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre-wrap break-words text-common bg-container2 rounded-lg p-3">{formatTypeText(selectedSync.clientInput)}</pre>
               </div>
               <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-2">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-common/40">{translate({ key: 'docs.serverOutput' })}</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.serverOutput' })}</div>
                 <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre-wrap break-words text-common bg-container2 rounded-lg p-3">{formatTypeText(selectedSync.serverOutput)}</pre>
               </div>
               <div className="bg-container1 border border-container1-border rounded-xl p-4 flex flex-col gap-2">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-common/40">{translate({ key: 'docs.clientOutput' })}</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.clientOutput' })}</div>
                 <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre-wrap break-words text-common bg-container2 rounded-lg p-3">{formatTypeText(selectedSync.clientOutput)}</pre>
               </div>
             </div>
@@ -1014,7 +1014,7 @@ export default function DocsPage() {
                 <button className="text-xs px-3 py-1.5 rounded-md bg-correct text-title-primary hover:bg-correct-hover transition-colors font-semibold" onClick={runSyncWithSocket}>{translate({ key: 'docs.runSocket' })}</button>
                 <button className="text-xs px-3 py-1.5 rounded-md bg-primary text-title-primary hover:bg-primary-hover transition-colors font-semibold" onClick={() => { void runSyncWithHttp(); }}>{translate({ key: 'docs.runHttp' })}</button>
               </div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-common/40">{translate({ key: 'docs.syncReceiverHeader' })}</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.syncReceiverHeader' })}</div>
               <div className="flex flex-wrap gap-2 items-center">
                 <input
                   value={receiver}
@@ -1027,7 +1027,7 @@ export default function DocsPage() {
                   {translate({ key: 'docs.ignoreSelf' })}
                 </label>
               </div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-common/40">{translate({ key: 'docs.syncJoinHeader' })}</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.syncJoinHeader' })}</div>
               <div className="flex flex-wrap gap-2 items-center">
                 <input
                   value={joinedRoom}
@@ -1042,7 +1042,7 @@ export default function DocsPage() {
                   {translate({ key: 'docs.joinRoom' })}
                 </button>
               </div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-common/40">{translate({ key: 'docs.syncLeaveHeader' })}</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.syncLeaveHeader' })}</div>
               <div className="flex flex-wrap gap-2 items-center">
                 <input
                   value={roomToLeave}
@@ -1057,7 +1057,7 @@ export default function DocsPage() {
                   {translate({ key: 'docs.leaveRoom' })}
                 </button>
               </div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-common/40">{translate({ key: 'docs.requestPayload' })}</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.requestPayload' })}</div>
               <textarea
                 value={inputData}
                 onChange={(event) => { setInputData(event.target.value); }}
@@ -1067,7 +1067,7 @@ export default function DocsPage() {
               />
               {syncResult && (
                 <div className="flex flex-col gap-1.5">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-common/40">{translate({ key: 'docs.responsePayload' })}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-meta">{translate({ key: 'docs.responsePayload' })}</div>
                   <pre className="text-[11px] font-mono leading-5 overflow-auto whitespace-pre bg-container2 border border-container2-border rounded-lg p-3 text-common">{JSON.stringify(syncResult, null, 2)}</pre>
                 </div>
               )}

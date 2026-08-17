@@ -671,6 +671,28 @@
       "warnRagMismatch": "Refined lädt RAG, Plan aber nicht — die Entscheidungs-Stage braucht meist mehr Kontext, nicht weniger.",
       "hookRequired": "immer aktiv"
     },
+    "settings": {
+      "saving": "Wird gespeichert…",
+      "saved": "Gespeichert",
+      "saveFailed": "Nicht gespeichert"
+    },
+    "aiLayers": {
+      "workspace": "Workspace-Anweisung",
+      "skills": "KI-Skills",
+      "stageSystemPrompt": "Stage-Persona",
+      "stageInstructions": "Stage-Anweisungen",
+      "carryOver": "Carry-over-Vorlage",
+      "sourceWorkspace": "Workspace-Einstellungen",
+      "sourceStage": "diese Stage",
+      "previewTitle": "Was die KI tatsächlich erhält",
+      "contributingCount": "{{n}} von {{total}} aktiv",
+      "previewHelp": "Diese Ebenen werden immer in dieser Reihenfolge kombiniert. Eine Stage ersetzt die Workspace-Anweisung nie — sie ergänzt sie.",
+      "layerEmpty": "nicht gesetzt",
+      "composedTitle": "Zusammengesetzter Prompt",
+      "composedEmpty": "Noch nichts gesetzt — die KI läuft mit ihren Standardwerten.",
+      "noteFirst": "Ebene 1 von {{total}} — läuft zuerst",
+      "noteAfter": "Ebene {{n}} von {{total}} — läuft nach {{before}}"
+    },
     "workspaceSettings": {
       "tabMembers": "Mitglieder",
       "tabPermissions": "Berechtigungen",

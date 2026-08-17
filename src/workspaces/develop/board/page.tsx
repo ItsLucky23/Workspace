@@ -48,16 +48,18 @@ function KanbanColumn({ stage, tickets }: { stage: PipelineStage; tickets: Ticke
   const translate = useTranslator();
   const wipOver = stage.wipLimit != null && tickets.length > stage.wipLimit;
   return (
-    <div className={`flex flex-col w-72 shrink-0 rounded-2xl bg-container2/40 ${stage.aiEnabled ? '' : 'opacity-90'}`}>
-      <div className={`flex items-center justify-between gap-2 px-3 h-11 ${wipOver ? 'text-warning' : ''}`}>
+    //? The column is a defined surface (hairline + soft tint) with a sticky, slightly recessed
+    //? header — without that frame a kanban reads as loose cards floating on the page.
+    <div className={`flex flex-col w-72 shrink-0 rounded-2xl border border-container1-border/70 bg-container2/45 ${stage.aiEnabled ? '' : 'opacity-90'}`}>
+      <div className={`sticky top-0 z-10 flex items-center justify-between gap-2 px-3 h-11 rounded-t-2xl border-b border-divider/70 bg-container2/60 backdrop-blur-sm ${wipOver ? 'text-warning' : ''}`}>
         <div className={`flex items-center gap-2 min-w-0`}>
-          <span className={`text-sm font-semibold text-title truncate`}>{stage.name}</span>
-          <span className={`rounded-full bg-container2 px-1.5 text-xs text-muted`}>{tickets.length}</span>
+          <span className={`text-xs font-bold uppercase tracking-[0.07em] text-common truncate`}>{stage.name}</span>
+          <span className={`rounded-full bg-container1 px-1.5 text-xs font-semibold text-muted ring-1 ring-container1-border`}>{tickets.length}</span>
           {wipOver && <span title={translate({ key: 'workspaces.board.overWipLimit' })}><Icon name="triangle-exclamation" className={`text-warning text-xs`} /></span>}
           {stage.aiEnabled && <span title={translate({ key: 'workspaces.board.aiDrivenStage' })}><Icon name="robot" className={`text-muted text-xs`} /></span>}
         </div>
       </div>
-      <div className={`flex flex-col gap-2 px-2 pb-2 overflow-y-auto flex-1 min-h-0`}>
+      <div className={`flex flex-col gap-2 p-2 overflow-y-auto flex-1 min-h-0`}>
         {tickets.map((t) => <KanbanCard key={t.id} ticket={t} />)}
         {tickets.length === 0 && stage.id !== 'unrefined' && <div className={`text-center text-xs text-muted py-6`}>{translate({ key: 'workspaces.board.noTickets' })}</div>}
         {stage.id === 'unrefined' && <UnrefinedAddCard />}

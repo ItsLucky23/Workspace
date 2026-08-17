@@ -168,7 +168,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | Route | Template | Per-page middleware | File | Summary |
 | --- | --- | --- | --- | --- |
 | `/` | plain | yes | `page.tsx` | Root route (`/`). Sends visitors to the app's main surface — the dashboard |
-| `/dashboard` | plain | yes | `dashboard/page.tsx` | Sample page. The framework's file-based router maps this to `/dashboard`. |
+| `/dashboard` | plain | yes | `dashboard/page.tsx` | intent: A legacy entry point, kept only so old bookmarks and links to `/dashboard` keep |
 | `/docs` | plain | — | `docs/page.tsx` | — |
 | `/editor-demo` | plain | — | `editor-demo/page.tsx` | intent: Standalone demo + test harness for the two code editors (Monaco + real VS Code), |
 | `/login` | plain | — | `login/page.tsx` | — |
@@ -213,7 +213,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | `confetti.ts` | `_functions/confetti.ts` | default | — |
 | `menuHandler.ts` | `_functions/menuHandler.ts` | menuHandler, setMenuHandlerRef | — |
 
-## Components — `src/_components/` (60 exports across 22 files)
+## Components — `src/_components/` (61 exports across 22 files)
 
 | File | Path | Exports | Summary |
 | --- | --- | --- | --- |
@@ -225,7 +225,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | `TwoFactorSection.tsx` | `_components/TwoFactorSection.tsx` | default | 2FA enrollment UI (ADR 0024 / @luckystack/login). Drives the authenticated `/auth/api/2fa/*` routes: |
 | `Dropdown.tsx` | `_components/dropdown/Dropdown.tsx` | default | — |
 | `MultiSelectDropdown.tsx` | `_components/dropdown/MultiSelectDropdown.tsx` | default | — |
-| `dropdownInternals.tsx` | `_components/dropdown/dropdownInternals.tsx` | DropdownDirection, DropdownItem, DropdownMenuController, DropdownMenuShell, +6 | — |
+| `dropdownInternals.tsx` | `_components/dropdown/dropdownInternals.tsx` | DropdownDirection, DropdownItem, DropdownMenuController, DropdownMenuShell, +7 | — |
 | `CodeEditorPanel.tsx` | `_components/editor/CodeEditorPanel.tsx` | CodeEditorPanel, CodeEditorPanelProps, EditorChange | The full Monaco editor experience (editor #1): a VS-Code-shaped shell — activity bar |
 | `FileExplorer.tsx` | `_components/editor/FileExplorer.tsx` | FileExplorer, GitStatus | Themed file tree for the Monaco editor. Expand/collapse dirs, language-colored file |
 | `MonacoEditor.tsx` | `_components/editor/MonacoEditor.tsx` | MonacoDiff, MonacoDiffProps, MonacoEditor, MonacoEditorProps | Thin wrappers around @monaco-editor/react that (a) force the locally-bundled monaco |
@@ -272,6 +272,7 @@ _(no cross-references detected)_
 | `DropdownMenuShell` | `_components/dropdown/dropdownInternals.tsx` |
 | `DropdownSize` | `_components/dropdown/dropdownInternals.tsx` |
 | `DropdownValue` | `_components/dropdown/dropdownInternals.tsx` |
+| `DropdownWidth` | `_components/dropdown/dropdownInternals.tsx` |
 | `filterOptions` | `_components/dropdown/dropdownInternals.tsx` |
 | `NormalizedOption` | `_components/dropdown/dropdownInternals.tsx` |
 | `normalizeOptions` | `_components/dropdown/dropdownInternals.tsx` |

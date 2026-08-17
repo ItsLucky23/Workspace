@@ -12,10 +12,17 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslator } from '@luckystack/core/client';
 
 import BaseAvatar from 'src/_components/Avatar';
+import BaseToggle from 'src/_components/inputs/Toggle';
 
 import Icon, { type IconName } from './Icon';
-import { Popover } from './motion';
+import { Collapse, Popover } from './motion';
 import type { Member, TicketStatus } from '../_data/types';
+
+/* ----------------------------------------------------------------- focus ring */
+//? ONE keyboard-focus affordance for every custom control. The audit found the branded ring on
+//? two of six primitives and the bare UA outline on the rest, so tabbing through the app kept
+//? changing appearance. Raw page-local buttons use the `.focus-ring` utility in src/index.css.
+export const FOCUS_RING = 'outline-none focus-visible:ring-2 focus-visible:ring-focus-ring/60';
 
 /* ----------------------------------------------------------------- click-away */
 export function useClickAway<T extends HTMLElement>(active: boolean, onAway: () => void) {
@@ -89,7 +96,8 @@ export function StatusPill({ status, dot = true }: { status: TicketStatus; dot?:
   const translate = useTranslator();
   const m = STATUS_META[status];
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${m.tint}`}>
+    //? inset ring: a flat tint on a tinted surface disappears — the hairline keeps the pill readable on any layer.
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap ring-1 ring-inset ring-current/15 ${m.tint}`}>
       {dot && <span className={`w-1.5 h-1.5 rounded-full ${m.dot} ${m.pulse ? 'motion-safe:animate-pulse' : ''}`} />}
       {translate({ key: m.label })}
     </span>
@@ -109,11 +117,14 @@ export function LabelChip({ name }: { name: string }) {
 
 /* ----------------------------------------------------------------- buttons */
 type BtnVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+//? Filled variants carry a hairline inset highlight + contact shadow so they read as a
+//? raised, pressable object instead of a flat colour rectangle; the ghost/secondary pair
+//? stays quiet on purpose so one primary action per view keeps its weight.
 const BTN_VARIANT: Record<BtnVariant, string> = {
-  primary: 'bg-primary text-title-primary hover:bg-primary-hover',
-  secondary: 'bg-container2 text-title hover:bg-container2-hover',
-  ghost: 'text-common hover:bg-container2',
-  danger: 'bg-wrong text-white hover:bg-wrong-hover',
+  primary: 'bg-primary text-title-primary hover:bg-primary-hover shadow-xs hover:shadow-sm',
+  secondary: 'bg-container1 text-title border border-container1-border hover:bg-container1-hover hover:border-container2-border shadow-2xs',
+  ghost: 'text-common hover:bg-container2 hover:text-title',
+  danger: 'bg-wrong text-white hover:bg-wrong-hover shadow-xs hover:shadow-sm',
 };
 export function WsButton({ variant = 'primary', icon, children, onClick, title, type = 'button', className = '', disabled = false }: {
   variant?: BtnVariant; icon?: IconName; children?: ReactNode; onClick?: () => void; title?: string; type?: 'button' | 'submit'; className?: string; disabled?: boolean;
@@ -121,7 +132,7 @@ export function WsButton({ variant = 'primary', icon, children, onClick, title, 
   return (
     <button
       type={type} onClick={onClick} title={title} disabled={disabled}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl px-3.5 h-9 text-sm font-medium transition-[color,background-color,transform] duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 motion-safe:active:scale-[0.97] ${BTN_VARIANT[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-xl px-3.5 h-9 text-sm font-semibold tracking-[-0.01em] transition-[color,background-color,box-shadow,border-color,transform] duration-150 ease-[var(--ease-soft)] cursor-pointer ${FOCUS_RING} focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none motion-safe:active:scale-[0.97] ${BTN_VARIANT[variant]} ${className}`}
     >
       {icon && <Icon name={icon} />}
       {children}
@@ -134,7 +145,7 @@ export function IconButton({ icon, onClick, title, active, className = '' }: { i
     <button
       //? a11y (gap-fix): icon-only → the title doubles as the accessible name (falls back to the icon name).
       type="button" onClick={onClick} title={title} aria-label={title ?? icon}
-      className={`inline-flex items-center justify-center w-9 h-9 rounded-xl text-common transition-[color,background-color,transform] duration-150 cursor-pointer hover:bg-container2 motion-safe:active:scale-90 ${active ? 'bg-container2 text-title' : ''} ${className}`}
+      className={`inline-flex items-center justify-center w-9 h-9 rounded-xl text-muted transition-[color,background-color,transform] duration-150 ease-[var(--ease-soft)] cursor-pointer hover:bg-container2 hover:text-title ${FOCUS_RING} motion-safe:active:scale-90 ${active ? 'bg-container2 text-title' : ''} ${className}`}
     >
       <Icon name={icon} />
     </button>
@@ -143,16 +154,35 @@ export function IconButton({ icon, onClick, title, active, className = '' }: { i
 
 /* ----------------------------------------------------------------- tabs */
 export interface TabDef { id: string; label: string; icon?: IconName; count?: number }
+//? Real tablist semantics + roving tabIndex: a screen reader announces "tab 3 of 7" and the
+//? arrow keys move between tabs, which is what a keyboard user expects from something that LOOKS
+//? like tabs. Without this the strip was a row of anonymous buttons.
+function moveFocus(ids: string[], current: string, delta: number, onChange: (id: string) => void) {
+  const i = ids.indexOf(current);
+  if (i === -1) return;
+  const next = ids[(i + delta + ids.length) % ids.length];
+  if (next !== undefined) onChange(next);
+}
+
 export function Tabs({ tabs, active, onChange }: { tabs: TabDef[]; active: string; onChange: (id: string) => void }) {
+  const ids = tabs.map((t) => t.id);
   return (
     //? ws-no-scrollbar: the strip scrolls on narrow screens, but a visible scrollbar under the tabs reads as a rendering glitch
-    <div className="flex items-center gap-1 border-b border-divider overflow-x-auto ws-no-scrollbar">
+    <div role="tablist" className="flex items-center gap-1 border-b border-divider overflow-x-auto ws-no-scrollbar">
       {tabs.map((t) => {
         const on = active === t.id;
         return (
           <button
             key={t.id} type="button" onClick={() => { onChange(t.id); }}
-            className={`relative inline-flex items-center gap-2 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors cursor-pointer ${on ? 'text-title' : 'text-muted hover:text-common'}`}
+            role="tab" aria-selected={on} tabIndex={on ? 0 : -1}
+            //? Arrow keys live on the focusable tab itself, not on the tablist container — a
+            //? non-focusable container with a key handler never receives the event anyway.
+            onKeyDown={(e) => {
+              if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+              e.preventDefault();
+              moveFocus(ids, active, e.key === 'ArrowRight' ? 1 : -1, onChange);
+            }}
+            className={`relative inline-flex items-center gap-2 px-3 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors duration-150 cursor-pointer rounded-t-lg ${FOCUS_RING} ${on ? 'text-title' : 'text-muted hover:text-common'}`}
           >
             {t.icon && <Icon name={t.icon} />}
             {t.label}
@@ -166,25 +196,41 @@ export function Tabs({ tabs, active, onChange }: { tabs: TabDef[]; active: strin
 }
 
 /* ----------------------------------------------------------------- toggle */
-export function Toggle({ on, onChange, label }: { on: boolean; onChange?: (next: boolean) => void; label?: ReactNode }) {
+//? Thin adapter over the base kit's switch (`src/_components/inputs/Toggle`), which already has
+//? role="switch", aria-checked, a focus ring and a proper label association. This module used to
+//? ship a SECOND, rival toggle with none of that — the one wired to skill-enable, doc aiEditable
+//? and budget caps. Keeping the `{on, label}` signature so existing call sites are untouched;
+//? pass `ariaLabel` whenever there is no visible label.
+export function Toggle({ on, onChange, label, ariaLabel, disabled }: { on: boolean; onChange?: (next: boolean) => void; label?: ReactNode; ariaLabel?: string; disabled?: boolean }) {
   return (
-    <button type="button" onClick={() => onChange?.(!on)} className="inline-flex items-center gap-2.5 cursor-pointer group">
-      <span className={`relative w-9 h-5 rounded-full transition-colors ${on ? 'bg-primary' : 'bg-container2-border'}`}>
-        <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${on ? 'translate-x-4' : ''}`} />
-      </span>
-      {label && <span className="text-sm text-common">{label}</span>}
-    </button>
+    <BaseToggle
+      checked={on}
+      onChange={(next) => onChange?.(next)}
+      label={label}
+      ariaLabel={ariaLabel}
+      disabled={disabled ?? false}
+      size="sm"
+    />
   );
 }
 
 /* ----------------------------------------------------------------- segmented */
-export function Segmented<T extends string>({ options, value, onChange }: { options: { id: T; label: ReactNode }[]; value: T; onChange: (id: T) => void }) {
+//? `ariaLabel` is REQUIRED in practice whenever `label` is a bare icon (e.g. the sun/moon theme
+//? segment) — an icon-only radio with no name announces as nothing at all.
+export function Segmented<T extends string>({ options, value, onChange }: { options: { id: T; label: ReactNode; ariaLabel?: string }[]; value: T; onChange: (id: T) => void }) {
+  const ids = options.map((o) => o.id);
   return (
-    <div className="inline-flex items-center gap-0.5 rounded-xl bg-container2 p-0.5">
+    <div role="radiogroup" className="inline-flex items-center gap-0.5 rounded-xl bg-container2 p-0.5">
       {options.map((o) => (
         <button
           key={o.id} type="button" onClick={() => { onChange(o.id); }}
-          className={`inline-flex items-center gap-1.5 rounded-lg px-3 h-8 text-sm font-medium transition-colors cursor-pointer ${value === o.id ? 'bg-container1 text-title shadow-sm' : 'text-muted hover:text-common'}`}
+          role="radio" aria-checked={value === o.id} aria-label={o.ariaLabel} tabIndex={value === o.id ? 0 : -1}
+          onKeyDown={(e) => {
+            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+            e.preventDefault();
+            moveFocus(ids, value, e.key === 'ArrowRight' ? 1 : -1, (id) => { onChange(id as T); });
+          }}
+          className={`inline-flex items-center gap-1.5 rounded-lg px-3 h-8 text-sm font-semibold whitespace-nowrap transition-colors duration-150 cursor-pointer ${FOCUS_RING} ${value === o.id ? 'bg-container1 text-title shadow-xs ring-1 ring-container1-border' : 'text-muted hover:text-common'}`}
         >
           {o.label}
         </button>
@@ -196,11 +242,11 @@ export function Segmented<T extends string>({ options, value, onChange }: { opti
 /* ----------------------------------------------------------------- section card */
 export function SectionCard({ title, desc, right, children, className = '' }: { title?: ReactNode; desc?: ReactNode; right?: ReactNode; children?: ReactNode; className?: string }) {
   return (
-    <section className={`rounded-2xl border border-container1-border bg-container1 p-5 ${className}`}>
+    <section className={`rounded-2xl border border-container1-border bg-container1 p-5 shadow-xs ${className}`}>
       {(title ?? right) && (
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
-            {title && <div className="text-base font-semibold text-title">{title}</div>}
+            {title && <div className="text-base font-semibold tracking-[-0.015em] text-title">{title}</div>}
             {desc && <div className="text-sm text-muted mt-0.5">{desc}</div>}
           </div>
           {right}
@@ -253,9 +299,9 @@ export function PopMenu({ items, align = 'right', icon = 'ellipsis', label, aria
         //? a11y (gap-fix): the icon-only trigger had NO accessible name — screen readers announced "button".
         {...(label ? {} : { 'aria-label': ariaLabel ?? 'menu', 'aria-haspopup': true, 'aria-expanded': open })}
         onClick={(e) => { e.stopPropagation(); change(!open); }}
-        className={triggerClass ?? (label
+        className={`${triggerClass ?? (label
           ? 'inline-flex items-center gap-1.5 h-8 rounded-lg border border-container1-border bg-container1 px-3 text-sm text-common hover:bg-container2 transition-colors cursor-pointer'
-          : 'inline-flex items-center justify-center w-7 h-7 rounded-lg text-muted hover:bg-container2 hover:text-common transition-colors cursor-pointer')}
+          : 'inline-flex items-center justify-center w-7 h-7 rounded-lg text-muted hover:bg-container2 hover:text-common transition-colors cursor-pointer')} ${FOCUS_RING}`}
       >
         {label ? (<>{label} <Icon name="caret-down" className={`text-xs transition-transform ${open ? 'rotate-180' : ''}`} /></>) : <Icon name={icon} />}
       </button>
@@ -292,12 +338,13 @@ export function Disclosure({ summary, defaultOpen = false, children, className =
       <button
         type="button"
         onClick={() => { setOpen((o) => !o); }}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-title cursor-pointer"
+        aria-expanded={open}
+        className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-title cursor-pointer rounded-xl ${FOCUS_RING}`}
       >
         <span className="min-w-0 flex-1 text-left">{summary}</span>
         <Icon name="caret-down" className={`shrink-0 text-muted transition-transform motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} />
       </button>
-      {open && <div className="px-4 pb-4 pt-0">{children}</div>}
+      <Collapse open={open}><div className="px-4 pb-4 pt-0">{children}</div></Collapse>
     </div>
   );
 }

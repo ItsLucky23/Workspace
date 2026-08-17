@@ -4,14 +4,16 @@
 //? Advanced menu. Every input mutates the page's LOCAL stage copy via `update`; nothing here
 //? persists — "Save stage" on the page is the only persist path (saveStageConfig).
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
 import Dropdown from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../../_components/Icon';
+import { EffectivePromptPreview, LayerNote } from '../../_components/EffectivePromptPreview';
 import { Disclosure, InfoDot, Segmented, Toggle, WsButton } from '../../_components/primitives';
+import { resolveAiLayers } from '../../_functions/aiLayers';
 import { CARRY_VARS, COMMAND_CATALOG, HOOK_CATALOG, NETWORK_CATEGORIES } from '../../_data/seed';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { CommandMode, NetworkMode, PipelineStageCfg, StageEffort, StageModelChoice, StageModelTier, ToolTier } from '../../_data/types';
@@ -34,11 +36,20 @@ const EMIT_SCHEMA_SAMPLE = `{
   "commitHash": "string"
 }`;
 
-function FieldLabel({ title, hint }: { title: string; hint?: string }) {
+//? `note` carries the inheritance line for a layered field (ADR 0308): a stage prompt states its
+//? position in the chain right where it is edited, instead of the old hint copy that said
+//? "layered above your instructions" without ever naming what it layers above.
+function FieldLabel({ title, hint, note }: { title: string; hint?: string; note?: ReactNode }) {
   return (
     <div className="mb-1.5">
-      <div className="text-sm font-medium text-title">{title}</div>
+      <div className="text-sm font-semibold text-title">{title}</div>
       {hint && <div className="text-xs text-muted mt-0.5">{hint}</div>}
+      {note && (
+        <div className="inline-flex items-center gap-1.5 mt-1.5 rounded-md bg-container2 px-1.5 py-0.5 text-[11px] text-meta">
+          <Icon name="layer-group" className="text-[10px]" />
+          {note}
+        </div>
+      )}
     </div>
   );
 }
@@ -46,16 +57,29 @@ function FieldLabel({ title, hint }: { title: string; hint?: string }) {
 /* ----------------------------------------------------------------- General */
 export function GeneralTab({ s, update }: TabProps) {
   const translate = useTranslator();
+  const { activeWorkspace, aiSkills } = useWorkspaces();
   const [addingStatus, setAddingStatus] = useState(false);
   const [newStatus, setNewStatus] = useState('');
+  //? ADR 0308 — all five layers resolved for THIS stage, so the preview below shows the real
+  //? composed prompt (workspace + skills + this stage's three fields) rather than the stage half.
+  const layers = resolveAiLayers({ workspace: activeWorkspace, skills: aiSkills, stage: s });
   return (
     <div className="flex flex-col gap-5 max-w-3xl">
+      <EffectivePromptPreview layers={layers} />
       <div>
-        <FieldLabel title={translate({ key: 'workspaces.pipeline.systemPrompt' })} hint={translate({ key: 'workspaces.pipeline.systemPromptHint' })} />
+        <FieldLabel
+          title={translate({ key: 'workspaces.pipeline.systemPrompt' })}
+          hint={translate({ key: 'workspaces.pipeline.systemPromptHint' })}
+          note={<LayerNote layers={layers} id="stageSystemPrompt" />}
+        />
         <textarea rows={3} value={s.systemPrompt ?? ''} onChange={(e) => { update({ systemPrompt: e.target.value }); }} className={areaCls} placeholder={translate({ key: 'workspaces.pipeline.systemPromptPlaceholder' })} />
       </div>
       <div>
-        <FieldLabel title={translate({ key: 'workspaces.pipeline.customInstructions' })} hint={translate({ key: 'workspaces.pipeline.customInstructionsHint' })} />
+        <FieldLabel
+          title={translate({ key: 'workspaces.pipeline.customInstructions' })}
+          hint={translate({ key: 'workspaces.pipeline.customInstructionsHint' })}
+          note={<LayerNote layers={layers} id="stageInstructions" />}
+        />
         <textarea rows={4} value={s.customInstructions} onChange={(e) => { update({ customInstructions: e.target.value }); }} className={areaCls} placeholder={translate({ key: 'workspaces.pipeline.customInstructionsPlaceholder' })} />
       </div>
       <div>
@@ -363,6 +387,8 @@ export function ProcessTab({ s, update }: TabProps) {
 /* ----------------------------------------------------------------- Carry-over */
 export function CarryoverTab({ s, update }: TabProps) {
   const translate = useTranslator();
+  const { activeWorkspace, aiSkills } = useWorkspaces();
+  const carryLayers = resolveAiLayers({ workspace: activeWorkspace, skills: aiSkills, stage: s });
   return (
     <div className="flex flex-col gap-4 max-w-3xl">
       {/* flow */}
@@ -387,7 +413,11 @@ export function CarryoverTab({ s, update }: TabProps) {
       </div>
 
       <div>
-        <FieldLabel title={translate({ key: 'workspaces.pipeline.promptTemplate' })} hint={translate({ key: 'workspaces.pipeline.promptTemplateHint' })} />
+        <FieldLabel
+          title={translate({ key: 'workspaces.pipeline.promptTemplate' })}
+          hint={translate({ key: 'workspaces.pipeline.promptTemplateHint' })}
+          note={<LayerNote layers={carryLayers} id="carryOver" />}
+        />
         <textarea rows={5} value={s.promptTemplate} onChange={(e) => { update({ promptTemplate: e.target.value }); }} className={areaCls} placeholder="Implement the plan.\nPlan: {{summary}}" />
       </div>
 

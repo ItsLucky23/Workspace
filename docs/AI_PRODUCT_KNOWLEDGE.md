@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `607c01f0fa156d29` · 17 capabilities · 224 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `5c07fa968d25140f` · 17 capabilities · 227 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -250,3 +250,6 @@
 - `adr-0304` Pi 5 uses the GPIO character-device stack, not legacy pigpiod
 - `adr-0305` Release lockfile is generated with the production npm version
 - `adr-0306` LuckyStack upgrades jump straight to the newest patch of a minor
+- `adr-0307` The UI identity lives in the token layer, not in components
+- `adr-0308` AI prompt layers stack strictly, and are shown as one effective prompt
+- `adr-0309` Settings autosave per row, and one canonical account page

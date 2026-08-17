@@ -42,3 +42,6 @@ deploy/backups/
 services/compose-runner/.env
 services/compose-runner/secrets/
 services/compose-runner/certs/
+
+# Python bytecode from the ui-ux-pro-max skill's search scripts (regenerated on every run)
+__pycache__/

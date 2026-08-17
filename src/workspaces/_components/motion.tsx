@@ -78,6 +78,30 @@ export function Popover({ open, className, style, children }: { open: boolean; c
   );
 }
 
+/** Height-animated reveal for progressive disclosure ("Options", "Advanced", expandable rows).
+ *  The gap this fills: every disclosure in the app rendered its body with a bare `{open && …}`, so the
+ *  extra controls SNAPPED into existence and shoved the surrounding layout — the single most jarring
+ *  interaction in the product. Animating `height: auto` needs the child measured, so the body is always
+ *  mounted inside an `overflow-hidden` wrapper and the content itself fades slightly behind the height.
+ *  Reduced-motion is honoured globally by <MotionConfig reducedMotion="user">. */
+export function Collapse({ open, className, children }: { open: boolean; className?: string; children: ReactNode }) {
+  return (
+    <AnimatePresence initial={false}>
+      {open && (
+        <motion.div
+          className={`overflow-hidden ${className ?? ''}`}
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ height: { duration: 0.24, ease: EASE_OUT }, opacity: { duration: 0.16 } }}
+        >
+          {children}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 /** A dimmed backdrop that fades in/out behind drawers, sheets and modals. */
 export function Backdrop({ open, onClick, className }: { open: boolean; onClick?: () => void; className?: string }) {
   return (

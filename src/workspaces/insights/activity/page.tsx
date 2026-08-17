@@ -26,7 +26,9 @@ const EVENT_TINT: Record<ActivityEvent['type'], string> = {
   'ai-message': 'bg-primary/12 text-primary',
   'status-change': 'bg-warning/15 text-warning',
   mr: 'bg-correct/15 text-correct',
-  comment: 'bg-container2 text-muted',
+  //? `muted` on `container2` at 11px lands at ~4.07:1 — under the minimum. `meta` is the token for
+  //? small text that must stay readable on a tinted surface.
+  comment: 'bg-container2 text-meta',
   ci: 'bg-secondary/15 text-secondary',
 };
 const EVENT_LABEL: Record<ActivityEvent['type'], string> = {

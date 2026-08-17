@@ -35,7 +35,7 @@ _(Domain terms used in this project, so the AI + the team use the same vocabular
 
 | Route | Purpose (plain language) | File |
 | --- | --- | --- |
-| `/dashboard` | _(no intent set — add a `//? intent: …` line atop page.tsx)_ | `dashboard/page.tsx` |
+| `/dashboard` | A legacy entry point, kept only so old bookmarks and links to `/dashboard` keep working — it renders nothing and sends the visitor straight to the Workspaces landing, which is this product's real home. It used to be the framework's untouched sample page (a bare heading + paragraph with no chrome), which read as a broken dead end. | `dashboard/page.tsx` |
 
 ### docs
 

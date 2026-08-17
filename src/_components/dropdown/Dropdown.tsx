@@ -8,7 +8,7 @@ import {
   normalizeOptions,
   useDropdownMenu,
   type DropdownItem,
-  type DropdownSize,
+  type DropdownSize, type DropdownWidth,
   type DropdownValue,
   type NormalizedOption,
 } from "./dropdownInternals";
@@ -31,6 +31,8 @@ interface DropdownProps {
   className?: string;
   menuClassName?: string;
   size?: DropdownSize;
+  /** `"full"` fills the container while keeping `size`'s text scale — the right choice inside form rows and popovers. */
+  width?: DropdownWidth;
   showSearch?: boolean;
   searchPlaceholder?: string;
   noResultsText?: string;
@@ -46,6 +48,7 @@ export default function Dropdown({
   className,
   menuClassName,
   size,
+  width,
   showSearch = false,
   searchPlaceholder,
   noResultsText,
@@ -77,6 +80,7 @@ export default function Dropdown({
     <DropdownMenuShell
       controller={controller}
       size={size}
+      width={width}
       className={className}
       menuClassName={menuClassName}
       showSearch={showSearch}

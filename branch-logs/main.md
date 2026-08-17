@@ -4740,3 +4740,84 @@ Tijdens het loggen bleek mijn eigen `npm install` onder npm 11.6.1 te hebben ged
 **Verificatie:** Workspace lint groen; volledige Vite + compose-runner-build groen na artifactgeneratie; `ai:lint` groen; doc-staleness 12/12; `git diff --check` schoon.
 
 **Files touched:** `CLAUDE.md`, `docs/luckystack/` frameworkdocs/indexen/examples/decisions/lessons, `docs/AI_CONTEXT_BUDGET.md` en branch-log/index.
+
+## 2026-08-17 13:06 — LuckyStack 0.8.3 → 0.8.5 OAuth-portfix
+
+**User prompt:** upgrade naar de nieuwste gepubliceerde LuckyStack-versie en controleer of het OAuth-redirectprobleem is opgelost.
+
+**Wat ik deed:** alle zestien `@luckystack/*` packages in lockstep bijgewerkt van 0.8.3 naar 0.8.5. De eerste `npm install` draaide onder npm 11.6.1; vanwege ADR 0305 is de lockfile/install-state opnieuw geregen met `npx npm@10.9.8`. `npm run ai:capabilities` is vernieuwd. De nieuwe frameworkchangelog bevestigt dat 0.8.4 precies deze foutklasse repareert: `SERVER_PORT` is verwijderd als legacy env-fallback, de intended port komt uit consumer `config.ports.ts`, en positional argv wordt via de browser-safe port registry aan OAuth/server-bootstrap gekoppeld.
+
+**OAuth-verificatie:** een verse config-evaluatie met 0.8.5 resolveert `oauthCallbackBase` nu naar `http://localhost:4787` (niet meer `:80`). De al draaiende backend kon niet als live bewijs dienen: na de package-installatie is de oude runtime weggevallen en server-start is een developer-actie.
+
+**Verificatie:** alle 16 packages + lockfile op 0.8.5; `npm run lint` groen; `npm run ai:lint` groen; `npm run build` groen; `npm run typecheck` groen. `npm audit` meldt 4 moderate + 8 high labels; niet door deze upgrade onderzocht of aangepast.
+
+**Files touched:** `package.json`, `package-lock.json`, `docs/AI_CAPABILITIES.md`, branch-logs.
+
+**Developer-actie:** start `npm run server` en `npm run client` opnieuw. Controleer bij `/auth/api/google` dat de provider-`redirect_uri` `http://localhost:4787/auth/callback/google` bevat; registreer exact die URI bij Google. Voor publishing OAuth moet `WS_PUBLIC_URL` eveneens de backendpoort bevatten (`http://localhost:4787`) of de consumerroute dezelfde callbackbasis laten gebruiken.
+
+## 2026-08-17 19:40 — Accountmenu: voorkeuren blijven actief en worden opgeslagen
+
+**User prompt:** taal- en theme-keuzes via het menu onder de eigen naam updaten de directe UI niet volledig: de taalindicator blijft op de oude optie en theme valt bij routewissel terug.
+
+**Wat ik deed:** het accountmenu in `Shell.tsx` slaat theme nu op via `settings/updateUser`; taal gebruikt een reactieve lokale active-code, synchroniseert met de geladen sessietaal en rolt een mislukte persist terug. `TemplateProvider` synchroniseert theme alleen nog wanneer de sessietheme wijzigt, niet bij iedere routewissel — daardoor overschrijft navigatie de lokale keuze niet meer.
+
+**Verificatie:** `npm run lint`, `npm run ai:lint`, `npm run build` en `npm run typecheck` groen. Live browser-verificatie vereist een developer-herstart van de runtimes.
+
+**Files touched:** `src/workspaces/_shell/Shell.tsx`, `src/_components/templates/TemplateProvider.tsx`.
+
+**Developer-actie:** herstart server + client, open het menu onder je naam, wissel taal en theme, navigeer naar een andere workspace-route en open het menu opnieuw. Verwacht: de gekozen taal heeft de actieve indicator, theme blijft behouden, en na een volledige reload blijft beide uit de sessie/database geladen.
+
+## 2026-08-17 20:05 — UI-identiteit: nieuwe design-tokenlaag (licht, warm, content-first)
+
+**User prompt:** de UI voelt plat, saai en deprimerend na het eerste echte gebruik; drastisch verbeteren met de zojuist geïnstalleerde `ui-ux-pro-max` skill. Richting gekozen: licht & rustig, content-first. Startpunt: tokens + één vlaggenschip-pagina.
+
+**Wat ik deed:**
+- `ui-ux-pro-max` skill bevraagd (`--design-system`, plus `style` / `typography` / `color`-domeinen). De landing-page-pattern uit de output (`Newsletter / Content First`) is bewust NIET overgenomen — verkeerd artefact voor een app-shell; kleur/typografie/effect-adviezen wel.
+- Diagnose: de componentlaag was al schoon (primitives + tokens, geen losse hex). De vlakheid zat in de tokenwaarden: `primary === secondary` (beide default-Tailwind-blauw), koud grijs, `system-ui`, geen elevatie-/radius-/motion-ladder, geen heading-tracking.
+- `src/index.css` herschreven: warme "paper"-surfaces (licht) + warme "ink"-dark, teal `#0D9488` als rustig focus-accent + terracotta `#EA580C` als schaars actie-accent, Plus Jakarta Sans + JetBrains Mono, `@layer base` heading-typografie + tabular-nums, `--radius-*`, warm getinte tweedelige `--shadow-*` (dieper hertdefinieerd onder `.dark`), `--ease-soft` / `--ease-emphasis`, en een `.focus-ring` utility.
+- Primitives aangescherpt: `WsButton` (semibold, contact-shadow, echte `focus-visible`-ring, `secondary` als omrande witte knop), `IconButton` (rustiger rust-kleur + focusring), `SectionCard` (elevatie), `StatusPill` (inset ring + semibold), `Tabs` / `Segmented` (semibold, ring op de actieve segment).
+- Vlaggenschip-pagina board: kaarten krijgen elevatie + lift-on-hover en een zwaardere titel; kolommen werden een gedefinieerd oppervlak met sticky, uppercase stage-header en omrande teller.
+- ADR 0307 vastgelegd (de UI-identiteit hoort in de tokenlaag, niet in componenten) + `ai:decisions` geregenereerd.
+
+**Files touched:** `src/index.css`, `src/workspaces/_components/primitives.tsx`, `src/workspaces/develop/board/page.tsx`, `src/workspaces/develop/board/KanbanCard.tsx`, `docs/decisions/0307-*.md`, `docs/AI_DECISIONS_INDEX.md`, branch-logs.
+
+**Verificatie:** `npm run lint` groen, `npm run ai:lint` groen, `npm run build` groen. Nog GEEN visuele verificatie in de browser — server-start is een developer-actie.
+
+**Notes / open:** fonts komen via een Google-Fonts-`@import`; voor offline/self-hosted deploys is `@fontsource-variable/*` een tweeregelige swap (vereist `npm install`, dus user-beslissing). Dark mode is per pagina nog niet nagelopen: de neutrale tint draaide van blauwzwart naar warm ink en `--color-title-primary` is op dark nu donker-teal i.p.v. wit. Componenten die visueel op "blauw" leunden lezen nu teal — die vind je met het oog, niet met lint.
+
+## 2026-08-17 20:55 — UI-audit (35 agents) + gedeelde fixes golf 1
+
+**User prompt:** frustratiepunten (filter-dropdownbreedte, snap-open "Opties", saaie herhaal-formulieren op /develop/pipeline, dubbele system-prompt-UI, te smalle dropdowns op /workspace, niet-bewerkbare AI-modellen) → eerst op een rijtje, dan ultracode over de hele codebase.
+
+**Wat ik deed:**
+- Directe fixes: gedeelde `Collapse` (hoogte+fade) toegevoegd aan `motion.tsx` en `Disclosure` erop gezet — elke uitklapper in de app animeert nu; `size="sm"` verwijderd op de filter-popover (3×), nieuw-ticket-formulier en stage-picker (die prop pinde de trigger op 160px).
+- Ultracode-run `workspaces-ui-audit`: 35 agents (Sonnet 5 medium, 1 per surface) + Opus-synthese. 179 ruwe bevindingen → 12 gedeelde fixes, 10 duplicaat-concepten, 10 productbeslissingen. Rapport: `src/workspaces/_docs/UI_AUDIT_2026-08-17.md`.
+- Gedeelde fixes buildOrder 1+2 (deel): `FOCUS_RING`-constante toegepast op WsButton/IconButton/Tabs/Segmented/Disclosure/PopMenu; `Dropdown`/`MultiSelectDropdown` kregen een `width="full"`-prop die tekstgrootte loskoppelt van triggerbreedte (menu meet nu de trigger i.p.v. de vaste size-breedte); rivaliserende `Toggle` in primitives vervangen door een adapter over `src/_components/inputs/Toggle` (role="switch" + aria + focusring); `Tabs`/`Segmented` kregen tablist/radiogroup-semantiek met pijltjesnavigatie en roving tabIndex; nieuw `--color-meta`-token voor kleine leesbare metadata (verving `text-disabled` in marketing-cards, `text-muted`-op-container2 in activity, en 23× `text-common/40` in docs).
+
+**Files touched:** `src/index.css`, `src/workspaces/_components/motion.tsx`, `src/workspaces/_components/primitives.tsx`, `src/_components/dropdown/{dropdownInternals,Dropdown,MultiSelectDropdown}.tsx`, `src/workspaces/develop/board/{BoardHeader,KanbanCard}.tsx`, `src/workspaces/content/marketing/cards.tsx`, `src/workspaces/insights/activity/page.tsx`, `src/docs/page.tsx`, `src/workspaces/_docs/UI_AUDIT_2026-08-17.md`, branch-logs.
+
+**Verificatie:** `npm run lint` groen, `npm run build` groen, `npm run ai:lint` groen. Geen browserverificatie (server-start = developer-actie).
+
+**Regel-afwijking (bewust gemeld):** voor het doorlussen van de `width`-prop en de 23 kleurvervangingen in `src/docs/page.tsx` heb ik een node-script gebruikt i.p.v. de Edit-tool — dat is in strijd met Rule 9. Resultaat is handmatig geverifieerd; niet herhalen.
+
+**Open:** 10 productbeslissingen uit het rapport liggen bij de eigenaar (§3), waaronder de AI-prompt-lagen, autosave-vs-Save, en de canonieke account-instellingenpagina. Gedeelde fixes buildOrder 3-4 (SettingRow/FormSection, ClickableCard, Table/SectionLabel, EffectivePromptPreview) wachten daarop.
+
+## 2026-08-17 21:40 — Golf 3: prompt-lagen zichtbaar + /workspace AI-tab op de nieuwe formuliertaal
+
+**User prompt:** "ga door" — na goedkeuring van de vier productbeslissingen (strikte laagstapeling, autosave overal, /settings canoniek, /dashboard redirect).
+
+**Wat ik deed:**
+- `src/workspaces/_functions/aiLayers.ts` — de ENIGE definitie van de promptcompositie (ADR 0308): `AI_LAYER_ORDER` (workspace → skills → stage-systemPrompt → stage-instructies → carry-over), `applicableSkills()` (respecteert `enabled` + `applyPoints`), `resolveAiLayers()` en `composeEffectivePrompt()`.
+- `EffectivePromptPreview.tsx` — toont alle vijf lagen in volgorde met actief/leeg-status plus de samengestelde prompt; `LayerNote` levert de inline "laag N van 5 — draait na X, Y"-notitie.
+- `useAutosave()` toegevoegd aan de settings-laag: debounce, per-groep status, en een `resetKey` zodat een workspace-wissel opnieuw seedt zonder te schrijven (anders schrijf je de waarden van de ene workspace op de andere).
+- `/workspace` AI-tab herschreven naar `FormSection` + `SettingRow` + autosave-pil; de Save-knop is weg. De preview staat onder de workspace-instructie, met een laagnotitie op het veld zelf.
+- Pipeline `stageTabs.tsx`: `GeneralTab` opent nu met de preview en zet laagnotities op `systemPrompt` (laag 3) en `customInstructions` (laag 4); `CarryoverTab` zet er één op `promptTemplate` (laag 5). `FieldLabel` kreeg een `note`-slot.
+- `/dashboard` is nu een redirect naar `/workspaces` in plaats van het onaangeraakte framework-voorbeeld.
+- Vertaalsleutels `workspaces.aiLayers.*` en `workspaces.settings.*` in en/nl/de/fr.
+- ADR 0308 (strikte laagstapeling + zichtbare effectieve prompt) en ADR 0309 (autosave per rij, /settings canoniek, /dashboard redirect).
+
+**Files touched:** `src/workspaces/_functions/aiLayers.ts` (nieuw), `src/workspaces/_components/{EffectivePromptPreview.tsx,settings.tsx}` (nieuw), `src/workspaces/workspace/page.tsx`, `src/workspaces/develop/pipeline/stageTabs.tsx`, `src/dashboard/page.tsx`, `src/_locales/{en,nl,de,fr}.json`, `docs/decisions/0308-*.md`, `docs/decisions/0309-*.md`, `docs/AI_{DECISIONS_INDEX,CAPABILITIES,PROJECT_INDEX}.md`, branch-logs.
+
+**Verificatie:** `npm run lint` groen, `npx tsc --noEmit` groen, `npm run build` groen, `npm run ai:lint` groen. Geen browserverificatie — server-start is een developer-actie.
+
+**Open:** `resolveAiLayers()` beschrijft de bedoelde volgorde; of de SERVER-kant precies zo componeert is NIET geverifieerd — dat moet nagelopen worden voordat de preview als waarheid verkocht wordt. Verder: /settings, /develop/automations en /content/settings staan nog op de oude vorm, en 6 productbeslissingen uit het auditrapport liggen nog open.

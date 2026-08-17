@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (224)
+## Decisions (227)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -237,6 +237,9 @@
 | 0304 | Pi 5 uses the GPIO character-device stack, not legacy pigpiod | 🟢 accepted | production, raspberry-pi, gpio, systemd, operations | — | `docs/decisions/0304-pi-5-uses-gpio-character-device-not-legacy-pigpiod.md` |
 | 0305 | Release lockfile is generated with the production npm version | 🟢 accepted | dependencies, deployment, npm, arm64, reproducibility | — | `docs/decisions/0305-release-lockfile-is-generated-with-production-npm.md` |
 | 0306 | LuckyStack upgrades jump straight to the newest patch of a minor | 🟢 accepted | dependencies, luckystack, upgrade, transport, security | — | `docs/decisions/0306-luckystack-upgrades-jump-straight-to-the-newest-patch.md` |
+| 0307 | The UI identity lives in the token layer, not in components | 🟢 accepted | ui, design-system, tokens, tailwind | — | `docs/decisions/0307-the-ui-identity-lives-in-the-token-layer-not-in-components.md` |
+| 0308 | AI prompt layers stack strictly, and are shown as one effective prompt | 🟢 accepted | ai, pipeline, ia, ux | — | `docs/decisions/0308-ai-prompt-layers-stack-strictly-and-are-shown-as-one-effective-prompt.md` |
+| 0309 | Settings autosave per row, and one canonical account page | 🟢 accepted | ui, settings, ia, forms | — | `docs/decisions/0309-settings-autosave-per-row-and-one-canonical-account-page.md` |
 
 ## Summaries
 
@@ -2047,6 +2050,30 @@ Declare `packageManager: npm@10.9.8`, matching the production host. Generate dep
 Upgrade all 16 `@luckystack/*` packages to 0.8.3 **in lockstep**, in one step. Their internal peer ranges are `^0.8.3`; a partial bump is unsupported. Do **not** step through 0.8.0 → 0.8.1 → 0.8.2. Each intermediate is a known-defective state and stopping on one would mean verifying a version nobody should run. Pin `transport: { invocation: 'socket' }` explicitly in `config.ts` even though it equals the framework default, because the alternative (`routed-http`) drops the offline queue's retry path. Wire the generated `apiMethodMap` through `registerApiMethodMap` in `src/_sockets/apiRequest.ts`, so a future transport switch cannot silently fall back to inferring HTTP methods from route names.
 
 → `docs/decisions/0306-luckystack-upgrades-jump-straight-to-the-newest-patch.md`
+
+### 0307 — The UI identity lives in the token layer, not in components
+
+**0307** · accepted · tags: ui, design-system, tokens, tailwind · 2026-08-17
+
+Fix the design at the token layer first, and keep component changes secondary. Concretely, `src/index.css` now defines:
+
+→ `docs/decisions/0307-the-ui-identity-lives-in-the-token-layer-not-in-components.md`
+
+### 0308 — AI prompt layers stack strictly, and are shown as one effective prompt
+
+**0308** · accepted · tags: ai, pipeline, ia, ux · 2026-08-17
+
+*Strict layering.** The layers always concatenate in the fixed order above; a non-empty stage field never silently replaces a workspace-level one. There is no per-stage opt-out.
+
+→ `docs/decisions/0308-ai-prompt-layers-stack-strictly-and-are-shown-as-one-effective-prompt.md`
+
+### 0309 — Settings autosave per row, and one canonical account page
+
+**0309** · accepted · tags: ui, settings, ia, forms · 2026-08-17
+
+*One row grammar.** `SettingRow` + `FormSection` in `src/workspaces/_components/settings.tsx` are the way a setting is rendered: label and quiet help text on the left, control right-aligned on the right, hairline-separated rows inside a titled group. Long explanations go behind the row's `info` disclosure, not into a competing paragraph. `stacked` handles textareas and anything needing the full width.
+
+→ `docs/decisions/0309-settings-autosave-per-row-and-one-canonical-account-page.md`
 
 ## Code governed by decisions
 

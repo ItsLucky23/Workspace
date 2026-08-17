@@ -26,7 +26,7 @@ function StageMovePicker({ ticket, ctx }: { ticket: Ticket; ctx: ReturnType<type
   return (
     <div className={`w-full flex flex-col gap-3 p-5`}>
       <div className={`text-base font-semibold text-title`}>{translate({ key: 'workspaces.board.moveToStageTitle', params: [{ key: 'id', value: ticket.id }] })}</div>
-      <Dropdown size="sm" items={items} value={items.find((i) => i.id === stageId)} onChange={(it) => { setStageId(String(it.id)); }} />
+      <Dropdown items={items} value={items.find((i) => i.id === stageId)} onChange={(it) => { setStageId(String(it.id)); }} />
       <div className={`flex items-center justify-end gap-2`}>
         <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
         <WsButton icon="arrow-right" disabled={stageId === ticket.stageId} onClick={() => { ctx.bulkMove([ticket.id], stageId); void menuHandler.close(); }}>{translate({ key: 'workspaces.board.moveToStageConfirm' })}</WsButton>
@@ -90,7 +90,9 @@ export function KanbanCard({ ticket }: { ticket: Ticket }) {
       onPointerDown={() => { downAt.current = Date.now(); }}
       onClick={handleClick}
       onKeyDown={(e) => { if (e.key === 'Enter') ctx.openTicket(ticket.id); }}
-      className={`group relative rounded-xl border border-container1-border bg-container1 p-3 cursor-pointer transition-[border-color,box-shadow] duration-150 hover:border-container2-border hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/40`}
+      //? The lift-on-hover (shadow + 1px rise) is what makes a column of cards read as physical
+      //? objects you can act on rather than rows of text; it animates transform/box-shadow only.
+      className={`group relative rounded-xl border border-container1-border bg-container1 p-3 shadow-2xs cursor-pointer transition-[border-color,box-shadow,transform] duration-150 ease-[var(--ease-soft)] hover:border-container2-border hover:shadow-md motion-safe:hover:-translate-y-px focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
     >
       <div className={`flex items-center justify-between gap-2`}>
         <span className={`flex items-center gap-1.5 min-w-0`}>
@@ -100,7 +102,7 @@ export function KanbanCard({ ticket }: { ticket: Ticket }) {
               className={`w-2 h-2 rounded-full shrink-0 ${PRIORITY_DOT[ticket.priority]}`}
             />
           )}
-          <span className={`font-mono text-xs text-muted`}>{ticket.id}</span>
+          <span className={`font-mono text-[11px] tracking-tight text-muted`}>{ticket.id}</span>
         </span>
         <div className={`flex items-center gap-1`} {...stop}>
           {ticket.status === 'idle'
@@ -117,7 +119,8 @@ export function KanbanCard({ ticket }: { ticket: Ticket }) {
           />
         </div>
       </div>
-      <div className={`text-sm font-medium text-title mt-1.5 leading-snug`}>{ticket.title}</div>
+      {/* The title is the card's content — it gets the weight; the id/meta rows stay quiet around it. */}
+      <div className={`text-sm font-semibold tracking-[-0.01em] text-title mt-1.5 leading-snug`}>{ticket.title}</div>
       {ticket.labels.length > 0 && (
         <div className={`flex flex-wrap gap-1 mt-2`}>{ticket.labels.map((l) => <LabelChip key={l} name={l} />)}</div>
       )}

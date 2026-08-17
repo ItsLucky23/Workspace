@@ -20,7 +20,10 @@ import Dropdown from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../_components/Icon';
 import SetupWizard from '../_components/SetupWizard';
+import { EffectivePromptPreview, LayerNote } from '../_components/EffectivePromptPreview';
 import { AvatarBubble, IconButton, PopMenu, Tabs, Toggle, WsButton, type PopMenuItem, type TabDef } from '../_components/primitives';
+import { FormSection, SettingRow, useAutosave } from '../_components/settings';
+import { resolveAiLayers } from '../_functions/aiLayers';
 import { INTEGRATION_TYPES, RBAC_CAPABILITIES, ROLE_DISPLAY } from '../_data/seed';
 import { GATEABLE_SECTIONS, WORKSPACE_MODULES, WORKSPACE_SECTIONS, isModuleEnabled } from '../_data/modules';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
@@ -974,7 +977,7 @@ function SkillsSection() {
 
 function AiBehaviorTab() {
   const translate = useTranslator();
-  const { activeWorkspace, saveAiInstruction, aiOverrides, saveAiProvider, saveAutonomy, customTasks, saveCustomTask, runCustomTask, deleteCustomTask } = useWorkspaces();
+  const { activeWorkspace, saveAiInstruction, aiOverrides, saveAiProvider, saveAutonomy, customTasks, saveCustomTask, runCustomTask, deleteCustomTask, aiSkills } = useWorkspaces();
   const [newTaskName, setNewTaskName] = useState('');
   const [newTaskTemplate, setNewTaskTemplate] = useState('');
   const autonomyItems = (['gate-every', 'gate-key-stages', 'full-auto'] as const).map((id) => ({ id, value: id, item: translate({ key: `workspaces.workspaceSettings.autonomy.${id}` }) }));
@@ -984,7 +987,16 @@ function AiBehaviorTab() {
   const [geminiModel, setGeminiModel] = useState(activeWorkspace.geminiModel ?? '');
   const [geminiTemp, setGeminiTemp] = useState(activeWorkspace.geminiTemperature ?? '');
   const [geminiBaseUrl, setGeminiBaseUrl] = useState(activeWorkspace.geminiBaseUrl ?? '');
-  const [saved, setSaved] = useState(false);
+  //? ADR 0309 — autosave with a per-row pill instead of a Save button. The five fields persist
+  //? through one op, so they share one status; switching workspace re-seeds without writing.
+  const aiStatus = useAutosave(
+    [value, language, geminiModel, geminiTemp, geminiBaseUrl],
+    () => { saveAiInstruction(value.trim(), language, geminiModel.trim(), geminiTemp.trim(), geminiBaseUrl.trim()); },
+    { resetKey: activeWorkspace.id },
+  );
+  //? ADR 0308 — layers 1-2 resolve here (the stage-scoped 3-5 stay empty on this page, which is
+  //? itself the point: the preview shows the user that stages add three more).
+  const layers = resolveAiLayers({ workspace: activeWorkspace, skills: aiSkills });
   const languageOptions = OUTPUT_LANGUAGES.map((l) => ({ id: l.id, value: l.id, item: l.label }));
   const providerItems = PROVIDER_OPTIONS.map((p) => ({ id: p.id, value: p.id, item: p.item }));
   const providerFor = (feature: string): string => aiOverrides.find((o) => o.feature === feature)?.providerId ?? 'default';
@@ -997,74 +1009,87 @@ function AiBehaviorTab() {
     })();
   }, [activeWorkspace.id]);
   return (
-    <div className="flex flex-col gap-3 max-w-2xl">
-      <div>
-        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.aiInstructionTitle' })}</div>
-        <div className="text-sm text-muted mt-0.5">{translate({ key: 'workspaces.workspaceSettings.aiInstructionDesc' })}</div>
-      </div>
-      <textarea
-        value={value} onChange={(e) => { setValue(e.target.value); setSaved(false); }} rows={6}
-        placeholder={translate({ key: 'workspaces.workspaceSettings.aiInstructionPlaceholder' })}
-        className={fieldCls.replace('h-9', 'min-h-32') + ' py-2 resize-none'}
-      />
-      <div className="flex flex-col gap-1">
-        <span className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.outputLanguage' })}</span>
-        <div className="max-w-xs">
-          <Dropdown size="md" value={languageOptions.find((o) => o.id === language)} items={languageOptions} onChange={(it) => { setLanguage(String(it.id)); setSaved(false); }} />
+    <div className="flex flex-col gap-4 max-w-2xl">
+      {/* ADR 0308 — the composition is stated where it is edited, not documented elsewhere. This is
+          layer 1 of 5; the preview shows what the agent ends up with. */}
+      <FormSection
+        title={translate({ key: 'workspaces.workspaceSettings.aiInstructionTitle' })}
+        desc={translate({ key: 'workspaces.workspaceSettings.aiInstructionDesc' })}
+      >
+        <SettingRow
+          stacked
+          label={translate({ key: 'workspaces.aiLayers.workspace' })}
+          inherits={<LayerNote layers={layers} id="workspace" />}
+          status={aiStatus}
+          control={(
+            <textarea
+              value={value} onChange={(e) => { setValue(e.target.value); }} rows={6}
+              placeholder={translate({ key: 'workspaces.workspaceSettings.aiInstructionPlaceholder' })}
+              className={fieldCls.replace('h-9', 'min-h-32') + ' py-2 resize-none'}
+            />
+          )}
+        />
+        <SettingRow
+          label={translate({ key: 'workspaces.workspaceSettings.outputLanguage' })}
+          status={aiStatus}
+          control={<Dropdown width="full" value={languageOptions.find((o) => o.id === language)} items={languageOptions} onChange={(it) => { setLanguage(String(it.id)); }} />}
+        />
+        {/* P2 — per-workspace Gemini model + temperature (Gemini-only; Claude is PTY-billed, no model concept). */}
+        <SettingRow
+          label={translate({ key: 'workspaces.workspaceSettings.geminiModel' })}
+          status={aiStatus}
+          control={<input value={geminiModel} onChange={(e) => { setGeminiModel(e.target.value); }} placeholder="gemini-2.5-flash" className={fieldCls} />}
+        />
+        <SettingRow
+          label={translate({ key: 'workspaces.workspaceSettings.geminiTemperature' })}
+          status={aiStatus}
+          control={<input type="number" min="0" max="2" step="0.1" value={geminiTemp} onChange={(e) => { setGeminiTemp(e.target.value); }} placeholder="0.0 – 2.0" className={fieldCls} />}
+        />
+        <SettingRow
+          stacked
+          label={translate({ key: 'workspaces.workspaceSettings.geminiBaseUrl' })}
+          status={aiStatus}
+          control={<input value={geminiBaseUrl} onChange={(e) => { setGeminiBaseUrl(e.target.value); }} placeholder="https://generativelanguage.googleapis.com/v1beta" className={`${fieldCls} font-mono`} />}
+        />
+        <div className="px-5 py-4">
+          <EffectivePromptPreview layers={layers} />
         </div>
-      </div>
-      {/* P2 — per-workspace Gemini model + temperature (Gemini-only; Claude is PTY-billed, no model concept). */}
-      <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1">
-          <span className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.geminiModel' })}</span>
-          <input value={geminiModel} onChange={(e) => { setGeminiModel(e.target.value); setSaved(false); }} placeholder="gemini-2.5-flash" className={fieldCls} />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.geminiTemperature' })}</span>
-          <input type="number" min="0" max="2" step="0.1" value={geminiTemp} onChange={(e) => { setGeminiTemp(e.target.value); setSaved(false); }} placeholder="0.0 – 2.0" className={fieldCls} />
-        </label>
-        <label className="flex flex-col gap-1 col-span-2">
-          <span className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.geminiBaseUrl' })}</span>
-          <input value={geminiBaseUrl} onChange={(e) => { setGeminiBaseUrl(e.target.value); setSaved(false); }} placeholder="https://generativelanguage.googleapis.com/v1beta" className={`${fieldCls} font-mono`} />
-        </label>
-      </div>
-      <div className="flex items-center gap-3">
-        <WsButton icon="check" onClick={() => { saveAiInstruction(value.trim(), language, geminiModel.trim(), geminiTemp.trim(), geminiBaseUrl.trim()); setSaved(true); }}>{translate({ key: 'workspaces.workspaceSettings.aiInstructionSave' })}</WsButton>
-        {saved && <span className="text-xs text-correct flex items-center gap-1"><Icon name="circle-check" /> {translate({ key: 'workspaces.workspaceSettings.aiInstructionSaved' })}</span>}
-      </div>
+      </FormSection>
 
       {/* A4 — autonomy dial: how often the human is asked to approve a stage. */}
-      <div className="pt-2 border-t border-divider mt-2">
-        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.autonomyTitle' })}</div>
-        <div className="text-sm text-muted mt-0.5 mb-2">{translate({ key: 'workspaces.workspaceSettings.autonomyDesc' })}</div>
-        <div className="w-64">
-          <Dropdown size="sm" value={autonomyItems.find((a) => a.id === autonomyLevel)} items={autonomyItems} onChange={(it) => { saveAutonomy(String(it.id)); }} />
-        </div>
-      </div>
+      <FormSection title={translate({ key: 'workspaces.workspaceSettings.autonomyTitle' })}>
+        <SettingRow
+          label={translate({ key: 'workspaces.workspaceSettings.autonomyTitle' })}
+          help={translate({ key: 'workspaces.workspaceSettings.autonomyDesc' })}
+          control={<Dropdown width="full" value={autonomyItems.find((a) => a.id === autonomyLevel)} items={autonomyItems} onChange={(it) => { saveAutonomy(String(it.id)); }} />}
+        />
+      </FormSection>
 
       {/* Gap-fix — provider health: availableProviders() was exported for a UI that never came. */}
-      <div className="pt-2 border-t border-divider mt-2">
-        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.providerHealthTitle' })}</div>
-        <div className="text-sm text-muted mt-0.5 mb-2">{translate({ key: 'workspaces.workspaceSettings.providerHealthDesc' })}</div>
-        <div className="flex flex-wrap gap-2">
+      <FormSection
+        title={translate({ key: 'workspaces.workspaceSettings.providerHealthTitle' })}
+        desc={translate({ key: 'workspaces.workspaceSettings.providerHealthDesc' })}
+      >
+        <div className="px-5 pb-5 flex flex-wrap gap-2">
           {providerHealth === null && <span className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.providerHealthLoading' })}</span>}
           {providerHealth?.map((p) => (
-            <span key={p.id} className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${p.available ? 'bg-correct/10 text-correct' : 'bg-wrong/10 text-wrong'}`}>
+            <span key={p.id} className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ring-current/15 ${p.available ? 'bg-correct/10 text-correct' : 'bg-wrong/10 text-wrong'}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${p.available ? 'bg-correct' : 'bg-wrong'}`} />
               {p.label}
             </span>
           ))}
         </div>
-      </div>
+      </FormSection>
 
       {/* SK1 — the universal AI-skills layer (humanizer, tone-of-voice, …). */}
       <SkillsSection />
 
       {/* E5 — user-defined custom AI tasks: a named prompt-template, run on demand (output only). */}
-      <div className="pt-2 border-t border-divider mt-2">
-        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.customTasksTitle' })}</div>
-        <div className="text-sm text-muted mt-0.5 mb-2">{translate({ key: 'workspaces.workspaceSettings.customTasksDesc' })}</div>
-        <div className="flex flex-col gap-2">
+      <FormSection
+        title={translate({ key: 'workspaces.workspaceSettings.customTasksTitle' })}
+        desc={translate({ key: 'workspaces.workspaceSettings.customTasksDesc' })}
+      >
+        <div className="px-5 pb-5 flex flex-col gap-2">
           {customTasks.map((t) => (
             <div key={t.id} className="rounded-lg border border-container1-border bg-container1 p-2.5">
               <div className="flex items-center justify-between gap-2">
@@ -1078,38 +1103,34 @@ function AiBehaviorTab() {
             </div>
           ))}
         </div>
-        <div className="flex flex-col gap-2 mt-2">
+        <div className="px-5 pb-5 flex flex-col gap-2 border-t border-divider pt-4">
           <input value={newTaskName} onChange={(e) => { setNewTaskName(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.customTaskNamePlaceholder' })} className={fieldCls} />
           <textarea value={newTaskTemplate} onChange={(e) => { setNewTaskTemplate(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.customTaskTemplatePlaceholder' })} rows={2} className={`${fieldCls} resize-y`} />
           <div>
             <WsButton icon="plus" onClick={() => { if (newTaskName.trim() && newTaskTemplate.trim()) { saveCustomTask({ name: newTaskName.trim(), promptTemplate: newTaskTemplate.trim() }); setNewTaskName(''); setNewTaskTemplate(''); } }}>{translate({ key: 'workspaces.workspaceSettings.customTaskAdd' })}</WsButton>
           </div>
         </div>
-      </div>
+      </FormSection>
 
       {/* P1 — which AI backend runs each feature (persists on change). */}
-      <div className="pt-2 border-t border-divider mt-2">
-        <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.aiProviderTitle' })}</div>
-        <div className="text-sm text-muted mt-0.5 mb-3">{translate({ key: 'workspaces.workspaceSettings.aiProviderDesc' })}</div>
-        <div className="flex flex-col gap-2">
-          {PROVIDER_FEATURES.map((f) => {
-            //? #82 — human label + one-line description per feature (no raw slugs). The camelCase key
-            //? maps the internal slug to a translation entry under workspaceSettings.providerFeature.
-            const camel = f.replaceAll(/-([a-z])/g, (_m, c: string) => c.toUpperCase());
-            return (
-              <div key={f} className="flex items-center justify-between gap-3">
-                <div className="flex flex-col">
-                  <span className="text-sm text-common">{translate({ key: `workspaces.workspaceSettings.providerFeature.${camel}` })}</span>
-                  <span className="text-xs text-muted">{translate({ key: `workspaces.workspaceSettings.providerFeatureDesc.${camel}` })}</span>
-                </div>
-                <div className="w-40">
-                  <Dropdown size="sm" value={providerItems.find((p) => p.id === providerFor(f))} items={providerItems} onChange={(it) => { saveAiProvider(f, String(it.id)); }} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <FormSection
+        title={translate({ key: 'workspaces.workspaceSettings.aiProviderTitle' })}
+        desc={translate({ key: 'workspaces.workspaceSettings.aiProviderDesc' })}
+      >
+        {PROVIDER_FEATURES.map((f) => {
+          //? #82 — human label + one-line description per feature (no raw slugs). The camelCase key
+          //? maps the internal slug to a translation entry under workspaceSettings.providerFeature.
+          const camel = f.replaceAll(/-([a-z])/g, (_m, c: string) => c.toUpperCase());
+          return (
+            <SettingRow
+              key={f}
+              label={translate({ key: `workspaces.workspaceSettings.providerFeature.${camel}` })}
+              help={translate({ key: `workspaces.workspaceSettings.providerFeatureDesc.${camel}` })}
+              control={<Dropdown width="full" size="sm" value={providerItems.find((p) => p.id === providerFor(f))} items={providerItems} onChange={(it) => { saveAiProvider(f, String(it.id)); }} />}
+            />
+          );
+        })}
+      </FormSection>
     </div>
   );
 }
