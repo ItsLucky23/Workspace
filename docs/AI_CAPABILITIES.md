@@ -77,6 +77,7 @@ Every typed API route in this project. Sourced from `_ProjectApiTypeMap` in `src
 | `workspaces/openEditor/v1` | POST | 12 | — | ✓ |
 | `workspaces/openPreview/v1` | POST | 12 | — | ✓ |
 | `workspaces/openRefPreview/v1` | POST | 12 | — | ✓ |
+| `workspaces/pipelinePresets/v1` | POST | 30 | — | ✓ |
 | `workspaces/promptExperiments/v1` | POST | 60 | — | ✓ |
 | `workspaces/pushConfig/v1` | POST | 60 | — | ✓ |
 | `workspaces/readWorktreeFile/v1` | POST | 30 | — | ✓ |
@@ -141,6 +142,7 @@ Every typed sync route in this project. Sourced from `_ProjectSyncTypeMap` in `s
 | `workspaces/linkRepo/v1` | — | — | ✓ |
 | `workspaces/mrAction/v1` | — | — | ✓ |
 | `workspaces/outputTemplate/v1` | — | — | ✓ |
+| `workspaces/pipelinePreset/v1` | — | — | ✓ |
 | `workspaces/presence/v1` | — | — | ✓ |
 | `workspaces/projectAdmin/v1` | — | — | ✓ |
 | `workspaces/quickAdd/v1` | — | — | ✓ |
@@ -185,23 +187,24 @@ Every entry below is callable inside an API or sync handler's `main({ data, user
 
 | Access path | Signature |
 | --- | --- |
-| `functions.db.prisma` | `(typeof import("@luckystack/core"))["prisma"]` |
+| `functions.db.prisma` | `typeof import('@luckystack/core')['prisma']` |
 | `functions.example.getServerTime` | `() => string` |
-| `functions.redis.redis` | `(typeof import("@luckystack/core"))["redis"]` |
-| `functions.redis.default` | `(typeof import("@luckystack/core"))["redis"]` |
-| `functions.sentry.initializeSentry` | `(typeof import("@luckystack/error-tracking"))["initializeSentry"]` |
-| `functions.sentry.captureException` | `(typeof import("@luckystack/error-tracking"))["captureException"]` |
-| `functions.sentry.captureMessage` | `(typeof import("@luckystack/error-tracking"))["captureMessage"]` |
-| `functions.sentry.setSentryUser` | `(typeof import("@luckystack/error-tracking"))["setSentryUser"]` |
-| `functions.sentry.startSpan` | `(typeof import("@luckystack/error-tracking"))["startSpan"]` |
-| `functions.sentry.default` | `(typeof import("@luckystack/error-tracking"))["default"]` |
-| `functions.session.saveSession` | `(typeof import("@luckystack/login"))["saveSession"]` |
-| `functions.session.getSession` | `(typeof import("@luckystack/login"))["getSession"]` |
-| `functions.session.deleteSession` | `(typeof import("@luckystack/login"))["deleteSession"]` |
-| `functions.session.getAllSessions` | `(typeof import("@luckystack/login"))["getAllSessions"]` |
-| `functions.session.revokeUserSessions` | `(typeof import("@luckystack/login"))["revokeUserSessions"]` |
-| `functions.sleep.default` | `(typeof import("@luckystack/core/client"))["sleep"]` |
-| `functions.sleep.sleep` | `(typeof import("@luckystack/core/client"))["sleep"]` |
+| `functions.redis.redis` | `typeof import('@luckystack/core')['redis']` |
+| `functions.redis.default` | `typeof import('@luckystack/core')['redis']` |
+| `functions.sentry.initializeSentry` | `typeof import('@luckystack/error-tracking')['initializeSentry']` |
+| `functions.sentry.captureException` | `typeof import('@luckystack/error-tracking')['captureException']` |
+| `functions.sentry.captureMessage` | `typeof import('@luckystack/error-tracking')['captureMessage']` |
+| `functions.sentry.setSentryUser` | `typeof import('@luckystack/error-tracking')['setSentryUser']` |
+| `functions.sentry.startSpan` | `typeof import('@luckystack/error-tracking')['startSpan']` |
+| `functions.sentry.default` | `typeof import('@luckystack/error-tracking')['default']` |
+| `functions.session.saveSession` | `typeof import('@luckystack/login')['saveSession']` |
+| `functions.session.getSession` | `typeof import('@luckystack/login')['getSession']` |
+| `functions.session.deleteSession` | `typeof import('@luckystack/login')['deleteSession']` |
+| `functions.session.getAllSessions` | `typeof import('@luckystack/login')['getAllSessions']` |
+| `functions.session.revokeUserSessions` | `typeof import('@luckystack/login')['revokeUserSessions']` |
+| `functions.sleep.default` | `typeof import('@luckystack/core/client')['sleep']` |
+| `functions.sleep.sleep` | `typeof import('@luckystack/core/client')['sleep']` |
+| `functions.tryCatch.tryCatch` | `<T, P>(func: (values: P) => Promise<T> \| T, params?: P, /* eslint-disable-next-line @typescript-eslint/no-unused-vars -- any-compat param; unused in the client-safe variant. any comment (not //) so devkit's single-line type-map collapse can't comment out the rest of the signature. */ _context?: Record<string, unknown>) => Promise<[Error \| null, T \| null]>` |
 
 ### Server-function shims in `functions/` (source for the injection map)
 

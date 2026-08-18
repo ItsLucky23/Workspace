@@ -1338,7 +1338,7 @@ function AiBehaviorTab() {
           control={<input value={geminiBaseUrl} onChange={(e) => { setGeminiBaseUrl(e.target.value); }} placeholder="https://generativelanguage.googleapis.com/v1beta" className={`${fieldCls} font-mono`} />}
         />
         <div className="px-5 py-4">
-          <EffectivePromptPreview layers={layers} />
+          <EffectivePromptPreview layers={layers} inlineIds={['workspace', 'skills']} />
         </div>
       </FormSection>
 

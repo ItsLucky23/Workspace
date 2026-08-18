@@ -40,7 +40,7 @@ export type ControlOp =
   | 'link-repo' | 'scan-docs' | 'create-info-source' | 'info-source-archive' | 'info-source-delete' | 'scan-index'
   | 'mr-create' | 'mr-comment' | 'mr-approve' | 'mr-merge' | 'mr-rollback' | 'mr-resolve' | 'mr-review'
   | 'raise-cap' | 'edit-budget' | 'resume-spend'
-  | 'skill-toggle' | 'save-stage-config' | 'stage-create' | 'stage-delete' | 'stage-reorder'
+  | 'skill-toggle' | 'save-stage-config' | 'stage-create' | 'stage-delete' | 'stage-reorder' | 'pipeline-apply-preset'
   | 'trigger-save' | 'trigger-toggle' | 'trigger-delete' | 'trigger-run'
   | 'finding-to-ticket' | 'finding-dismiss'
   | 'ticket-link-artifact' | 'ticket-unlink-artifact' | 'apply-design-tokens'

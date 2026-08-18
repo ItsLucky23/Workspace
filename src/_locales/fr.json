@@ -687,7 +687,23 @@
       "removeEnvVar": "Supprimer la variable d'environnement",
       "removeModelRule": "Supprimer la bande d'escalade",
       "removeStatus": "Supprimer le statut « {{name}} »",
-      "removeDomain": "Supprimer {{name}}"
+      "removeDomain": "Supprimer {{name}}",
+      "useDefault": "Utiliser la valeur par défaut",
+      "presetMenu": "Configuration du pipeline",
+      "presetFill": "Remplir {{count}} champs vides avec les valeurs par défaut",
+      "presetFillTitle": "Remplir les champs vides ?",
+      "presetFillBody": "Ceci écrit la persona, les instructions et le modèle de transmission standard dans les {{count}} champs encore vides. Les champs que vous avez remplis restent intacts, et aucune étape n'est ajoutée ni supprimée.",
+      "presetSwitchTitle": "Basculer ce pipeline vers {{preset}} ?",
+      "presetSwitchAdds": "Ajout : {{names}}.",
+      "presetSwitchRemoves": "Suppression : {{names}}.",
+      "presetSwitchMoves": "{{count}} ticket(s) reviennent à l’étape antérieure la plus proche qui subsiste.",
+      "presetSwitchKeepsCustom": "Les étapes que vous avez ajoutées vous-même sont conservées.",
+      "kind_refine": "Affiner",
+      "kind_plan": "Planifier",
+      "kind_code": "Implémentation",
+      "kind_test": "Test",
+      "kind_review": "Revue",
+      "kind_final": "Finalisation"
     },
     "settings": {
       "saving": "Enregistrement…",
@@ -723,7 +739,12 @@
       "sourceRefine": "cette génération",
       "sourceChannel": "paramètres du canal",
       "contentPreviewHelp": "Ils se combinent en une seule instruction dans cet ordre — l'affinage a l'effet le plus fort et le plus immédiat.",
-      "channelNotApplicable": "Non utilisé ici — la voix du canal ne s'applique qu'aux publications publiées sur un canal. Modifiez-la dans Paramètres du contenu → Canaux."
+      "channelNotApplicable": "Non utilisé ici — la voix du canal ne s'applique qu'aux publications publiées sur un canal. Modifiez-la dans Paramètres du contenu → Canaux.",
+      "goto_workspace": "Modifier dans les paramètres IA de l'espace",
+      "goto_skills": "Modifier dans les paramètres IA de l'espace",
+      "goto_stageSystemPrompt": "Modifier dans l'onglet Général",
+      "goto_stageInstructions": "Modifier dans l'onglet Général",
+      "goto_carryOver": "Modifier dans l'onglet Transmission"
     },
     "tips": {
       "automations": {
@@ -786,7 +807,9 @@
         "personTitle": "Comment fonctionne le filtre par personne",
         "roleFieldsTitle": "Tous les rôles ne s'en servent pas",
         "unrefinedBody": "Elle ne regarde pas le statut d'un ticket : elle affiche les tickets situés dans l'étape de pipeline « unrefined ». Renommer cette étape ne renomme pas la puce, et la supprimer ne change rien non plus à ce que la puce trouve — ces tickets restent en place et les nouveaux tickets y démarrent généralement encore ; ils n'appartiennent simplement plus à aucune colonne du tableau.",
-        "unrefinedTitle": "Ce que filtre la puce Unrefined"
+        "unrefinedTitle": "Ce que filtre la puce Unrefined",
+        "unrefinedStagePoint": "L'étape que cette puce lit",
+        "unrefinedStageGo": "Ouvrir le pipeline"
       },
       "board": {
         "approveNoteBody": "« Approuver » et « Rejeter » ne sont pas un verdict distinct compris par le système : ils envoient le mot « Approuvé » ou « Rejeté » comme réponse écrite, votre note étant ajoutée après deux-points. Rien ne réagit au mot lui-même — votre réponse est généralement transmise à l'IA lorsqu'elle poursuit. Rédigez donc la note comme une instruction.",

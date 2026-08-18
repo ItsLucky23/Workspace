@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `962a60991b40cb4c` · 17 capabilities · 232 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `32cb7d540460b653` · 17 capabilities · 233 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -258,3 +258,4 @@
 - `adr-0312` Sub-navigation and explanation live in the URL and in three shared primitives
 - `adr-0313` Repository introspection is shown to the user, not only to the AI
 - `adr-0314` Onboarding is a standing checklist, not a tour
+- `adr-0315` A pipeline preset is a living choice, not a creation-time one

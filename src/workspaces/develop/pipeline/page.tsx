@@ -13,29 +13,45 @@ import { AnimatePresence, motion } from 'motion/react';
 
 import { menuHandler } from 'src/_functions/menuHandler';
 
-import Icon from '../../_components/Icon';
+import Icon, { type IconName } from '../../_components/Icon';
 import { EmptyState, InfoTip, PopMenu, Tabs, Toggle, WsButton, type TabDef } from '../../_components/primitives';
 import { useTrailSegment } from '../../_components/sections';
 import { HOOK_CATALOG } from '../../_data/seed';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
+import { PresetMenu, blueprintFor, usePipelinePresets } from './presets';
 import { CarryoverTab, CommandsTab, ContextTab, GeneralTab, HooksTab, IntegrationsTab, ModelTab, NetworkTab, ProcessTab, VisibilityTab } from './stageTabs';
+import type { StageBlueprint } from './presets';
 import type { PipelineStageCfg, StageWarning } from '../../_data/types';
 
-function blankStage(projectId: string, id: string, name: string, order: number): PipelineStageCfg {
+//? The optimistic local copy of a stage the user just added. It mirrors what the Conductor's
+//? `stage-create` actually writes — including the KIND blueprint, so the new stage does not flash blank
+//? for a round-trip and then fill in (owner decision 2026-08-18: a new stage starts from the default for
+//? its kind, it does not start empty).
+function blankStage(projectId: string, id: string, name: string, order: number, kind: StageKind, bp?: StageBlueprint): PipelineStageCfg {
   return {
     projectId,
-    id, kind: 'code', name, order, aiEnabled: true, customInstructions: '', promptTemplate: '',
-    skillKeys: [], sourceIds: [], commands: [], tools: [],
+    id, kind, name, order, aiEnabled: true,
+    systemPrompt: bp?.systemPrompt ?? '', customInstructions: bp?.customInstructions ?? '',
+    promptTemplate: bp?.promptTemplate ?? '', definitionOfDone: bp?.definitionOfDone ?? '',
+    //? `['summary']` matches what `stage-create` writes server-side — an empty list here made the new
+    //? stage flash with no carry-over source and then gain one on the refetch.
+    skillKeys: [], sourceIds: ['summary'], commands: [], tools: [],
     statuses: [
       { key: 'needs-input', label: 'Needs input', kind: 'base' }, { key: 'busy', label: 'Busy', kind: 'base' },
       { key: 'stopped', label: 'Stopped', kind: 'base' }, { key: 'done', label: 'Done', kind: 'base' },
     ],
     processes: [], visibleStageIds: [],
-    modelCfg: { autoEscalate: false, base: { model: 'sonnet', effort: 'medium', maxTurns: 12 }, rules: [] },
+    modelCfg: { autoEscalate: false, base: { model: bp?.model ?? 'sonnet', effort: bp?.effort ?? 'medium', maxTurns: bp?.maxTurns ?? 12 }, rules: [] },
     network: { enabled: true, mode: 'whitelist', categories: ['package-registries', 'source-hosts'], domains: [] },
     hooks: Object.fromEntries(HOOK_CATALOG.map((h) => [h.key, true] as const)),
   };
 }
+
+//? The kinds a stage can be. The kind is what decides the blueprint, so it is asked at add-time rather
+//? than defaulted to `code` and left for the user to discover on the Model tab.
+const STAGE_KINDS = ['refine', 'plan', 'code', 'test', 'review', 'final'] as const;
+type StageKind = (typeof STAGE_KINDS)[number];
+const STAGE_KIND_ICON = { refine: 'wand-magic-sparkles', plan: 'list-check', code: 'code', test: 'flask', review: 'eye', final: 'flag-checkered' } satisfies Record<StageKind, IconName>;
 
 /* ----------------------------------------------------------------- main */
 export const template = 'workspaces';
@@ -47,7 +63,8 @@ const STAGE_TAB_IDS = ['general', 'context', 'model', 'commands', 'integrations'
 
 export default function Pipeline() {
   const translate = useTranslator();
-  const { activeWorkspace, activeProjectId, stageConfigs, saveStageConfig, createStage, deleteStage, reorderStages, navigate } = useWorkspaces();
+  const { activeWorkspace, activeProjectId, stageConfigs, tickets, saveStageConfig, createStage, deleteStage, reorderStages, navigate } = useWorkspaces();
+  const presetData = usePipelinePresets(activeWorkspace.id);
   const [stages, setStages] = useState<PipelineStageCfg[]>(stageConfigs);
   //? ADR 0312 — the selected stage and its tab are the URL
   //? (`/workspaces/develop/pipeline/<stageId>/context`), so a stage is linkable and the "open this
@@ -87,15 +104,19 @@ export default function Pipeline() {
     return reordered;
   }); };
 
-  const addStage = () => {
+  const addStage = (kind: StageKind) => {
     if (!activeProjectId) return;
     const key = `stage-${String(stages.length)}-${String(Date.now())}`;
-    const name = `Stage ${String(stages.length + 1)}`;
-    setStages((p) => [...p, blankStage(activeProjectId, key, name, p.length)]);
+    //? Named after its kind, numbered only when that name is already taken — two stages both called
+    //? "Implementation" are indistinguishable in the flow strip, the board and every carry-over.
+    const base = translate({ key: `workspaces.pipeline.kind_${kind}` });
+    const taken = stages.filter((st) => st.name === base || st.name.startsWith(`${base} `)).length;
+    const name = taken === 0 ? base : `${base} ${String(taken + 1)}`;
+    setStages((p) => [...p, blankStage(activeProjectId, key, name, p.length, kind, presetData.byKind[kind])]);
     setSelectedId(key);
     setTab('general');
     //? R1 — persist the new stage immediately (was React-state-only → lost on refresh).
-    createStage({ projectId: activeProjectId, key, name, kind: 'code' });
+    createStage({ projectId: activeProjectId, key, name, kind });
   };
 
   const removeStage = () => void menuHandler.confirm({ title: translate({ key: 'workspaces.pipeline.deleteStageConfirmTitle', params: [{ key: 'name', value: s?.name ?? '' }] }), content: translate({ key: 'workspaces.pipeline.deleteStageConfirmContent' }) }).then((ok) => {
@@ -157,7 +178,8 @@ export default function Pipeline() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* header — ONE primary action (Add stage); Validate is a secondary, non-primary action */}
+      {/* header — ONE primary action (Add stage, now a kind menu rendered as the primary button);
+          Validate and the pipeline-setup menu are secondary */}
       <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-3 md:py-4 shrink-0">
         <div className="min-w-0">
           <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.pipeline.pipelineTitle' })}</h1>
@@ -169,7 +191,15 @@ export default function Pipeline() {
             <span className="hidden sm:inline">{translate({ key: 'workspaces.pipeline.validateWithAi' })}</span>
           </WsButton>
           <InfoTip align="end" title={translate({ key: 'workspaces.tips.pipeline.validateLocalTitle' })} body={translate({ key: 'workspaces.tips.pipeline.validateLocalBody' })} />
-          <WsButton icon="plus" onClick={addStage}>{translate({ key: 'workspaces.pipeline.addStage' })}</WsButton>
+          {/* The pipeline TIER, reachable after creation (owner decision 2026-08-18): fill the blank
+              stages from the defaults, or switch preset outright. Hidden until the defaults have loaded. */}
+          <PresetMenu data={presetData} stages={stages} tickets={tickets} />
+          {/* Adding a stage asks for its KIND first — the kind decides the starting persona,
+              instructions and model, so asking is what makes a new stage arrive pre-filled. */}
+          <PopMenu
+            label={translate({ key: 'workspaces.pipeline.addStage' })} variant="primary"
+            items={STAGE_KINDS.map((k) => ({ label: translate({ key: `workspaces.pipeline.kind_${k}` }), icon: STAGE_KIND_ICON[k], onClick: () => { addStage(k); } }))}
+          />
         </div>
       </div>
 
@@ -192,7 +222,7 @@ export default function Pipeline() {
               icon="diagram-project"
               title={translate({ key: 'workspaces.pipeline.emptyTitle' })}
               sub={translate({ key: 'workspaces.pipeline.emptyBody' })}
-              action={<WsButton icon="plus" onClick={addStage}>{translate({ key: 'workspaces.pipeline.addStage' })}</WsButton>}
+              action={<WsButton icon="plus" onClick={() => { addStage('code'); }}>{translate({ key: 'workspaces.pipeline.addStage' })}</WsButton>}
             />
           </div>
         )}
@@ -272,13 +302,13 @@ export default function Pipeline() {
               </div>
 
               <div className="p-4 md:p-5">
-                {tab === 'general' && <GeneralTab s={s} update={update} />}
+                {tab === 'general' && <GeneralTab s={s} update={update} bp={blueprintFor(presetData, s)} />}
                 {tab === 'context' && <ContextTab s={s} update={update} />}
                 {tab === 'commands' && <CommandsTab s={s} update={update} />}
                 {tab === 'integrations' && <IntegrationsTab s={s} update={update} />}
                 {tab === 'visibility' && <VisibilityTab s={s} update={update} stages={stages} />}
                 {tab === 'process' && <ProcessTab s={s} update={update} />}
-                {tab === 'carryover' && <CarryoverTab s={s} update={update} />}
+                {tab === 'carryover' && <CarryoverTab s={s} update={update} bp={blueprintFor(presetData, s)} />}
                 {tab === 'model' && <ModelTab s={s} update={update} />}
                 {tab === 'network' && <NetworkTab s={s} update={update} />}
                 {tab === 'hooks' && <HooksTab s={s} update={update} />}

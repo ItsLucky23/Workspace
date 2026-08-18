@@ -262,6 +262,11 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     const stageId = str(p, 'stageId'); if (!stageId || !x.activeProjectId) return;
     void syncRequest({ name: 'workspaces/stageDelete', version: 'v1', data: { projectId: x.activeProjectId, stageId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
+  'pipeline-apply-preset': (p, x) => {
+    const preset = str(p, 'preset'); if (!preset || !x.activeProjectId) return;
+    const mode = str(p, 'mode') === 'switch' ? 'switch' : 'fill';
+    void syncRequest({ name: 'workspaces/pipelinePreset', version: 'v1', data: { projectId: x.activeProjectId, preset, mode, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
   'stage-reorder': (p, x) => {
     const order = strArr(p, 'order'); if (!order || order.length === 0 || !x.activeProjectId) return;
     void syncRequest({ name: 'workspaces/stageReorder', version: 'v1', data: { projectId: x.activeProjectId, order, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });

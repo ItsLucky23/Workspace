@@ -431,6 +431,15 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'reorder the pipeline stages. params: order (ALL stage ids in their new order)',
     params: { order: { kind: 'stageKeys', required: true } },
   },
+  //? Owner decision 2026-08-18 — the pipeline TIER (simple/advanced/professional) chosen at creation
+  //? was unreachable afterwards, and stages seeded before the defaults carried prompt text stayed blank.
+  //? `mode: 'fill'` is the safe half (writes only empty fields); `mode: 'switch'` is structural, hence
+  //? destructive: it drops the stages the target preset does not have and moves their tickets back.
+  'pipeline-apply-preset': {
+    mode: 'enabled', destructive: true,
+    hint: "apply a pipeline preset to the active project. mode 'fill' (default) fills only the EMPTY prompt fields of the stages that already exist and never removes anything; mode 'switch' also adds the preset's missing stages and DELETES the default stages it does not have, moving their tickets back to the nearest surviving earlier stage. params: preset (simple|advanced|professional), mode? (fill|switch)",
+    params: { preset: { kind: 'presetKey', required: true }, mode: { kind: 'enum', values: ['fill', 'switch'] } },
+  },
   //? Parity wave — trigger-save ships the FLAT param subset only (create/rename/re-cron/approval-flip);
   //? nested action payloads (notify title/body, emit-signal name, …) still need the settings UI, so a
   //? chat-created `notify` trigger starts with an empty params object. Documented in the hint.
@@ -871,7 +880,7 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
 //? this table are cross-cutting (agent controls, settings, memory, custom tasks) and stay everywhere.
 export const OP_MODULE: Partial<Record<ControlOp, WorkspaceModuleId>> = {
   //? development — code, board, pipeline, deploy, CI, git, services.
-  'ticket-edit': 'development', 'stage-create': 'development', 'stage-delete': 'development', 'stage-reorder': 'development',
+  'ticket-edit': 'development', 'stage-create': 'development', 'pipeline-apply-preset': 'development', 'stage-delete': 'development', 'stage-reorder': 'development',
   'project-create': 'development', 'project-from-template': 'development',
   'env-deploy': 'development', 'env-teardown': 'development', 'env-promote': 'development', 'build-export': 'development', 'env-rollback': 'development',
   'ci-run': 'development', 'ci-allow-red': 'development', 'root-cause': 'development', 'plan-critique': 'development',

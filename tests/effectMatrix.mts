@@ -184,6 +184,7 @@ export const EFFECT_MATRIX: Record<string, EffectRow> = {
   "skill-toggle": { status: "covered", ref: "src/workspaces/_sync/skillToggle_server_v1.tests.ts — 'happy path: toggling a seeded capability Skill off persists (Prisma post-condition)'" },
   "sprint-create": { status: "covered", ref: "src/workspaces/_sync/sprintCreate_server_v1.tests.ts — 'happy path creates a sprint (Prisma post-condition after Conductor completion)'" },
   "sprint-edit": { status: "covered", ref: "src/workspaces/_sync/sprintEdit_server_v1.tests.ts — 'happy path renames + activates a sprint (Prisma post-condition after Conductor completion)'" },
+  "pipeline-apply-preset": { status: "covered", ref: "src/workspaces/_sync/pipelinePreset_server_v1.tests.ts — 'fill writes the blueprint into a blank stage and never overwrites a filled one' and 'switch adds the preset stages, drops the rest and moves their tickets back' both assert real Prisma post-conditions." },
   "stage-create": { status: "covered", ref: "src/workspaces/_sync/stageCreate_server_v1.tests.ts — 'happy path creates a pipeline stage (Prisma post-condition after Conductor completion)'" },
   "stage-delete": { status: "covered", ref: "src/workspaces/_sync/stageDelete_server_v1.tests.ts — 'happy path deletes a pipeline stage (Prisma post-condition after Conductor completion)'" },
   "stage-reorder": { status: "covered", ref: "src/workspaces/_sync/stageReorder_server_v1.tests.ts — 'happy path persists the new stage order (Prisma post-condition after Conductor completion)'" },

@@ -5070,3 +5070,71 @@ spec verwacht.
 
 **Notities.** Volledige stand: `tsc` ✅ `lint` ✅ `ai:lint` ✅ `build` ✅ · unit 122/122 · sweep
 442/442 · playwright 24/24. Geen code gewijzigd in deze stap — alleen verificatie.
+
+## 2026-08-18 — Prompt-lagen krijgen doorverwijzingen · pipeline-presets weer kiesbaar · loop/graph vastgelegd
+
+**Prompt van de gebruiker.** Drie punten: (1) de nieuwe info-UI op de pipeline toont de lagen van de
+system prompt, maar heeft géén knop naar de plek waar je die invult — de "doorverwijs-knop"-check uit
+de vorige ronde is niet over de nieuwe info-UI's gehaald; (2) veel dingen hebben geen default: bij een
+nieuw project krijg je wel een pipeline maar per stage is niets ingevuld, én de meerdere
+pipeline-opzetten waaruit je vroeger kon kiezen zijn niet meer te kiezen; (3) alvast meegeven, nog
+niet bouwen: loop-engineering (stages herhalen tot iets bereikt is) en graph-engineering (een probleem
+over meerdere agents splitsen).
+
+**Wat ik heb gedaan.**
+
+*Punt 1 — de lagen wijzen nu naar hun eigen bewerkplek.* `EffectivePromptPreview` geeft elke laag een
+`LayerLink`: workspace-instructie + skills → workspace-instellingen/AI, stage-persona +
+stage-instructies → General van díe stage, carry-over-sjabloon → het admin-only Carry-over-tabblad (de
+laag die niemand vond). De link verschijnt niet voor lagen waarvan de editor al op hetzelfde scherm
+staat — `inlineIds` — omdat een sprong daarheen je laat landen waar je al bent. Mogelijk gemaakt door
+het URL-werk uit ADR 0312: de bestemming is een adres, geen hint.
+
+*Punt 2 — defaults en presets.* Zie ADR 0315. Kort:
+
+- `stage-create` (de "Add stage"-knop én de assistant-op) schreef een volledig lege stage weg: geen
+  persona, geen instructies, `promptTemplate: '{{summary}}'`, en `statuses: []`. Nu komt hij uit de
+  blueprint van zijn KIND, inclusief de vier basisstatussen. De knop is daarom een menu geworden:
+  de kind-keuze is precies wat de blueprint bepaalt.
+- `project-create` en `project-from-template` accepteren `preset`; `CreateProjectForm` vraagt dezelfde
+  drie tiers als het workspace-formulier. Zonder keuze erft het project de tier van de workspace.
+- Nieuwe control-API-op `pipeline-apply-preset` met twee modes. `fill` schrijft de blueprint alleen in
+  velden die nú leeg zijn en verwijdert niets. `switch` is structureel: voegt ontbrekende stages toe,
+  verhuist de tickets uit de stages die vervallen (naar de dichtstbijzijnde eerdere stage die blijft),
+  verwijdert die stages, hersorteert en snoeit de dan-danglende `visibleStageIds`. Zelf toegevoegde
+  stages blijven altijd staan. De bevestiging noemt eerst de echte aantallen en namen.
+- Nieuwe leesroute `workspaces/pipelinePresets/v1` serveert de blueprints uit
+  `server/bootstrap/defaultPipeline.ts` in plaats van ze naar `src/` te kopiëren — een tweede kopie
+  drift onzichtbaar terwijl de UI "de standaard" blijft beloven.
+- Per veld een "Gebruik de standaard"-knop, alleen zichtbaar als het veld leeg is én er een default
+  bestaat. Schrijft in de editor; "Save stage" blijft het enige persist-pad.
+
+*Punt 3 — vastgelegd, niet gebouwd.* `src/workspaces/_docs/LOOP_AND_GRAPH_PROGRAM.md`: wat er al ligt
+(een `WorkspaceTrigger` back-edge is bijna een loop — wat ontbreekt is een conditie en een grens), wat
+loop kost (iteratieteller, board dat "iteratie 3" toont in plaats van een ticket dat achteruit lijkt
+te gaan, niet-deterministische kosten) en waarom graph veel groter is (er is géén sub-ticket; alles
+wat aan `Ticket` hangt moet "welke tak?" kunnen beantwoorden). Geen ADR — er is nog niets besloten.
+
+**Bestanden.** Server: `bootstrap/defaultPipeline.ts` (blueprints per kind + per key,
+`fallbackStageKey`, gedeelde `stageCreateData`), `orchestrator/conductor.ts` (nieuwe op + prefill +
+preset door `project-create`/`project-from-template`), `ai/opCatalog.ts`, `control/rbac.ts`. Client:
+`_api/pipelinePresets_v1.ts` (+tests), `_sync/pipelinePreset_server_v1.ts` (+tests),
+`develop/pipeline/presets.tsx` (nieuw), `pipeline/page.tsx`, `pipeline/stageTabs.tsx`,
+`_components/EffectivePromptPreview.tsx`, `_shell/Shell.tsx`, `_shell/WorkspacesProvider.tsx`,
+`_shell/WorkspacesContext.tsx`, `_functions/controlApi.ts`, `_functions/chatDispatch.ts`,
+`_data/chatOps.ts`, 4× locale (21 keys elk), `tests/effectMatrix.mts`, ADR 0315,
+`LOOP_AND_GRAPH_PROGRAM.md`.
+
+**Notities.** De blueprints stonden er al — `createDefaultPipeline` vult persona, instructies,
+carry-over en definition-of-done voor de vijf AI-stages in. De klacht klopte toch, via drie andere
+paden: `stage-create` schreef leeg, `seedDemoWorkspace` schrijft `systemPrompt: ''` voor élke stage,
+en elke pipeline die vóór die defaults is geseed staat nog steeds leeg in de database zonder dat het
+product hem kon vullen. Dat laatste is precies wat `fill` nu doet.
+
+**Verificatie.** `tsc` ✅ · `lint` ✅ · `ai:lint` ✅ · `build` ✅ · unit **122/122** · sweep
+**450/450** (was 442 — precies +8: 6 nieuwe custom cases plus de contract/auth-sweep over de twee
+nieuwe routes) · Playwright **24/24**. De pipeline-spec is uitgebreid met de nieuwe header-controls
+(Pipeline-setup-menu, Add-stage-kind-menu geopend en met Escape gesloten — er wordt bewust géén stage
+aangemaakt) en met de doorverwijzingen in de lagen-preview: de Carry-over-link en de
+workspace-AI-link moeten er staan, en de twee lagen waarvan de editor op ditzelfde scherm staat
+mogen er juist géén hebben.

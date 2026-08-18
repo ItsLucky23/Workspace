@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (232)
+## Decisions (233)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -245,6 +245,7 @@
 | 0312 | Sub-navigation and explanation live in the URL and in three shared primitives | 🟢 accepted | ia, ux, routing, accessibility, onboarding | — | `docs/decisions/0312-sub-navigation-and-explanation-live-in-the-url-and-in-three-shared-primitives.md` |
 | 0313 | Repository introspection is shown to the user, not only to the AI | 🟢 accepted | dev, ux, repository, containers | — | `docs/decisions/0313-repository-introspection-is-shown-to-the-user-not-only-to-the-ai.md` |
 | 0314 | Onboarding is a standing checklist, not a tour | 🟢 accepted | onboarding, ux, ia | — | `docs/decisions/0314-onboarding-is-a-standing-checklist-not-a-tour.md` |
+| 0315 | A pipeline preset is a living choice, not a creation-time one | 🟢 accepted | pipeline, defaults, onboarding, control-api | — | `docs/decisions/0315-a-pipeline-preset-is-a-living-choice-not-a-creation-time-one.md` |
 
 ## Summaries
 
@@ -2125,6 +2126,14 @@ Fix the design at the token layer first, and keep component changes secondary. C
 **Governs** (`//? @adr 0314`): `src/workspaces/_components/SetupChecklist.tsx`
 
 → `docs/decisions/0314-onboarding-is-a-standing-checklist-not-a-tour.md`
+
+### 0315 — A pipeline preset is a living choice, not a creation-time one
+
+**0315** · accepted · tags: pipeline, defaults, onboarding, control-api · 2026-08-18
+
+The preset becomes a per-project choice that stays available for the life of the project.
+
+→ `docs/decisions/0315-a-pipeline-preset-is-a-living-choice-not-a-creation-time-one.md`
 
 ## Code governed by decisions
 

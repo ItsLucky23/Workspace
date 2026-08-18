@@ -22,7 +22,7 @@ export const CHAT_ENABLED_OPS = [
   // service stacks (preset-only via chat; bring-your-own compose stays UI-only)
   'service-provision', 'service-teardown',
   // pipeline shape (R1 ops)
-  'stage-create', 'stage-delete', 'stage-reorder',
+  'stage-create', 'stage-delete', 'stage-reorder', 'pipeline-apply-preset',
   // content lifecycle + orchestration (paid per-asset gen ops follow once cost-confirms land, B4)
   'content-run-pipeline', 'content-advance', 'content-archive', 'content-unarchive', 'content-regenerate',
   // F5 — AI image critique (advisory, no asset write)

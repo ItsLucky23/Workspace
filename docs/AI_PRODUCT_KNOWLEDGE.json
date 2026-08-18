@@ -1,6 +1,6 @@
 {
-  "hash": "962a60991b40cb4c",
-  "chunkCount": 249,
+  "hash": "32cb7d540460b653",
+  "chunkCount": 250,
   "chunks": [
     {
       "id": "cap-001",
@@ -1495,6 +1495,12 @@
       "kind": "decision",
       "title": "Onboarding is a standing checklist, not a tour",
       "text": "ADR 0314: Onboarding is a standing checklist, not a tour. A fresh workspace is a wall of empty pickers: no repository, no AI key, no context documents, no notifications, no channel. ADR 0312 gave every one of those a local explanation — `SetupNotice` at page scale, `EmptyPicker` at field scale — but both only speak once the user has already walked into the feature they block. Nothing ever said what \"set up\" means for this workspace, so the honest answer to \"why does nothing work yet?\" was: go and find out, one blocked screen at a time. A `SetupWizard` already existed: a three-step modal covering a media key and a spend budget, reached from a link on the workspace settings page. It is a good front door for two specific settings, but it is modal, partial, and reachable only from a page a new user has no reason to open. When asked, the owner chose a standing checklist over both a bare set of field-level redirects and a guided first-run tour. Decision: **A persistent, self-retiring checklist on the landing view.** `SetupChecklist` renders above the page content on the two category index views (`board`, `content`), listing what is left to configure. Each row deep-links to the exact place that fixes it, via the URL-addressed `focusSetup` from ADR 0312 — a checklist that says \"go to settings\" without taking you there is a worse version of the problem it solves. Three properties make it a checklist rather than a nag: - **It invents no state.** Every row reads a `readiness` boolean th"
+    },
+    {
+      "id": "adr-0315",
+      "kind": "decision",
+      "title": "A pipeline preset is a living choice, not a creation-time one",
+      "text": "ADR 0315: A pipeline preset is a living choice, not a creation-time one. Two complaints from the owner turned out to be the same defect seen from opposite ends. **\"When I create a new project I get a nice pipeline, but nothing is filled in per stage.\"** `createDefaultPipeline` does seed real persona/instructions/carry-over text for the five AI stages, so a workspace created *today* is not blank. But three paths around it are: - `stage-create` (the \"Add stage\" button, and the assistant's own op) wrote `systemPrompt: ''`, `customInstructions: ''`, `promptTemplate: '{{summary}}'`, `definitionOfDone: ''` and `statuses: []`. A hand-added stage arrived with no persona, no instructions and no board statuses. - `seedDemoWorkspace` writes `systemPrompt: ''` for every stage. - Any pipeline seeded before the defaults carried prompt text is still blank in the database, and nothing in the product could fill it. The result is the least legible failure this product has: the pipeline *looks* configured — seven named columns, model tiers, an AI toggle that says \"AI on\" — while the agent behind a stage receives an empty persona and an empty brief. Nothing errors. The run is simply worse than it should be, and the cause is invisible. **\"We used to be able to pick between several pipeline setups and now we can't.\"** That memory is accurate. `Workspace.presetKey` and the three tiers (`simple` / `advanced` / `professional`) are real, and `CreateWorkspaceForm` asks for one — but only there. `projec"
     }
   ]
 }

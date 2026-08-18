@@ -2,10 +2,10 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 441,
-    "edges": 650,
-    "symbols": 829,
-    "callEdges": 272
+    "nodes": 446,
+    "edges": 657,
+    "symbols": 840,
+    "callEdges": 275
   },
   "nodes": [
     {
@@ -647,6 +647,16 @@
       "id": "workspaces/_api/openRefPreview_v1.ts",
       "kind": "api",
       "route": "api/workspaces/openRefPreview/v1"
+    },
+    {
+      "id": "workspaces/_api/pipelinePresets_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_api/pipelinePresets_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/pipelinePresets/v1"
     },
     {
       "id": "workspaces/_api/promptExperiments_v1.tests.ts",
@@ -1454,6 +1464,16 @@
       "route": "sync/workspaces/outputTemplate/v1"
     },
     {
+      "id": "workspaces/_sync/pipelinePreset_server_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_sync/pipelinePreset_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/pipelinePreset/v1"
+    },
+    {
       "id": "workspaces/_sync/presence_server_v1.tests.ts",
       "kind": "other",
       "route": null
@@ -2154,6 +2174,11 @@
       "route": null
     },
     {
+      "id": "workspaces/develop/pipeline/presets.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/develop/pipeline/stageTabs.tsx",
       "kind": "other",
       "route": null
@@ -2518,6 +2543,10 @@
     {
       "from": "workspaces/_components/EffectivePromptPreview.tsx",
       "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/_components/EffectivePromptPreview.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
       "from": "workspaces/_components/Glossary.tsx",
@@ -4465,7 +4494,27 @@
     },
     {
       "from": "workspaces/develop/pipeline/page.tsx",
+      "to": "workspaces/develop/pipeline/presets.tsx"
+    },
+    {
+      "from": "workspaces/develop/pipeline/page.tsx",
       "to": "workspaces/develop/pipeline/stageTabs.tsx"
+    },
+    {
+      "from": "workspaces/develop/pipeline/presets.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/develop/pipeline/presets.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/develop/pipeline/presets.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/develop/pipeline/presets.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
       "from": "workspaces/develop/pipeline/stageTabs.tsx",
@@ -4506,6 +4555,10 @@
     {
       "from": "workspaces/develop/pipeline/stageTabs.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/develop/pipeline/stageTabs.tsx",
+      "to": "workspaces/develop/pipeline/presets.tsx"
     },
     {
       "from": "workspaces/develop/scheduled/page.tsx",
@@ -4893,6 +4946,7 @@
       "workspaces/develop/designer/ui.tsx",
       "workspaces/develop/interviewer/page.tsx",
       "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/presets.tsx",
       "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/develop/sources/page.tsx",
@@ -4947,6 +5001,8 @@
       "workspaces/develop/designer/sections/Components.tsx",
       "workspaces/develop/designer/sections/Themes.tsx",
       "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/presets.tsx",
+      "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/develop/sources/page.tsx",
       "workspaces/develop/terminals/TerminalPanel.tsx",
@@ -5191,6 +5247,7 @@
       "workspaces/develop/designer/ui.tsx",
       "workspaces/develop/interviewer/page.tsx",
       "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/presets.tsx",
       "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/develop/sources/page.tsx",
@@ -5279,6 +5336,7 @@
       "workspaces/develop/designer/ui.tsx",
       "workspaces/develop/interviewer/page.tsx",
       "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/presets.tsx",
       "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/develop/sources/page.tsx",
@@ -5367,6 +5425,7 @@
       "workspaces/develop/designer/ui.tsx",
       "workspaces/develop/interviewer/page.tsx",
       "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/presets.tsx",
       "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/develop/sources/page.tsx",
@@ -5439,6 +5498,8 @@
       "workspaces/develop/designer/sections/Components.tsx",
       "workspaces/develop/designer/sections/Themes.tsx",
       "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/presets.tsx",
+      "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/develop/sources/page.tsx",
       "workspaces/develop/terminals/TerminalPanel.tsx",
@@ -5605,6 +5666,7 @@
       "workspaces/develop/designer/ui.tsx",
       "workspaces/develop/interviewer/page.tsx",
       "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/presets.tsx",
       "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/develop/sources/page.tsx",
@@ -5719,6 +5781,7 @@
       "workspaces/develop/designer/ui.tsx",
       "workspaces/develop/interviewer/page.tsx",
       "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/presets.tsx",
       "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/develop/sources/page.tsx",
@@ -5803,6 +5866,7 @@
       "workspaces/develop/designer/ui.tsx",
       "workspaces/develop/interviewer/page.tsx",
       "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/presets.tsx",
       "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/develop/sources/page.tsx",
@@ -6066,6 +6130,7 @@
       "workspaces/develop/designer/ui.tsx",
       "workspaces/develop/interviewer/page.tsx",
       "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/presets.tsx",
       "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/develop/sources/page.tsx",
@@ -6192,6 +6257,7 @@
       "workspaces/develop/designer/ui.tsx",
       "workspaces/develop/interviewer/page.tsx",
       "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/presets.tsx",
       "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/develop/sources/page.tsx",
@@ -6281,6 +6347,7 @@
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
       "workspaces/_components/AutomationPanel.tsx",
+      "workspaces/_components/EffectivePromptPreview.tsx",
       "workspaces/_components/ImageEditor.tsx",
       "workspaces/_components/ImageRegionEditor.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
@@ -6336,6 +6403,7 @@
       "workspaces/develop/designer/state.tsx",
       "workspaces/develop/interviewer/page.tsx",
       "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/presets.tsx",
       "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
       "workspaces/develop/sources/page.tsx",
@@ -6585,6 +6653,10 @@
       "workspaces/develop/designer/sections/Themes.tsx",
       "workspaces/develop/designer/sections/Typography.tsx"
     ],
+    "workspaces/develop/pipeline/presets.tsx": [
+      "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/stageTabs.tsx"
+    ],
     "workspaces/develop/pipeline/stageTabs.tsx": [
       "workspaces/develop/pipeline/page.tsx"
     ],
@@ -6599,74 +6671,74 @@
     {
       "id": "workspaces/_functions/controlApi.ts",
       "kind": "other",
-      "dependents": 107,
+      "dependents": 108,
       "directDependents": 9
     },
     {
       "id": "workspaces/_data/types.ts",
       "kind": "other",
-      "dependents": 99,
-      "directDependents": 51
+      "dependents": 100,
+      "directDependents": 52
     },
     {
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
-      "dependents": 89,
+      "dependents": 90,
       "directDependents": 79
     },
     {
       "id": "workspaces/_components/motion.tsx",
       "kind": "other",
-      "dependents": 85,
+      "dependents": 86,
       "directDependents": 26
     },
     {
       "id": "_components/inputs/fieldShell.tsx",
       "kind": "component",
-      "dependents": 83,
+      "dependents": 84,
       "directDependents": 2
     },
     {
       "id": "_components/inputs/Popover.tsx",
       "kind": "component",
-      "dependents": 81,
+      "dependents": 82,
       "directDependents": 2
     },
     {
       "id": "_components/inputs/Toggle.tsx",
       "kind": "component",
-      "dependents": 81,
+      "dependents": 82,
       "directDependents": 2
     },
     {
       "id": "_components/Avatar.tsx",
       "kind": "component",
-      "dependents": 80,
+      "dependents": 81,
       "directDependents": 2
     },
     {
       "id": "workspaces/_components/primitives.tsx",
       "kind": "other",
-      "dependents": 79,
-      "directDependents": 75
+      "dependents": 80,
+      "directDependents": 76
     },
     {
       "id": "workspaces/_shell/WorkspacesContext.tsx",
       "kind": "other",
-      "dependents": 68,
-      "directDependents": 60
+      "dependents": 70,
+      "directDependents": 62
     },
     {
       "id": "_components/ConfirmMenu.tsx",
       "kind": "component",
-      "dependents": 48,
+      "dependents": 50,
       "directDependents": 1
     },
     {
       "id": "_functions/menuHandler.ts",
       "kind": "helper",
-      "dependents": 48,
-      "directDependents": 37
+      "dependents": 50,
+      "directDependents": 38
     },
     {
       "id": "_components/dropdown/dropdownInternals.tsx",
@@ -7963,6 +8035,30 @@
     {
       "id": "workspaces/_api/openRefPreview_v1.ts::main",
       "file": "workspaces/_api/openRefPreview_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_api/pipelinePresets_v1.tests.ts::<module>",
+      "file": "workspaces/_api/pipelinePresets_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/pipelinePresets_v1.tests.ts::run",
+      "file": "workspaces/_api/pipelinePresets_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "workspaces/_api/pipelinePresets_v1.ts::<module>",
+      "file": "workspaces/_api/pipelinePresets_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/pipelinePresets_v1.ts::main",
+      "file": "workspaces/_api/pipelinePresets_v1.ts",
       "name": "main",
       "kind": "function"
     },
@@ -10063,6 +10159,48 @@
     {
       "id": "workspaces/_sync/outputTemplate_server_v1.ts::main",
       "file": "workspaces/_sync/outputTemplate_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/pipelinePreset_server_v1.tests.ts::<module>",
+      "file": "workspaces/_sync/pipelinePreset_server_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/pipelinePreset_server_v1.tests.ts::fn",
+      "file": "workspaces/_sync/pipelinePreset_server_v1.tests.ts",
+      "name": "fn",
+      "kind": "fn"
+    },
+    {
+      "id": "workspaces/_sync/pipelinePreset_server_v1.tests.ts::poll",
+      "file": "workspaces/_sync/pipelinePreset_server_v1.tests.ts",
+      "name": "poll",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/pipelinePreset_server_v1.tests.ts::run",
+      "file": "workspaces/_sync/pipelinePreset_server_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "workspaces/_sync/pipelinePreset_server_v1.tests.ts::wait",
+      "file": "workspaces/_sync/pipelinePreset_server_v1.tests.ts",
+      "name": "wait",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/pipelinePreset_server_v1.ts::<module>",
+      "file": "workspaces/_sync/pipelinePreset_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/pipelinePreset_server_v1.ts::main",
+      "file": "workspaces/_sync/pipelinePreset_server_v1.ts",
       "name": "main",
       "kind": "function"
     },
@@ -12277,6 +12415,18 @@
       "to": "workspaces/_sync/outputTemplate_server_v1.tests.ts::poll"
     },
     {
+      "from": "workspaces/_sync/pipelinePreset_server_v1.tests.ts::poll",
+      "to": "workspaces/_sync/pipelinePreset_server_v1.tests.ts::fn"
+    },
+    {
+      "from": "workspaces/_sync/pipelinePreset_server_v1.tests.ts::poll",
+      "to": "workspaces/_sync/pipelinePreset_server_v1.tests.ts::wait"
+    },
+    {
+      "from": "workspaces/_sync/pipelinePreset_server_v1.tests.ts::run",
+      "to": "workspaces/_sync/pipelinePreset_server_v1.tests.ts::poll"
+    },
+    {
       "from": "workspaces/_sync/projectAdmin_server_v1.tests.ts::poll",
       "to": "workspaces/_sync/projectAdmin_server_v1.tests.ts::fn"
     },
@@ -13275,6 +13425,17 @@
     "workspaces/_sync/outputTemplate_server_v1.tests.ts::wait": [
       "workspaces/_sync/outputTemplate_server_v1.tests.ts::poll",
       "workspaces/_sync/outputTemplate_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/pipelinePreset_server_v1.tests.ts::fn": [
+      "workspaces/_sync/pipelinePreset_server_v1.tests.ts::poll",
+      "workspaces/_sync/pipelinePreset_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/pipelinePreset_server_v1.tests.ts::poll": [
+      "workspaces/_sync/pipelinePreset_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/pipelinePreset_server_v1.tests.ts::wait": [
+      "workspaces/_sync/pipelinePreset_server_v1.tests.ts::poll",
+      "workspaces/_sync/pipelinePreset_server_v1.tests.ts::run"
     ],
     "workspaces/_sync/projectAdmin_server_v1.tests.ts::fn": [
       "workspaces/_sync/projectAdmin_server_v1.tests.ts::poll",

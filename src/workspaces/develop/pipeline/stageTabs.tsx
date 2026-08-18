@@ -18,9 +18,13 @@ import { EmptyPicker } from '../../_components/SetupNotice';
 import { resolveAiLayers } from '../../_functions/aiLayers';
 import { CARRY_VARS, COMMAND_CATALOG, HOOK_CATALOG, NETWORK_CATEGORIES } from '../../_data/seed';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
+import type { StageBlueprint } from './presets';
 import type { CommandMode, NetworkMode, PipelineStageCfg, StageEffort, StageModelChoice, StageModelTier, ToolTier } from '../../_data/types';
 
-export interface TabProps { s: PipelineStageCfg; update: (patch: Partial<PipelineStageCfg>) => void }
+//? `bp` is the canonical starting content for this stage (its seeded key, else its kind) as served by
+//? `workspaces/pipelinePresets/v1`. It is what the "use the default" affordance writes into an empty
+//? field — undefined while the read is in flight, or for a kind with no default (a `final` stage).
+export interface TabProps { s: PipelineStageCfg; update: (patch: Partial<PipelineStageCfg>) => void; bp?: StageBlueprint }
 
 const MODE_TINT: Record<CommandMode, string> = { allow: 'bg-correct/15 text-correct', ask: 'bg-warning/15 text-warning', deny: 'bg-wrong/15 text-wrong' };
 
@@ -37,6 +41,23 @@ const EMIT_SCHEMA_SAMPLE = `{
   "openQuestions": ["string", …],
   "commitHash": "string"
 }`;
+
+//? An empty field with a known default is the complaint this answers: the pipeline LOOKS configured
+//? while its agent runs on nothing, and the default that would have been there sits in the server's
+//? seed and is unreachable. Offered, never applied silently — it writes into the editor, and "Save
+//? stage" is still the only persist path.
+function UseDefault({ value, fallback, onUse }: { value: string; fallback: string | undefined; onUse: (text: string) => void }) {
+  const translate = useTranslator();
+  if (value.trim().length > 0 || fallback === undefined || fallback.length === 0) return null;
+  return (
+    <button
+      type="button" onClick={() => { onUse(fallback); }}
+      className={`inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] text-primary hover:bg-primary/10 cursor-pointer transition-colors`}
+    >
+      <Icon name="wand-magic-sparkles" className={`text-[10px]`} /> {translate({ key: 'workspaces.pipeline.useDefault' })}
+    </button>
+  );
+}
 
 //? `note` carries the inheritance line for a layered field (ADR 0308): a stage prompt states its
 //? position in the chain right where it is edited, instead of the old hint copy that said
@@ -60,7 +81,7 @@ function FieldLabel({ title, hint, note, info }: { title: string; hint?: string;
 }
 
 /* ----------------------------------------------------------------- General */
-export function GeneralTab({ s, update }: TabProps) {
+export function GeneralTab({ s, update, bp }: TabProps) {
   const translate = useTranslator();
   const { activeWorkspace, aiSkills } = useWorkspaces();
   const [addingStatus, setAddingStatus] = useState(false);
@@ -70,12 +91,13 @@ export function GeneralTab({ s, update }: TabProps) {
   const layers = resolveAiLayers({ workspace: activeWorkspace, skills: aiSkills, stage: s });
   return (
     <div className="flex flex-col gap-5 max-w-3xl">
-      <EffectivePromptPreview layers={layers} />
+      <EffectivePromptPreview layers={layers} stageId={s.id} inlineIds={['stageSystemPrompt', 'stageInstructions']} />
       <div>
         <FieldLabel
           title={translate({ key: 'workspaces.pipeline.systemPrompt' })}
           hint={translate({ key: 'workspaces.pipeline.systemPromptHint' })}
           note={<LayerNote layers={layers} id="stageSystemPrompt" />}
+          info={<UseDefault value={s.systemPrompt ?? ''} fallback={bp?.systemPrompt} onUse={(text) => { update({ systemPrompt: text }); }} />}
         />
         <textarea rows={3} value={s.systemPrompt ?? ''} onChange={(e) => { update({ systemPrompt: e.target.value }); }} className={areaCls} placeholder={translate({ key: 'workspaces.pipeline.systemPromptPlaceholder' })} />
       </div>
@@ -84,6 +106,7 @@ export function GeneralTab({ s, update }: TabProps) {
           title={translate({ key: 'workspaces.pipeline.customInstructions' })}
           hint={translate({ key: 'workspaces.pipeline.customInstructionsHint' })}
           note={<LayerNote layers={layers} id="stageInstructions" />}
+          info={<UseDefault value={s.customInstructions} fallback={bp?.customInstructions} onUse={(text) => { update({ customInstructions: text }); }} />}
         />
         <textarea rows={4} value={s.customInstructions} onChange={(e) => { update({ customInstructions: e.target.value }); }} className={areaCls} placeholder={translate({ key: 'workspaces.pipeline.customInstructionsPlaceholder' })} />
       </div>
@@ -91,7 +114,10 @@ export function GeneralTab({ s, update }: TabProps) {
           instead of a fourth identical textarea block gives it its own visual weight; starts open
           when a stage already has one set, so nothing already configured looks hidden. */}
       <Disclosure summary={translate({ key: 'workspaces.pipeline.definitionOfDone' })} defaultOpen={Boolean(s.definitionOfDone)}>
-        <div className="text-xs text-muted -mt-1 mb-2">{translate({ key: 'workspaces.pipeline.definitionOfDoneHint' })}</div>
+        <div className="text-xs text-muted -mt-1 mb-2 flex items-center gap-2 flex-wrap">
+          {translate({ key: 'workspaces.pipeline.definitionOfDoneHint' })}
+          <UseDefault value={s.definitionOfDone ?? ''} fallback={bp?.definitionOfDone} onUse={(text) => { update({ definitionOfDone: text }); }} />
+        </div>
         <textarea rows={2} value={s.definitionOfDone ?? ''} onChange={(e) => { update({ definitionOfDone: e.target.value }); }} className={areaCls} placeholder={translate({ key: 'workspaces.pipeline.definitionOfDonePlaceholder' })} />
       </Disclosure>
       <div>
@@ -420,7 +446,7 @@ export function ProcessTab({ s, update }: TabProps) {
 }
 
 /* ----------------------------------------------------------------- Carry-over */
-export function CarryoverTab({ s, update }: TabProps) {
+export function CarryoverTab({ s, update, bp }: TabProps) {
   const translate = useTranslator();
   const { activeWorkspace, aiSkills } = useWorkspaces();
   const carryLayers = resolveAiLayers({ workspace: activeWorkspace, skills: aiSkills, stage: s });
@@ -452,7 +478,7 @@ export function CarryoverTab({ s, update }: TabProps) {
           title={translate({ key: 'workspaces.pipeline.promptTemplate' })}
           hint={translate({ key: 'workspaces.pipeline.promptTemplateHint' })}
           note={<LayerNote layers={carryLayers} id="carryOver" />}
-          info={<InfoTip align="start" title={translate({ key: 'workspaces.tips.pipeline.promptTemplateTitle' })} body={translate({ key: 'workspaces.tips.pipeline.promptTemplateBody' })} />}
+          info={<><UseDefault value={s.promptTemplate} fallback={bp?.promptTemplate} onUse={(text) => { update({ promptTemplate: text }); }} /><InfoTip align="start" title={translate({ key: 'workspaces.tips.pipeline.promptTemplateTitle' })} body={translate({ key: 'workspaces.tips.pipeline.promptTemplateBody' })} /></>}
         />
         <textarea rows={5} value={s.promptTemplate} onChange={(e) => { update({ promptTemplate: e.target.value }); }} className={areaCls} placeholder="Implement the plan.\nPlan: {{summary}}" />
       </div>

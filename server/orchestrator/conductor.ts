@@ -22,7 +22,7 @@ import { credentialKey, getValidConnection } from '../content/publishOAuth';
 import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { ensureWorkspaceBuiltins, scheduleWorkspaceBuiltinIndexing } from '../bootstrap/workspaceBuiltins';
-import { isPipelinePreset, createDefaultPipeline } from '../bootstrap/defaultPipeline';
+import { isPipelinePreset, createDefaultPipeline, stageBlueprint, baseStageStatuses, stagesForPreset, stageCreateData, blueprintForStage, fallbackStageKey, defaultStageKeys, isStageKind } from '../bootstrap/defaultPipeline';
 import { cloneWorkspace } from '../bootstrap/cloneWorkspace';
 import { publishArtifactSite, unpublishArtifactSite, publicBaseUrl } from '../deploy/staticSite';
 import { setAssetStarred } from '../content/assetLibrary';
@@ -3916,11 +3916,17 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       if (dupe) return { ok: false, error: 'stage.keyExists' };
       const last = await prisma.pipelineStage.findFirst({ where: { workspaceId: action.workspaceId, projectId }, orderBy: { order: 'desc' }, select: { order: true } });
       const order = (last?.order ?? -1) + 1;
+      //? A hand-added stage used to start completely blank — no persona, no instructions, a bare
+      //? `{{summary}}` carry-over — so the pipeline looked configured while that stage's agent ran on
+      //? nothing. It now starts from the same blueprint `createDefaultPipeline` seeds for this KIND
+      //? (owner decision 2026-08-18); every field stays editable, and `final` is still blank by design.
+      const bp = stageBlueprint(isStageKind(kind) ? kind : 'code');
       return prisma.pipelineStage.create({ data: {
         workspaceId: action.workspaceId, projectId, key, kind, name, order, aiEnabled: true, wipLimit: null,
-        roleKey: kind === 'code' ? 'code' : kind, systemPrompt: '', customInstructions: '', promptTemplate: '{{summary}}', definitionOfDone: '',
-        skillKeys: [], sourceIds: ['summary'], commands: [], tools: [], statuses: [], processes: [], visibleStageIds: [],
-        modelCfg: { autoEscalate: false, base: { model: 'sonnet', effort: 'medium', maxTurns: 20 }, rules: [] },
+        roleKey: kind === 'code' ? 'code' : kind, systemPrompt: bp.systemPrompt, customInstructions: bp.customInstructions,
+        promptTemplate: bp.promptTemplate.length > 0 ? bp.promptTemplate : '{{summary}}', definitionOfDone: bp.definitionOfDone,
+        skillKeys: [], sourceIds: ['summary'], commands: [], tools: [], statuses: baseStageStatuses(), processes: [], visibleStageIds: [],
+        modelCfg: { autoEscalate: false, base: { model: bp.model, effort: bp.effort, maxTurns: bp.maxTurns }, rules: [] },
         network: { enabled: true, mode: 'whitelist', categories: ['package-registries', 'source-hosts', 'ai-apis'], domains: [] },
         hooks: {},
       } });
@@ -3947,6 +3953,80 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       if (order.length !== existingKeys.size || new Set(order).size !== existingKeys.size || order.some((key) => !existingKeys.has(key))) return { ok: false, error: 'stage.invalidOrder' };
       for (let i = 0; i < order.length; i += 1) await prisma.pipelineStage.updateMany({ where: { workspaceId: action.workspaceId, projectId, key: order[i] }, data: { order: i } });
       return { ok: true, count: order.length };
+    }
+    //? Pipeline PRESETS made real on an EXISTING project (owner decision 2026-08-18). Two modes, one op:
+    //?
+    //?   fill   — non-structural. Writes the canonical blueprint into the fields that are EMPTY right now
+    //?            and touches nothing else, so a pipeline seeded before the defaults carried prompt text
+    //?            (or a hand-added blank stage) stops running its AI on nothing. Never overwrites.
+    //?   switch — structural. Adds the target preset's missing stages, migrates the tickets out of the
+    //?            stages it drops, deletes those stages, and prunes the dangling `visibleStageIds`.
+    //?
+    //? A stage the user ADDED themselves is never deleted: only keys the default pipeline owns are
+    //? structural. Switching preset is "give me the standard N-stage flow", not "throw my own work away".
+    case 'pipeline-apply-preset': {
+      const requestedProjectId = str(target, 'projectId') ?? str(payload, 'projectId');
+      const rawPreset = str(payload, 'preset') ?? '';
+      const mode = str(payload, 'mode') === 'switch' ? 'switch' : 'fill';
+      if (!requestedProjectId || !isPipelinePreset(rawPreset)) return { ok: false, error: 'pipeline.invalidRequest' };
+      const projectId = await resolveProjectId(prisma, action.workspaceId, requestedProjectId);
+      if (!projectId) return { ok: false, error: 'project.notFound' };
+      const existing = await prisma.pipelineStage.findMany({ where: { workspaceId: action.workspaceId, projectId }, orderBy: { order: 'asc' } });
+
+      //? FILL runs in both modes — a switch that added stages but left the old ones blank would only
+      //? move the same complaint one screen over.
+      let filled = 0;
+      for (const st of existing) {
+        const bp = blueprintForStage(st.key, isStageKind(st.kind) ? st.kind : 'code');
+        const data: { systemPrompt?: string; customInstructions?: string; promptTemplate?: string; definitionOfDone?: string } = {};
+        if (st.systemPrompt.trim().length === 0 && bp.systemPrompt.length > 0) data.systemPrompt = bp.systemPrompt;
+        if (st.customInstructions.trim().length === 0 && bp.customInstructions.length > 0) data.customInstructions = bp.customInstructions;
+        if (st.promptTemplate.trim().length === 0 && bp.promptTemplate.length > 0) data.promptTemplate = bp.promptTemplate;
+        if (st.definitionOfDone.trim().length === 0 && bp.definitionOfDone.length > 0) data.definitionOfDone = bp.definitionOfDone;
+        if (Object.keys(data).length === 0) continue;
+        await prisma.pipelineStage.updateMany({ where: { workspaceId: action.workspaceId, projectId, key: st.key }, data });
+        filled += 1;
+      }
+      if (mode === 'fill') return { ok: true, mode, preset: rawPreset, filled, added: 0, removed: 0, movedTickets: 0 };
+
+      const wanted = stagesForPreset(rawPreset);
+      const wantedKeys = wanted.map((s) => s.key);
+      const owned = new Set(defaultStageKeys());
+      const present = new Set(existing.map((s) => s.key));
+      const dropped = existing.filter((s) => owned.has(s.key) && !wantedKeys.includes(s.key)).map((s) => s.key);
+
+      //? Tickets first: a ticket pointing at a deleted column is invisible on the board.
+      let movedTickets = 0;
+      for (const key of dropped) {
+        const landing = fallbackStageKey(key, wantedKeys);
+        const moved = await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, projectId, stageId: key }, data: { stageId: landing } });
+        movedTickets += moved.count;
+      }
+      if (dropped.length > 0) await prisma.pipelineStage.deleteMany({ where: { workspaceId: action.workspaceId, projectId, key: { in: dropped } } });
+
+      let added = 0;
+      for (const s of wanted) {
+        if (present.has(s.key)) continue;
+        await prisma.pipelineStage.create({ data: stageCreateData(action.workspaceId, projectId, s) });
+        added += 1;
+      }
+
+      //? Re-order: the preset's stages in preset order, then whatever the user added themselves, so a
+      //? custom stage keeps existing instead of silently jumping to the front.
+      const after = await prisma.pipelineStage.findMany({ where: { workspaceId: action.workspaceId, projectId }, orderBy: { order: 'asc' }, select: { key: true, visibleStageIds: true } });
+      const custom = after.filter((s) => !wantedKeys.includes(s.key)).map((s) => s.key);
+      const finalOrder = [...wantedKeys.filter((k) => after.some((s) => s.key === k)), ...custom];
+      for (let i = 0; i < finalOrder.length; i += 1) await prisma.pipelineStage.updateMany({ where: { workspaceId: action.workspaceId, projectId, key: finalOrder[i] }, data: { order: i } });
+
+      //? A dropped key left inside `visibleStageIds` is a stage handing its agent context from a column
+      //? that no longer exists — silently empty rather than loudly wrong, so prune it here.
+      const live = new Set(finalOrder);
+      for (const s of after) {
+        const pruned = s.visibleStageIds.filter((k) => live.has(k));
+        if (pruned.length !== s.visibleStageIds.length) await prisma.pipelineStage.updateMany({ where: { workspaceId: action.workspaceId, projectId, key: s.key }, data: { visibleStageIds: pruned } });
+      }
+
+      return { ok: true, mode, preset: rawPreset, filled, added, removed: dropped.length, movedTickets };
     }
     // ---- suggestions ----
     case 'accept-suggestion': {
@@ -4055,7 +4135,14 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       //? A dev project owns its OWN board pipeline + starter guidance (ADR 0035); a content project
       //? uses the fixed content-stage sequence (F1.1), so it needs neither board columns nor dev docs.
       if (projectType !== 'content') {
-        await createDefaultPipeline(prisma, action.workspaceId, created.id);
+        //? The pipeline PRESET is a per-project choice now (owner decision 2026-08-18): it was only ever
+        //? askable when creating a WORKSPACE, so every project after the first got the 7-stage flow
+        //? whether or not that matched the work. Falls back to the workspace's own tier, then professional.
+        const requested = str(payload, 'preset') ?? '';
+        const workspace = await prisma.workspace.findUnique({ where: { id: action.workspaceId }, select: { presetKey: true } });
+        const inherited = workspace?.presetKey ?? '';
+        const preset = isPipelinePreset(requested) ? requested : (isPipelinePreset(inherited) ? inherited : 'professional');
+        await createDefaultPipeline(prisma, action.workspaceId, created.id, preset);
         await createStarterLibrary(prisma, action.workspaceId, created.id);
       }
       return created;
@@ -4100,7 +4187,9 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       for (const doc of template.starterDocs) {
         await prisma.infoSource.create({ data: { workspaceId: action.workspaceId, projectId: created.id, mode: 'context-doc', source: 'starter', name: doc.name, content: doc.content, summary: `Starter (${template.label})`, note: 'template', enabled: true, usedByStages: [] } });
       }
-      await createDefaultPipeline(prisma, action.workspaceId, created.id);
+      //? Same per-project tier choice as `project-create` (owner decision 2026-08-18).
+      const templPreset = str(payload, 'preset') ?? '';
+      await createDefaultPipeline(prisma, action.workspaceId, created.id, isPipelinePreset(templPreset) ? templPreset : 'professional');
       //? G1 — actually make it a REPO: init the workspace bare repo from the template's seed file-tree so
       //? `isLinked` flips true → the runtime can cut a worktree + container from it (container → code). No-op
       //? if a repo already exists (never clobber). Best-effort — a git failure leaves the project unlinked.

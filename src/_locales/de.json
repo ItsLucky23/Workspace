@@ -687,7 +687,23 @@
       "removeEnvVar": "Umgebungsvariable entfernen",
       "removeModelRule": "Eskalationsband entfernen",
       "removeStatus": "Status „{{name}}“ entfernen",
-      "removeDomain": "{{name}} entfernen"
+      "removeDomain": "{{name}} entfernen",
+      "useDefault": "Standard verwenden",
+      "presetMenu": "Pipeline-Aufbau",
+      "presetFill": "{{count}} leere Felder mit den Standardwerten füllen",
+      "presetFillTitle": "Die leeren Felder füllen?",
+      "presetFillBody": "Dies schreibt die Standard-Persona, -Anweisungen und -Übergabevorlage in die {{count}} noch leeren Felder. Selbst ausgefüllte Felder bleiben unverändert, und es wird keine Stage hinzugefügt oder entfernt.",
+      "presetSwitchTitle": "Diese Pipeline auf {{preset}} umstellen?",
+      "presetSwitchAdds": "Hinzugefügt: {{names}}.",
+      "presetSwitchRemoves": "Entfernt: {{names}}.",
+      "presetSwitchMoves": "{{count}} Ticket(s) wandern zurück in die nächste frühere Stage, die bestehen bleibt.",
+      "presetSwitchKeepsCustom": "Selbst hinzugefügte Stages bleiben erhalten.",
+      "kind_refine": "Verfeinern",
+      "kind_plan": "Planen",
+      "kind_code": "Implementierung",
+      "kind_test": "Test",
+      "kind_review": "Review",
+      "kind_final": "Abschluss"
     },
     "settings": {
       "saving": "Wird gespeichert…",
@@ -723,7 +739,12 @@
       "sourceRefine": "diese Generierung",
       "sourceChannel": "Kanaleinstellungen",
       "contentPreviewHelp": "Diese werden in dieser Reihenfolge zu einem Prompt kombiniert — die Verfeinerung hat die stärkste, unmittelbarste Wirkung.",
-      "channelNotApplicable": "Hier nicht verwendet — die Kanalstimme wirkt nur auf Beiträge, die auf einem Kanal veröffentlicht werden. Bearbeiten unter Content-Einstellungen → Kanäle."
+      "channelNotApplicable": "Hier nicht verwendet — die Kanalstimme wirkt nur auf Beiträge, die auf einem Kanal veröffentlicht werden. Bearbeiten unter Content-Einstellungen → Kanäle.",
+      "goto_workspace": "In den Workspace-KI-Einstellungen bearbeiten",
+      "goto_skills": "In den Workspace-KI-Einstellungen bearbeiten",
+      "goto_stageSystemPrompt": "Im Reiter Allgemein bearbeiten",
+      "goto_stageInstructions": "Im Reiter Allgemein bearbeiten",
+      "goto_carryOver": "Im Reiter Übergabe bearbeiten"
     },
     "tips": {
       "automations": {
@@ -786,7 +807,9 @@
         "personTitle": "Wie der Personenfilter arbeitet",
         "roleFieldsTitle": "Nicht jede Rolle nutzt das",
         "unrefinedBody": "Er sieht nicht auf den Status eines Tickets, sondern zeigt die Tickets in der Pipeline-Phase „unrefined“. Diese Phase umzubenennen ändert den Chip nicht, und sie zu löschen ändert ebenso wenig daran, was der Chip findet – die Tickets bleiben, wo sie sind, und neue Tickets starten dort meist weiterhin; sie gehören dann nur zu keiner Spalte des Boards mehr.",
-        "unrefinedTitle": "Was der Chip Unrefined zeigt"
+        "unrefinedTitle": "Was der Chip Unrefined zeigt",
+        "unrefinedStagePoint": "Die Stage, aus der dieser Chip liest",
+        "unrefinedStageGo": "Pipeline öffnen"
       },
       "board": {
         "approveNoteBody": "„Genehmigen“ und „Ablehnen“ sind kein eigenes Urteil, das das System auswertet: Sie senden das Wort „Genehmigt“ bzw. „Abgelehnt“ als deine geschriebene Antwort, mit deiner Notiz dahinter nach einem Doppelpunkt. Auf das Wort selbst reagiert nichts — deine Antwort wird meistens an die KI weitergegeben, wenn sie weiterarbeitet. Formuliere die Notiz also als Auftrag.",

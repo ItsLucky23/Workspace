@@ -687,7 +687,23 @@
       "removeEnvVar": "Verwijder omgevingsvariabele",
       "removeModelRule": "Verwijder escalatieband",
       "removeStatus": "Verwijder status “{{name}}”",
-      "removeDomain": "Verwijder {{name}}"
+      "removeDomain": "Verwijder {{name}}",
+      "useDefault": "Gebruik de standaard",
+      "presetMenu": "Pipeline-opzet",
+      "presetFill": "Vul {{count}} lege velden met de standaardwaarden",
+      "presetFillTitle": "De lege velden invullen?",
+      "presetFillBody": "Dit schrijft de standaard persona, instructies en overdrachtssjabloon in de {{count}} velden die nog leeg zijn. Velden die je zelf hebt ingevuld blijven ongemoeid en er wordt geen stage toegevoegd of verwijderd.",
+      "presetSwitchTitle": "Deze pipeline omzetten naar {{preset}}?",
+      "presetSwitchAdds": "Toevoegen: {{names}}.",
+      "presetSwitchRemoves": "Verwijderen: {{names}}.",
+      "presetSwitchMoves": "{{count}} ticket(s) gaan terug naar de dichtstbijzijnde eerdere stage die blijft bestaan.",
+      "presetSwitchKeepsCustom": "Stages die je zelf hebt toegevoegd blijven staan.",
+      "kind_refine": "Verfijnen",
+      "kind_plan": "Plannen",
+      "kind_code": "Implementatie",
+      "kind_test": "Testen",
+      "kind_review": "Review",
+      "kind_final": "Afronding"
     },
     "settings": {
       "saving": "Opslaan…",
@@ -723,7 +739,12 @@
       "sourceRefine": "deze generatie",
       "sourceChannel": "kanaalinstellingen",
       "contentPreviewHelp": "Deze worden in deze volgorde tot één prompt gecombineerd — verfijnen heeft het sterkste, meest directe effect.",
-      "channelNotApplicable": "Hier niet gebruikt — kanaalstem bepaalt alleen posts die naar een kanaal worden gepubliceerd. Bewerk via Content-instellingen → Kanalen."
+      "channelNotApplicable": "Hier niet gebruikt — kanaalstem bepaalt alleen posts die naar een kanaal worden gepubliceerd. Bewerk via Content-instellingen → Kanalen.",
+      "goto_workspace": "Bewerk in workspace-AI-instellingen",
+      "goto_skills": "Bewerk in workspace-AI-instellingen",
+      "goto_stageSystemPrompt": "Bewerk op het tabblad Algemeen",
+      "goto_stageInstructions": "Bewerk op het tabblad Algemeen",
+      "goto_carryOver": "Bewerk op het tabblad Overdracht"
     },
     "tips": {
       "automations": {
@@ -786,7 +807,9 @@
         "personTitle": "Hoe het personenfilter werkt",
         "roleFieldsTitle": "Niet elke rol gebruikt dit",
         "unrefinedBody": "Hij kijkt niet naar de status van een ticket, maar toont de tickets die in de pijplijnfase \"unrefined\" staan. Die fase hernoemen verandert deze chip niet, en die fase verwijderen verandert ook niets aan wat de chip vindt — die tickets blijven gewoon staan en nieuwe tickets beginnen er meestal nog steeds, ze horen alleen bij geen enkele kolom op het bord meer.",
-        "unrefinedTitle": "Wat de chip Unrefined toont"
+        "unrefinedTitle": "Wat de chip Unrefined toont",
+        "unrefinedStagePoint": "De stage waar deze chip uit leest",
+        "unrefinedStageGo": "Open de pipeline"
       },
       "board": {
         "approveNoteBody": "Goedkeuren en Afwijzen zijn geen apart oordeel dat het systeem begrijpt: ze sturen het woord “Goedgekeurd” of “Afgewezen” als jouw geschreven antwoord, met je notitie erachter na een dubbele punt. Op het woord zelf reageert niets — je antwoord gaat meestal mee naar de AI als die verdergaat. Schrijf je notitie dus als iets dat de AI moet doen.",

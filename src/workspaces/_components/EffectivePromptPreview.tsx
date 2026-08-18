@@ -15,14 +15,45 @@
 import { useTranslator } from '@luckystack/core/client';
 
 import Icon from './Icon';
-import { Disclosure } from './primitives';
+import { Disclosure, FOCUS_RING } from './primitives';
+import { useWorkspaces } from '../_shell/WorkspacesContext';
 import {
   AI_LAYER_CHANNEL_HELP_KEY, AI_LAYER_CHANNEL_LABEL_KEY, AI_LAYER_CHANNEL_ORDER, AI_LAYER_COUNT,
   AI_LAYER_LABEL_KEY, composeChannel, layersInChannel, type ResolvedAiLayer,
 } from '../_functions/aiLayers';
 
+//? A stable identity for the "nothing is inline here" default — a fresh `[]` on every render is a new
+//? prop value, which is what the unstable-default-props rule is about.
+const NO_INLINE: readonly ResolvedAiLayer['id'][] = [];
+
+//? Naming a layer without saying WHERE it is edited is the half-answer this preview shipped with: it
+//? listed five fields spread over two pages and left you to find them. Each layer therefore carries its
+//? own destination, and the URL work (ADR 0312) makes that destination an address rather than a hint —
+//? the carry-over template lives behind an admin-only Advanced tab, which is exactly the one nobody finds.
+function LayerLink({ id, stageId, inline }: { id: ResolvedAiLayer['id']; stageId?: string; inline: boolean }) {
+  const translate = useTranslator();
+  const { navigate, focusSetup } = useWorkspaces();
+  //? The editor for this layer is already on screen — a jump would land the user where they are.
+  if (inline) return null;
+
+  const go = (): void => {
+    if (id === 'workspace' || id === 'skills') { focusSetup({ view: 'workspace', tab: 'aibehavior' }); return; }
+    const tab = id === 'carryOver' ? 'carryover' : 'general';
+    navigate('pipeline', stageId === undefined ? [] : [stageId, tab]);
+  };
+
+  return (
+    <button
+      type="button" onClick={go}
+      className={`shrink-0 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-primary hover:bg-primary/10 cursor-pointer transition-colors ${FOCUS_RING}`}
+    >
+      {translate({ key: `workspaces.aiLayers.goto_${id}` })} <Icon name="arrow-right-long" className={`text-[10px]`} />
+    </button>
+  );
+}
+
 /** One channel: its name, what it steers, its layers in order, and the text it composes to. */
-function ChannelBlock({ layers, channel }: { layers: ResolvedAiLayer[]; channel: ResolvedAiLayer['channel'] }) {
+function ChannelBlock({ layers, channel, stageId, inlineIds }: { layers: ResolvedAiLayer[]; channel: ResolvedAiLayer['channel']; stageId?: string; inlineIds: readonly ResolvedAiLayer['id'][] }) {
   const translate = useTranslator();
   const own = layersInChannel(layers, channel);
   const composed = composeChannel(layers, channel);
@@ -51,6 +82,7 @@ function ChannelBlock({ layers, channel }: { layers: ResolvedAiLayer[]; channel:
                   ? <span className={`block text-common truncate`}>{l.text}</span>
                   : <span className={`block text-meta italic`}>{translate({ key: 'workspaces.aiLayers.layerEmpty' })}</span>}
               </span>
+              <LayerLink id={l.id} {...(stageId === undefined ? {} : { stageId })} inline={inlineIds.includes(l.id)} />
             </li>
           );
         })}
@@ -65,7 +97,14 @@ function ChannelBlock({ layers, channel }: { layers: ResolvedAiLayer[]; channel:
   );
 }
 
-export function EffectivePromptPreview({ layers, defaultOpen = false }: { layers: ResolvedAiLayer[]; defaultOpen?: boolean }) {
+export function EffectivePromptPreview({ layers, defaultOpen = false, stageId, inlineIds = NO_INLINE }: {
+  layers: ResolvedAiLayer[];
+  defaultOpen?: boolean;
+  /** The stage the preview belongs to, so a layer's "edit" lands on THAT stage rather than the first one. */
+  stageId?: string;
+  /** Layers whose editor is already on this screen — those get no jump, because there is nowhere to go. */
+  inlineIds?: readonly ResolvedAiLayer['id'][];
+}) {
   const translate = useTranslator();
   const contributing = layers.filter((l) => l.text.length > 0);
 
@@ -84,7 +123,7 @@ export function EffectivePromptPreview({ layers, defaultOpen = false }: { layers
     >
       <div className={`flex flex-col gap-3`}>
         <div className={`text-xs text-muted leading-relaxed`}>{translate({ key: 'workspaces.aiLayers.previewHelp' })}</div>
-        {AI_LAYER_CHANNEL_ORDER.map((channel) => <ChannelBlock key={channel} layers={layers} channel={channel} />)}
+        {AI_LAYER_CHANNEL_ORDER.map((channel) => <ChannelBlock key={channel} layers={layers} channel={channel} inlineIds={inlineIds} {...(stageId === undefined ? {} : { stageId })} />)}
       </div>
     </Disclosure>
   );

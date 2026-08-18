@@ -129,6 +129,10 @@ const BTN_VARIANT: Record<BtnVariant, string> = {
   ghost: 'text-common hover:bg-container2 hover:text-title',
   danger: 'bg-wrong text-white hover:bg-wrong-hover shadow-xs hover:shadow-sm',
 };
+//? The button SHELL, shared with `PopMenu`'s labelled trigger: a menu that opens the page's primary
+//? action must look like that action, and copying this string to a call site is how the two drift.
+const BTN_SHELL = 'inline-flex items-center justify-center gap-2 rounded-xl px-3.5 h-9 text-sm font-semibold tracking-[-0.01em] transition-[color,background-color,box-shadow,border-color,transform] duration-150 ease-[var(--ease-soft)] cursor-pointer';
+
 //? `ariaLabel` exists because half the call sites hide the text label on phones
 //? (`hidden md:inline`), which removes it from the accessibility tree too — the button then
 //? announces as nothing at all. It falls back to `title` so the many buttons that already pass
@@ -139,7 +143,7 @@ export function WsButton({ variant = 'primary', icon, children, onClick, title, 
   return (
     <button
       type={type} onClick={onClick} title={title} aria-label={ariaLabel ?? title} disabled={disabled}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl px-3.5 h-9 text-sm font-semibold tracking-[-0.01em] transition-[color,background-color,box-shadow,border-color,transform] duration-150 ease-[var(--ease-soft)] cursor-pointer ${FOCUS_RING} focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none motion-safe:active:scale-[0.97] ${BTN_VARIANT[variant]} ${className}`}
+      className={`${BTN_SHELL} ${FOCUS_RING} focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none motion-safe:active:scale-[0.97] ${BTN_VARIANT[variant]} ${className}`}
     >
       {icon && <Icon name={icon} />}
       {children}
@@ -399,7 +403,7 @@ export function InfoDot({ title, body, align = 'right' }: { title?: string; body
 export interface PopMenuItem { label?: string; icon?: IconName; danger?: boolean; divider?: boolean; disabled?: boolean; disabledReason?: string; onClick?: () => void }
 //? `label` renders a text + chevron trigger (e.g. "Advanced ▾") instead of the icon-only button, for a
 //? progressive-disclosure menu that reads as a labelled control. Omit it → the original icon-only trigger.
-export function PopMenu({ items, align = 'right', icon = 'ellipsis', label, ariaLabel, triggerClass, onOpenChange }: { items: PopMenuItem[]; align?: 'left' | 'right'; icon?: IconName; label?: string; ariaLabel?: string; triggerClass?: string; onOpenChange?: (open: boolean) => void }) {
+export function PopMenu({ items, align = 'right', icon = 'ellipsis', label, ariaLabel, triggerClass, variant, onOpenChange }: { items: PopMenuItem[]; align?: 'left' | 'right'; icon?: IconName; label?: string; ariaLabel?: string; triggerClass?: string; /** Render the labelled trigger as a real button of this variant — for a menu that IS the page's primary action. */ variant?: BtnVariant; onOpenChange?: (open: boolean) => void }) {
   const [open, setOpen] = useState(false);
   const change = (next: boolean) => { setOpen(next); onOpenChange?.(next); };
   const ref = useClickAway<HTMLDivElement>(open, () => { change(false); });
@@ -410,9 +414,11 @@ export function PopMenu({ items, align = 'right', icon = 'ellipsis', label, aria
         //? a11y (gap-fix): the icon-only trigger had NO accessible name — screen readers announced "button".
         {...(label ? {} : { 'aria-label': ariaLabel ?? 'menu', 'aria-haspopup': true, 'aria-expanded': open })}
         onClick={(e) => { e.stopPropagation(); change(!open); }}
-        className={`${triggerClass ?? (label
-          ? 'inline-flex items-center gap-1.5 h-8 rounded-lg border border-container1-border bg-container1 px-3 text-sm text-common hover:bg-container2 transition-colors cursor-pointer'
-          : 'inline-flex items-center justify-center w-7 h-7 rounded-lg text-muted hover:bg-container2 hover:text-common transition-colors cursor-pointer')} ${FOCUS_RING}`}
+        className={`${triggerClass ?? (variant === undefined
+          ? (label
+            ? 'inline-flex items-center gap-1.5 h-8 rounded-lg border border-container1-border bg-container1 px-3 text-sm text-common hover:bg-container2 transition-colors cursor-pointer'
+            : 'inline-flex items-center justify-center w-7 h-7 rounded-lg text-muted hover:bg-container2 hover:text-common transition-colors cursor-pointer')
+          : `${BTN_SHELL} ${BTN_VARIANT[variant]}`)} ${FOCUS_RING}`}
       >
         {label ? (<>{label} <Icon name="caret-down" className={`text-xs transition-transform ${open ? 'rotate-180' : ''}`} /></>) : <Icon name={icon} />}
       </button>

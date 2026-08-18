@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (65)
+## API routes (66)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -49,6 +49,7 @@
 | `api/workspaces/openEditor/v1` | POST | login | 12 | — | yes | — | Workspaces — [open-editor] open the real per-ticket VS Code (openvscode-server in the |
 | `api/workspaces/openPreview/v1` | POST | login | 12 | — | yes | — | Workspaces — [open-preview] start the ticket's app dev-server in its container + expose it at |
 | `api/workspaces/openRefPreview/v1` | POST | login | 12 | — | yes | — | Workspaces — [open-ref-preview] (T1) start the ticket's app at an ARBITRARY git ref (SHA/tag/branch) in an |
+| `api/workspaces/pipelinePresets/v1` | POST | login | 30 | — | yes | — | Workspaces — [pipeline-presets] the pipeline presets and the canonical stage blueprints behind them. |
 | `api/workspaces/promptExperiments/v1` | POST | login | 60 | ItsLucky23 | yes | — | @docs owner ItsLucky23 |
 | `api/workspaces/pushConfig/v1` | POST | login | 60 | — | yes | — | Deliver the Web Push VAPID PUBLIC key to the browser (FREEDOM_PROGRAM A1) so it can subscribe. The public |
 | `api/workspaces/readWorktreeFile/v1` | POST | login | 30 | ItsLucky23 | yes | — | Workspaces — [read-worktree-file] read the REAL content of one file from a ticket's container worktree |
@@ -77,7 +78,7 @@
 | `api/workspaces/workspaceExport/v1` | POST | login | 6 | — | yes | — | Workspaces — [workspace-export] (H4) a tenant-scoped JSON export of the workspace's own data (portability / |
 | `api/workspaces/workspaceImport/v1` | POST | login | 3 | ItsLucky23 | yes | — | Workspaces — [workspace-import] (gap-fix) the missing counterpart of workspace-export: bring a |
 
-## Sync routes (67)
+## Sync routes (68)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -111,6 +112,7 @@
 | `sync/workspaces/linkRepo/v1` | yes | — | login | — | yes | — | Workspaces — [link-repo] REALTIME write via `_sync` (register-flow step A). Clones |
 | `sync/workspaces/mrAction/v1` | yes | — | login | — | yes | — | Workspaces — [mr-*] REALTIME MR-review actions via `_sync` (BUILTIN_MR_REVIEW). One route for |
 | `sync/workspaces/outputTemplate/v1` | yes | — | login | — | yes | — | Workspaces — [output-template] ops via `_sync` (FREEDOM_PROGRAM O5). Create/update/delete a reusable output |
+| `sync/workspaces/pipelinePreset/v1` | yes | — | login | — | yes | — | Workspaces — [pipeline-apply-preset] apply a pipeline preset (simple/advanced/professional) to the |
 | `sync/workspaces/presence/v1` | yes | — | login | — | yes | — | Workspaces — [presence] REALTIME who's-viewing (#17). A pure RELAY: a client viewing a ticket |
 | `sync/workspaces/projectAdmin/v1` | yes | — | login | — | yes | — | Workspaces — multi-project / multi-service admin writes via `_sync` (ADR 0035). |
 | `sync/workspaces/quickAdd/v1` | yes | — | login | — | yes | — | Workspaces — [quick-add] REALTIME write via `_sync` (milestone 1). Runs ONCE on |
@@ -156,9 +158,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 24 |
-| _(unowned)_ | 108 |
+| _(unowned)_ | 110 |
 
-**Test coverage**: 130/132 routes have a per-route `.tests.ts`.
+**Test coverage**: 132/134 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 

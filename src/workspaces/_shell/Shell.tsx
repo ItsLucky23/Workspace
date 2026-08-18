@@ -593,19 +593,22 @@ export function CreateWorkspaceForm({ onCreate }: { onCreate: (name: string, ena
 //? templates + onCreateFromTemplate are PASSED IN (not via useWorkspaces): this form renders inside the
 //? menuHandler portal, which lives ABOVE the WorkspacesProvider (MenuHandlerProvider > Router), so calling
 //? useWorkspaces() here throws. The call site (ProjectSwitcher, inside the provider) injects both.
-function CreateProjectForm({ onCreate, templates, onCreateFromTemplate }: { onCreate: (input: { name: string; gitUrl?: string }) => void; templates: { key: string; label: string; description: string }[]; onCreateFromTemplate: (input: { name: string; template: string; brief?: string }) => void }) {
+function CreateProjectForm({ onCreate, templates, onCreateFromTemplate }: { onCreate: (input: { name: string; gitUrl?: string; preset?: string }) => void; templates: { key: string; label: string; description: string }[]; onCreateFromTemplate: (input: { name: string; template: string; brief?: string; preset?: string }) => void }) {
   const translate = useTranslator();
   const [mode, setMode] = useState<'template' | 'link'>('template');
   const [name, setName] = useState('');
   const [gitUrl, setGitUrl] = useState('');
   const [template, setTemplate] = useState(templates[0]?.key ?? '');
   const [brief, setBrief] = useState('');
+  //? The pipeline TIER, asked here too (owner decision 2026-08-18). It was only ever askable when
+  //? creating a WORKSPACE, so every project after the first silently got the full 7-stage flow.
+  const [tier, setTier] = useState<string>('professional');
   const canSubmit = name.trim().length > 0 && (mode === 'link' || template.length > 0);
   const submit = () => {
     const n = name.trim();
     if (!n) return;
-    if (mode === 'template') { if (template.length === 0) return; onCreateFromTemplate({ name: n, template, ...(brief.trim() ? { brief: brief.trim() } : {}) }); }
-    else onCreate({ name: n, ...(gitUrl.trim() ? { gitUrl: gitUrl.trim() } : {}) });
+    if (mode === 'template') { if (template.length === 0) return; onCreateFromTemplate({ name: n, template, preset: tier, ...(brief.trim() ? { brief: brief.trim() } : {}) }); }
+    else onCreate({ name: n, preset: tier, ...(gitUrl.trim() ? { gitUrl: gitUrl.trim() } : {}) });
     void menuHandler.close();
   };
   return (
@@ -643,6 +646,17 @@ function CreateProjectForm({ onCreate, templates, onCreateFromTemplate }: { onCr
           className="h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
         />
       )}
+      {/* How much pipeline this project starts with — the same three tiers the workspace form offers,
+          and now changeable afterwards from the Pipeline page. */}
+      <div className="text-xs font-medium text-muted mt-1">{translate({ key: 'workspaces.modules.tierHeading' })}</div>
+      <div className="flex flex-wrap gap-2">
+        {PIPELINE_TIERS.map((t) => (
+          <button key={t} type="button" onClick={() => { setTier(t); }}
+            className={`rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors ${tier === t ? 'border-primary-border bg-primary/10 text-primary' : 'border-container1-border bg-container2/50 text-common hover:bg-container2'}`}>
+            {translate({ key: `workspaces.modules.tier_${t}` })}
+          </button>
+        ))}
+      </div>
       <div className="flex items-center justify-end gap-2">
         <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
         <WsButton icon="plus" onClick={submit} disabled={!canSubmit}>{translate({ key: 'workspaces.shell.create' })}</WsButton>

@@ -49,6 +49,29 @@ test.describe('pipeline', () => {
     await generalTab.click();
     await expect(page.getByText('AI persona (system prompt)', { exact: true })).toBeVisible();
 
+    // ADR 0315 — the pipeline TIER is reachable after creation, and "Add stage" asks for the KIND
+    // (the kind decides the blueprint the new stage arrives pre-filled with). Both are menus in the
+    // header; opening the kind menu is asserted, choosing one is NOT — that would create a stage.
+    await expect(page.getByRole('button', { name: 'Pipeline setup' })).toBeVisible();
+    const addStage = page.getByRole('button', { name: 'Add stage' });
+    await expect(addStage).toBeVisible();
+    await addStage.click();
+    await expect(page.getByRole('button', { name: 'Implementation', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Review', exact: true })).toBeVisible();
+    //? Escape closes the menu (useClickAway) — leaves the pipeline exactly as it was found.
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('button', { name: 'Implementation', exact: true })).toBeHidden();
+
+    // The prompt-layer preview names five fields spread over two pages; each one that is edited
+    // ELSEWHERE carries its own deep link. The carry-over template is the case that matters — it lives
+    // behind the admin-only Advanced menu, which is exactly the tab nobody finds on their own.
+    await page.getByRole('button', { name: /What the AI actually receives/ }).click();
+    await expect(page.getByRole('button', { name: 'Edit on the Carry-over tab' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Edit in workspace AI settings' }).first()).toBeVisible();
+    //? …and NOT for the two fields whose editors are on this very screen — a jump there would land the
+    //? user where they already are, which is how an "edit" affordance loses its meaning.
+    await expect(page.getByRole('button', { name: 'Edit on the General tab' })).toHaveCount(0);
+
     // Add-status: collapsed control expands into an input + Add/Cancel.
     const addStatusBtn = page.getByRole('button', { name: 'Add status' });
     await expect(addStatusBtn).toBeVisible();

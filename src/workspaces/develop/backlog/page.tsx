@@ -48,7 +48,7 @@ export const template = 'workspaces';
 
 export default function Backlog() {
   const translate = useTranslator();
-  const { openTicket, tickets, members, sprints, stages, bulkMove, bulkStatus, bulkAssign, bulkSprint, bulkArchive, sprintCreate, editSprint, quickAdd } = useWorkspaces();
+  const { openTicket, tickets, members, sprints, stages, bulkMove, bulkStatus, bulkAssign, bulkSprint, bulkArchive, sprintCreate, editSprint, quickAdd, navigate } = useWorkspaces();
   const [q, setQ] = useState('');
   const [quick, setQuick] = useState<Quick>('all');
   const [person, setPerson] = useState<string>('all');
@@ -197,6 +197,7 @@ export default function Backlog() {
               label={translate({ key: 'workspaces.tips.backlog.unrefinedTitle' })}
               title={translate({ key: 'workspaces.tips.backlog.unrefinedTitle' })}
               body={translate({ key: 'workspaces.tips.backlog.unrefinedBody' })}
+              points={[{ id: 'pipeline', label: translate({ key: 'workspaces.tips.backlog.unrefinedStagePoint' }), onGo: () => { navigate('pipeline'); }, goLabel: translate({ key: 'workspaces.tips.backlog.unrefinedStageGo' }) }]}
             />
           </div>
           <IconButton icon="filter" title={translate({ key: 'workspaces.backlog.filters' })} active={filtersOpen || filtersActive} onClick={() => { setFiltersOpen((o) => !o); }} />

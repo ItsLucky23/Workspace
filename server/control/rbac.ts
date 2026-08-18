@@ -202,6 +202,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'comments-mark-read': CAP.workTickets,
   'save-stage-config': CAP.editPipeline,
   'stage-create': CAP.editPipeline,
+  'pipeline-apply-preset': CAP.editPipeline,
   'stage-delete': CAP.editPipeline,
   'stage-reorder': CAP.editPipeline,
   'trigger-save': CAP.editPipeline,

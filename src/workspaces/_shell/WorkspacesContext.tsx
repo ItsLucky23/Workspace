@@ -118,10 +118,10 @@ export interface WorkspacesCtx {
   activeProjectId: string | null;
   setActiveProject: (id: string) => void;
   services: ServiceSummary[];
-  createProject: (input: { name: string; gitUrl?: string; gitlabPath?: string }) => void;
+  createProject: (input: { name: string; gitUrl?: string; gitlabPath?: string; preset?: string }) => void;
   //? Greenfield scaffolding (ADR 0046): the curated stack templates + create-from-template.
   templates: { key: string; label: string; description: string }[];
-  createFromTemplate: (input: { name: string; template: string; brief?: string }) => void;
+  createFromTemplate: (input: { name: string; template: string; brief?: string; preset?: string }) => void;
   applyDesignTokens: (projectId?: string, serviceId?: string) => Promise<string | null>;
   createService: (input: { projectId: string; name: string; path?: string; buildCmd?: string; deployUnit?: string }) => void;
   deleteService: (serviceId: string) => void;
@@ -265,6 +265,9 @@ export interface WorkspacesCtx {
   createStage: (input: { projectId: string; key: string; name: string; kind?: string }) => void;
   deleteStage: (projectId: string, stageKey: string) => void;
   reorderStages: (projectId: string, order: string[]) => void;
+  //? Pipeline presets on an EXISTING project (owner decision 2026-08-18). 'fill' writes the canonical
+  //? blueprint into the stage fields that are empty and removes nothing; 'switch' is structural.
+  applyPipelinePreset: (projectId: string, preset: string, mode: 'fill' | 'switch') => void;
   //? Workflow (hosting-proxy plan) — per-workspace git strategy + push policy.
   gitConfig: GitConfig;
   saveGitConfig: (cfg: GitConfig) => void;

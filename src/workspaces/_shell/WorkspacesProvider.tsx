@@ -989,12 +989,12 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   //? Multi-project / multi-service admin writes (ADR 0035) → the projectAdmin `_sync`
   //? route; the client refetches on success (these change rarely). project-create
   //? switches to the new project once the refetch lands it.
-  const createProjectApi = useCallback((input: { name: string; gitUrl?: string; gitlabPath?: string }) => {
+  const createProjectApi = useCallback((input: { name: string; gitUrl?: string; gitlabPath?: string; preset?: string }) => {
     const scope = currentProjectScope();
     if (!scope || input.name.trim().length === 0) return;
     const room = scope.workspaceId;
     void (async () => {
-      await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'project-create', name: input.name, ...(input.gitUrl ? { gitUrl: input.gitUrl } : {}), ...(input.gitlabPath ? { gitlabPath: input.gitlabPath } : {}), clientRequestId: nextReqId() }, receiver: room });
+      await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'project-create', name: input.name, ...(input.gitUrl ? { gitUrl: input.gitUrl } : {}), ...(input.gitlabPath ? { gitlabPath: input.gitlabPath } : {}), ...(input.preset ? { preset: input.preset } : {}), clientRequestId: nextReqId() }, receiver: room });
       refetch();
     })();
   }, [currentProjectScope, refetch]);
@@ -1015,12 +1015,12 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       return null;
     });
   }, [snap.activeWorkspaceId, snap.activeProjectId, refetch]);
-  const createFromTemplateApi = useCallback((input: { name: string; template: string; brief?: string }) => {
+  const createFromTemplateApi = useCallback((input: { name: string; template: string; brief?: string; preset?: string }) => {
     const scope = currentProjectScope();
     if (!scope || input.name.trim().length === 0) return;
     const room = scope.workspaceId;
     void (async () => {
-      await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'project-from-template', name: input.name, template: input.template, ...(input.brief && input.brief.trim().length > 0 ? { brief: input.brief.trim() } : {}), clientRequestId: nextReqId() }, receiver: room });
+      await syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'project-from-template', name: input.name, template: input.template, ...(input.brief && input.brief.trim().length > 0 ? { brief: input.brief.trim() } : {}), ...(input.preset ? { preset: input.preset } : {}), clientRequestId: nextReqId() }, receiver: room });
       refetch();
     })();
   }, [currentProjectScope, refetch]);
@@ -1811,6 +1811,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       createStage: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/stageCreate', version: 'v1', data: { projectId: input.projectId, key: input.key, name: input.name, ...(input.kind ? { kind: input.kind } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       deleteStage: (projectId, stageKey) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/stageDelete', version: 'v1', data: { stageId: stageKey, projectId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       reorderStages: (projectId, order) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/stageReorder', version: 'v1', data: { order, projectId, clientRequestId: nextReqId() }, receiver: room }); },
+      //? Structural in 'switch' mode (stages added/removed/reordered), so this always refetches rather
+      //? than merging a single-row delta.
+      applyPipelinePreset: (projectId, preset, mode) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/pipelinePreset', version: 'v1', data: { projectId, preset, mode, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       gitConfig: snap.gitConfig,
       saveGitConfig: (cfg) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveGitConfig', version: 'v1', data: { gitConfig: cfg, clientRequestId: nextReqId() }, receiver: room }); },
       //? Module gating: optimistically flip the active workspace's enabledSections (instant

@@ -687,7 +687,23 @@
       "removeEnvVar": "Remove environment variable",
       "removeModelRule": "Remove escalation band",
       "removeStatus": "Remove status “{{name}}”",
-      "removeDomain": "Remove {{name}}"
+      "removeDomain": "Remove {{name}}",
+      "useDefault": "Use the default",
+      "presetMenu": "Pipeline setup",
+      "presetFill": "Fill {{count}} empty fields from the defaults",
+      "presetFillTitle": "Fill the empty fields?",
+      "presetFillBody": "This writes the standard persona, instructions and carry-over template into the {{count}} fields that are still empty. Fields you already filled in are left untouched, and no stage is added or removed.",
+      "presetSwitchTitle": "Switch this pipeline to {{preset}}?",
+      "presetSwitchAdds": "Adds: {{names}}.",
+      "presetSwitchRemoves": "Removes: {{names}}.",
+      "presetSwitchMoves": "{{count}} ticket(s) move back to the nearest earlier stage that still exists.",
+      "presetSwitchKeepsCustom": "Stages you added yourself are kept.",
+      "kind_refine": "Refine",
+      "kind_plan": "Plan",
+      "kind_code": "Implementation",
+      "kind_test": "Test",
+      "kind_review": "Review",
+      "kind_final": "Final"
     },
     "settings": {
       "saving": "Saving…",
@@ -723,7 +739,12 @@
       "sourceRefine": "this generation",
       "sourceChannel": "channel settings",
       "contentPreviewHelp": "These combine into one prompt in this order — refine has the strongest, most immediate effect.",
-      "channelNotApplicable": "Not used here — channel voice only shapes posts published to a channel. Edit in Content settings → Channels."
+      "channelNotApplicable": "Not used here — channel voice only shapes posts published to a channel. Edit in Content settings → Channels.",
+      "goto_workspace": "Edit in workspace AI settings",
+      "goto_skills": "Edit in workspace AI settings",
+      "goto_stageSystemPrompt": "Edit on the General tab",
+      "goto_stageInstructions": "Edit on the General tab",
+      "goto_carryOver": "Edit on the Carry-over tab"
     },
     "tips": {
       "automations": {
@@ -786,7 +807,9 @@
         "personTitle": "How the person filter works",
         "roleFieldsTitle": "Not every role uses these",
         "unrefinedBody": "It does not look at a ticket's status: it shows the tickets sitting in the pipeline stage \"unrefined\". Renaming that stage does not rename this chip, and even deleting the stage does not change what the chip finds — those tickets stay where they are and new tickets usually still start there, they simply no longer belong to any column on the board.",
-        "unrefinedTitle": "What the Unrefined chip matches"
+        "unrefinedTitle": "What the Unrefined chip matches",
+        "unrefinedStagePoint": "The stage this chip reads from",
+        "unrefinedStageGo": "Open the pipeline"
       },
       "board": {
         "approveNoteBody": "Approve and Reject are not a separate verdict the system understands: they send the word “Approved” or “Rejected” as your written answer, with your note added after a colon. Nothing reacts to the word itself — your answer is usually passed on to the AI as it carries on. So write the note as something you want it to do.",
