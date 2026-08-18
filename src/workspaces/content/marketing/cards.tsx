@@ -11,7 +11,6 @@ import { i18nNotify as notify, useTranslator } from '@luckystack/core/client';
 import Icon, { type IconName } from '../../_components/Icon';
 import { PopMenu, type PopMenuItem } from '../../_components/primitives';
 import type { StudioArtifact, StudioArtifactKind } from '../../_data/types';
-import { getArtifactRefine } from '../studio/refineHistory';
 import { KIND_ICONS } from './kinds';
 
 //? ---- content readers (the AI content is `unknown`; read defensively, no casts to `any`) ----
@@ -66,7 +65,7 @@ export function ArtifactCard({ artifact, busy, pendingRefine, onDelete, onRegene
   //? I4 bug fix — the refine that PRODUCED this card (persisted, historical) vs. the refine that WILL
   //? apply if Regenerate is clicked now (the live shared box) are two different things; show both
   //? instead of leaving the user to guess which one a stale box silently reapplies.
-  const usedRefine = getArtifactRefine(artifact.id);
+  const usedRefine = artifact.refine ?? null;
   const trimmedPending = pendingRefine.trim();
   const regenerateLabel = trimmedPending.length > 0
     ? translate({ key: 'workspaces.studio.regenerateWithRefine', params: [{ key: 'refine', value: trimmedPending.length > 28 ? `${trimmedPending.slice(0, 27)}…` : trimmedPending }] })

@@ -877,6 +877,17 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     },
   }), [upsertSyncEventCallback]);
 
+  //? archive/restore/delete of a context doc returns the same full doc list, so the delta is
+  //? handled identically to addInfoDoc — every client in the room replaces its list (ADR 0310).
+  useMemo(() => upsertSyncEventCallback({
+    name: 'workspaces/infoDocAdmin', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      const docs = serverOutput.docs;
+      setSnap((s) => ({ ...s, docs }));
+    },
+  }), [upsertSyncEventCallback]);
+
   //? scan-index delta → store the latest RAG code-index status (07 §D). Broadcast to the
   //? whole room so every client shows the fresh files/chunks/commit/embedder.
   useEffect(() => upsertSyncEventCallback({
@@ -1669,6 +1680,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       addInfoDoc: (name, content) => {
         const room = snap.activeWorkspaceId;
         if (room) void syncRequest({ name: 'workspaces/addInfoDoc', version: 'v1', data: { name, content, clientRequestId: nextReqId() }, receiver: room });
+      },
+      infoDocAdmin: (docId, action) => {
+        const room = snap.activeWorkspaceId;
+        if (room) void syncRequest({ name: 'workspaces/infoDocAdmin', version: 'v1', data: { docId, action, clientRequestId: nextReqId() }, receiver: room });
       },
       scanIndex: scanIndexApi,
       ragIndex,

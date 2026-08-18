@@ -13,6 +13,10 @@ export interface BrandLibraryInput {
   voice?: string;
   taglines?: string[];
   logoIdeas?: string[];
+  //? ADR 0310 — provenance: 'manual' for a hand edit, or the title of the artifact whose "Use as
+  //? brand" overwrote this record. Without it a stray artifact from another page can silently
+  //? replace curated brand work with nothing on screen explaining where it came from.
+  setFrom?: string;
 }
 
 //? Upsert the workspace brand library (partial — only provided fields change). Returns the id.
@@ -24,6 +28,9 @@ export async function saveBrandLibrary(prisma: PrismaClient, workspaceId: string
     ...(input.voice === undefined ? {} : { voice: input.voice }),
     ...(input.taglines === undefined ? {} : { taglines: input.taglines }),
     ...(input.logoIdeas === undefined ? {} : { logoIdeas: input.logoIdeas }),
+    //? Stamped on every write that declares a source; a caller that omits it leaves the previous
+    //? provenance intact rather than blanking it.
+    ...(input.setFrom === undefined ? {} : { lastSetFrom: input.setFrom, lastSetAt: new Date() }),
   };
   const brand = await prisma.studioBrandLibrary.upsert({
     where: { workspaceId },
@@ -32,6 +39,7 @@ export async function saveBrandLibrary(prisma: PrismaClient, workspaceId: string
       workspaceId, name: input.name ?? 'Brand',
       palette: asJson(input.palette ?? []), typography: asJson(input.typography ?? { heading: '', body: '' }),
       voice: input.voice ?? '', taglines: input.taglines ?? [], logoIdeas: input.logoIdeas ?? [],
+      ...(input.setFrom === undefined ? {} : { lastSetFrom: input.setFrom, lastSetAt: new Date() }),
     },
   });
   return brand.id;

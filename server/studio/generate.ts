@@ -236,7 +236,10 @@ export async function beginArtifact(
       }
     }
     const art = await prisma.studioArtifact.create({
-      data: { ...(dependencies.artifactId ? { id: dependencies.artifactId } : {}), workspaceId: input.workspaceId, briefId: input.briefId, kind: input.kind, role: meta.role, title: meta.title, content: {}, status: 'generating' },
+      //? ADR 0310 — stamp the refine instruction onto the artifact it produced. It used to live in one
+      //? shared input box, so regenerating an older card silently picked up an unrelated newer refine
+      //? and nothing recorded which text produced which result.
+      data: { ...(dependencies.artifactId ? { id: dependencies.artifactId } : {}), workspaceId: input.workspaceId, briefId: input.briefId, kind: input.kind, role: meta.role, title: meta.title, content: {}, status: 'generating', ...(input.tweak !== undefined && input.tweak.trim().length > 0 ? { refine: input.tweak.trim() } : {}) },
     });
     return { ok: true, artifactId: art.id };
   }));

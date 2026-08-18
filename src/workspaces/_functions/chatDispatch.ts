@@ -729,6 +729,20 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     if (!name || !content) return;
     void syncRequest({ name: 'workspaces/addInfoDoc', version: 'v1', data: { name, content, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
+  //? ADR 0310 — retiring a context doc from chat. Archive/restore share one route with delete; the
+  //? Conductor is still the only writer, and delete stays destructive-flagged in the catalog so the
+  //? assistant has to get an explicit confirmation before proposing it.
+  'info-source-archive': (p, x) => {
+    const docId = str(p, 'infoSourceId');
+    if (!docId) return;
+    const action = bool(p, 'archived') === false ? 'restore' : 'archive';
+    void syncRequest({ name: 'workspaces/infoDocAdmin', version: 'v1', data: { docId, action, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
+  'info-source-delete': (p, x) => {
+    const docId = str(p, 'infoSourceId');
+    if (!docId) return;
+    void syncRequest({ name: 'workspaces/infoDocAdmin', version: 'v1', data: { docId, action: 'delete', clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
+  },
   //? Credential boundary: the route accepts an optional `token`, but a token must NEVER travel through
   //? the chat/LLM path (same principle as the EXCLUDED secret-bearing ops) — gitUrl only.
   'link-repo': (p, x) => {

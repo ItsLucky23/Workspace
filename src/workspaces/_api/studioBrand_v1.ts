@@ -33,13 +33,18 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
 
   const current = await exportBrandKit(functions.db.prisma, workspaceId) ?? {};
   let kit: unknown;
+  //? 'manual' unless a promote overwrites it below — a hand edit is provenance too.
+  let setFrom = 'manual';
   if (op === 'promote') {
     if (!data.artifactId) return { status: 'error', errorCode: 'api.invalidRequest' };
-    const artifact = await functions.db.prisma.studioArtifact.findFirst({ where: { workspaceId, id: data.artifactId, kind: 'brand' }, select: { content: true } });
+    const artifact = await functions.db.prisma.studioArtifact.findFirst({ where: { workspaceId, id: data.artifactId, kind: 'brand' }, select: { content: true, title: true } });
     const promoted = parseBrandKit(artifact?.content);
     if (!promoted) return { status: 'error', errorCode: 'studio.notABrand' };
     //? Promotion changes the generated visual/voice fields but retains the library's human-chosen name.
     kit = { ...current, ...promoted, ...(current.name ? { name: current.name } : {}) };
+    //? ADR 0310 — the artifact's own title is the provenance a user recognises ("that landing brand
+    //? I generated on Tuesday"), which is the whole point of recording it.
+    setFrom = artifact?.title ?? 'artifact';
   } else {
     kit = {
       ...current,
@@ -57,7 +62,7 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
     workspaceId,
     op: 'brand-import',
     target: { expectedVersion },
-    payload: { kit },
+    payload: { kit, setFrom },
     userId: user.id,
     clientRequestId: `studio-brand:${op}:${digest}`,
   });

@@ -12,7 +12,6 @@ import Icon from '../../_components/Icon';
 import { Disclosure, IconButton, WsButton } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { StudioBrief } from '../../_data/types';
-import { getBrandProvenance, recordBrandProvenance } from '../studio/brandProvenance';
 
 const inputCls = 'w-full h-9 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 
@@ -132,26 +131,29 @@ export function BrandPanel() {
   const save = async () => {
     setSaving(true);
     await saveBrand({ palette: palette.filter((p) => p.hex.trim().length > 0), typography: { heading: heading.trim(), body: body.trim() }, voice: voice.trim(), taglines: taglines.split('\n').map((t) => t.trim()).filter(Boolean) });
-    //? Owner decision 6 — provenance covers manual edits too, not only "Use as brand" promotions.
-    recordBrandProvenance(activeWorkspace.id, 'manual');
+    //? ADR 0310 — the server stamps provenance ('manual' here) inside the same write, so it is durable
+    //? and visible to teammates instead of only to the browser that made the edit.
     setSaving(false);
   };
   const setColor = (i: number, patch: Partial<{ name: string; hex: string }>) => { setPalette((p) => p.map((c, j) => (j === i ? { ...c, ...patch } : c))); };
-  const provenance = getBrandProvenance(activeWorkspace.id);
+  //? ADR 0310 — provenance now comes from the record itself (StudioBrandLibrary.lastSetFrom/At).
+  const provenance = studioBrand?.lastSetFrom !== undefined && studioBrand.lastSetFrom.length > 0
+    ? { source: studioBrand.lastSetFrom, at: studioBrand.lastSetAt ?? '' }
+    : null;
 
   return (
     <div className={`flex flex-col gap-5`}>
       <div>
         <div className={`text-xl font-semibold text-title`}>{translate({ key: 'workspaces.studio.brandLibrary' })}</div>
         <div className={`text-sm text-muted mt-0.5`}>{translate({ key: 'workspaces.studio.brandIntro' })}</div>
-        {/* Owner decision 6 — provenance; only shown once this browser has recorded one. */}
+        {/* ADR 0310 — provenance, shown wherever the workspace is opened (not just where it was set). */}
         {provenance && (
           <div className={`text-xs text-meta mt-1`}>
             {translate({
               key: 'workspaces.studio.brandProvenanceLabel',
               params: [
                 { key: 'source', value: provenance.source === 'manual' ? translate({ key: 'workspaces.studio.brandProvenanceManual' }) : provenance.source },
-                { key: 'date', value: new Date(provenance.at).toLocaleDateString() },
+                { key: 'date', value: provenance.at.length > 0 ? new Date(provenance.at).toLocaleDateString() : '' },
               ],
             })}
           </div>

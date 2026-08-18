@@ -3,9 +3,9 @@
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
     "nodes": 436,
-    "edges": 621,
-    "symbols": 817,
-    "callEdges": 268
+    "edges": 615,
+    "symbols": 825,
+    "callEdges": 272
   },
   "nodes": [
     {
@@ -1384,6 +1384,16 @@
       "route": "sync/workspaces/gitlabSettings/v1"
     },
     {
+      "id": "workspaces/_sync/infoDocAdmin_server_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_sync/infoDocAdmin_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/infoDocAdmin/v1"
+    },
+    {
       "id": "workspaces/_sync/invite_server_v1.tests.ts",
       "kind": "other",
       "route": null
@@ -1909,11 +1919,6 @@
       "route": null
     },
     {
-      "id": "workspaces/content/studio/brandProvenance.ts",
-      "kind": "other",
-      "route": null
-    },
-    {
       "id": "workspaces/content/studio/content.ts",
       "kind": "other",
       "route": null
@@ -1930,11 +1935,6 @@
     },
     {
       "id": "workspaces/content/studio/promptStack.tsx",
-      "kind": "other",
-      "route": null
-    },
-    {
-      "id": "workspaces/content/studio/refineHistory.ts",
       "kind": "other",
       "route": null
     },
@@ -3159,10 +3159,6 @@
       "to": "workspaces/content/marketing/kinds.ts"
     },
     {
-      "from": "workspaces/content/marketing/cards.tsx",
-      "to": "workspaces/content/studio/refineHistory.ts"
-    },
-    {
       "from": "workspaces/content/marketing/kinds.ts",
       "to": "workspaces/_components/Icon.tsx"
     },
@@ -3216,15 +3212,7 @@
     },
     {
       "from": "workspaces/content/marketing/page.tsx",
-      "to": "workspaces/content/studio/brandProvenance.ts"
-    },
-    {
-      "from": "workspaces/content/marketing/page.tsx",
       "to": "workspaces/content/studio/promptStack.tsx"
-    },
-    {
-      "from": "workspaces/content/marketing/page.tsx",
-      "to": "workspaces/content/studio/refineHistory.ts"
     },
     {
       "from": "workspaces/content/marketing/panels.tsx",
@@ -3245,10 +3233,6 @@
     {
       "from": "workspaces/content/marketing/panels.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
-    },
-    {
-      "from": "workspaces/content/marketing/panels.tsx",
-      "to": "workspaces/content/studio/brandProvenance.ts"
     },
     {
       "from": "workspaces/content/page.tsx",
@@ -3464,10 +3448,6 @@
     },
     {
       "from": "workspaces/content/studio/BrandPanel.tsx",
-      "to": "workspaces/content/studio/brandProvenance.ts"
-    },
-    {
-      "from": "workspaces/content/studio/BrandPanel.tsx",
       "to": "workspaces/content/studio/content.ts"
     },
     {
@@ -3516,10 +3496,6 @@
     },
     {
       "from": "workspaces/content/studio/page.tsx",
-      "to": "workspaces/content/studio/brandProvenance.ts"
-    },
-    {
-      "from": "workspaces/content/studio/page.tsx",
       "to": "workspaces/content/studio/content.ts"
     },
     {
@@ -3529,10 +3505,6 @@
     {
       "from": "workspaces/content/studio/page.tsx",
       "to": "workspaces/content/studio/promptStack.tsx"
-    },
-    {
-      "from": "workspaces/content/studio/page.tsx",
-      "to": "workspaces/content/studio/refineHistory.ts"
     },
     {
       "from": "workspaces/content/studio/previews.tsx",
@@ -4544,6 +4516,10 @@
     },
     {
       "from": "workspaces/insights/usage/page.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/insights/usage/page.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
     {
@@ -4807,6 +4783,7 @@
       "workspaces/develop/sources/page.tsx",
       "workspaces/develop/terminals/TerminalPanel.tsx",
       "workspaces/develop/terminals/page.tsx",
+      "workspaces/insights/usage/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
@@ -5213,6 +5190,7 @@
       "workspaces/develop/sources/page.tsx",
       "workspaces/develop/terminals/TerminalPanel.tsx",
       "workspaces/develop/terminals/page.tsx",
+      "workspaces/insights/usage/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
@@ -6114,12 +6092,6 @@
     "workspaces/content/studio/BrandPanel.tsx": [
       "workspaces/content/studio/page.tsx"
     ],
-    "workspaces/content/studio/brandProvenance.ts": [
-      "workspaces/content/marketing/page.tsx",
-      "workspaces/content/marketing/panels.tsx",
-      "workspaces/content/studio/BrandPanel.tsx",
-      "workspaces/content/studio/page.tsx"
-    ],
     "workspaces/content/studio/content.ts": [
       "workspaces/content/studio/BrandPanel.tsx",
       "workspaces/content/studio/page.tsx",
@@ -6129,11 +6101,6 @@
       "workspaces/content/studio/page.tsx"
     ],
     "workspaces/content/studio/promptStack.tsx": [
-      "workspaces/content/marketing/page.tsx",
-      "workspaces/content/studio/page.tsx"
-    ],
-    "workspaces/content/studio/refineHistory.ts": [
-      "workspaces/content/marketing/cards.tsx",
       "workspaces/content/marketing/page.tsx",
       "workspaces/content/studio/page.tsx"
     ],
@@ -6353,14 +6320,14 @@
     {
       "id": "_components/ConfirmMenu.tsx",
       "kind": "component",
-      "dependents": 47,
+      "dependents": 48,
       "directDependents": 1
     },
     {
       "id": "_functions/menuHandler.ts",
       "kind": "helper",
-      "dependents": 47,
-      "directDependents": 36
+      "dependents": 48,
+      "directDependents": 37
     },
     {
       "id": "_components/dropdown/dropdownInternals.tsx",
@@ -9545,6 +9512,54 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::<module>",
+      "file": "workspaces/_sync/infoDocAdmin_server_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::fn",
+      "file": "workspaces/_sync/infoDocAdmin_server_v1.tests.ts",
+      "name": "fn",
+      "kind": "fn"
+    },
+    {
+      "id": "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::poll",
+      "file": "workspaces/_sync/infoDocAdmin_server_v1.tests.ts",
+      "name": "poll",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::run",
+      "file": "workspaces/_sync/infoDocAdmin_server_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::seedDoc",
+      "file": "workspaces/_sync/infoDocAdmin_server_v1.tests.ts",
+      "name": "seedDoc",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::wait",
+      "file": "workspaces/_sync/infoDocAdmin_server_v1.tests.ts",
+      "name": "wait",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/infoDocAdmin_server_v1.ts::<module>",
+      "file": "workspaces/_sync/infoDocAdmin_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/infoDocAdmin_server_v1.ts::main",
+      "file": "workspaces/_sync/infoDocAdmin_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_sync/invite_server_v1.tests.ts::<module>",
       "file": "workspaces/_sync/invite_server_v1.tests.ts",
       "name": "<module>",
@@ -11853,6 +11868,22 @@
       "to": "workspaces/_sync/gitlabSettings_server_v1.tests.ts::poll"
     },
     {
+      "from": "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::poll",
+      "to": "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::fn"
+    },
+    {
+      "from": "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::poll",
+      "to": "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::wait"
+    },
+    {
+      "from": "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::run",
+      "to": "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::poll"
+    },
+    {
+      "from": "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::run",
+      "to": "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::seedDoc"
+    },
+    {
       "from": "workspaces/_sync/invite_server_v1.tests.ts::poll",
       "to": "workspaces/_sync/invite_server_v1.tests.ts::fn"
     },
@@ -12840,6 +12871,20 @@
     "workspaces/_sync/gitlabSettings_server_v1.tests.ts::wait": [
       "workspaces/_sync/gitlabSettings_server_v1.tests.ts::poll",
       "workspaces/_sync/gitlabSettings_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::fn": [
+      "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::poll",
+      "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::poll": [
+      "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::seedDoc": [
+      "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::wait": [
+      "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::poll",
+      "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::run"
     ],
     "workspaces/_sync/invite_server_v1.tests.ts::fn": [
       "workspaces/_sync/invite_server_v1.tests.ts::poll",

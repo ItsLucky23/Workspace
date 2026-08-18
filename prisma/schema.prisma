@@ -1254,6 +1254,8 @@ model StudioBrandLibrary {
   voice       String   @default("")
   taglines    String[]
   logoIdeas   String[]
+  lastSetFrom String?                                // ADR 0310 — provenance: 'manual', or the title of the artifact whose "Use as brand" last overwrote this record. Without it, a stray artifact from another page can replace curated work with no trace.
+  lastSetAt   DateTime?
   updatedAt   DateTime @updatedAt
   createdAt   DateTime @default(now())
 }
@@ -1318,6 +1320,7 @@ model StudioArtifact {
   title       String
   content     Json                                   // kind-specific: {html} | {items[]} | brand tokens | {markdown}
   providerId  String?                                // which AI backend produced it
+  refine      String?                                // ADR 0310 — the per-generation refine instruction that produced THIS artifact. Was browser-local, so regenerating an old card silently picked up an unrelated newer refine; recording it here makes the provenance travel with the artifact.
   status      String   @default("ready")             // 'generating' | 'ready' | 'error'
   error       String?
   createdAt   DateTime @default(now())
@@ -1519,6 +1522,7 @@ model InfoSource {
   kind          String?                            // skill: 'frozen' | 'live'
   model         String?                            // skill: embedding/model label
   enabled       Boolean   @default(true)           // skill on/off (SkillEntry.on)
+  archivedAt    DateTime?                          // ADR 0310 — soft-archive: hidden from the pipeline + the default list, restorable. NULL = live. Deliberately a timestamp, not a bool: "when was this retired" is the question you actually ask later.
   lastIndexedAt DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt

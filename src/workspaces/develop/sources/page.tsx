@@ -136,12 +136,31 @@ function CodeIndexStatus({ ragIndex }: { ragIndex: RagIndexStatus | null }) {
 
 function DocCard({ doc, onOpen, onSetAiEditable, onOpenStage }: { doc: InfoDoc; onOpen: () => void; onSetAiEditable: (next: boolean) => void; onOpenStage: (stage: string) => void }) {
   const translate = useTranslator();
-  const { scanDocs } = useWorkspaces();
+  const { scanDocs, infoDocAdmin } = useWorkspaces();
+  const archived = doc.archived === true;
   const menuItems: PopMenuItem[] = [{ label: translate({ key: 'workspaces.sources.details' }), onClick: () => { openDetail(<DocDetail doc={doc} onSetAiEditable={onSetAiEditable} onOpenStage={onOpenStage} />); } }];
   //? #66 — 'Regenerate' re-runs the doc scan (the available action in the frozen surface; no per-doc op).
   if (doc.source !== 'uploaded') menuItems.push({ label: translate({ key: 'workspaces.sources.regenerate' }), icon: 'wave-square', onClick: () => { scanDocs(); notify.success({ key: 'workspaces.sources.regenerateQueued' }); } });
+  //? ADR 0310 — retiring a doc. Archive is the reversible default and needs no confirm (it is undoable
+  //? from the Archived view one line below); delete destroys the content, so it is confirm-gated and
+  //? marked danger. Both are last in the menu, after the read-only actions.
+  menuItems.push(
+    { divider: true },
+    archived
+      ? { label: translate({ key: 'workspaces.sources.restore' }), icon: 'arrows-rotate', onClick: () => { infoDocAdmin(doc.id, 'restore'); } }
+      : { label: translate({ key: 'workspaces.sources.archive' }), icon: 'box-archive', onClick: () => { infoDocAdmin(doc.id, 'archive'); } },
+    {
+      label: translate({ key: 'workspaces.sources.delete' }), icon: 'trash', danger: true,
+      onClick: () => {
+        void menuHandler.confirm({
+          title: translate({ key: 'workspaces.sources.deleteConfirmTitle', params: [{ key: 'name', value: doc.name }] }),
+          content: translate({ key: 'workspaces.sources.deleteConfirmContent' }),
+        }).then((ok) => { if (ok) infoDocAdmin(doc.id, 'delete'); });
+      },
+    },
+  );
   return (
-    <div className={`rounded-xl border border-container1-border bg-container1 p-4 flex flex-col gap-2`}>
+    <div className={`rounded-xl border bg-container1 p-4 flex flex-col gap-2 ${archived ? 'border-dashed border-container2-border opacity-75' : 'border-container1-border'}`}>
       <div className={`flex items-center justify-between gap-2`}>
         <button type="button" onClick={onOpen} className={`flex items-center gap-2 min-w-0 text-left cursor-pointer group`}>
           <Icon name="file-lines" className={`text-muted`} />
@@ -194,6 +213,10 @@ export default function Sources() {
   const { docs, skills, toggleSkill, scanDocs, scanIndex, ragIndex, repo, addInfoDoc, indexMemory, focusSetup } = useWorkspaces();
   const [tab, setTab] = useState('docs');
   const [preview, setPreview] = useState<InfoDoc | null>(null);
+  //? ADR 0310 — the archived split is a VIEW concern; the server already stopped feeding archived docs
+  //? to the AI, so this is only about where they render.
+  const liveDocs = docs.filter((d) => d.archived !== true);
+  const archivedDocs = docs.filter((d) => d.archived === true);
   const [reindexing, setReindexing] = useState(false);
   //? K2 — upload a doc (md/txt) → read its text client-side → register it as a context-doc InfoSource.
   const fileRef = useRef<HTMLInputElement>(null);
@@ -250,7 +273,7 @@ export default function Sources() {
         {tab === 'docs' && (
           <div className={`flex flex-col gap-4`}>
             <CodeIndexStatus ragIndex={ragIndex} />
-            {docs.length === 0
+            {liveDocs.length === 0 && archivedDocs.length === 0
               ? (
                 <EmptyState
                   icon="file-lines"
@@ -264,7 +287,17 @@ export default function Sources() {
                   )}
                 />
               )
-              : <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3`}>{docs.map((d) => <DocCard key={d.id} doc={d} onOpen={() => { setPreview(d); }} onSetAiEditable={(next) => { toggleSkill(d.id, next); }} onOpenStage={onOpenStage} />)}</div>}
+              : <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3`}>{liveDocs.map((d) => <DocCard key={d.id} doc={d} onOpen={() => { setPreview(d); }} onSetAiEditable={(next) => { toggleSkill(d.id, next); }} onOpenStage={onOpenStage} />)}</div>}
+            {/* ADR 0310 — archived docs stay reachable but out of the way: they no longer feed any AI,
+                so they do not belong in the main grid, and they are not destroyed, so they must not
+                vanish either. A collapsed disclosure is exactly that middle ground. */}
+            {archivedDocs.length > 0 && (
+              <Disclosure summary={translate({ key: 'workspaces.sources.archivedCount', params: [{ key: 'n', value: String(archivedDocs.length) }] })}>
+                <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3`}>
+                  {archivedDocs.map((d) => <DocCard key={d.id} doc={d} onOpen={() => { setPreview(d); }} onSetAiEditable={(next) => { toggleSkill(d.id, next); }} onOpenStage={onOpenStage} />)}
+                </div>
+              </Disclosure>
+            )}
           </div>
         )}
         {tab === 'skills' && (

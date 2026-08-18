@@ -76,7 +76,7 @@
 | `api/workspaces/workspaceExport/v1` | POST | login | 6 | — | yes | — | Workspaces — [workspace-export] (H4) a tenant-scoped JSON export of the workspace's own data (portability / |
 | `api/workspaces/workspaceImport/v1` | POST | login | 3 | ItsLucky23 | yes | — | Workspaces — [workspace-import] (gap-fix) the missing counterpart of workspace-export: bring a |
 
-## Sync routes (66)
+## Sync routes (67)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -105,6 +105,7 @@
 | `sync/workspaces/documentsControl/v1` | yes | — | login | ItsLucky23 | yes | — | @docs owner ItsLucky23 |
 | `sync/workspaces/findingAction/v1` | yes | — | login | — | yes | — | Workspaces — Interviewer finding writes via `_sync` (ADR 0034). Two control-ops dispatched through |
 | `sync/workspaces/gitlabSettings/v1` | yes | — | login | — | yes | — | Workspaces — [gitlab-settings] REALTIME write via `_sync`. Saves the workspace's |
+| `sync/workspaces/infoDocAdmin/v1` | yes | — | login | — | yes | — | Workspaces — [info-source-archive \| info-source-delete] REALTIME write via `_sync` (ADR 0310). |
 | `sync/workspaces/invite/v1` | yes | — | login | — | yes | — | Workspaces — [invite] REALTIME write via `_sync`. Creates a pending invite (and |
 | `sync/workspaces/linkRepo/v1` | yes | — | login | — | yes | — | Workspaces — [link-repo] REALTIME write via `_sync` (register-flow step A). Clones |
 | `sync/workspaces/mrAction/v1` | yes | — | login | — | yes | — | Workspaces — [mr-*] REALTIME MR-review actions via `_sync` (BUILTIN_MR_REVIEW). One route for |
@@ -154,9 +155,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 24 |
-| _(unowned)_ | 106 |
+| _(unowned)_ | 107 |
 
-**Test coverage**: 128/130 routes have a per-route `.tests.ts`.
+**Test coverage**: 129/131 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 

@@ -1763,7 +1763,10 @@
       "budgetPrimaryLabel": "Hoofdbudget",
       "budgetUnnamedCap": "Naamloze limiet",
       "budgetScopeNote": "Dit beperkt de gemeten AI/API-uitgaven voor de hele workspace.",
-      "budgetMediaCapsLink": "Limieten voor mediagenerering"
+      "budgetMediaCapsLink": "Limieten voor mediagenerering",
+      "deleteCap": "Limiet verwijderen",
+      "deleteCapConfirmTitle": "“{{label}}” verwijderen?",
+      "deleteCapConfirmContent": "De limiet vervalt en verdwijnt uit deze lijst. Al geregistreerde uitgaven blijven ongemoeid."
     },
     "timetravel": {
       "button": "Oude versie",
@@ -1952,7 +1955,13 @@
       "reindexing": "Indexeren…",
       "ragIndexed": "{{files}} bestanden · {{chunks}} chunks geïndexeerd",
       "ragEmbedder": "embedder {{embedder}} · {{commit}}",
-      "ragNotIndexed": "Code nog niet geïndexeerd"
+      "ragNotIndexed": "Code nog niet geïndexeerd",
+      "archive": "Archiveren",
+      "restore": "Herstellen",
+      "delete": "Definitief verwijderen",
+      "deleteConfirmTitle": "{{name}} verwijderen?",
+      "deleteConfirmContent": "Dit verwijdert het document en de inhoud definitief. Archiveren houdt het herstelbaar.",
+      "archivedCount": "Gearchiveerd ({{n}})"
     },
     "mr": {
       "runCi": "CI draaien",
@@ -2159,7 +2168,9 @@
       "brandProvenanceLabel": "Laatst ingesteld vanuit: {{source}} · {{date}}",
       "brandProvenanceManual": "handmatige bewerking",
       "refinedWith": "verfijnd: “{{refine}}”",
-      "regenerateWithRefine": "Opnieuw genereren — verfijnd: “{{refine}}”"
+      "regenerateWithRefine": "Opnieuw genereren — verfijnd: “{{refine}}”",
+      "refineUsed": "Verfijnd met: {{text}}",
+      "brandSetFrom": "Laatst ingesteld vanuit {{source}}"
     },
     "uiReview": {
       "emptyTitle": "Nog geen UI-feedback.",

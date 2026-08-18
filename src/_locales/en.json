@@ -1763,7 +1763,10 @@
       "budgetPrimaryLabel": "Primary budget",
       "budgetUnnamedCap": "Unnamed cap",
       "budgetScopeNote": "This caps metered AI/API spend workspace-wide.",
-      "budgetMediaCapsLink": "Media generation caps"
+      "budgetMediaCapsLink": "Media generation caps",
+      "deleteCap": "Delete cap",
+      "deleteCapConfirmTitle": "Delete “{{label}}”?",
+      "deleteCapConfirmContent": "The cap stops applying and disappears from this list. Spend already recorded is unaffected."
     },
     "timetravel": {
       "button": "Past version",
@@ -1952,7 +1955,13 @@
       "reindexing": "Indexing…",
       "ragIndexed": "{{files}} files · {{chunks}} chunks indexed",
       "ragEmbedder": "embedder {{embedder}} · {{commit}}",
-      "ragNotIndexed": "Code not indexed yet"
+      "ragNotIndexed": "Code not indexed yet",
+      "archive": "Archive",
+      "restore": "Restore",
+      "delete": "Delete permanently",
+      "deleteConfirmTitle": "Delete {{name}}?",
+      "deleteConfirmContent": "This permanently removes the document and its content. Archiving keeps it restorable instead.",
+      "archivedCount": "Archived ({{n}})"
     },
     "mr": {
       "runCi": "Run CI",
@@ -2159,7 +2168,9 @@
       "brandProvenanceLabel": "Last set from: {{source}} · {{date}}",
       "brandProvenanceManual": "manual edit",
       "refinedWith": "refined: “{{refine}}”",
-      "regenerateWithRefine": "Regenerate — refined: “{{refine}}”"
+      "regenerateWithRefine": "Regenerate — refined: “{{refine}}”",
+      "refineUsed": "Refined with: {{text}}",
+      "brandSetFrom": "Last set from {{source}}"
     },
     "uiReview": {
       "emptyTitle": "No UI feedback yet.",

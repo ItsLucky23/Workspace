@@ -37,7 +37,7 @@ export type ControlOp =
   | 'gitlab-settings' | 'gitlab-verify' | 'gitlab-resync'
   | 'forge-connect'
   | 'save-git-config' | 'project-runtime-save' | 'save-sections' | 'save-ai-instruction' | 'save-ai-provider' | 'save-autonomy'
-  | 'link-repo' | 'scan-docs' | 'create-info-source' | 'scan-index'
+  | 'link-repo' | 'scan-docs' | 'create-info-source' | 'info-source-archive' | 'info-source-delete' | 'scan-index'
   | 'mr-create' | 'mr-comment' | 'mr-approve' | 'mr-merge' | 'mr-rollback' | 'mr-resolve' | 'mr-review'
   | 'raise-cap' | 'edit-budget' | 'resume-spend'
   | 'skill-toggle' | 'save-stage-config' | 'stage-create' | 'stage-delete' | 'stage-reorder'

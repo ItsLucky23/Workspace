@@ -12,10 +12,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
+import { menuHandler } from 'src/_functions/menuHandler';
+
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../../_components/Icon';
-import { AvatarBubble, Disclosure, EmptyState, SectionCard, Tabs, WsButton } from '../../_components/primitives';
+import { AvatarBubble, Disclosure, EmptyState, IconButton, SectionCard, Tabs, WsButton } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { Member, Ticket } from '../../_data/types';
 
@@ -347,6 +349,19 @@ export default function Usage() {
                           <span className={`font-mono tabular-nums text-xs text-muted`}>{capLabel}</span>
                           <Dropdown size="sm" value={enfItems.find((i) => i.id === (b.enforcement ?? 'pauseNew'))} items={enfItems} onChange={(it) => { editBudget({ budgetId: b.id, enforcement: it.id === 'pauseAll' ? 'pauseAll' : 'pauseNew' }); }} />
                           <button type="button" onClick={() => { editBudget({ budgetId: b.id, enabled: b.enabled === false }); }} className={`h-8 rounded-lg border border-container1-border bg-container1 px-2.5 text-xs text-common hover:bg-container2 cursor-pointer`}>{translate({ key: b.enabled === false ? 'workspaces.usage.budgetEnable' : 'workspaces.usage.budgetDisable' })}</button>
+                          {/* ADR 0310 — retire vs remove are different intents: disable keeps the cap in
+                              the list (and its history legible), delete is for caps you never want to see
+                              again. Confirm-gated because the row cannot be brought back. */}
+                          <IconButton
+                            icon="trash" title={translate({ key: 'workspaces.usage.deleteCap' })}
+                            onClick={() => {
+                              void menuHandler.confirm({
+                                title: translate({ key: 'workspaces.usage.deleteCapConfirmTitle', params: [{ key: 'label', value: b.label ?? '' }] }),
+                                content: translate({ key: 'workspaces.usage.deleteCapConfirmContent' }),
+                              }).then((ok) => { if (ok) editBudget({ budgetId: b.id, remove: true }); });
+                            }}
+                            className={`w-8 h-8 hover:text-wrong`}
+                          />
                         </div>
                       );
                     })}

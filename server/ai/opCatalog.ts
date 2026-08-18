@@ -239,6 +239,16 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: "register a user-provided text/markdown document as a context doc the coding AI reads (the 'bring your own knowledge' path). params: name (doc filename/label), content (the full md/txt text — include it verbatim in the proposal)",
     params: { name: { kind: 'string', required: true }, content: { kind: 'string', required: true } },
   },
+  'info-source-archive': {
+    mode: 'enabled',
+    hint: "archive or restore a context doc — an archived doc stops feeding the coding AI and drops out of the Sources list, but is fully restorable (nothing is destroyed). params: infoSourceId, archived (true to archive, false to restore)",
+    params: { infoSourceId: { kind: 'string', required: true }, archived: { kind: 'boolean', required: true } },
+  },
+  'info-source-delete': {
+    mode: 'enabled',
+    hint: "permanently delete a context doc. IRREVERSIBLE — prefer info-source-archive unless the user explicitly asks to delete for good. params: infoSourceId",
+    params: { infoSourceId: { kind: 'string', required: true } },
+  },
   'scan-index': { mode: 'enabled', hint: 'rebuild the code RAG index of the linked repo (so answers ground on the latest code). no params', params: {} },
   'mr-create': {
     mode: 'enabled',
@@ -280,8 +290,8 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   'raise-cap': EXCLUDED,
   'edit-budget': {
     mode: 'enabled', destructive: true,
-    hint: "create or edit the AI €-spend cap ('raise the budget to 50', 'alert me at 80%'). params: cap (the new amount), alertPct? (0-100), label?, enforcement? (pauseNew = pause new work | pauseAll = pause everything), create? (true = add a SEPARATE additional cap), enabled? (false retires the cap). Only pass the fields to change.",
-    params: { cap: { kind: 'number' }, alertPct: { kind: 'number' }, label: { kind: 'string' }, enforcement: { kind: 'enum', values: ['pauseNew', 'pauseAll'] }, create: { kind: 'boolean' }, enabled: { kind: 'boolean' } },
+    hint: "create or edit the AI €-spend cap ('raise the budget to 50', 'alert me at 80%'). params: cap (the new amount), alertPct? (0-100), label?, enforcement? (pauseNew = pause new work | pauseAll = pause everything), create? (true = add a SEPARATE additional cap), enabled? (false retires the cap but keeps it listed), remove? (true DELETES the cap identified by budgetId — irreversible, prefer enabled:false unless the user asks to remove it for good). Only pass the fields to change.",
+    params: { cap: { kind: 'number' }, alertPct: { kind: 'number' }, label: { kind: 'string' }, enforcement: { kind: 'enum', values: ['pauseNew', 'pauseAll'] }, create: { kind: 'boolean' }, enabled: { kind: 'boolean' }, budgetId: { kind: 'string' }, remove: { kind: 'boolean' } },
   },
   'resume-spend': {
     mode: 'enabled', destructive: true,

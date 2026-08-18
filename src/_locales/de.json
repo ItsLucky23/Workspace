@@ -1763,7 +1763,10 @@
       "budgetPrimaryLabel": "Hauptbudget",
       "budgetUnnamedCap": "Unbenanntes Limit",
       "budgetScopeNote": "Dies begrenzt die gemessenen KI-/API-Ausgaben für den gesamten Workspace.",
-      "budgetMediaCapsLink": "Medienerstellungslimits"
+      "budgetMediaCapsLink": "Medienerstellungslimits",
+      "deleteCap": "Limit löschen",
+      "deleteCapConfirmTitle": "„{{label}}“ löschen?",
+      "deleteCapConfirmContent": "Das Limit gilt nicht mehr und verschwindet aus dieser Liste. Bereits erfasste Ausgaben bleiben unberührt."
     },
     "timetravel": {
       "button": "Alte Version",
@@ -1952,7 +1955,13 @@
       "reindexing": "Indizierung…",
       "ragIndexed": "{{files}} Dateien · {{chunks}} Chunks indiziert",
       "ragEmbedder": "Embedder {{embedder}} · {{commit}}",
-      "ragNotIndexed": "Code noch nicht indiziert"
+      "ragNotIndexed": "Code noch nicht indiziert",
+      "archive": "Archivieren",
+      "restore": "Wiederherstellen",
+      "delete": "Endgültig löschen",
+      "deleteConfirmTitle": "{{name}} löschen?",
+      "deleteConfirmContent": "Dies entfernt das Dokument und seinen Inhalt endgültig. Archivieren hält es wiederherstellbar.",
+      "archivedCount": "Archiviert ({{n}})"
     },
     "mr": {
       "runCi": "CI ausführen",
@@ -2159,7 +2168,9 @@
       "brandProvenanceLabel": "Zuletzt festgelegt von: {{source}} · {{date}}",
       "brandProvenanceManual": "manuelle Bearbeitung",
       "refinedWith": "verfeinert: „{{refine}}“",
-      "regenerateWithRefine": "Neu generieren — verfeinert: „{{refine}}“"
+      "regenerateWithRefine": "Neu generieren — verfeinert: „{{refine}}“",
+      "refineUsed": "Verfeinert mit: {{text}}",
+      "brandSetFrom": "Zuletzt gesetzt aus {{source}}"
     },
     "uiReview": {
       "emptyTitle": "Noch kein UI-Feedback.",

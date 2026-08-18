@@ -8,6 +8,7 @@ import type { Ticket as DbTicket, Sprint as DbSprint, WorkspaceNote as DbNote, E
 
 import type { ContentAssetSummary, ContentPieceSummary, VideoSceneSummary, EnvVar, InfoDoc, IntegrationTool, InviteEntry, PermRole, RepoInfo, Role, Sprint, Ticket, TicketNote, TicketPriority, TicketStatus } from '../../src/workspaces/_data/types';
 import { TICKET_PRIORITIES } from '../../src/workspaces/_data/types';
+import { parseNeedsInputQuestions } from '../orchestrator/questionSet';
 
 //? DB priority string → the frontend `TicketPriority` union (falls back to 'normal'
 //? for a legacy row written before the column existed). Mirrors buildSnapshot.
@@ -23,6 +24,9 @@ export function toInfoDoc(s: DbInfoSource): InfoDoc {
   return {
     id: s.id, name: s.name, source: asDocSource(s.source), updated: '', note: s.note ?? '',
     summary: s.summary ?? '', usedByStages: s.usedByStages, content: s.content ?? '', aiEditable: s.enabled,
+    //? ADR 0310 — archived docs still ship to the client (the Sources page has an Archived view and a
+    //? restore action); it is the SERVER that stops feeding them to the AI, not this flag.
+    ...(s.archivedAt === null ? {} : { archived: true }),
   };
 }
 
@@ -79,12 +83,17 @@ function parseAdvisoryForClient(raw: unknown): { index: number; q: string; assum
 //? DEV-#### `key`, not the ObjectId). Mirrors the mapping in `buildSnapshot`.
 export function toTicket(t: DbTicket): Ticket {
   const advisory = parseAdvisoryForClient(t.advisoryQuestions);
+  //? W1 multi-question sets: how many of the parked questions are still unanswered. The answer inbox
+  //? derives its queue from tickets directly (ADR 0048 follow-up), so this is the only place this count
+  //? can be computed once for both the initial snapshot AND every live ticket delta.
+  const openQuestionCount = parseNeedsInputQuestions(t.needsInputQuestions, t.needsInput).filter((q) => q.a === null).length;
   return {
     id: t.key, workspaceId: t.workspaceId, projectId: t.projectId, title: t.title, description: t.description ?? undefined,
     stageId: t.stageId, status: asStatus(t.status), labels: t.labels, creatorId: t.creatorId ?? undefined, assigneeId: t.assigneeId ?? undefined,
     viewers: [], hasTerminal: false, branch: t.branch ?? undefined, mr: t.mrUrl ?? undefined, issue: t.issueUrl ?? undefined,
     sprintId: t.sprintId ?? undefined, serviceId: t.serviceId, carryOver: t.carryOver ?? undefined, needsInput: t.needsInput ?? undefined, archived: t.archived,
     ...(advisory.length > 0 ? { advisoryQuestions: advisory } : {}),
+    ...(openQuestionCount > 1 ? { openQuestionCount } : {}),
     priority: asPriority(t.priority),
     //? Real recency for the backlog/board time column (was a hardcoded mock array).
     //? `lastActivityAt` is denormalized from the latest TicketEvent; fall back to createdAt.

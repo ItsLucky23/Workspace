@@ -717,12 +717,17 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         id: a.id, workspaceId: a.workspaceId, briefId: a.briefId, kind: asArtifactKind(a.kind), role: a.role === 'marketer' ? 'marketer' : 'designer',
         title: a.title, content: a.content, status: asArtifactStatus(a.status),
         ...(a.providerId ? { providerId: a.providerId } : {}), ...(a.error ? { error: a.error } : {}), createdAt: a.createdAt.toISOString(),
+        ...(a.refine !== null && a.refine.length > 0 ? { refine: a.refine } : {}),
       })),
       studioBrand: studioBrandRow === null ? null : {
         workspaceId: studioBrandRow.workspaceId, name: studioBrandRow.name,
         palette: (Array.isArray(studioBrandRow.palette) ? studioBrandRow.palette : []).map((p) => ({ name: jsonStr(p, 'name'), hex: jsonStr(p, 'hex') })).filter((p) => p.hex.length > 0),
         typography: { heading: jsonStr(studioBrandRow.typography, 'heading'), body: jsonStr(studioBrandRow.typography, 'body') },
         voice: studioBrandRow.voice, taglines: studioBrandRow.taglines, logoIdeas: studioBrandRow.logoIdeas,
+        //? ADR 0310 — provenance travels with the record so the panel can say where the brand came
+        //? from on every device, not only the browser that promoted it.
+        ...(studioBrandRow.lastSetFrom === null ? {} : { lastSetFrom: studioBrandRow.lastSetFrom }),
+        ...(studioBrandRow.lastSetAt === null ? {} : { lastSetAt: studioBrandRow.lastSetAt.toISOString() }),
       },
       designArtifacts: designArtifactRows.map((d) => ({
         id: d.id, kind: d.kind, name: d.name, description: d.description ?? '', content: d.content, source: d.source, active: d.active, createdAt: d.createdAt.toISOString(),

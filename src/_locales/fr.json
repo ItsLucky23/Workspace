@@ -1763,7 +1763,10 @@
       "budgetPrimaryLabel": "Budget principal",
       "budgetUnnamedCap": "Plafond sans nom",
       "budgetScopeNote": "Ceci plafonne les dépenses IA/API mesurées pour tout l'espace de travail.",
-      "budgetMediaCapsLink": "Plafonds de génération média"
+      "budgetMediaCapsLink": "Plafonds de génération média",
+      "deleteCap": "Supprimer le plafond",
+      "deleteCapConfirmTitle": "Supprimer « {{label}} » ?",
+      "deleteCapConfirmContent": "Le plafond cesse de s'appliquer et disparaît de cette liste. Les dépenses déjà enregistrées ne changent pas."
     },
     "timetravel": {
       "button": "Version passée",
@@ -1952,7 +1955,13 @@
       "reindexing": "Indexation…",
       "ragIndexed": "{{files}} fichiers · {{chunks}} chunks indexés",
       "ragEmbedder": "embedder {{embedder}} · {{commit}}",
-      "ragNotIndexed": "Code pas encore indexé"
+      "ragNotIndexed": "Code pas encore indexé",
+      "archive": "Archiver",
+      "restore": "Restaurer",
+      "delete": "Supprimer définitivement",
+      "deleteConfirmTitle": "Supprimer {{name}} ?",
+      "deleteConfirmContent": "Cela supprime définitivement le document et son contenu. L'archivage le garde restaurable.",
+      "archivedCount": "Archivés ({{n}})"
     },
     "mr": {
       "runCi": "Lancer la CI",
@@ -2159,7 +2168,9 @@
       "brandProvenanceLabel": "Dernière définition depuis : {{source}} · {{date}}",
       "brandProvenanceManual": "modification manuelle",
       "refinedWith": "affiné : « {{refine}} »",
-      "regenerateWithRefine": "Régénérer — affiné : « {{refine}} »"
+      "regenerateWithRefine": "Régénérer — affiné : « {{refine}} »",
+      "refineUsed": "Affiné avec : {{text}}",
+      "brandSetFrom": "Dernière définition depuis {{source}}"
     },
     "uiReview": {
       "emptyTitle": "Pas encore de retours UI.",

@@ -548,6 +548,9 @@ export async function loadStageContextDocs(prisma: PrismaClient, workspaceId: st
     where: {
       workspaceId,
       mode: 'context-doc',
+      //? ADR 0310 — an archived doc must actually STOP reaching the agent, otherwise "archived" is a
+      //? label on a list rather than a decision about what the AI reads.
+      archivedAt: null,
       OR: [
         { source: 'starter', enabled: true, projectId },
         { source: 'design-system', enabled: true },

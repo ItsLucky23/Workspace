@@ -110,7 +110,9 @@ export interface ProjectImageCompleteInternalAction extends InternalActionBase {
 export interface BrandImportInternalAction extends InternalActionBase {
   op: 'brand-import';
   target: { expectedVersion?: number };
-  payload: { kit: unknown };
+  //? `setFrom` is provenance, carried alongside the kit rather than inside it: `parseBrandKit`
+  //? validates brand CONTENT and would strip an unknown field (ADR 0310).
+  payload: { kit: unknown; setFrom?: string };
 }
 
 export interface StyleImportInternalAction extends InternalActionBase {

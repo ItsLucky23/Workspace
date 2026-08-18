@@ -90,7 +90,7 @@ export const CHAT_ENABLED_OPS = [
   'mr-create', 'mr-comment', 'mr-approve', 'mr-merge', 'mr-resolve', 'service-create', 'service-delete',
   // automation triggers + workflow-snippet skills + knowledge intake
   'trigger-save', 'trigger-toggle', 'trigger-delete', 'skill-toggle', 'ai-skill-delete',
-  'create-info-source', 'link-repo',
+  'create-info-source', 'info-source-archive', 'info-source-delete', 'link-repo',
   // workspace settings + budgets
   'save-sections', 'save-ai-instruction', 'save-ai-provider', 'save-autonomy', 'save-stage-config',
   'edit-budget', 'resume-spend', 'edit-media-budget',

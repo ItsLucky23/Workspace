@@ -4839,3 +4839,24 @@ Tijdens het loggen bleek mijn eigen `npm install` onder npm 11.6.1 te hebben ged
 **NIET af (bewust, met reden):** contextdoc-archiveren/verwijderen (beslissing 5a) is alleen aan de UI-kant gedaan. De backend ontbreekt: `InfoSource` heeft geen `archived`-veld en er bestaan geen archive/delete-control-ops. Dat vraagt een Prisma-migratie (developer-actie, Rule 8) plus nieuwe ops in opCatalog/RBAC/Conductor (invariant B-23). Verder: 42 `text-disabled`-gebruiken op echte content wachten op een per-plek-oordeel, en de 2FA-sectie (`src/_components/TwoFactorSection.tsx`) animeert nog niet omdat die buiten elke agent-scope viel.
 
 **Geen browserverificatie** — server-start is een developer-actie.
+
+## 2026-08-18 00:40 — Backend-patch: contextdoc-archief, budget-delete, en refine/brand-provenance duurzaam
+
+**User prompt:** "doe nu maar eerst de backend patch" — na het eerlijke restpunten-overzicht.
+
+**Wat ik deed:**
+- **Schema (MongoDB, dus additief zonder datamigratie):** `InfoSource.archivedAt`, `StudioArtifact.refine`, `StudioBrandLibrary.lastSetFrom/lastSetAt`.
+- **Contextdocs (beslissing 5, was alleen UI):** twee nieuwe ops `info-source-archive` / `info-source-delete` — geregistreerd in `opCatalog`, `rbac` (editPipeline), de `ControlOp`-union, de client-spiegel `chatOps`, `chatDispatch` (dus ook via de assistent bereikbaar) en de Conductor (enige schrijver, tenant-guard via `workspaceId` in de where). Nieuwe sync-route `infoDocAdmin_server_v1` + per-route-tests. Sources-UI kreeg archiveren/herstellen/verwijderen (delete confirm-gated) en een "Gearchiveerd (N)"-disclosure. **Belangrijk:** de archief-filter zit óók in `loadStageContextDocs` en `knowledgeContext` — anders was archiveren alleen een label geweest en las de AI het document gewoon door.
+- **Budget-cap verwijderen (beslissing 4, tweede helft):** een `remove`-vlag op `edit-budget` in plaats van een nieuwe op (zelfde doel, capability en tenant-guard; een aparte verb had geclassificeerd en aangeleerd moeten worden zonder gedragswinst). Catalogus-hint bijgewerkt zodat de assistent 'm kan gebruiken, plus een confirm-gated prullenbak-knop per cap op insights/usage.
+- **De twee dingen die ik eerder te stellig bracht:** `refine` wordt nu bij `beginArtifact` op het artefact zelf gestempeld, en brand-provenance reist mee via het `brand-import`-payload → `saveBrandLibrary`. Beide staan in de snapshot en de UI leest ze daar. De twee localStorage-helpers (`refineHistory.ts`, `brandProvenance.ts`) zijn verwijderd — die waren browser-lokaal en zouden nu dubbel schrijven.
+- **effectMatrix**: beide nieuwe ops geclassificeerd als `covered` met verwijzing naar de nieuwe testcases (de `opEffectCoverage`-bewaker eist dat).
+
+**Files touched:** `prisma/schema.prisma`, `server/ai/opCatalog.ts`, `server/control/rbac.ts`, `server/orchestrator/{conductor,internalOps}.ts`, `server/read/{mappers,workspaceSnapshot}.ts`, `server/orchestrator/stageRunner.ts`, `server/content/knowledgeContext.ts`, `server/studio/{brand,generate}.ts`, `src/workspaces/_api/studioBrand_v1.ts`, `src/workspaces/_sync/{infoDocAdmin_server_v1.ts,infoDocAdmin_server_v1.tests.ts,projectAdmin_server_v1.ts}`, `src/workspaces/_functions/{controlApi,chatDispatch}.ts`, `src/workspaces/_data/{chatOps,types}.ts`, `src/workspaces/_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `src/workspaces/develop/sources/page.tsx`, `src/workspaces/insights/usage/page.tsx`, `src/workspaces/content/{marketing,studio}/*`, `src/_locales/*.json`, `tests/effectMatrix.mts`.
+
+**Verificatie:** `npx tsc --noEmit` groen · `npm run lint` groen · `npm run build` groen · `npm run ai:lint` groen · `npm run test:unit` 120/120 · locale-pariteit 4×2715, 0 drift. Twee bewakers sloegen onderweg terecht aan: `opCatalogParity` (client-spiegel liep achter) en de `Record<ControlOp,…>`-typechecks — beide opgelost door de op écht overal te registreren, niet door de bewaker te verzwakken.
+
+**Developer-actie:** `npm run prisma:generate` faalde op een vergrendelde `query_engine-windows.dll` omdat de dev-server draaide. De TYPES zijn wél geschreven (daarom compileert alles), alleen de engine-binary is niet vervangen — schema-onafhankelijk, dus functioneel geen probleem. Draai na het stoppen van de server alsnog eenmalig `npm run prisma:generate` en herstart daarna server + client.
+
+**Niet in deze patch (blijft open):** documentversie-diff (er is geen read-verb voor revisie-inhoud), project-services hernoemen/pad wijzigen, de "sleutel is ingesteld"-badge, en de interviewer-focus als tag op findings. Geen browserverificatie; sweep en Playwright niet gedraaid.
+
+**Los gevonden, niet gefixt (rapporteren i.p.v. autofixen):** `server/media/uploadRoute.ts` gebruikt errorCode `validation.failed`, een sleutel die in geen enkele locale bestaat — de gebruiker ziet daar de ruwe sleutel.

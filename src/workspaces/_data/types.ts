@@ -696,6 +696,7 @@ export interface InfoDoc {
   usedByStages?: string[];   // stage names that load this doc
   content: string;           // markdown/text shown in the read-only preview
   aiEditable: boolean;       // may the AI edit this doc? (docs-init per-file gate; backed by InfoSource.enabled)
+  archived?: boolean;        // ADR 0310 — soft-archived: no longer fed to any AI, hidden behind the Archived view, restorable
 }
 
 export interface SkillEntry {
@@ -1198,6 +1199,8 @@ export interface StudioBrandLibrary {
   voice: string;
   taglines: string[];
   logoIdeas: string[];
+  lastSetFrom?: string;      // ADR 0310 — provenance: 'manual', or the title of the artifact whose "Use as brand" last overwrote this
+  lastSetAt?: string;
 }
 
 export interface StudioBrief {
@@ -1222,6 +1225,7 @@ export interface StudioArtifact {
   title: string;
   content: unknown;          // kind-specific: {html} | {sections[]} | brand tokens | {markdown}
   providerId?: string;
+  refine?: string;           // ADR 0310 — the refine instruction that produced THIS artifact (was browser-local, so a regenerate could silently apply an unrelated newer one)
   status: 'generating' | 'ready' | 'error';
   error?: string;
   createdAt: string;

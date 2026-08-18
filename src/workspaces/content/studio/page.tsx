@@ -18,11 +18,9 @@ import { isSectionEnabled } from '../../_data/modules';
 import type { StudioArtifact, StudioArtifactKind, StudioBrief } from '../../_data/types';
 import { BrandDiffList } from './BrandDiffList';
 import { buildBrandDiff } from './brandDiff';
-import { recordBrandProvenance } from './brandProvenance';
 import { BrandPanel } from './BrandPanel';
 import { ContentPromptPreview } from './promptStack';
 import { ArtifactBody } from './previews';
-import { getArtifactRefine, recordArtifactRefine } from './refineHistory';
 import { asRecord, asStr, downloadHtmlAsPng, inputCls } from './content';
 
 export const template = 'workspaces';
@@ -123,10 +121,9 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
     if (!selected || busyKind !== null) return;
     setBusyKind(kind);
     const trimmedRefine = refine.trim();
-    const res = await generateArtifact(selected.id, kind, trimmedRefine || undefined);
+    await generateArtifact(selected.id, kind, trimmedRefine || undefined);
     //? I4 bug fix — record which refine text produced this artifact (Generate AND Regenerate both
     //? land here, sharing the one refine box), so a later card never silently inherits a stale value.
-    if (res.artifactId) recordArtifactRefine(res.artifactId, trimmedRefine);
     setBusyKind(null);
   };
 
@@ -142,7 +139,7 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
           <BrandDiffList rows={rows} />
         </div>
       ),
-    }).then((ok) => { if (ok) { void promoteBrand(artifact.id); recordBrandProvenance(activeWorkspace.id, artifact.title); } });
+    }).then((ok) => { if (ok) void promoteBrand(artifact.id); });
   };
 
   const removeBrief = (b: StudioBrief) => void menuHandler.confirm({
@@ -401,7 +398,7 @@ function ArtifactCard({ artifact, busy, pendingRefine, onDelete, onRegenerate, o
   //? I4 bug fix — the refine that PRODUCED this card (persisted, historical) vs. the refine that WILL
   //? apply if Regenerate is clicked now (the live shared box) are two different things; show both
   //? instead of leaving the user to guess which one a stale box silently reapplies.
-  const usedRefine = getArtifactRefine(artifact.id);
+  const usedRefine = artifact.refine ?? null;
   const trimmedPending = pendingRefine.trim();
   const regenerateLabel = trimmedPending.length > 0
     ? translate({ key: 'workspaces.studio.regenerateWithRefine', params: [{ key: 'refine', value: trimmedPending.length > 28 ? `${trimmedPending.slice(0, 27)}…` : trimmedPending }] })

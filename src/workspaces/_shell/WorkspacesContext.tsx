@@ -158,7 +158,7 @@ export interface WorkspacesCtx {
   planCritique: (ticketKey: string) => void;
   //? #103 — multi-cap budget editor: edit a specific cap by id (label/cap/alertPct/enforcement, or
   //? enabled:false to retire), create a new cap, or (no id/create) edit the first/legacy cap.
-  editBudget: (input: { cap?: number; alertPct?: number; budgetId?: string; label?: string; enforcement?: 'pauseNew' | 'pauseAll'; enabled?: boolean; create?: boolean }) => void;
+  editBudget: (input: { cap?: number; alertPct?: number; budgetId?: string; label?: string; enforcement?: 'pauseNew' | 'pauseAll'; enabled?: boolean; create?: boolean; remove?: boolean }) => void;
   resumeSpend: () => void;
   resyncForge: () => void;
   allowCiRed: (enabled: boolean) => void;
@@ -173,6 +173,9 @@ export interface WorkspacesCtx {
   scanDocs: () => void;
   //? K2 — register an uploaded doc (md/txt) as a context-doc InfoSource.
   addInfoDoc: (name: string, content: string) => void;
+  //? ADR 0310 — retiring a context doc. 'archive' is the reversible default (the doc stops feeding
+  //? every AI); 'delete' is permanent and the caller is expected to have confirmed it.
+  infoDocAdmin: (docId: string, action: 'archive' | 'restore' | 'delete') => void;
   //? RAG code index (07 §D) — trigger a reindex + the latest index status (null until scanned).
   scanIndex: () => void;
   ragIndex: RagIndexStatus | null;

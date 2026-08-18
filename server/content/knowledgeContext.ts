@@ -12,7 +12,8 @@ const MAX_TOTAL_CHARS = 6000;
 
 export async function buildKnowledgeContext(prisma: PrismaClient, workspaceId: string): Promise<string> {
   const docs = await prisma.infoSource.findMany({
-    where: { workspaceId, mode: 'context-doc', enabled: true },
+    //? ADR 0310 — archived docs stop grounding content generation too, not just the coding agent.
+    where: { workspaceId, mode: 'context-doc', enabled: true, archivedAt: null },
     select: { name: true, content: true },
     orderBy: { name: 'asc' },
   });

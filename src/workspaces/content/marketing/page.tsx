@@ -18,9 +18,7 @@ import { isSectionEnabled } from '../../_data/modules';
 import type { StudioArtifact, StudioArtifactKind, StudioBrief } from '../../_data/types';
 import { BrandDiffList } from '../studio/BrandDiffList';
 import { buildBrandDiff } from '../studio/brandDiff';
-import { recordBrandProvenance } from '../studio/brandProvenance';
 import { ContentPromptPreview } from '../studio/promptStack';
-import { recordArtifactRefine } from '../studio/refineHistory';
 import { ArtifactCard } from './cards';
 import { MARKETER_KINDS } from './kinds';
 import { BrandPanel, BriefForm } from './panels';
@@ -59,10 +57,9 @@ export default function Marketing() {
     if (!selected) return;
     setBusyKind(kind);
     const trimmedRefine = refine.trim();
-    const res = await generateArtifact(selected.id, kind, trimmedRefine || undefined);
+    await generateArtifact(selected.id, kind, trimmedRefine || undefined);
     //? I4 bug fix — persist which refine text produced this artifact, so a later card can never
     //? silently be mistaken for having used a different (stale or since-cleared) refine.
-    if (res.artifactId) recordArtifactRefine(res.artifactId, trimmedRefine);
     setBusyKind(null);
     //? Consume the refine text on use — otherwise it silently reapplies to Regenerate on a
     //? completely different, older card with no record of which text produced which result.
@@ -93,7 +90,7 @@ export default function Marketing() {
           <BrandDiffList rows={rows} />
         </div>
       ),
-    }).then((ok) => { if (ok) { void promoteBrand(artifact.id); recordBrandProvenance(activeWorkspace.id, artifact.title); } });
+    }).then((ok) => { if (ok) void promoteBrand(artifact.id); });
   };
 
   const removeBrief = (b: StudioBrief) => void menuHandler.confirm({

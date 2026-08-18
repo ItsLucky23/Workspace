@@ -1397,6 +1397,9 @@ async function executeAction(action: WriterAction): Promise<unknown> {
   if (action.op === 'brand-import') {
     const parsed = parseBrandKit(action.payload.kit);
     if (!parsed) return { ok: false, error: 'brand.invalidKit' };
+    //? ADR 0310 — record WHERE this brand came from (a promoted artifact's title, or 'manual'), so
+    //? the panel can say so and a silent overwrite by a stray artifact leaves a trace.
+    if (action.payload.setFrom !== undefined) parsed.setFrom = action.payload.setFrom;
     const cas = await applyEntityCas(prisma, {
       workspaceId: action.workspaceId, entityKey: ENTITY_VERSION_KEYS.brandLibrary,
       expectedVersion: action.target.expectedVersion ?? 0, requestId: action.clientRequestId,
@@ -2415,6 +2418,29 @@ async function executeAction(action: WriterAction): Promise<unknown> {
         : prisma.infoSource.create({ data: { workspaceId: action.workspaceId, mode: 'context-doc', source: 'uploaded', name, content, summary, note: 'uploaded', enabled: false, usedByStages: [] } }));
       return prisma.infoSource.findMany({ where: { workspaceId: action.workspaceId, mode: 'context-doc' }, orderBy: { name: 'asc' } });
     }
+    case 'info-source-archive': {
+      //? ADR 0310 — soft-archive a context doc: it stops feeding the coding AI (loadStageContextDocs
+      //? and the content knowledge-context both filter on archivedAt) and moves to the Sources page's
+      //? Archived view, restorable at any time. `updateMany` scoped by workspaceId is the tenant guard:
+      //? an id from another workspace matches zero rows instead of writing across the boundary.
+      const infoSourceId = str(payload, 'infoSourceId');
+      if (!infoSourceId) return;
+      //? Absent/garbled `archived` means archive: the op exists to retire a doc, so that is the safe default.
+      const archived = bool(payload, 'archived');
+      await prisma.infoSource.updateMany({
+        where: { id: infoSourceId, workspaceId: action.workspaceId },
+        data: { archivedAt: archived ? new Date() : null },
+      });
+      return prisma.infoSource.findMany({ where: { workspaceId: action.workspaceId, mode: 'context-doc' }, orderBy: { name: 'asc' } });
+    }
+    case 'info-source-delete': {
+      //? The irreversible sibling of the archive op. The UI gates this behind a confirm; the Conductor
+      //? does not second-guess an explicit delete, it only refuses to cross the tenant boundary.
+      const deleteId = str(payload, 'infoSourceId');
+      if (!deleteId) return;
+      await prisma.infoSource.deleteMany({ where: { id: deleteId, workspaceId: action.workspaceId } });
+      return prisma.infoSource.findMany({ where: { workspaceId: action.workspaceId, mode: 'context-doc' }, orderBy: { name: 'asc' } });
+    }
     case 'scan-index': {
       //? RAG index (07 §D): read the linked repo's code, chunk + embed it, upsert the RagEntry
       //? store. Returns the index result (files/chunks/commit/embedder) as the delta.
@@ -2504,6 +2530,14 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       //? edits the first cap or creates the first one (single-cap back-compat). Enforcement stays ADVISORY
       //? here (visibility-first #16) — pausing on it is the coupled #99 product decision, not wired yet.
       if (budgetId) {
+        //? ADR 0310 — deleting a cap. Deliberately a flag on `edit-budget` rather than a new op: it is
+        //? the same target, the same capability and the same tenant guard, and a separate verb would
+        //? have to be classified, RBAC'd and taught to the assistant for no behavioural gain. Retiring
+        //? via `enabled:false` stays available — delete is for caps you never want to see again.
+        if (bool(payload, 'remove')) {
+          await prisma.workspaceBudget.deleteMany({ where: { id: budgetId, workspaceId: action.workspaceId } });
+          return;
+        }
         const data: { cap?: number; alertPct?: number; label?: string; enforcement?: string; enabled?: boolean } = {};
         if (cap !== undefined) data.cap = cap;
         if (alertPct !== undefined) data.alertPct = alertPct;
