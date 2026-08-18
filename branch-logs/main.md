@@ -5048,3 +5048,25 @@ regressie later maskeren, dus hij blijft zoals hij is.
 Mijn eigen structurele bewaker in `urlTrail.test.mts` sloeg aan op de hook-wijziging en is verbreed
 naar de VORM (een head van precies `depth` plus de nieuwe id) in plaats van één letterlijke
 uitdrukking — hetzelfde patroon als bij de navStructure-guard.
+
+## 2026-08-19 00:20 — Volledige suite groen na serverherstart
+
+**Prompt van de gebruiker.** "ik heb prisma generate gedaan en backend gerestart".
+
+**Wat ik heb gedaan.** De twee suites opnieuw gedraaid die op de verouderde server strandden.
+
+- Sweep: **442 passed · 0 failed** (was 436/6).
+- Playwright: **24/24** (was 23/24).
+
+**Correctie op mijn vorige rapport.** Ik meldde `workspaces/deleteWorkspace/v1 :: api.invalidRequest`
+als niet-toegewezen en mogelijk al bestaand. Dat was het niet: hij liep mee in dezelfde
+stale-server-oorzaak en is na de herstart groen. De drie `repoIntrospect`-tests plus de
+auth-enforcement-check op diezelfde route hadden dezelfde reden (`api.notFound` — de route bestond in
+code en in de gegenereerde map, maar de draaiende backend had zijn routekaart bij boot geladen).
+
+De zesde fout (`contentControl` :: echte ffmpeg-trim) was Docker, dat nu ook draait (29.6.1). Idem de
+laatste Playwright-fout: Terminals toont nu de repo-melding in plaats van de Docker-melding, zoals de
+spec verwacht.
+
+**Notities.** Volledige stand: `tsc` ✅ `lint` ✅ `ai:lint` ✅ `build` ✅ · unit 122/122 · sweep
+442/442 · playwright 24/24. Geen code gewijzigd in deze stap — alleen verificatie.
