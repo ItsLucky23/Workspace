@@ -13,8 +13,8 @@ import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon, { type IconName } from '../../_components/Icon';
 import { MediaUploadButton } from '../../_components/MediaUploadButton';
-import { Disclosure, EmptyState, FOCUS_RING, IconButton, PopMenu, SectionCard, Segmented, Toggle, WsButton, type PopMenuItem } from '../../_components/primitives';
-import { SetupNotice } from '../../_components/SetupNotice';
+import { Disclosure, EmptyState, FOCUS_RING, IconButton, InfoTip, PopMenu, SectionCard, Segmented, Toggle, WsButton, type PopMenuItem } from '../../_components/primitives';
+import { EmptyPicker, SetupNotice } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import ImageRegionEditor from '../../_components/ImageRegionEditor';
 import ImageEditor from '../../_components/ImageEditor';
@@ -145,7 +145,7 @@ function AudioTrimEditor({ src, onSubmit, translate }: { src: string; onSubmit: 
 
 export default function ContentPiece({ params }: { params: Record<string, string | undefined> }) {
   const id = params.pieceid ?? '';
-  const { content, runContentOp, navigate, activeWorkspace, outputTemplates, readiness } = useWorkspaces();
+  const { content, runContentOp, navigate, activeWorkspace, outputTemplates, readiness, focusSetup } = useWorkspaces();
   const translate = useTranslator();
   const [styleKey, setStyleKey] = useState('');
   const [durationKey, setDurationKey] = useState('auto');
@@ -450,6 +450,19 @@ export default function ContentPiece({ params }: { params: Record<string, string
             {/* Q1/B4 — the always-visible spend-transparency line: every generation is confirmed first. */}
             <div className={`flex items-start justify-center gap-2 text-xs text-muted`}>
               <Icon name="triangle-exclamation" className={`text-warning mt-0.5`} /> {translate({ key: 'workspaces.content.costWarning' })}
+              {/* ADR 0312 — what-else-affects-it: the chip is ONE video-gen unit (registry.ts:38-50), while a run
+                  generates one clip per scene (sceneDecompose.ts:72-90) and the scene count comes from the
+                  duration preset (script.ts:36-40). */}
+              <InfoTip
+                align="center"
+                label={translate({ key: 'workspaces.tips.piece.costTitle' })}
+                title={translate({ key: 'workspaces.tips.piece.costTitle' })}
+                body={translate({ key: 'workspaces.tips.piece.costBody' })}
+                points={[
+                  { id: 'scenes', label: translate({ key: 'workspaces.tips.piece.costScenes' }), desc: translate({ key: 'workspaces.tips.piece.costScenesDesc' }) },
+                  { id: 'extras', label: translate({ key: 'workspaces.tips.piece.costExtras' }), desc: translate({ key: 'workspaces.tips.piece.costExtrasDesc' }) },
+                ]}
+              />
             </div>
             {/* The single-step generations — relocated behind a disclosure; same fire() path + confirms. */}
             <Disclosure summary={translate({ key: 'workspaces.content.moreGenerations' })}>
@@ -464,10 +477,40 @@ export default function ContentPiece({ params }: { params: Record<string, string
               so they stay visible between the generate area and the assets. */}
           <SectionCard title={translate({ key: 'workspaces.content.directionTitle' })} desc={translate({ key: 'workspaces.content.directionDesc' })}>
             <div className={`flex flex-col gap-3`}>
-              <label className="flex flex-col gap-1 text-sm">
-                <span className="text-muted">{translate({ key: 'workspaces.content.styleLabel' })}</span>
-                {/* Q3: pick a known style by name (deduped across features) instead of guessing a magic string. */}
-                <Dropdown size="md" width="full" value={styleItems.find((i) => i.id === styleKey)} items={styleItems} onChange={(it) => { setStyleKey(String(it.id)); }} />
+              {/* A <div>, not a <label>: the empty-state carries its own "create a style" button, and a label
+                  would forward a click on the word "Style" straight into it. */}
+              <div className="flex flex-col gap-1 text-sm">
+                <span className={`flex items-center gap-1.5 text-muted`}>
+                  {translate({ key: 'workspaces.content.styleLabel' })}
+                  {/* ADR 0312 — where-does-this-come-from: the list is deduped across features (page.tsx:207) but
+                      each step resolves the key against ITS OWN feature only (styles.ts:83-88), so a script style
+                      silently does nothing to the video scenes. */}
+                  <InfoTip
+                    align="start"
+                    label={translate({ key: 'workspaces.tips.piece.styleTitle' })}
+                    title={translate({ key: 'workspaces.tips.piece.styleTitle' })}
+                    body={translate({ key: 'workspaces.tips.piece.styleBody' })}
+                    points={[
+                      { id: 'step', label: translate({ key: 'workspaces.tips.piece.styleStep' }), desc: translate({ key: 'workspaces.tips.piece.styleStepDesc' }) },
+                      {
+                        id: 'where', label: translate({ key: 'workspaces.tips.piece.styleWhere' }), desc: translate({ key: 'workspaces.tips.piece.styleWhereDesc' }),
+                        onGo: () => { focusSetup({ view: 'content/settings', tab: 'brand' }); }, goLabel: translate({ key: 'workspaces.tips.piece.styleWhereGo' }),
+                      },
+                    ]}
+                  />
+                </span>
+                {/* Q3: pick a known style by name (deduped across features) instead of guessing a magic string.
+                    ADR 0312 — with no styles the picker held one dead "No style" row (the global seed never runs
+                    in production, styles.ts:72-79), so say what a style is and where it is made instead. */}
+                {styleItems.length > 1
+                  ? <Dropdown size="md" width="full" value={styleItems.find((i) => i.id === styleKey)} items={styleItems} onChange={(it) => { setStyleKey(String(it.id)); }} />
+                  : (
+                    <EmptyPicker
+                      icon="wand-magic-sparkles"
+                      label={translate({ key: 'workspaces.tips.piece.styleEmpty' })}
+                      fix={{ cap: 'workspaceSettings', view: 'content/settings', tab: 'brand', cta: translate({ key: 'workspaces.tips.piece.styleEmptyCta' }) }}
+                    />
+                  )}
                 {/* M1 — a thumbnail preview of the chosen style's look, when the style carries a preview asset.
                     Prefer a video-gen style's preview (the piece is a video), and prefix backend-relative /media URLs. */}
                 {(() => {
@@ -479,9 +522,33 @@ export default function ContentPiece({ params }: { params: Record<string, string
                     ? <video src={src} muted loop autoPlay playsInline className="mt-1 w-28 h-28 object-cover rounded-lg border border-container2-border" />
                     : <img src={src} alt="" className="mt-1 w-28 h-28 object-cover rounded-lg border border-container2-border" />;
                 })()}
-              </label>
+              </div>
               <label className="flex flex-col gap-1 text-sm">
-                <span className="text-muted">{translate({ key: 'workspaces.content.extraLabel' })}</span>
+                <span className={`flex items-center gap-1.5 text-muted`}>
+                  {translate({ key: 'workspaces.content.extraLabel' })}
+                  {/* ADR 0312 — what-else-affects-it: the script prompt is composed brand → knowledge → best-
+                      practices → inspiration → style → THIS text, in that order (script.ts:105-113). */}
+                  <InfoTip
+                    align="start"
+                    label={translate({ key: 'workspaces.tips.piece.directionTitle' })}
+                    title={translate({ key: 'workspaces.tips.piece.directionTitle' })}
+                    body={translate({ key: 'workspaces.tips.piece.directionBody' })}
+                    points={[
+                      {
+                        id: 'brand', label: translate({ key: 'workspaces.tips.piece.directionBrand' }), desc: translate({ key: 'workspaces.tips.piece.directionBrandDesc' }),
+                        onGo: () => { focusSetup({ view: 'content/settings', tab: 'brand' }); }, goLabel: translate({ key: 'workspaces.tips.piece.directionBrandGo' }),
+                      },
+                      {
+                        id: 'voice', label: translate({ key: 'workspaces.tips.piece.directionVoice' }), desc: translate({ key: 'workspaces.tips.piece.directionVoiceDesc' }),
+                        onGo: () => { focusSetup({ view: 'content/settings', tab: 'channels' }); }, goLabel: translate({ key: 'workspaces.tips.piece.directionVoiceGo' }),
+                      },
+                      {
+                        id: 'docs', label: translate({ key: 'workspaces.tips.piece.directionDocs' }), desc: translate({ key: 'workspaces.tips.piece.directionDocsDesc' }),
+                        onGo: () => { navigate('sources'); }, goLabel: translate({ key: 'workspaces.tips.piece.directionDocsGo' }),
+                      },
+                    ]}
+                  />
+                </span>
                 <textarea value={extra} onChange={(e) => { setExtra(e.target.value); }} rows={3} placeholder={translate({ key: 'workspaces.content.extraPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring resize-none" />
               </label>
               {/* Output/render settings — they only affect pipeline/assemble, so they live one tap away. */}
@@ -525,12 +592,36 @@ export default function ContentPiece({ params }: { params: Record<string, string
                     <span className="text-muted">{translate({ key: 'workspaces.content.aspectLabel' })}</span>
                     <Dropdown size="md" width="full" value={aspectItems.find((i) => i.id === aspectKey)} items={aspectItems} onChange={(it) => { setAspectKey(String(it.id)); }} />
                   </label>
-                  {templateItems.length > 1 && (
-                    <label className="flex flex-col gap-1 text-sm">
-                      <span className="text-muted">{translate({ key: 'workspaces.content.templateLabel' })}</span>
-                      <Dropdown size="md" width="full" value={templateItems.find((i) => i.id === templateKey) ?? templateItems[0]} items={templateItems} onChange={(it) => { setTemplateKey(String(it.id)); }} />
-                    </label>
-                  )}
+                  {/* A <div>, not a <label>: the empty-state carries its own "create a template" button. */}
+                  <div className="flex flex-col gap-1 text-sm">
+                    <span className={`flex items-center gap-1.5 text-muted`}>
+                      {translate({ key: 'workspaces.content.templateLabel' })}
+                      {/* ADR 0312 — what-happens-if-i-change-it: the pipeline never reads templateId
+                          (conductor.ts:2855-2886); on assemble the template's format overwrites the chosen
+                          aspect ratio (conductor.ts:3395-3409). */}
+                      <InfoTip
+                        align="start"
+                        label={translate({ key: 'workspaces.tips.piece.templateTitle' })}
+                        title={translate({ key: 'workspaces.tips.piece.templateTitle' })}
+                        body={translate({ key: 'workspaces.tips.piece.templateBody' })}
+                        points={[
+                          { id: 'assemble', label: translate({ key: 'workspaces.tips.piece.templateUse' }), desc: translate({ key: 'workspaces.tips.piece.templateUseDesc' }) },
+                          { id: 'aspect', label: translate({ key: 'workspaces.tips.piece.templateAspect' }), desc: translate({ key: 'workspaces.tips.piece.templateAspectDesc' }) },
+                        ]}
+                      />
+                    </span>
+                    {/* ADR 0312 — with no templates the whole field used to disappear, so the feature was
+                        invisible; name it and point at where templates are made instead. */}
+                    {templateItems.length > 1
+                      ? <Dropdown size="md" width="full" value={templateItems.find((i) => i.id === templateKey) ?? templateItems[0]} items={templateItems} onChange={(it) => { setTemplateKey(String(it.id)); }} />
+                      : (
+                        <EmptyPicker
+                          icon="diagram-project"
+                          label={translate({ key: 'workspaces.tips.piece.templateEmpty' })}
+                          fix={{ cap: 'workspaceSettings', view: 'content/settings', tab: 'brand', cta: translate({ key: 'workspaces.tips.piece.templateEmptyCta' }) }}
+                        />
+                      )}
+                  </div>
                   <label className="flex flex-col gap-1 text-sm">
                     <span className="text-muted">{translate({ key: 'workspaces.content.ctaLabel' })}</span>
                     <input value={ctaText} onChange={(e) => { setCtaText(e.target.value); }} placeholder={translate({ key: 'workspaces.content.ctaPlaceholder' })} className="rounded-lg border border-container2-border bg-container2 px-3 py-2 text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring" />

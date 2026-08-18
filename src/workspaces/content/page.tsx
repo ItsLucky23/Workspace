@@ -12,7 +12,8 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import Icon from '../_components/Icon';
 import { Collapse } from '../_components/motion';
-import { ClickableCard, EmptyState, FOCUS_RING, IconButton, PopMenu, WsButton, type PopMenuItem } from '../_components/primitives';
+import { ClickableCard, EmptyState, FOCUS_RING, IconButton, InfoTip, PopMenu, WsButton, type PopMenuItem } from '../_components/primitives';
+import { EmptyPicker } from '../_components/SetupNotice';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { ContentAssetSummary, ContentPieceSummary, SocialCommentSummary } from '../_data/types';
 import { backendUrl } from '../../../config';
@@ -31,7 +32,10 @@ function LibraryThumb({ asset, pieceTitle }: { asset: ContentAssetSummary; piece
 
 //? Gap-fix — "use in piece": a compact piece-picker under each library asset (content-import-asset).
 function LibraryUsePicker({ pieces, onPick, translate }: { pieces: ContentPieceSummary[]; onPick: (pieceId: string) => void; translate: ReturnType<typeof useTranslator> }) {
-  const items: DropdownItem[] = [{ id: '', value: '', item: translate({ key: 'workspaces.content.libraryUseIn' }) }, ...pieces.map((p) => ({ id: p.id, value: p.id, item: p.title }))];
+  //? With every piece archived the picker holds only its own placeholder, and choosing it silently does
+  //? nothing — say WHAT is missing instead of offering a dropdown that cannot be used.
+  if (pieces.length === 0) return <EmptyPicker icon="file-lines" label={translate({ key: 'workspaces.tips.content.noLivePieces' })} />;
+  const items: DropdownItem[] =[{ id: '', value: '', item: translate({ key: 'workspaces.content.libraryUseIn' }) }, ...pieces.map((p) => ({ id: p.id, value: p.id, item: p.title }))];
   return <Dropdown size="sm" width="full" value={items[0]} items={items} onChange={(it) => { const id = String(it.id); if (id) onPick(id); }} />;
 }
 
@@ -281,9 +285,40 @@ export default function Content() {
       <Collapse open={budgetOpen} className={`mx-4 md:mx-6`}>
         <div className={`mb-3 max-w-md rounded-xl border border-container1-border bg-container1 px-3 py-2`}>
           <div className={`flex items-center justify-between gap-3 text-xs`}>
-            <span className={`text-muted`}>{translate({ key: 'workspaces.content.budgetTitle' })}</span>
-            <span className={`text-title font-medium tabular-nums`}>
+            <span className={`text-muted flex items-center gap-1.5`}>
+              {translate({ key: 'workspaces.content.budgetTitle' })}
+              {/* Where the € comes from: this is the media budget's OWN running counter, so it only starts
+                  counting once a budget row exists (recordMediaSpend debits with updateMany — a silent
+                  no-op without one); placeholders are booked like real generations, and nothing ever
+                  resets it. The all-time media total is the separate analytics sum on Insights. */}
+              <InfoTip
+                align="start"
+                label={translate({ key: 'workspaces.tips.content.budgetSourceTitle' })}
+                title={translate({ key: 'workspaces.tips.content.budgetSourceTitle' })}
+                body={translate({ key: 'workspaces.tips.content.budgetSourceBody' })}
+                points={[
+                  { id: 'nobudget', label: translate({ key: 'workspaces.tips.content.budgetSourceNoBudget' }), desc: translate({ key: 'workspaces.tips.content.budgetSourceNoBudgetDesc' }), onGo: () => { navigate('content/insights'); }, goLabel: translate({ key: 'workspaces.tips.content.budgetSourceInsightsGo' }) },
+                  { id: 'stub', label: translate({ key: 'workspaces.tips.content.budgetSourceStub' }), desc: translate({ key: 'workspaces.tips.content.budgetSourceStubDesc' }) },
+                  { id: 'lifetime', label: translate({ key: 'workspaces.tips.content.budgetSourceLifetime' }), desc: translate({ key: 'workspaces.tips.content.budgetSourceLifetimeDesc' }) },
+                ]}
+              />
+            </span>
+            <span className={`text-title font-medium tabular-nums flex items-center gap-1.5`}>
               {budget.enabled ? `${euros(budget.spentCents)} ${translate({ key: 'workspaces.content.budgetOf' })} ${euros(budget.capCents)}` : translate({ key: 'workspaces.content.budgetNoCap' })}
+              {/* This cap may not be the only limit: the operator CAN configure a server-wide ceiling
+                  (WS_HOST_SPEND_CAP_EUR — blank by default) that is checked first and refuses a generation
+                  before it starts, even here with no cap. The snapshot doesn't say whether one exists, so
+                  the copy stays conditional. */}
+              <InfoTip
+                align="end"
+                label={translate({ key: 'workspaces.tips.content.budgetLimitsTitle' })}
+                title={translate({ key: 'workspaces.tips.content.budgetLimitsTitle' })}
+                body={translate({ key: 'workspaces.tips.content.budgetLimitsBody' })}
+                points={[
+                  { id: 'host', label: translate({ key: 'workspaces.tips.content.budgetLimitsHost' }), desc: translate({ key: 'workspaces.tips.content.budgetLimitsHostDesc' }) },
+                  { id: 'blocked', label: translate({ key: 'workspaces.tips.content.budgetLimitsBlocked' }), desc: translate({ key: 'workspaces.tips.content.budgetLimitsBlockedDesc' }) },
+                ]}
+              />
             </span>
           </div>
           {budget.enabled && (

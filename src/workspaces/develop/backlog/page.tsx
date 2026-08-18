@@ -17,7 +17,8 @@ import Dropdown from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../../_components/Icon';
 import { Collapse, SPRING_SOFT } from '../../_components/motion';
-import { AvatarStack, EmptyState, FOCUS_RING, IconButton, LabelChip, PopMenu, Segmented, StatusPill, WsButton, type PopMenuItem } from '../../_components/primitives';
+import { AvatarStack, EmptyState, FOCUS_RING, IconButton, InfoTip, LabelChip, PopMenu, Segmented, StatusPill, WsButton, type PopMenuItem } from '../../_components/primitives';
+import { EmptyPicker } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { Ticket, TicketStatus } from '../../_data/types';
 import { BulkActionsBar, type BulkPicker, type PickerItem } from './BulkBar';
@@ -156,12 +157,24 @@ export default function Backlog() {
           <div className={`flex items-baseline gap-2 min-w-0`}>
             <h1 className={`text-xl md:text-2xl font-semibold text-title`}>{translate({ key: 'workspaces.backlog.title' })}</h1>
             <span className={`text-sm text-muted whitespace-nowrap`}>{translate({ key: 'workspaces.backlog.countOfTotal', params: [{ key: 'count', value: String(filtered.length) }, { key: 'total', value: String(tickets.length) }] })}</span>
+            <InfoTip
+              align="start"
+              label={translate({ key: 'workspaces.tips.backlog.countTitle' })}
+              title={translate({ key: 'workspaces.tips.backlog.countTitle' })}
+              body={translate({ key: 'workspaces.tips.backlog.countBody' })}
+            />
           </div>
           <p className={`hidden md:block text-sm text-muted mt-0.5`}>{translate({ key: 'workspaces.backlog.subtitle' })}</p>
         </div>
         <div className={`flex items-center gap-2 shrink-0`}>
           {selectMode && <WsButton variant="secondary" icon="check" onClick={() => { setSelectMode(false); setSelected(new Set()); }}>{translate({ key: 'workspaces.backlog.done' })}</WsButton>}
           <WsButton icon="plus" onClick={() => { openNewTicket(); }}>{translate({ key: 'workspaces.backlog.newTicket' })}</WsButton>
+          <InfoTip
+            align="end"
+            label={translate({ key: 'workspaces.tips.backlog.newTicketTitle' })}
+            title={translate({ key: 'workspaces.tips.backlog.newTicketTitle' })}
+            body={translate({ key: 'workspaces.tips.backlog.newTicketBody' })}
+          />
           <PopMenu
             ariaLabel={translate({ key: 'workspaces.backlog.moreActions' })}
             items={overflowItems}
@@ -178,8 +191,13 @@ export default function Backlog() {
             <Icon name="magnifying-glass" className={`text-muted`} />
             <input value={q} onChange={(e) => { setQ(e.target.value); }} placeholder={translate({ key: 'workspaces.backlog.searchPlaceholder' })} className={`bg-transparent text-sm text-title flex-1 min-w-0 focus:outline-none`} />
           </div>
-          <div className={`hidden sm:block`}>
+          <div className={`hidden sm:flex items-center gap-1.5`}>
             <Segmented<Quick> value={quick} onChange={setQuick} options={quickOptions} />
+            <InfoTip
+              label={translate({ key: 'workspaces.tips.backlog.unrefinedTitle' })}
+              title={translate({ key: 'workspaces.tips.backlog.unrefinedTitle' })}
+              body={translate({ key: 'workspaces.tips.backlog.unrefinedBody' })}
+            />
           </div>
           <IconButton icon="filter" title={translate({ key: 'workspaces.backlog.filters' })} active={filtersOpen || filtersActive} onClick={() => { setFiltersOpen((o) => !o); }} />
         </div>
@@ -190,6 +208,12 @@ export default function Backlog() {
             </div>
             <div className={`flex items-center gap-2`}>
               <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.backlog.personFilterLabel' })}</span>
+              <InfoTip
+                align="start"
+                label={translate({ key: 'workspaces.tips.backlog.personTitle' })}
+                title={translate({ key: 'workspaces.tips.backlog.personTitle' })}
+                body={translate({ key: 'workspaces.tips.backlog.personBody' })}
+              />
               <Dropdown size="sm" value={personItems.find((p) => p.id === person)} items={personItems} onChange={(it) => { setPerson(String(it.id)); }} />
             </div>
           </div>
@@ -198,6 +222,15 @@ export default function Backlog() {
 
       <div className={`flex-1 min-h-0 overflow-auto px-4 md:px-6 pb-24`}>
         <div className={`flex flex-col gap-3`}>
+          {/* ADR 0312 — with no pipeline stages the bulk bar's "Move" picker opens an empty box.
+              Say so up front, and point at where stages are made. */}
+          {stages.length === 0 && (
+            <EmptyPicker
+              icon="diagram-project"
+              label={translate({ key: 'workspaces.tips.backlog.noStagesLabel' })}
+              fix={{ cap: 'editPipeline', view: 'pipeline', cta: translate({ key: 'workspaces.tips.backlog.noStagesCta' }) }}
+            />
+          )}
           {/* Teaching empty state: the workspace has NO tickets at all — say what this
               place is for and hand over the primary action right there. */}
           {tickets.length === 0 && (

@@ -12,7 +12,8 @@ import { useTranslator } from '@luckystack/core/client';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import { menuHandler } from 'src/_functions/menuHandler';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
-import { WsButton, IconButton } from './primitives';
+import { WsButton, IconButton, InfoTip } from './primitives';
+import { EmptyPicker } from './SetupNotice';
 import { Collapse } from './motion';
 import Icon from './Icon';
 import type { TriggerActionKind, TriggerEventKind } from '../_data/types';
@@ -119,7 +120,19 @@ export default function AutomationPanel() {
           <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.automation.title' })}</div>
           <div className="text-sm text-muted mt-0.5">{translate({ key: 'workspaces.automation.subtitle' })}</div>
         </div>
-        {!creating && <WsButton icon="plus" onClick={() => { setCreating(true); }}>{translate({ key: 'workspaces.automation.add' })}</WsButton>}
+        <div className={`flex items-center gap-2 shrink-0`}>
+          {/* the play button on every row below hides two surprises (no ticket context + it still asks for
+              approval), so the explanation lives once in the header instead of on each row */}
+          {triggers.length > 0 && (
+            <InfoTip
+              align="end"
+              label={translate({ key: 'workspaces.tips.automations.runNowLabel' })}
+              title={translate({ key: 'workspaces.tips.automations.runNowTitle' })}
+              body={translate({ key: 'workspaces.tips.automations.runNowBody' })}
+            />
+          )}
+          {!creating && <WsButton icon="plus" onClick={() => { setCreating(true); }}>{translate({ key: 'workspaces.automation.add' })}</WsButton>}
+        </div>
       </div>
 
       {triggers.length === 0 && !creating && (
@@ -171,7 +184,15 @@ export default function AutomationPanel() {
           </div>
           {/* #94 — each conditional action/event field block animates in/out instead of popping as `action`/`on` change. */}
           <Collapse open={on === 'cron'}>
-            <input value={cron} onChange={(e) => { setCron(e.target.value); }} placeholder="0 9 * * *" className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm font-mono text-title focus:outline-none focus:border-primary" />
+            <div className={`flex items-center gap-2`}>
+              <input value={cron} onChange={(e) => { setCron(e.target.value); }} placeholder="0 9 * * *" className="flex-1 min-w-0 h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm font-mono text-title focus:outline-none focus:border-primary" />
+              <InfoTip
+                align="end"
+                label={translate({ key: 'workspaces.tips.automations.cronLabel' })}
+                title={translate({ key: 'workspaces.tips.automations.cronTitle' })}
+                body={translate({ key: 'workspaces.tips.automations.cronBody' })}
+              />
+            </div>
           </Collapse>
           <Collapse open={action === 'notify'}>
             <div className="flex flex-col gap-3">
@@ -189,13 +210,26 @@ export default function AutomationPanel() {
           <Collapse open={action === 'start-stage'}>
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.targetStage' })}</span>
-              <Dropdown size="sm" width="full" items={stageItems} value={stageItems.find((i) => i.id === targetStage)} onChange={(it) => { setTargetStage(String(it.id)); }} />
+              {/* Dropdown renders nothing at all when it has no items, leaving an orphan label above empty
+                  space — and the rule would still save with an empty target and noop on every fire. */}
+              {stageItems.length === 0
+                ? (
+                  <EmptyPicker
+                    icon="diagram-project"
+                    label={translate({ key: 'workspaces.tips.automations.noStages' })}
+                    fix={{ cap: 'editPipeline', view: 'pipeline', cta: translate({ key: 'workspaces.tips.automations.noStagesCta' }) }}
+                  />
+                )
+                : <Dropdown size="sm" width="full" items={stageItems} value={stageItems.find((i) => i.id === targetStage)} onChange={(it) => { setTargetStage(String(it.id)); }} />}
             </div>
           </Collapse>
           <Collapse open={action === 'invoke-agent-role'}>
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.roleLabel' })}</span>
-              <Dropdown size="sm" width="full" items={roleItems} value={roleItems.find((i) => i.id === roleKey)} onChange={(it) => { setRoleKey(String(it.id)); }} />
+              {/* no in-app fix on purpose: roles are registered by the server at boot, not created here */}
+              {roleItems.length === 0
+                ? <EmptyPicker icon="robot" label={translate({ key: 'workspaces.tips.automations.noRoles' })} />
+                : <Dropdown size="sm" width="full" items={roleItems} value={roleItems.find((i) => i.id === roleKey)} onChange={(it) => { setRoleKey(String(it.id)); }} />}
             </div>
           </Collapse>
           <Collapse open={action === 'webhook'}>
@@ -224,21 +258,48 @@ export default function AutomationPanel() {
             <div className="flex flex-col gap-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.matchStageLabel' })}</span>
+                  <span className={`text-xs text-muted flex items-center gap-1.5`}>
+                    {translate({ key: 'workspaces.automation.matchStageLabel' })}
+                    <InfoTip
+                      align="start"
+                      label={translate({ key: 'workspaces.tips.automations.matchStageLabel' })}
+                      title={translate({ key: 'workspaces.tips.automations.matchStageTitle' })}
+                      body={translate({ key: 'workspaces.tips.automations.matchStageBody' })}
+                    />
+                  </span>
                   <Dropdown size="sm" width="full" items={matchStageItems} value={matchStageItems.find((i) => i.id === matchStage)} onChange={(it) => { setMatchStage(String(it.id)); }} />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted">{translate({ key: 'workspaces.automation.debounceLabel' })}</span>
+                  <span className={`text-xs text-muted flex items-center gap-1.5`}>
+                    {translate({ key: 'workspaces.automation.debounceLabel' })}
+                    <InfoTip
+                      align="end"
+                      label={translate({ key: 'workspaces.tips.automations.debounceLabel' })}
+                      title={translate({ key: 'workspaces.tips.automations.debounceTitle' })}
+                      body={translate({ key: 'workspaces.tips.automations.debounceBody' })}
+                    />
+                  </span>
                   <input type="number" min="0" value={debounce} onChange={(e) => { setDebounce(e.target.value); }} placeholder="0" className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary" />
                 </div>
               </div>
-              <span className="text-xs text-disabled">{translate({ key: on.startsWith('stage.') ? 'workspaces.automation.matchStageHelpStage' : 'workspaces.automation.matchStageHelpTicket' })}</span>
+              {/* the non-stage help line said the opposite of what the engine does (it matches the stage the
+                  EVENT reports, never the ticket's current one), so it points at a corrected string now */}
+              <span className="text-xs text-disabled">{translate({ key: on.startsWith('stage.') ? 'workspaces.automation.matchStageHelpStage' : 'workspaces.tips.automations.matchStageHelp' })}</span>
             </div>
           </Collapse>
-          <label className="flex items-center gap-2 text-sm text-common cursor-pointer">
-            <input type="checkbox" checked={requiresApproval} onChange={(e) => { setRequiresApproval(e.target.checked); }} className="accent-primary" />
-            {translate({ key: 'workspaces.automation.requireApproval' })}
-          </label>
+          {/* the tip sits OUTSIDE the label so opening it doesn't toggle the checkbox */}
+          <div className={`flex items-center gap-2`}>
+            <label className="flex items-center gap-2 text-sm text-common cursor-pointer">
+              <input type="checkbox" checked={requiresApproval} onChange={(e) => { setRequiresApproval(e.target.checked); }} className="accent-primary" />
+              {translate({ key: 'workspaces.automation.requireApproval' })}
+            </label>
+            <InfoTip
+              align="start"
+              label={translate({ key: 'workspaces.tips.automations.approvalLabel' })}
+              title={translate({ key: 'workspaces.tips.automations.approvalTitle' })}
+              body={translate({ key: 'workspaces.tips.automations.approvalBody' })}
+            />
+          </div>
           {/* #96 — a one-line plain-language preview of the rule, so the user can sanity-check the sentence
               before creating it instead of finding out via "run now" after the fact. */}
           <div className="flex items-start gap-2 rounded-lg border border-container1-border bg-container1 px-3 py-2">

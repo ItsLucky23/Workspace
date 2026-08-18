@@ -4928,3 +4928,67 @@ niets is ingesteld terwijl `configured` al in de mapper zit, de prompt-A/B-panel
 draaien, de Terminals-statusdot is altijd grijs, `Channel.defaultStyleId` wordt nergens gelezen, en
 twee hint-teksten (`voicePrecedenceHint`, `integrationsHint`) staan omgekeerd/onwaar tegenover de
 server. Gemeld, niet gefixt — behalve de twee onjuiste teksten, die horen bij deze opdracht.
+
+## 2026-08-18 21:05 — 89 InfoTips + 34 lege-picker-fixes, drie keer op waarheid gecontroleerd (fase 2+3)
+
+**Prompt van de gebruiker.** Fase 2 van dezelfde opdracht: de uitleg-affordance en de doodlopende lege
+velden over álle 29 pagina's, plus de setup-checklist als onboarding.
+
+**Wat ik heb gedaan.**
+
+*Bouwronde (104 agents, 0 fouten).* 15 paginagroepen, elk met zijn eigen geverifieerde bevindingen uit
+de scan, een dichtheidsplafond van 5 tips per pagina en een bevroren gedeelde laag. Opgeleverd: 89
+InfoTips en 34 `EmptyPicker`s over 37 bestanden. Agents raakten géén locale-bestand aan — ze leverden
+hun sleutels als gestructureerde uitvoer aan, ik voegde ze in één blok per taal in. Dat was de enige
+echte conflictbron van de vorige 43-agent-ronde en die is nu structureel weg.
+
+*Waarheidscontrole — dit was het zwaarste deel.* Een onafhankelijke pas wees **34 van de 89
+beweringen af**, 38%. Vrijwel allemaal half-waar: de vorm klopte, één bijzin ging te ver. Voorbeelden:
+een vinkje in de rechtenmatrix geldt binnen de workspace en niet app-breed, en de breedste rij is
+"terminals + tickets" (101 ops) en niet de aangewezen rij; de commandorechten per stage dwingen niets
+af want elke turn draait met `--permission-mode bypassPermissions`; bij een monorepo-service verandert
+alleen de wérkmap omdat geen enkele op `Service.devCommand` schrijft; de autonomie-instelling
+overschrijft de per-stage-goedkeuring alleen bij het verlaten van een stage.
+
+Correctieronde (58 agents) → hercontrole meldde 37 nog te sterk. Die verdicten waren grotendeels
+"meest volledige ware uitspraak"-muggenzifterij, dus ronde drie kreeg de omgekeerde instructie:
+**verzwakken, niet uitbreiden** — "altijd X" → "meestal X", een getal dat niet altijd klopt eruit, een
+bijzin die niet waar te krijgen is zonder tweede zin eruit. Met een eindcontrole die anders geijkt is:
+niet "is dit volledig?" maar "zou een gebruiker hierdoor iets verkeerds doen?". Uitkomst: 29
+verzwakt, 7 bijzinnen geschrapt, 1 terecht ongewijzigd gelaten, **1 nog gemarkeerd**.
+
+Die laatste heb ik zelf afgehandeld, en het bleek een echte productbug (zie notities). Ook zelf
+beslecht: twee controleurs spraken elkaar tegen over de commandorechten. Beide hadden half gelijk —
+de lijst gaat wél naar `settings.json` én de turn draait met bypassPermissions. De container is de
+veiligheidsgrens; zo staat het er nu.
+
+*Fase 3 — setup-checklist (ADR 0314).* Een blijvende, zelf-opruimende lijst op de landingsweergaves,
+gevoed uit de bestaande `readiness`-snapshot, module-bewust (een content-only workspace krijgt geen
+"koppel een repository") en permissie-bewust. Verzint geen state en verdwijnt zodra alles meetbare
+klaar is.
+
+*Twee onjuiste hint-teksten gecorrigeerd* die de scan en passant vond en die binnen deze opdracht
+vallen: `integrationsHint` beweerde dat alleen-lezen wordt afgedwongen in de MCP-handler (fout: een
+`ro`-tool wordt helemaal niet aangekoppeld), en `voicePrecedenceHint` stond omgekeerd — merkstem komt
+ná de brief-toon en onder een sterkere instructie, niet ervoor.
+
+**Bestanden geraakt.** 37 pagina-/componentbestanden onder `src/workspaces/`, 4 locale-bestanden
+(+454 sleutels per taal, pariteit 4×3223), `_components/SetupChecklist.tsx` (nieuw),
+`_shell/WorkspacesShell.tsx`, ADR 0314.
+
+**Notities.** `lint` ✅ `tsc` ✅ `ai:lint` ✅ `build` ✅ `unit 122/122` ✅ locale-pariteit 4×3223, 0
+drift, 0 ontbrekende sleutels tegenover 452 in code gebruikte. Browserverificatie nog te doen.
+
+GEVERIFIEERDE PRODUCTBUG, gemeld niet gefixt: van service wisselen op een ticket doet niets zolang de
+preview draait. `closePreviewForTicket` (server/container/previewSession.ts:72) haalt alleen de
+proxyroute weg; de dev-server blijft op PREVIEW_PORT staan. "Stop preview" → "Open preview" start dus
+een tweede server in de nieuwe map die de poort niet krijgt, waarna `waitForContainerReady` de OUDE
+server ziet en groen meldt — de gebruiker krijgt een werkende preview-URL die nog de oude map serveert.
+Alleen een volledige container-teardown laat de wissel aankomen. De tip zegt dit nu eerlijk, maar de
+oplossing is dat "Stop preview" de dev-server ook echt stopt.
+
+Verder gemeld, buiten scope: het env-tab-geheim toont bolletjes ook zonder ingestelde waarde terwijl
+`configured` al in de mapper zit; de prompt-A/B-panel meet niets (`resolvePromptVariant`/`recordTrial`
+hebben nul call-sites); `run-command`-triggers kunnen nooit draaien; de Terminals-statusdot is altijd
+grijs; `Channel.defaultStyleId` wordt nergens gelezen; het UI-review-formulier meldt succes voor een
+write die niet gebeurt als er geen project actief is.

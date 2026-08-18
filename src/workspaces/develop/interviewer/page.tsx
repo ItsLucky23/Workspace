@@ -12,7 +12,7 @@ import { apiRequest, i18nNotify as notify, tryCatch, useTranslator } from '@luck
 
 import Icon, { type IconName } from '../../_components/Icon';
 import { Collapse, Popover } from '../../_components/motion';
-import { EmptyState, IconButton, InteractiveRow, useClickAway, WsButton } from '../../_components/primitives';
+import { EmptyState, IconButton, InfoTip, InteractiveRow, useClickAway, WsButton } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { InterviewFinding } from '../../_data/types';
 
@@ -52,7 +52,7 @@ const STARTERS: { icon: IconName; key: string }[] = [
 
 export default function Interviewer() {
   const translate = useTranslator();
-  const { activeWorkspace, activeProject, interviewFindings, makeTicketFromFinding, dismissFinding, runAgentRole, openTicket } = useWorkspaces();
+  const { activeWorkspace, activeProject, interviewFindings, makeTicketFromFinding, dismissFinding, runAgentRole, openTicket, navigate } = useWorkspaces();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
@@ -166,7 +166,20 @@ export default function Interviewer() {
         >
           <div className={`max-w-2xl mx-auto flex flex-col gap-2.5`}>
             <div className={`mb-1`}>
-              <div className={`text-sm font-semibold text-title`}>{translate({ key: 'workspaces.interviewer.findingsTitle', params: [{ key: 'n', value: String(interviewFindings.length) }] })}</div>
+              <div className={`flex items-center gap-1.5`}>
+                <div className={`text-sm font-semibold text-title`}>{translate({ key: 'workspaces.interviewer.findingsTitle', params: [{ key: 'n', value: String(interviewFindings.length) }] })}</div>
+                {/* one tip for the whole list, instead of a question mark on every row */}
+                <InfoTip
+                  align="start"
+                  label={translate({ key: 'workspaces.tips.automations.findingsLabel' })}
+                  title={translate({ key: 'workspaces.tips.automations.findingsTitle' })}
+                  points={[
+                    { id: 'source', label: translate({ key: 'workspaces.tips.automations.findingsSource' }), desc: translate({ key: 'workspaces.tips.automations.findingsSourceDesc' }) },
+                    { id: 'severity', label: translate({ key: 'workspaces.tips.automations.findingsSeverity' }), desc: translate({ key: 'workspaces.tips.automations.findingsSeverityDesc' }) },
+                    { id: 'ticket', label: translate({ key: 'workspaces.tips.automations.findingsTicket' }), desc: translate({ key: 'workspaces.tips.automations.findingsTicketDesc' }) },
+                  ]}
+                />
+              </div>
               <p className={`text-xs text-muted mt-0.5`}>{translate({ key: 'workspaces.interviewer.findingsIntro' })}</p>
             </div>
             {interviewFindings.map((f) => (
@@ -189,6 +202,14 @@ export default function Interviewer() {
             className={`flex-1 min-w-0 resize-none max-h-40 px-3.5 py-2.5 rounded-2xl border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30`}
           />
           <WsButton icon="paper-plane" onClick={() => { ask(draft); }} disabled={busy || draft.trim().length === 0}>{translate({ key: 'workspaces.interviewer.send' })}</WsButton>
+          {/* what the answers are actually built from — and why they fail without a selected project */}
+          <InfoTip
+            align="end" className={`self-center`}
+            label={translate({ key: 'workspaces.tips.automations.chatLabel' })}
+            title={translate({ key: 'workspaces.tips.automations.chatTitle' })}
+            body={translate({ key: 'workspaces.tips.automations.chatBody' })}
+            points={[{ id: 'index', label: translate({ key: 'workspaces.tips.automations.chatIndexPoint' }), onGo: () => { navigate('sources'); } }]}
+          />
         </div>
       </div>
     </div>
@@ -210,7 +231,15 @@ function GenerateIdeasMenu({ onGenerate }: { onGenerate: (focus: string) => void
         <span className={`hidden sm:inline`}>{translate({ key: 'workspaces.interviewer.generateNow' })}</span>
       </WsButton>
       <Popover open={open} className={`absolute right-0 top-10 z-40 w-72 rounded-xl border border-container1-border bg-container1 p-3 shadow-lg`}>
-        <div className={`text-sm font-semibold text-title`}>{translate({ key: 'workspaces.interviewer.generateTitle' })}</div>
+        <div className={`flex items-center gap-1.5`}>
+          <div className={`text-sm font-semibold text-title`}>{translate({ key: 'workspaces.interviewer.generateTitle' })}</div>
+          <InfoTip
+            align="end"
+            label={translate({ key: 'workspaces.tips.automations.ideasLabel' })}
+            title={translate({ key: 'workspaces.tips.automations.ideasTitle' })}
+            body={translate({ key: 'workspaces.tips.automations.ideasBody' })}
+          />
+        </div>
         <p className={`text-xs text-muted mt-1`}>{translate({ key: 'workspaces.interviewer.generateHint' })}</p>
         <input
           value={focus} onChange={(e) => { setFocus(e.target.value); }}

@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `bed2f270fc3e9b89` · 17 capabilities · 231 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `962a60991b40cb4c` · 17 capabilities · 232 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -257,3 +257,4 @@
 - `adr-0311` AI prompt layers are two channels, not one stack
 - `adr-0312` Sub-navigation and explanation live in the URL and in three shared primitives
 - `adr-0313` Repository introspection is shown to the user, not only to the AI
+- `adr-0314` Onboarding is a standing checklist, not a tour

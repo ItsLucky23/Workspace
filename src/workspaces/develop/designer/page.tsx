@@ -12,8 +12,8 @@ import { apiRequest, tryCatch, useTranslator } from '@luckystack/core/client';
 import BaseDropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon, { type IconName } from '../../_components/Icon';
-import { Disclosure, EmptyState, PopMenu, Segmented, WsButton } from '../../_components/primitives';
-import { SetupNotice } from '../../_components/SetupNotice';
+import { Disclosure, EmptyState, InfoTip, PopMenu, Segmented, WsButton } from '../../_components/primitives';
+import { EmptyPicker, SetupNotice } from '../../_components/SetupNotice';
 import { MediaUploadButton } from '../../_components/MediaUploadButton';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { UI_PROBLEMS, uiProblemI18nKey } from '../../_data/uiReviewTaxonomy';
@@ -63,13 +63,15 @@ const AI_SECTIONS = new Set<TabId>(['themes', 'styles', 'animations']);
 //? ticked problems + notes + page describe what's wrong. Submitting files the request → a redesign ticket.
 function UiReviewForm() {
   const translate = useTranslator();
-  const { activeWorkspace, createUiReview } = useWorkspaces();
+  const { activeWorkspace, activeProjectId, createUiReview } = useWorkspaces();
   const [shots, setShots] = useState<string[]>([]);
   const [problems, setProblems] = useState<string[]>([]);
   const [page, setPage] = useState('');
   const [notes, setNotes] = useState('');
   const [sent, setSent] = useState(false);
-  const canSend = shots.length > 0 || problems.length > 0 || notes.trim().length > 0;
+  //? ADR 0312 — a review is filed against a project (createUiReview drops the write without one), so with no
+  //? active project Submit must NOT stay enabled and show "Sent" for a request that was never sent.
+  const canSend = activeProjectId !== null && (shots.length > 0 || problems.length > 0 || notes.trim().length > 0);
   const submit = () => {
     if (!canSend) return;
     createUiReview({ screenshots: shots, problems, ...(page.trim() ? { page: page.trim() } : {}), ...(notes.trim() ? { notes: notes.trim() } : {}) });
@@ -139,6 +141,13 @@ function InspirationForm() {
       <div className="flex flex-wrap items-center gap-2">
         <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*" labelKey="workspaces.inspire.uploadShot" icon="up-right-from-square" onUploaded={(uploaded) => { call('image', () => apiRequest({ name: 'workspaces/designerInspiration', version: 'v1', data: { workspaceId: activeWorkspace.id, op: 'inspire-image', imageUrl: uploaded, clientRequestId: globalThis.crypto.randomUUID() } })); }} />
       </div>
+      {/* ADR 0312 — the compare is filed against the active project; with none the button is simply dead. */}
+      {activeProjectId === null && <EmptyPicker icon="diagram-project" label={translate({ key: 'workspaces.tips.designer.compareNeedsProject' })} />}
+      {/* ADR 0312 — the "use our live page" shortcut only exists once something is deployed; say so instead of hiding it. */}
+      {activeProjectId !== null && liveEnv?.url === undefined && (
+        <EmptyPicker icon="globe" label={translate({ key: 'workspaces.tips.designer.noLiveEnv' })}
+          fix={{ cap: 'workspaceSettings', view: 'settings', tab: 'developer', cta: translate({ key: 'workspaces.tips.designer.noLiveEnvCta' }) }} />
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <div className={`${inputCls} flex items-center gap-2 min-w-44`}>
           <span className="text-muted">{ownImage.startsWith('http') ? ownImage.replace(/^https?:\/\//, '').slice(0, 28) : translate({ key: 'workspaces.inspire.ownPlaceholder' })}</span>
@@ -169,6 +178,9 @@ function FeedbackSection() {
     <div className={`h-full min-h-0 overflow-y-auto p-4 md:p-6`}>
       <div className={`max-w-3xl flex flex-col gap-4`}>
         <SectionHead icon="comment" title={translate({ key: 'workspaces.designer.section.feedback' })} sub={translate({ key: 'workspaces.designer.feedbackSub' })} />
+        {/* ADR 0312 — every write here needs a project: sending a request, and turning an older project-less
+            request into a ticket. Both fail silently without one, so name the missing thing. */}
+        {activeProjectId === null && <EmptyPicker icon="diagram-project" label={translate({ key: 'workspaces.tips.designer.feedbackNeedsProject' })} />}
         {uiReviews.length === 0 && !formOpen ? (
           <div className={`rounded-xl border border-container1-border bg-container1`}>
             <EmptyState icon="comment" title={translate({ key: 'workspaces.uiReview.emptyTitle' })} sub={translate({ key: 'workspaces.uiReview.emptySub' })}
@@ -308,6 +320,15 @@ function DesignerShell() {
         { label: translate({ key: 'workspaces.designer.saveToLibrary' }), icon: 'box-archive', onClick: saveToLibNow },
         { label: translate({ key: 'workspaces.designer.applyTokens' }), icon: 'bolt', onClick: applyTokensNow, disabled: !activeProjectId, disabledReason: translate({ key: 'workspaces.designer.applyTokensNeedsProject' }) },
       ]} />
+      {/* ADR 0312 — three writes that look alike: two change what the AGENT is told, one commits CODE.
+          A PopMenuItem has no tip slot, so the menu's rows are explained here as points. */}
+      <InfoTip align="end" label={translate({ key: 'workspaces.tips.designer.actions' })}
+        title={translate({ key: 'workspaces.tips.designer.actions' })}
+        body={translate({ key: 'workspaces.tips.designer.actionsBody' })}
+        points={[
+          { id: 'saveToLibrary', label: translate({ key: 'workspaces.designer.saveToLibrary' }), desc: translate({ key: 'workspaces.tips.designer.saveToLibraryDesc' }) },
+          { id: 'applyTokens', label: translate({ key: 'workspaces.designer.applyTokens' }), desc: translate({ key: 'workspaces.tips.designer.applyTokensDesc' }) },
+        ]} />
     </div>
   );
 
@@ -331,6 +352,13 @@ function DesignerShell() {
           <span className={`text-xs text-muted hidden sm:inline`}>{translate({ key: 'workspaces.designer.previewingWith' })}</span>
           <BaseDropdown items={themeItems} {...(activeItem ? { value: activeItem } : {})} onChange={(i) => { d.setActiveThemeId(String(i.id)); }} size="md" />
           <Segmented<ThemeMode> options={[{ id: 'light', label: <Icon name="sun" /> }, { id: 'dark', label: <Icon name="moon" /> }]} value={d.mode} onChange={d.setMode} />
+          {/* ADR 0312 — the picker is client state only, and it does NOT reach every tab: Themes/Styles/Typography
+              render under it, Gallery renders each look in its OWN palette (mode only), Animations neither. On the
+              THEMES tab it is additionally the theme the pipeline-bar writes store (state.tsx useInProject/saveToLibrary
+              resolve by activeThemeId); on the Styles tab those same buttons write the active STYLE instead. */}
+          <InfoTip align="end" label={translate({ key: 'workspaces.tips.designer.previewTheme' })}
+            title={translate({ key: 'workspaces.tips.designer.previewTheme' })}
+            body={translate({ key: 'workspaces.tips.designer.previewThemeBody' })} />
         </div>
       </div>
 
@@ -373,6 +401,10 @@ function DesignerShell() {
             className={`flex-1 min-w-0 h-9 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30`} />
           {aiError && <span className={`text-xs text-wrong shrink-0`}>{translate({ key: 'workspaces.designer.aiError' })}</span>}
           <WsButton icon={aiBusy ? 'spinner' : 'wand-magic-sparkles'} onClick={runAi} disabled={aiBusy || aiPrompt.trim().length === 0} className={aiBusy ? '[&_svg]:animate-spin' : ''}>{translate({ key: aiBusy ? 'workspaces.designer.aiGenerating' : 'workspaces.designer.aiBar.generate' })}</WsButton>
+          {/* ADR 0312 — a generated look lives in client state only; nothing here persists it. */}
+          <InfoTip align="end" label={translate({ key: 'workspaces.tips.designer.generate' })}
+            title={translate({ key: 'workspaces.tips.designer.generate' })}
+            body={translate({ key: 'workspaces.tips.designer.generateBody' })} />
         </div>
       )}
 
@@ -393,6 +425,10 @@ function DesignerShell() {
             <Icon name="link" className={activeName ? 'text-correct' : 'text-muted'} />
             <span className={`truncate`}>{activeName ? translate({ key: 'workspaces.designer.activeInProject', params: [{ key: 'name', value: activeName }] }) : translate({ key: 'workspaces.designer.noneActive' })}</span>
           </span>
+          {/* ADR 0312 — this name is the SAVED design system, not the preview picker; they legitimately differ. */}
+          <InfoTip align="start" label={translate({ key: 'workspaces.tips.designer.activeName' })}
+            title={translate({ key: 'workspaces.tips.designer.activeName' })}
+            body={translate({ key: 'workspaces.tips.designer.activeNameBody' })} />
           <div className={`flex-1`} />
           {pipelineActions(true)}
         </div>

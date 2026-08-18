@@ -17,7 +17,8 @@ import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../../_components/Icon';
 import { Popover } from '../../_components/motion';
-import { Disclosure, InfoDot, PopMenu, WsButton, useClickAway } from '../../_components/primitives';
+import { Disclosure, InfoDot, InfoTip, PopMenu, WsButton, useClickAway } from '../../_components/primitives';
+import { EmptyPicker } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { TicketPriority, TicketStatus } from '../../_data/types';
 import { PRIORITY_LABEL_KEY, PRIORITY_ORDER } from '../../_functions/priority';
@@ -56,7 +57,16 @@ function NewTicketForm({ onCreate }: { onCreate: (input: { title: string; priori
   };
   return (
     <div className={`w-full flex flex-col gap-3 p-5`}>
-      <div className={`text-base font-semibold text-title`}>{translate({ key: 'workspaces.board.newTicketTitle' })}</div>
+      <div className={`flex items-center gap-2`}>
+        <div className={`text-base font-semibold text-title`}>{translate({ key: 'workspaces.board.newTicketTitle' })}</div>
+        {/* Creating a ticket starts nothing — it lands in Unrefined with the AI off (conductor.ts:1674). */}
+        <InfoTip
+          align="start"
+          label={translate({ key: 'workspaces.tips.board.newTicketStartTitle' })}
+          title={translate({ key: 'workspaces.tips.board.newTicketStartTitle' })}
+          body={translate({ key: 'workspaces.tips.board.newTicketStartBody' })}
+        />
+      </div>
       <input
         ref={inputRef}
         value={title} onChange={(e) => { setTitle(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
@@ -138,14 +148,26 @@ function FilterMenu({ isMobile, filters, onChange }: { isMobile: boolean; filter
         </div>
         <div className={`flex flex-col gap-1`}>
           <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.board.filterSprint' })}</span>
-          <Dropdown
-            items={[allSprintsItem, ...sprintItems, { id: 'manage', value: 'manage', item: translate({ key: 'workspaces.board.manageSprints' }) }]}
-            value={selectedSprint}
-            onChange={(it) => {
-              if (it.id === 'manage') { setOpen(false); ctx.navigate('backlog'); return; }
-              onChange({ ...filters, sprintId: String(it.id) });
-            }}
-          />
+          {/* Nothing in bootstrap creates a sprint, so a fresh workspace opened a picker holding only
+              "All sprints" + a smuggled-in "Manage sprints…" row. Say it is empty, permission-aware. */}
+          {ctx.sprints.length === 0
+            ? (
+              <EmptyPicker
+                icon="calendar-days"
+                label={translate({ key: 'workspaces.tips.board.sprintsEmpty' })}
+                fix={{ cap: 'manageSprints', view: 'backlog', cta: translate({ key: 'workspaces.tips.board.sprintsCta' }) }}
+              />
+            )
+            : (
+              <Dropdown
+                items={[allSprintsItem, ...sprintItems, { id: 'manage', value: 'manage', item: translate({ key: 'workspaces.board.manageSprints' }) }]}
+                value={selectedSprint}
+                onChange={(it) => {
+                  if (it.id === 'manage') { setOpen(false); ctx.navigate('backlog'); return; }
+                  onChange({ ...filters, sprintId: String(it.id) });
+                }}
+              />
+            )}
         </div>
         {active && (
           <button type="button" onClick={() => { onChange(ALL_FILTERS); }} className={`text-xs text-primary hover:underline text-left cursor-pointer`}>
@@ -175,6 +197,16 @@ export function BoardHeader({ isMobile, filters, onFiltersChange }: { isMobile: 
             <Icon name="bolt" className={`text-primary`} />
             {translate({ key: 'workspaces.board.capacityChip', params: [{ key: 'active', value: String(ctx.capacity.active) }, { key: 'limit', value: String(ctx.capacity.limit) }, { key: 'queued', value: String(ctx.capacity.queued) }] })}
           </span>
+        )}
+        {/* The limit is a server env var and the pool is shared host-wide (capacity.ts:8/16) — the bare
+            `title=` above says neither, and does not exist at all on a phone. */}
+        {ctx.capacity && (ctx.capacity.active > 0 || ctx.capacity.queued > 0) && (
+          <InfoTip
+            align="start"
+            label={translate({ key: 'workspaces.tips.board.capacitySourceTitle' })}
+            title={translate({ key: 'workspaces.tips.board.capacitySourceTitle' })}
+            body={translate({ key: 'workspaces.tips.board.capacitySourceBody' })}
+          />
         )}
       </div>
       <div className={`flex items-center gap-2`}>

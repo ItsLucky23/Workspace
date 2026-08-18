@@ -3,13 +3,14 @@
 //? read-only view of each channel's brand voice that feeds brand-RAG — edited in Content settings →
 //? Channels, the single owner — with the read-only style library behind a disclosure).
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
 import Icon from '../../_components/Icon';
 import { Reveal } from '../../_components/motion';
-import { Disclosure, EmptyState, IconButton, Segmented, WsButton } from '../../_components/primitives';
+import { Disclosure, EmptyState, IconButton, InfoTip, Segmented, WsButton } from '../../_components/primitives';
+import { EmptyPicker } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { ContentChannelSummary } from '../../_data/types';
 
@@ -27,10 +28,10 @@ const euros = (cents: number): string => `€${(cents / 100).toFixed(2)}`;
 //? out of jsx-no-literals territory without a fake translation.
 const SHORTLINK_PREFIX = '/l/';
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, info }: { label: string; value: string; info?: ReactNode }) {
   return (
     <div className={`rounded-2xl border border-container1-border bg-container1 p-4`}>
-      <div className={`text-xs text-muted`}>{label}</div>
+      <div className={`text-xs text-muted flex items-center gap-1.5`}>{label}{info}</div>
       <div className={`text-2xl font-semibold text-title mt-1 tabular-nums`}>{value}</div>
     </div>
   );
@@ -91,8 +92,35 @@ export default function ContentInsights() {
           <div className={`grid grid-cols-2 sm:grid-cols-4 gap-3`}>
             <Stat label={translate({ key: 'workspaces.content.anTotalPieces' })} value={String(a.totalPieces)} />
             <Stat label={translate({ key: 'workspaces.content.anDone' })} value={String(a.doneCount)} />
-            <Stat label={translate({ key: 'workspaces.content.anPublished' })} value={String(a.publishedCount)} />
-            <Stat label={translate({ key: 'workspaces.content.anCost' })} value={euros(a.totalCostCents)} />
+            {/* Published counts done publish JOBS (per channel, per re-publish) while the other tiles
+                count distinct non-archived pieces — that asymmetry is why it can be the larger number. */}
+            <Stat
+              label={translate({ key: 'workspaces.content.anPublished' })}
+              value={String(a.publishedCount)}
+              info={
+                <InfoTip
+                  align="center"
+                  label={translate({ key: 'workspaces.tips.insights.publishedAria' })}
+                  title={translate({ key: 'workspaces.tips.insights.publishedTitle' })}
+                  body={translate({ key: 'workspaces.tips.insights.publishedBody' })}
+                />
+              }
+            />
+            {/* MediaSpend only (image/video/audio/tts), summed WITHOUT the archived filter the piece
+                counts use; LLM € lives on Insights → Usage under a different cap. */}
+            <Stat
+              label={translate({ key: 'workspaces.content.anCost' })}
+              value={euros(a.totalCostCents)}
+              info={
+                <InfoTip
+                  align="end"
+                  label={translate({ key: 'workspaces.tips.insights.contentCostAria' })}
+                  title={translate({ key: 'workspaces.tips.insights.contentCostTitle' })}
+                  body={translate({ key: 'workspaces.tips.insights.contentCostBody' })}
+                  points={[{ id: 'llm', label: translate({ key: 'workspaces.tips.insights.contentCostLlmLabel' }), desc: translate({ key: 'workspaces.tips.insights.contentCostLlmDesc' }), onGo: () => { navigate('usage'); }, goLabel: translate({ key: 'workspaces.tips.insights.contentCostLlmGo' }) }]}
+                />
+              }
+            />
           </div>
 
           {/* One topic on screen at a time — the strip scrolls in its own container on narrow screens. */}
@@ -164,6 +192,17 @@ export default function ContentInsights() {
                 <input value={linkUrl} onChange={(e) => { setLinkUrl(e.target.value); }} placeholder={translate({ key: 'workspaces.content.linkUrlPlaceholder' })} className={`flex-1 min-w-0 rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring`} />
                 <WsButton icon="link" disabled={!validUrl} className={`shrink-0`} onClick={() => { runContentOp('shortlink-create', '', { targetUrl: linkUrl.trim() }); setLinkUrl(''); }}>{translate({ key: 'workspaces.content.linkCreate' })}</WsButton>
               </div>
+              {/* A link made here carries no piece (the op is called with an empty piece id) — with no
+                  pieces at all there is nothing it could belong to, so say where pieces come from. */}
+              {content.pieces.length === 0 && (
+                <div className={`mb-3`}>
+                  <EmptyPicker
+                    icon="file-lines"
+                    label={translate({ key: 'workspaces.tips.insights.noPiecesLabel' })}
+                    fix={{ cap: 'workTickets', view: 'content', cta: translate({ key: 'workspaces.tips.insights.noPiecesCta' }) }}
+                  />
+                </div>
+              )}
               {content.shortLinks.length === 0 ? (
                 <EmptyState
                   icon="link"
@@ -178,7 +217,19 @@ export default function ContentInsights() {
                     <div key={l.id} className={`flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-0.5 text-sm border-b border-divider last:border-0 py-1.5 ${l.id === winnerId && l.clicks > 0 ? 'text-title' : 'text-common'}`}>
                       <span className={`font-mono text-xs text-primary shrink-0`}>{SHORTLINK_PREFIX}{l.slug}</span>
                       {l.variant && <span className={`rounded-md bg-container2 px-1.5 py-0.5 text-[10px] font-semibold text-muted shrink-0`}>{l.variant}</span>}
-                      {l.id === winnerId && l.clicks > 0 && <span className={`rounded-md bg-correct/15 text-correct px-1.5 py-0.5 text-[10px] font-semibold shrink-0`}><Icon name="trophy" /> {translate({ key: 'workspaces.content.linksWinner' })}</span>}
+                      {l.id === winnerId && l.clicks > 0 && (
+                        <span className={`flex items-center gap-1 shrink-0`}>
+                          <span className={`rounded-md bg-correct/15 text-correct px-1.5 py-0.5 text-[10px] font-semibold`}><Icon name="trophy" /> {translate({ key: 'workspaces.content.linksWinner' })}</span>
+                          {/* Ranked by raw clicks across the WHOLE workspace (server orderBy clicks desc,
+                              index 0) — not per experiment, and every hit on /l/<slug> increments. */}
+                          <InfoTip
+                            align="center"
+                            label={translate({ key: 'workspaces.tips.insights.winnerAria' })}
+                            title={translate({ key: 'workspaces.tips.insights.winnerTitle' })}
+                            body={translate({ key: 'workspaces.tips.insights.winnerBody' })}
+                          />
+                        </span>
+                      )}
                       <span className={`order-last sm:order-none basis-full sm:basis-0 sm:flex-1 min-w-0 truncate text-muted`}>{l.targetUrl}</span>
                       <span className={`ml-auto sm:ml-0 font-mono tabular-nums shrink-0`}>{l.clicks}</span>
                     </div>
@@ -194,11 +245,13 @@ export default function ContentInsights() {
               <section className={`rounded-2xl border border-container1-border bg-container1 p-5`}>
                 <div className={`text-sm text-muted mb-3`}>{translate({ key: 'workspaces.content.brandDesc' })}</div>
                 {content.channels.length === 0 ? (
-                  <EmptyState
-                    icon="wand-magic-sparkles"
-                    title={translate({ key: 'workspaces.content.brandEmpty' })}
-                    sub={translate({ key: 'workspaces.content.brandEmptySub' })}
-                    action={<WsButton icon="plus" onClick={() => { navigate('content/settings'); }}>{translate({ key: 'workspaces.content.brandEmptyAction' })}</WsButton>}
+                  //? The old CTA was a bare navigate, which lands on Brand & styles (the default tab) —
+                  //? not on Channels where a channel is created. EmptyPicker deep-links the right tab
+                  //? and degrades to "ask someone with X" when the user may not create one.
+                  <EmptyPicker
+                    icon="paper-plane"
+                    label={translate({ key: 'workspaces.tips.insights.noChannelsLabel' })}
+                    fix={{ cap: 'workTickets', view: 'content/settings', tab: 'channels', cta: translate({ key: 'workspaces.tips.insights.noChannelsCta' }) }}
                   />
                 ) : (
                   <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3`}>
@@ -212,7 +265,15 @@ export default function ContentInsights() {
               {/* Read-only reference material — one tap away, collapsed by default. */}
               <Disclosure summary={translate({ key: 'workspaces.content.stylesTitle' })}>
                 <div className={`text-sm text-muted mb-3`}>{translate({ key: 'workspaces.content.stylesDesc' })}</div>
-                {content.styles.length === 0 ? <div className={`text-sm text-disabled`}>{translate({ key: 'workspaces.content.stylesEmpty' })}</div> : (
+                {/* The built-in presets are only seeded by tests, never at boot — a fresh workspace really
+                    has zero styles, so this needs a route out instead of a dead line. */}
+                {content.styles.length === 0 ? (
+                  <EmptyPicker
+                    icon="wand-magic-sparkles"
+                    label={translate({ key: 'workspaces.tips.insights.noStylesLabel' })}
+                    fix={{ cap: 'workspaceSettings', view: 'content/settings', tab: 'brand', cta: translate({ key: 'workspaces.tips.insights.noStylesCta' }) }}
+                  />
+                ) : (
                   <div className={`flex flex-wrap gap-2`}>
                     {content.styles.map((s) => (
                       <div key={`${s.feature}:${s.key}`} className={`flex items-center gap-2 rounded-lg border border-container2-border bg-container2 px-2.5 py-1.5`}>

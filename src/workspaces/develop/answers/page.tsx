@@ -21,7 +21,7 @@ import { useTranslator } from '@luckystack/core/client';
 
 import Icon from '../../_components/Icon';
 import { Collapse } from '../../_components/motion';
-import { EmptyState, StatusPill, WsButton } from '../../_components/primitives';
+import { EmptyState, InfoTip, StatusPill, WsButton } from '../../_components/primitives';
 import type { TicketPriority } from '../../_data/types';
 import { PRIORITY_DOT, PRIORITY_LABEL_KEY, isBadgedPriority } from '../../_functions/priority';
 import { parseStructuredQuestion } from '../../_functions/structuredQuestion';
@@ -103,8 +103,18 @@ function QueueCard({ item }: { item: { ticketKey: string; title: string; questio
             {/* The whole value of this inbox is seeing WHERE the blockage is — a ticket parked on more than
                 one question needs that visible here, not behind the Details disclosure. */}
             {item.openQuestionCount !== undefined && item.openQuestionCount > 1 && (
-              <span className={`text-[11px] font-medium text-meta`}>
-                {translate({ key: 'workspaces.answers.moreOpen', params: [{ key: 'n', value: String(item.openQuestionCount - 1) }] })}
+              <span className={`inline-flex items-center gap-1`}>
+                <span className={`text-[11px] font-medium text-meta`}>
+                  {translate({ key: 'workspaces.answers.moreOpen', params: [{ key: 'n', value: String(item.openQuestionCount - 1) }] })}
+                </span>
+                {/* Answering one question does NOT resume the ticket — conductor.ts:2266 advances the
+                    banner and returns; only the last answer reprovisions with all answers combined. */}
+                <InfoTip
+                  align="start"
+                  label={translate({ key: 'workspaces.tips.board.moreOpenGateTitle' })}
+                  title={translate({ key: 'workspaces.tips.board.moreOpenGateTitle' })}
+                  body={translate({ key: 'workspaces.tips.board.moreOpenGateBody' })}
+                />
               </span>
             )}
           </div>
@@ -128,6 +138,19 @@ function QueueCard({ item }: { item: { ticketKey: string; title: string; questio
             <button type="button" aria-expanded={noteOpen} disabled={pending} onClick={toggleNote} className={`inline-flex items-center gap-1.5 text-xs text-muted hover:text-common cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed`}>
               <Icon name={noteOpen ? 'xmark' : 'plus'} />{translate({ key: 'workspaces.answers.addNote' })}
             </button>
+            {/* Approve/Reject are not a structured verdict: the translated word plus the note is sent as
+                ordinary free text (nothing server-side branches on it). It becomes the resume prompt
+                (questionSet.ts:68 — or a numbered Q→A list when several questions were open), which
+                stageRunner.ts:736 embeds in a fixed "the human answered … continue" wrapper — so the
+                agent reads the answer, but not as a bare verbatim line. A restart that has to queue
+                (capacity, editor open, paused) is re-provisioned WITHOUT that prompt, so the tip says
+                "usually" rather than promising delivery. */}
+            <InfoTip
+              align="start"
+              label={translate({ key: 'workspaces.tips.board.approveNoteTitle' })}
+              title={translate({ key: 'workspaces.tips.board.approveNoteTitle' })}
+              body={translate({ key: 'workspaces.tips.board.approveNoteBody' })}
+            />
           </div>
           <Collapse open={noteOpen}>
             <input

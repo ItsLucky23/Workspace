@@ -10,7 +10,8 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../../_components/Icon';
-import { Disclosure, EmptyState, SectionCard, Toggle, WsButton } from '../../_components/primitives';
+import { Disclosure, EmptyState, InfoTip, SectionCard, Toggle, WsButton } from '../../_components/primitives';
+import { EmptyPicker } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { oauthCallbackBase } from '../../../../config';
 import { AccountConnectForm } from './portalForms';
@@ -118,21 +119,63 @@ function ChannelsCard() {
           {editingId && (
             <div className={`flex flex-col gap-1`}>
               <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.content.channelDefaultStyle' })}</span>
-              <Dropdown size="md" value={styleItems.find((i) => i.id === defaultStyleId) ?? styleItems[0]} items={styleItems} onChange={(it) => { setDefaultStyleId(String(it.id)); }} />
+              {/* A fresh workspace has NO styles at all (nothing seeds presets), so the picker would hold
+                  one meaningless entry and never say where a style is made. */}
+              {content.styles.length === 0
+                ? (
+                  <EmptyPicker
+                    icon="wand-magic-sparkles"
+                    label={translate({ key: 'workspaces.tips.content.noStyles' })}
+                    fix={{ cap: 'workspaceSettings', view: 'content/settings', tab: 'brand', cta: translate({ key: 'workspaces.tips.content.noStylesCta' }) }}
+                  />
+                )
+                : <Dropdown size="md" value={styleItems.find((i) => i.id === defaultStyleId) ?? styleItems[0]} items={styleItems} onChange={(it) => { setDefaultStyleId(String(it.id)); }} />}
             </div>
           )}
           <div className={`flex items-center justify-between gap-2`}>
-            <span className={`text-sm text-common`} title={translate({ key: 'workspaces.content.channelAiDisclosureHint' })}>{translate({ key: 'workspaces.content.channelAiDisclosure' })}</span>
+            <span className={`text-sm text-common flex items-center gap-1.5`} title={translate({ key: 'workspaces.content.channelAiDisclosureHint' })}>
+              {translate({ key: 'workspaces.content.channelAiDisclosure' })}
+              {/* A default with two fates: a prefill you can untick by hand, but the ONLY source on an autopilot post. */}
+              <InfoTip
+                align="start"
+                label={translate({ key: 'workspaces.tips.content.disclosureTitle' })}
+                title={translate({ key: 'workspaces.tips.content.disclosureTitle' })}
+                body={translate({ key: 'workspaces.tips.content.disclosureBody' })}
+                points={[
+                  { id: 'manual', label: translate({ key: 'workspaces.tips.content.disclosureManual' }), desc: translate({ key: 'workspaces.tips.content.disclosureManualDesc' }) },
+                  { id: 'autopilot', label: translate({ key: 'workspaces.tips.content.disclosureAuto' }), desc: translate({ key: 'workspaces.tips.content.disclosureAutoDesc' }) },
+                ]}
+              />
+            </span>
             <Toggle on={aiDisclosure} onChange={setAiDisclosure} label={aiDisclosure ? translate({ key: 'workspaces.account.enabled' }) : translate({ key: 'workspaces.account.off' })} />
           </div>
-          {accountItems.length > 1 && (
-            <div className={`flex items-center justify-between gap-2`}>
-              <span className={`text-sm text-common`} title={translate({ key: 'workspaces.content.channelAccountHint' })}>{translate({ key: 'workspaces.content.channelAccount' })}</span>
-              <Dropdown size="sm" value={accountItems.find((i) => i.id === defaultAccountId) ?? accountItems[0]} items={accountItems} onChange={(it) => { setDefaultAccountId(String(it.id)); }} />
-            </div>
-          )}
+          {/* The account row used to VANISH with nothing connected — an invisible setting nobody can find. */}
+          {platform !== 'none' && (accountItems.length > 1
+            ? (
+              <div className={`flex items-center justify-between gap-2`}>
+                <span className={`text-sm text-common`} title={translate({ key: 'workspaces.content.channelAccountHint' })}>{translate({ key: 'workspaces.content.channelAccount' })}</span>
+                <Dropdown size="sm" value={accountItems.find((i) => i.id === defaultAccountId) ?? accountItems[0]} items={accountItems} onChange={(it) => { setDefaultAccountId(String(it.id)); }} />
+              </div>
+            )
+            : <EmptyPicker icon="link" label={translate({ key: 'workspaces.tips.content.noAccounts' })} />)}
           <div className={`flex items-center justify-between gap-2`}>
-            <span className={`text-sm text-common`} title={translate({ key: 'workspaces.content.autopilotHint' })}>{translate({ key: 'workspaces.content.autopilotLabel' })}</span>
+            <span className={`text-sm text-common flex items-center gap-1.5`} title={translate({ key: 'workspaces.content.autopilotHint' })}>
+              {translate({ key: 'workspaces.content.autopilotLabel' })}
+              {/* The switch is NOT inert on its own: content-request-publish posts immediately on an
+                  autopilot channel (no publish suggestion), whoever fires it — and a scheduled ideator
+                  task naming this channel runs the whole chain owner-attributed. */}
+              <InfoTip
+                align="start"
+                label={translate({ key: 'workspaces.tips.content.autopilotTitle' })}
+                title={translate({ key: 'workspaces.tips.content.autopilotTitle' })}
+                body={translate({ key: 'workspaces.tips.content.autopilotBody' })}
+                points={[
+                  { id: 'approval', label: translate({ key: 'workspaces.tips.content.autopilotApproval' }), desc: translate({ key: 'workspaces.tips.content.autopilotApprovalDesc' }) },
+                  { id: 'chain', label: translate({ key: 'workspaces.tips.content.autopilotChain' }), desc: translate({ key: 'workspaces.tips.content.autopilotChainDesc' }) },
+                  { id: 'owner', label: translate({ key: 'workspaces.tips.content.autopilotOwner' }), desc: translate({ key: 'workspaces.tips.content.autopilotOwnerDesc' }) },
+                ]}
+              />
+            </span>
             <Toggle on={autopilot} onChange={toggleAutopilot} label={autopilot ? translate({ key: 'workspaces.account.enabled' }) : translate({ key: 'workspaces.account.off' })} />
           </div>
           <WsButton className={`self-start min-h-11`} disabled={!canSave} onClick={submit}>{translate({ key: 'workspaces.content.channelSave' })}</WsButton>

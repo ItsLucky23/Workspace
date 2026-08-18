@@ -13,7 +13,8 @@ import Dropdown from 'src/_components/dropdown/Dropdown';
 import Icon from '../../_components/Icon';
 import { EffectivePromptPreview, LayerNote } from '../../_components/EffectivePromptPreview';
 import { Collapse } from '../../_components/motion';
-import { Disclosure, IconButton, InfoDot, Segmented, Toggle, WsButton } from '../../_components/primitives';
+import { Disclosure, IconButton, InfoDot, InfoTip, Segmented, Toggle, WsButton } from '../../_components/primitives';
+import { EmptyPicker } from '../../_components/SetupNotice';
 import { resolveAiLayers } from '../../_functions/aiLayers';
 import { CARRY_VARS, COMMAND_CATALOG, HOOK_CATALOG, NETWORK_CATEGORIES } from '../../_data/seed';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
@@ -40,10 +41,13 @@ const EMIT_SCHEMA_SAMPLE = `{
 //? `note` carries the inheritance line for a layered field (ADR 0308): a stage prompt states its
 //? position in the chain right where it is edited, instead of the old hint copy that said
 //? "layered above your instructions" without ever naming what it layers above.
-function FieldLabel({ title, hint, note }: { title: string; hint?: string; note?: ReactNode }) {
+function FieldLabel({ title, hint, note, info }: { title: string; hint?: string; note?: ReactNode; info?: ReactNode }) {
   return (
     <div className="mb-1.5">
-      <div className="text-sm font-semibold text-title">{title}</div>
+      <div className={`flex items-center gap-1.5`}>
+        <span className="text-sm font-semibold text-title">{title}</span>
+        {info}
+      </div>
       {hint && <div className="text-xs text-muted mt-0.5">{hint}</div>}
       {note && (
         <div className="inline-flex items-center gap-1.5 mt-1.5 rounded-md bg-container2 px-1.5 py-0.5 text-[11px] text-meta">
@@ -121,8 +125,19 @@ export function ContextTab({ s, update }: TabProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       <div>
-        <FieldLabel title={translate({ key: 'workspaces.pipeline.contextDocs' })} hint={translate({ key: 'workspaces.pipeline.contextDocsHint' })} />
+        <FieldLabel
+          title={translate({ key: 'workspaces.pipeline.contextDocs' })}
+          hint={translate({ key: 'workspaces.pipeline.contextDocsHint' })}
+          info={<InfoTip align="start" title={translate({ key: 'workspaces.tips.pipeline.contextDocsTitle' })} body={translate({ key: 'workspaces.tips.pipeline.contextDocsBody' })} />}
+        />
         <div className="flex flex-col gap-1.5">
+          {docs.length === 0 && (
+            <EmptyPicker
+              icon="file-lines"
+              label={translate({ key: 'workspaces.tips.pipeline.noDocs' })}
+              fix={{ cap: 'editPipeline', view: 'sources', tab: 'docs', cta: translate({ key: 'workspaces.tips.pipeline.noDocsCta' }) }}
+            />
+          )}
           {docs.map((d) => {
             const on = s.sourceIds.includes(d.id);
             return (
@@ -138,6 +153,9 @@ export function ContextTab({ s, update }: TabProps) {
       <div>
         <FieldLabel title={translate({ key: 'workspaces.pipeline.skillsMcp' })} hint={translate({ key: 'workspaces.pipeline.skillsMcpHint' })} />
         <div className="flex flex-col gap-1.5">
+          {/* no `fix`: a capability skill has no creation surface anywhere in the app today, so a
+              deep-link would be a dead end — the row states the absence instead of inventing one. */}
+          {skills.length === 0 && <EmptyPicker icon="robot" label={translate({ key: 'workspaces.tips.pipeline.noSkills' })} />}
           {skills.map((sk) => {
             const on = s.skillKeys.includes(sk.id);
             return (
@@ -251,7 +269,11 @@ export function CommandsTab({ s, update }: TabProps) {
 
   return (
     <div className="flex flex-col gap-5 max-w-3xl">
-      <FieldLabel title={translate({ key: 'workspaces.pipeline.commandPermissions' })} hint={translate({ key: 'workspaces.pipeline.commandPermissionsHint' })} />
+      <FieldLabel
+        title={translate({ key: 'workspaces.pipeline.commandPermissions' })}
+        hint={translate({ key: 'workspaces.pipeline.commandPermissionsHint' })}
+        info={<InfoTip align="start" title={translate({ key: 'workspaces.tips.pipeline.commandsBaselineTitle' })} body={translate({ key: 'workspaces.tips.pipeline.commandsBaselineBody' })} />}
+      />
       {COMMAND_CATALOG.map((group) => (
         <div key={group.category}>
           <div className="text-xs font-medium uppercase tracking-wide text-muted mb-2">{group.category}</div>
@@ -280,18 +302,23 @@ export function CommandsTab({ s, update }: TabProps) {
 /* ----------------------------------------------------------------- Integrations */
 export function IntegrationsTab({ s, update }: TabProps) {
   const translate = useTranslator();
-  const { integrationTools, navigate } = useWorkspaces();
+  const { integrationTools } = useWorkspaces();
   const selected = (toolId: string) => s.tools.find((t) => t.toolId === toolId);
   const toggle = (toolId: string) => { update({ tools: selected(toolId) ? s.tools.filter((t) => t.toolId !== toolId) : [...s.tools, { toolId, tier: 'ro' }] }); };
   const setTier = (toolId: string, tier: ToolTier) => { update({ tools: s.tools.map((t) => (t.toolId === toolId ? { ...t, tier } : t)) }); };
   return (
     <div className="flex flex-col gap-4 max-w-2xl">
-      <FieldLabel title={translate({ key: 'workspaces.pipeline.integrations' })} hint={translate({ key: 'workspaces.pipeline.integrationsHint' })} />
+      <FieldLabel
+        title={translate({ key: 'workspaces.pipeline.integrations' })}
+        hint={translate({ key: 'workspaces.pipeline.integrationsHint' })}
+        info={<InfoTip align="start" title={translate({ key: 'workspaces.tips.pipeline.toolTierTitle' })} body={translate({ key: 'workspaces.tips.pipeline.toolTierBody' })} />}
+      />
       {integrationTools.length === 0 && (
-        <div className="rounded-xl border border-container1-border bg-container2/40 p-4 text-sm text-muted flex items-center justify-between gap-3">
-          <span>{translate({ key: 'workspaces.pipeline.noIntegrationTools' })}</span>
-          <WsButton variant="secondary" icon="database" onClick={() => { navigate('workspace'); }}>{translate({ key: 'workspaces.pipeline.setUpIntegrations' })}</WsButton>
-        </div>
+        <EmptyPicker
+          icon="database"
+          label={translate({ key: 'workspaces.pipeline.noIntegrationTools' })}
+          fix={{ cap: 'workspaceSettings', view: 'workspace', tab: 'integrations', cta: translate({ key: 'workspaces.pipeline.setUpIntegrations' }) }}
+        />
       )}
       <div className="flex flex-col gap-1.5">
         {integrationTools.map((tool) => {
@@ -425,6 +452,7 @@ export function CarryoverTab({ s, update }: TabProps) {
           title={translate({ key: 'workspaces.pipeline.promptTemplate' })}
           hint={translate({ key: 'workspaces.pipeline.promptTemplateHint' })}
           note={<LayerNote layers={carryLayers} id="carryOver" />}
+          info={<InfoTip align="start" title={translate({ key: 'workspaces.tips.pipeline.promptTemplateTitle' })} body={translate({ key: 'workspaces.tips.pipeline.promptTemplateBody' })} />}
         />
         <textarea rows={5} value={s.promptTemplate} onChange={(e) => { update({ promptTemplate: e.target.value }); }} className={areaCls} placeholder="Implement the plan.\nPlan: {{summary}}" />
       </div>
@@ -480,7 +508,11 @@ export function ModelTab({ s, update }: TabProps) {
 
       <Collapse open={m.autoEscalate}>
         <div>
-          <FieldLabel title={translate({ key: 'workspaces.pipeline.escalationBands' })} hint={translate({ key: 'workspaces.pipeline.escalationBandsHint' })} />
+          <FieldLabel
+            title={translate({ key: 'workspaces.pipeline.escalationBands' })}
+            hint={translate({ key: 'workspaces.pipeline.escalationBandsHint' })}
+            info={<InfoTip align="start" title={translate({ key: 'workspaces.tips.pipeline.escalationScoreTitle' })} body={translate({ key: 'workspaces.tips.pipeline.escalationScoreBody' })} />}
+          />
           <div className="flex flex-col gap-2">
             {sortedRules.map((r) => (
               <div key={r.id} className="rounded-xl border border-container1-border p-3 flex flex-col gap-2.5">

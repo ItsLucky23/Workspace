@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (231)
+## Decisions (232)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -244,6 +244,7 @@
 | 0311 | AI prompt layers are two channels, not one stack | 🟢 accepted | ai, prompt, ux, correctness, orchestrator | 0308 | `docs/decisions/0311-ai-prompt-layers-are-two-channels-not-one-stack.md` |
 | 0312 | Sub-navigation and explanation live in the URL and in three shared primitives | 🟢 accepted | ia, ux, routing, accessibility, onboarding | — | `docs/decisions/0312-sub-navigation-and-explanation-live-in-the-url-and-in-three-shared-primitives.md` |
 | 0313 | Repository introspection is shown to the user, not only to the AI | 🟢 accepted | dev, ux, repository, containers | — | `docs/decisions/0313-repository-introspection-is-shown-to-the-user-not-only-to-the-ai.md` |
+| 0314 | Onboarding is a standing checklist, not a tour | 🟢 accepted | onboarding, ux, ia | — | `docs/decisions/0314-onboarding-is-a-standing-checklist-not-a-tour.md` |
 
 ## Summaries
 
@@ -2115,6 +2116,16 @@ Fix the design at the token layer first, and keep component changes secondary. C
 
 → `docs/decisions/0313-repository-introspection-is-shown-to-the-user-not-only-to-the-ai.md`
 
+### 0314 — Onboarding is a standing checklist, not a tour
+
+**0314** · accepted · tags: onboarding, ux, ia · 2026-08-18
+
+*A persistent, self-retiring checklist on the landing view.**
+
+**Governs** (`//? @adr 0314`): `src/workspaces/_components/SetupChecklist.tsx`
+
+→ `docs/decisions/0314-onboarding-is-a-standing-checklist-not-a-tour.md`
+
 ## Code governed by decisions
 
 > Reverse links from a `//? @adr NNNN` tag in source back to the ADR that explains it.
@@ -2131,6 +2142,7 @@ Fix the design at the token layer first, and keep component changes secondary. C
 | `server/documents/export.ts` | 0271 | documents module markdown bron plus render targets |
 | `server/voice/voice.ts` | 0275 | voice interface provider abstracted stt plus tts |
 | `src/workspaces/_components/EffectivePromptPreview.tsx` | 0311 | AI prompt layers are two channels, not one stack |
+| `src/workspaces/_components/SetupChecklist.tsx` | 0314 | Onboarding is a standing checklist, not a tour |
 | `src/workspaces/_data/nav.ts` | 0280 | Module-based nav categories (Develop / Content / Insights) that mirror folders and URLs |
 | `src/workspaces/_functions/aiLayers.ts` | 0311 | AI prompt layers are two channels, not one stack |
 | `src/workspaces/workspace/repoIntrospection.tsx` | 0313 | Repository introspection is shown to the user, not only to the AI |

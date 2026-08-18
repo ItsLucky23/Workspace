@@ -8,7 +8,7 @@
 //? diagnosis (ADR 0042) sits behind its own disclosure. Data comes from the
 //? real SpendRecord aggregate (server aggregateUsage), not dummy rows.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
@@ -17,7 +17,7 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../../_components/Icon';
-import { AvatarBubble, Disclosure, EmptyState, IconButton, SectionCard, Tabs, WsButton } from '../../_components/primitives';
+import { AvatarBubble, Disclosure, EmptyState, IconButton, InfoTip, SectionCard, Tabs, WsButton } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { Member, Ticket } from '../../_data/types';
 
@@ -40,10 +40,10 @@ interface DiagnoseEntry {
   suggestionId: string | null;
 }
 
-function StatCard({ label, value, hint }: { label: string; value: string; hint: string }) {
+function StatCard({ label, value, hint, info }: { label: string; value: string; hint: string; info?: ReactNode }) {
   return (
     <div className={`rounded-2xl border border-container1-border bg-container1 p-5`}>
-      <div className={`text-xs text-muted`}>{label}</div>
+      <div className={`text-xs text-muted flex items-center gap-1.5`}>{label}{info}</div>
       <div className={`text-2xl font-semibold text-title mt-1 tabular-nums`}>{value}</div>
       <div className={`text-xs text-muted mt-0.5`}>{hint}</div>
     </div>
@@ -207,6 +207,18 @@ export default function Usage() {
                     label={translate({ key: 'workspaces.usage.insightCycle' })}
                     value={insights.avgCycleHours > 0 ? `${String(insights.avgCycleHours)} h` : '—'}
                     hint={translate({ key: 'workspaces.usage.insightCycleHint', params: [{ key: 'count', value: insights.doneCount }] })}
+                    //? "created → done" is the intent; the measurement is createdAt→updatedAt over the
+                    //? ACTIVE PROJECT's non-archived done tickets, so a late write to the ticket row
+                    //? (edit / status move) inflates it retroactively — a comment does not (add-comment
+                    //? only writes a WorkspaceNote + TicketEvent, never the Ticket row).
+                    info={
+                      <InfoTip
+                        align="start"
+                        label={translate({ key: 'workspaces.tips.insights.cycleTimeAria' })}
+                        title={translate({ key: 'workspaces.tips.insights.cycleTimeTitle' })}
+                        body={translate({ key: 'workspaces.tips.insights.cycleTimeBody' })}
+                      />
+                    }
                   />
                   <StatCard
                     label={translate({ key: 'workspaces.usage.insightThroughput' })}
@@ -236,7 +248,22 @@ export default function Usage() {
                 </SectionCard>
 
                 {/* The drill-in surface: per-ticket breakdown, rows open the ticket. */}
-                <SectionCard title={translate({ key: 'workspaces.usage.byTicketTitle' })} desc={translate({ key: 'workspaces.usage.byTicketDesc' })}>
+                {/* The columns are a char-derived ESTIMATE for the CLI agent (no usage reported, price
+                    deliberately absent → €0); only a metered provider supplies real counts. */}
+                <SectionCard
+                  title={
+                    <span className={`flex items-center gap-1.5`}>
+                      {translate({ key: 'workspaces.usage.byTicketTitle' })}
+                      <InfoTip
+                        align="start"
+                        label={translate({ key: 'workspaces.tips.insights.tokenEstimateAria' })}
+                        title={translate({ key: 'workspaces.tips.insights.tokenEstimateTitle' })}
+                        body={translate({ key: 'workspaces.tips.insights.tokenEstimateBody' })}
+                      />
+                    </span>
+                  }
+                  desc={translate({ key: 'workspaces.usage.byTicketDesc' })}
+                >
                   {usage.byTicket.length === 0 ? (
                     <EmptyState icon="chart-column" title={translate({ key: 'workspaces.usage.emptyTitle' })} sub={translate({ key: 'workspaces.usage.emptySub' })} />
                   ) : (
@@ -328,7 +355,18 @@ export default function Usage() {
                 {budget && (
                   <div className={`flex flex-col gap-2 mb-3`}>
                     <div className={`flex items-center justify-between text-sm`}>
-                      <span className={`text-muted`}>{translate({ key: 'workspaces.usage.budgetSpent' })}</span>
+                      {/* "this period" = since this cap's own windowStartAt (creation / Resume spend),
+                          and every enabled cap scores the SAME workspace-wide metered spend. */}
+                      <span className={`text-muted flex items-center gap-1.5`}>
+                        {translate({ key: 'workspaces.usage.budgetSpent' })}
+                        <InfoTip
+                          align="start"
+                          label={translate({ key: 'workspaces.tips.insights.spendWindowAria' })}
+                          title={translate({ key: 'workspaces.tips.insights.spendWindowTitle' })}
+                          body={translate({ key: 'workspaces.tips.insights.spendWindowBody' })}
+                          points={[{ id: 'shared', label: translate({ key: 'workspaces.tips.insights.spendWindowSharedLabel' }), desc: translate({ key: 'workspaces.tips.insights.spendWindowSharedDesc' }) }]}
+                        />
+                      </span>
                       <span className={`font-mono tabular-nums text-title`}>{budgetSpentLabel}</span>
                     </div>
                     <div className={`h-2 rounded-full bg-container2 overflow-hidden`}>
@@ -339,7 +377,19 @@ export default function Usage() {
                 {/* #103 — the multi-cap list: every configured cap with its enforcement + an enable/disable toggle. */}
                 {budgets.length > 0 && (
                   <div className={`flex flex-col gap-1.5 mb-3`}>
-                    <div className={`text-xs font-semibold text-muted uppercase tracking-wide`}>{translate({ key: 'workspaces.usage.budgetCaps' })}</div>
+                    {/* Both enforcement values sit in the SAME `in` filter server-side, so the choice
+                        between them changes nothing today — say so on the list, not per row. The single
+                        gate is provisionContainers, i.e. pipeline stage runs + manual re-runs; metered
+                        one-shot AI calls and media generation (own MediaBudget) run on past a full cap. */}
+                    <div className={`text-xs font-semibold text-muted uppercase tracking-wide flex items-center gap-1.5`}>
+                      {translate({ key: 'workspaces.usage.budgetCaps' })}
+                      <InfoTip
+                        align="start"
+                        label={translate({ key: 'workspaces.tips.insights.enforcementAria' })}
+                        title={translate({ key: 'workspaces.tips.insights.enforcementTitle' })}
+                        body={translate({ key: 'workspaces.tips.insights.enforcementBody' })}
+                      />
+                    </div>
                     {budgets.map((b) => {
                       const capLabel = `€${b.spent.toFixed(0)} / €${b.cap.toFixed(0)}`;
                       const enfItems: DropdownItem[] = [{ id: 'pauseNew', value: translate({ key: 'workspaces.usage.enfPauseNew' }) }, { id: 'pauseAll', value: translate({ key: 'workspaces.usage.enfPauseAll' }) }];
@@ -380,7 +430,22 @@ export default function Usage() {
                   <button type="button" disabled={!(Number(capInput) > 0)} onClick={() => { editBudget({ cap: Number(capInput), ...(labelInput.trim() ? { label: labelInput.trim() } : {}), ...(alertInput.trim() ? { alertPct: Number(alertInput) } : {}) }); }} className={`h-9 rounded-lg bg-primary text-title-primary px-3 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer`}>{translate({ key: 'workspaces.usage.budgetSave' })}</button>
                   {/* #103 — add a SEPARATE additional cap (create) rather than editing the primary one. */}
                   <button type="button" disabled={!(Number(capInput) > 0)} onClick={() => { editBudget({ create: true, cap: Number(capInput), ...(labelInput.trim() ? { label: labelInput.trim() } : {}), ...(alertInput.trim() ? { alertPct: Number(alertInput) } : {}) }); setLabelInput(''); }} className={`h-9 rounded-lg border border-container1-border bg-container1 px-3 text-sm text-common hover:bg-container2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer`}>{translate({ key: 'workspaces.usage.budgetAddCap' })}</button>
-                  {budget && <button type="button" onClick={() => { resumeSpend(); }} className={`h-9 rounded-lg border border-container1-border bg-container1 px-3 text-sm text-common hover:bg-container2 cursor-pointer`}>{translate({ key: 'workspaces.usage.budgetResume' })}</button>}
+                  {/* resume-spend is an updateMany over the whole workspace's WorkspaceBudget rows: EVERY
+                      cap on THIS page resets, not just the primary budget it sits beside. It does NOT
+                      touch the media €-cap (MediaBudget.spentCents is never zeroed anywhere), hence the
+                      deep-link point, and it cannot clear the host-wide WS_HOST_SPEND_CAP_EUR ceiling. */}
+                  {budget && (
+                    <span className={`flex items-center gap-1.5`}>
+                      <button type="button" onClick={() => { resumeSpend(); }} className={`h-9 rounded-lg border border-container1-border bg-container1 px-3 text-sm text-common hover:bg-container2 cursor-pointer`}>{translate({ key: 'workspaces.usage.budgetResume' })}</button>
+                      <InfoTip
+                        align="end"
+                        label={translate({ key: 'workspaces.tips.insights.resumeSpendAria' })}
+                        title={translate({ key: 'workspaces.tips.insights.resumeSpendTitle' })}
+                        body={translate({ key: 'workspaces.tips.insights.resumeSpendBody' })}
+                        points={[{ id: 'media', label: translate({ key: 'workspaces.tips.insights.resumeSpendMediaLabel' }), desc: translate({ key: 'workspaces.tips.insights.resumeSpendMediaDesc' }), onGo: () => { focusSetup({ view: 'content/settings', tab: 'admin' }); }, goLabel: translate({ key: 'workspaces.tips.insights.resumeSpendMediaGo' }) }]}
+                      />
+                    </span>
+                  )}
                 </div>
                 <div className={`flex items-center gap-2 text-xs text-muted mt-3`}>
                   <Icon name="circle-question" /> {translate({ key: 'workspaces.usage.runawayNote' })}

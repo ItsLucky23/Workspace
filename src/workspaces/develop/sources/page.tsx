@@ -16,7 +16,8 @@ import { menuHandler } from 'src/_functions/menuHandler';
 
 import Icon from '../../_components/Icon';
 import { Sheet } from '../../_components/motion';
-import { Disclosure, EmptyState, FOCUS_RING, IconButton, PopMenu, Tabs, Toggle, WsButton, type PopMenuItem, type TabDef } from '../../_components/primitives';
+import { Disclosure, EmptyState, FOCUS_RING, IconButton, InfoTip, PopMenu, Tabs, Toggle, WsButton, type PopMenuItem, type TabDef } from '../../_components/primitives';
+import { EmptyPicker } from '../../_components/SetupNotice';
 import type { InfoDoc, RagIndexStatus, SkillEntry } from '../../_data/types';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 
@@ -70,10 +71,36 @@ function DocDetail({ doc, onSetAiEditable, onOpenStage }: { doc: InfoDoc; onSetA
       <DetailRow label={translate({ key: 'workspaces.sources.source' })}>{doc.source}</DetailRow>
       <DetailRow label={translate({ key: 'workspaces.sources.lastUpdated' })}>{doc.updated} · {doc.note}</DetailRow>
       {doc.pendingBranches && <DetailRow label={translate({ key: 'workspaces.sources.notYetProcessed' })}><span className={`text-warning`}>{doc.pendingBranches.join(', ')}</span></DetailRow>}
-      <DetailRow label={translate({ key: 'workspaces.sources.loadedByStages' })}><StageChips stages={doc.usedByStages} onOpenStage={onOpenStage} /></DetailRow>
+      <DetailRow label={translate({ key: 'workspaces.sources.loadedByStages' })}>
+        {/* This list is written once at creation and never updated, so an empty one proves nothing —
+            say that here, next to the value the reader would otherwise trust. */}
+        <div className={`flex items-start gap-2`}>
+          <div className={`min-w-0 flex-1`}><StageChips stages={doc.usedByStages} onOpenStage={onOpenStage} /></div>
+          <InfoTip
+            align="end"
+            label={translate({ key: 'workspaces.tips.sources.stagesAria' })}
+            title={translate({ key: 'workspaces.tips.sources.stagesTitle' })}
+            body={translate({ key: 'workspaces.tips.sources.stagesBody' })}
+          />
+        </div>
+      </DetailRow>
       <DetailRow label={translate({ key: 'workspaces.sources.aiEditable' })}>
         <div className={`flex flex-col gap-1.5`}>
-          <Toggle on={aiEditable} onChange={(next) => { setAiEditable(next); onSetAiEditable(next); }} ariaLabel={doc.name} />
+          <div className={`flex items-center gap-2`}>
+            <Toggle on={aiEditable} onChange={(next) => { setAiEditable(next); onSetAiEditable(next); }} ariaLabel={doc.name} />
+            {/* The label reads as a write-permission; the switch actually decides whether the doc's TEXT
+                reaches the AI, and it starts OFF on everything you upload or scan. */}
+            <InfoTip
+              align="start"
+              label={translate({ key: 'workspaces.tips.sources.aiEditableAria' })}
+              title={translate({ key: 'workspaces.tips.sources.aiEditableTitle' })}
+              body={translate({ key: 'workspaces.tips.sources.aiEditableBody' })}
+              points={[
+                { id: 'default', label: translate({ key: 'workspaces.tips.sources.aiEditableDefault' }), desc: translate({ key: 'workspaces.tips.sources.aiEditableDefaultDesc' }) },
+                { id: 'not-a-lock', label: translate({ key: 'workspaces.tips.sources.aiEditableNotALock' }), desc: translate({ key: 'workspaces.tips.sources.aiEditableNotALockDesc' }) },
+              ]}
+            />
+          </div>
           <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.sources.aiEditableHint' })}</span>
         </div>
       </DetailRow>
@@ -127,9 +154,23 @@ function CodeIndexStatus({ ragIndex }: { ragIndex: RagIndexStatus | null }) {
         </span>
       )}
     >
-      {indexed
-        ? <div className={`font-mono text-xs text-muted`}>{translate({ key: 'workspaces.sources.ragEmbedder', params: [{ key: 'embedder', value: ragIndex.embedder || '—' }, { key: 'commit', value: ragIndex.commitHash ? ragIndex.commitHash.slice(0, 7) : '—' }] })}</div>
-        : <div className={`text-xs text-muted`}>{translate({ key: 'workspaces.sources.ragNotIndexedHint' })}</div>}
+      {/* The tip sits in the body, not in the summary: the summary is itself a button, and a second
+          trigger inside it would toggle the disclosure on every tap. */}
+      <div className={`flex items-start gap-2`}>
+        {indexed
+          ? <div className={`font-mono text-xs text-muted min-w-0 flex-1`}>{translate({ key: 'workspaces.sources.ragEmbedder', params: [{ key: 'embedder', value: ragIndex.embedder || '—' }, { key: 'commit', value: ragIndex.commitHash ? ragIndex.commitHash.slice(0, 7) : '—' }] })}</div>
+          : <div className={`text-xs text-muted min-w-0 flex-1`}>{translate({ key: 'workspaces.sources.ragNotIndexedHint' })}</div>}
+        <InfoTip
+          align="end"
+          label={translate({ key: 'workspaces.tips.sources.codeIndexAria' })}
+          title={translate({ key: 'workspaces.tips.sources.codeIndexTitle' })}
+          body={translate({ key: 'workspaces.tips.sources.codeIndexBody' })}
+          points={[
+            { id: 'after-reload', label: translate({ key: 'workspaces.tips.sources.codeIndexAfterReload' }), desc: translate({ key: 'workspaces.tips.sources.codeIndexAfterReloadDesc' }) },
+            { id: 'after-switch', label: translate({ key: 'workspaces.tips.sources.codeIndexAfterSwitch' }), desc: translate({ key: 'workspaces.tips.sources.codeIndexAfterSwitchDesc' }) },
+          ]}
+        />
+      </div>
     </Disclosure>
   );
 }
@@ -255,7 +296,18 @@ export default function Sources() {
       <div className={`flex flex-col md:flex-row md:items-center md:justify-between gap-3 px-4 md:px-6 py-3 md:py-4`}>
         <div className={`min-w-0`}>
           <h1 className={`text-xl md:text-2xl font-semibold text-title`}>{translate({ key: 'workspaces.sources.title' })}</h1>
-          <p className={`mt-1 text-sm text-muted`}>{translate({ key: 'workspaces.sources.subtitle' })}</p>
+          {/* Both tabs are filtered by the SAME rule and nothing on the page says so: workspace-wide items
+              (no project) plus the active project's own. In practice that is mostly starter docs; skills are
+              rarely project-bound. Either way the snapshot only FILTERS — a "disappeared" item is not lost. */}
+          <div className={`mt-1 flex items-center gap-2`}>
+            <p className={`text-sm text-muted`}>{translate({ key: 'workspaces.sources.subtitle' })}</p>
+            <InfoTip
+              align="start"
+              label={translate({ key: 'workspaces.tips.sources.scopeAria' })}
+              title={translate({ key: 'workspaces.tips.sources.scopeTitle' })}
+              body={translate({ key: 'workspaces.tips.sources.scopeBody' })}
+            />
+          </div>
         </div>
         <div className={`flex items-center gap-2 shrink-0`}>
           {/* Maintenance (scan repo / reindex code / reindex memory) also affects the Skills tab's own
@@ -302,16 +354,10 @@ export default function Sources() {
         )}
         {tab === 'skills' && (
           skills.length === 0
-            ? (
-              <EmptyState
-                icon="robot"
-                title={translate({ key: 'workspaces.sources.emptySkillsTitle' })}
-                sub={translate({ key: 'workspaces.sources.emptySkillsSub' })}
-                action={repo.linked
-                  ? <WsButton variant="secondary" icon="database" onClick={startReindex} disabled={reindexing}>{translate({ key: reindexing ? 'workspaces.sources.reindexing' : 'workspaces.sources.reindexCode' })}</WsButton>
-                  : undefined}
-              />
-            )
+            //? The old empty state promised these arrive "once the workspace is indexed" and offered a
+            //? reindex button — but reindexing writes code-index entries, never a skill, and no screen in
+            //? the app creates one. So: state the truth, and offer no destination that does not exist.
+            ? <EmptyPicker icon="robot" label={translate({ key: 'workspaces.tips.sources.skillsNone' })} />
             : (
               <div className={`grid grid-cols-1 lg:grid-cols-2 gap-2`}>
                 {skills.map((s) => (

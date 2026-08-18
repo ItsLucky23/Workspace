@@ -14,7 +14,8 @@ import MultiSelectDropdown from 'src/_components/dropdown/MultiSelectDropdown';
 import { menuHandler } from 'src/_functions/menuHandler';
 
 import Icon from '../../_components/Icon';
-import { Disclosure, EmptyState, PopMenu, SectionCard, Toggle, WsButton } from '../../_components/primitives';
+import { Disclosure, EmptyState, InfoTip, PopMenu, SectionCard, Toggle, WsButton } from '../../_components/primitives';
+import { EmptyPicker } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 
 export const template = 'workspaces';
@@ -130,7 +131,17 @@ export default function Scheduled() {
                   </div>
                   {/*? #3 — its own non-truncating slot + a short relative format, so the most useful piece of
                       row state survives phone width instead of being the first thing the truncated line clips. */}
-                  {t.lastFiredAt && <div className={`text-xs text-meta mt-0.5`}>{translate({ key: 'workspaces.scheduled.lastRun', params: [{ key: 'when', value: timeAgo(t.lastFiredAt) }] })}</div>}
+                  {t.lastFiredAt && (
+                    <div className={`text-xs text-meta mt-0.5 flex items-center gap-1.5`}>
+                      {translate({ key: 'workspaces.scheduled.lastRun', params: [{ key: 'when', value: timeAgo(t.lastFiredAt) }] })}
+                      <InfoTip
+                        align="start"
+                        label={translate({ key: 'workspaces.tips.backlog.lastRunTitle' })}
+                        title={translate({ key: 'workspaces.tips.backlog.lastRunTitle' })}
+                        body={translate({ key: 'workspaces.tips.backlog.lastRunBody' })}
+                      />
+                    </div>
+                  )}
                 </div>
                 <Toggle on={t.enabled} onChange={(on) => { toggleTrigger(t.id, on); }} ariaLabel={t.name} />
                 {/*? Run-now + Delete live behind the kebab so a phone-width row stays name + toggle; the delete keeps its #93 confirm gate. */}
@@ -220,13 +231,32 @@ function CreateForm({ onDone }: { onDone: () => void }) {
           <div className={`inline-flex flex-wrap gap-0.5 rounded-xl bg-container2 p-0.5`}>
             {(['role', 'notify'] as const).map((m) => <button key={m} type="button" onClick={() => { setMode(m); }} disabled={m === 'role' && agentRoles.length === 0} className={`rounded-lg px-3 h-8 text-sm font-medium transition-colors ${mode === m ? 'bg-container1 text-title shadow-sm' : 'text-muted hover:text-common'} ${m === 'role' && agentRoles.length === 0 ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>{translate({ key: `workspaces.scheduled.mode.${m}` })}</button>)}
           </div>
+          {/* ADR 0312 — a disabled "Run an AI role" with no text reads as broken. Roles are registered
+              in code (no screen creates one), so this states the situation without a dead fix button. */}
+          {agentRoles.length === 0 && (
+            <div className={`mt-2`}>
+              <EmptyPicker icon="robot" label={translate({ key: 'workspaces.tips.backlog.noRolesLabel' })} />
+            </div>
+          )}
         </Field>
 
         {mode === 'role' ? (
           <>
             <Field label={translate({ key: 'workspaces.scheduled.role' })}>
               <BaseDropdown items={roleItems} {...(activeRoleItem ? { value: activeRoleItem } : {})} placeholder={translate({ key: 'workspaces.scheduled.rolePlaceholder' })} onChange={(i) => { setRoleKey(String(i.id)); }} size="md" width="full" />
-              {role && <div className={`text-xs text-muted mt-1`}>{role.description}{role.mutates ? ` · ${translate({ key: 'workspaces.scheduled.needsApproval' })}` : ''}</div>}
+              {role && (
+                <div className={`text-xs text-muted mt-1 flex items-center gap-1.5`}>
+                  <span className={`min-w-0`}>{role.description}{role.mutates ? ` · ${translate({ key: 'workspaces.scheduled.needsApproval' })}` : ''}</span>
+                  {role.mutates && (
+                    <InfoTip
+                      align="start"
+                      label={translate({ key: 'workspaces.tips.backlog.approvalTitle' })}
+                      title={translate({ key: 'workspaces.tips.backlog.approvalTitle' })}
+                      body={translate({ key: 'workspaces.tips.backlog.approvalBody' })}
+                    />
+                  )}
+                </div>
+              )}
             </Field>
             {/*? Focus + channel fan-out are power options — collapsed so the everyday path stays Name + Cadence + Role.
                 #5 — the summary now names what it hides + a live channel-count badge, so a collapsed row still
@@ -242,19 +272,40 @@ function CreateForm({ onDone }: { onDone: () => void }) {
                   <input value={focus} onChange={(e) => { setFocus(e.target.value); }} placeholder={translate({ key: 'workspaces.scheduled.focusPlaceholder' })} className={inputCls} />
                 </Field>
                 {/* A1 — target N channels; the role runs once per channel with an independent result. */}
-                {content.channels.length > 0 && (
-                  <Field label={translate({ key: 'workspaces.scheduled.channels' })}>
-                    <MultiSelectDropdown
-                      items={channelItems}
-                      value={channelItems.filter((i) => channelIds.includes(String(i.id)))}
-                      onChange={(sel) => { setChannelIds(sel.map((i) => String(i.id))); }}
-                      placeholder={translate({ key: 'workspaces.scheduled.channelsPlaceholder' })}
-                      size="md" width="full" showSearch
-                      selectedCountText={(n) => translate({ key: 'workspaces.scheduled.channelsSelected', params: [{ key: 'count', value: String(n) }] })}
+                <Field label={translate({ key: 'workspaces.scheduled.channels' })}>
+                  {content.channels.length > 0 ? (
+                    <>
+                      <MultiSelectDropdown
+                        items={channelItems}
+                        value={channelItems.filter((i) => channelIds.includes(String(i.id)))}
+                        onChange={(sel) => { setChannelIds(sel.map((i) => String(i.id))); }}
+                        placeholder={translate({ key: 'workspaces.scheduled.channelsPlaceholder' })}
+                        size="md" width="full" showSearch
+                        selectedCountText={(n) => translate({ key: 'workspaces.scheduled.channelsSelected', params: [{ key: 'count', value: String(n) }] })}
+                      />
+                      <div className={`text-xs text-muted mt-1 flex items-start gap-1.5`}>
+                        <span className={`min-w-0`}>{translate({ key: 'workspaces.scheduled.channelsHint' })}</span>
+                        {/* ADR 0312 — that promise holds for the idea generator only; the other roles
+                            receive the selection and ignore it (same for Focus). */}
+                        <InfoTip
+                          align="start"
+                          label={translate({ key: 'workspaces.tips.backlog.roleFieldsTitle' })}
+                          title={translate({ key: 'workspaces.tips.backlog.roleFieldsTitle' })}
+                          points={[
+                            { id: 'channels', label: translate({ key: 'workspaces.tips.backlog.channelsPointLabel' }), desc: translate({ key: 'workspaces.tips.backlog.channelsPointDesc' }) },
+                            { id: 'focus', label: translate({ key: 'workspaces.tips.backlog.focusPointLabel' }), desc: translate({ key: 'workspaces.tips.backlog.focusPointDesc' }) },
+                          ]}
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <EmptyPicker
+                      icon="bullhorn"
+                      label={translate({ key: 'workspaces.tips.backlog.noChannelsLabel' })}
+                      fix={{ cap: 'workTickets', view: 'content/settings', tab: 'channels', cta: translate({ key: 'workspaces.tips.backlog.noChannelsCta' }) }}
                     />
-                    <div className={`text-xs text-muted mt-1`}>{translate({ key: 'workspaces.scheduled.channelsHint' })}</div>
-                  </Field>
-                )}
+                  )}
+                </Field>
               </div>
             </Disclosure>
           </>
@@ -281,6 +332,12 @@ function CreateForm({ onDone }: { onDone: () => void }) {
                 ? translate({ key: 'workspaces.scheduled.runsAtSimple', params: [{ key: 'time', value: simpleTime }] })
                 : translate({ key: 'workspaces.scheduled.runsAt', params: [{ key: 'cron', value: cron }] })))
               : translate({ key: 'workspaces.scheduled.runsAtInvalid' })}
+            <InfoTip
+              align="start"
+              label={translate({ key: 'workspaces.tips.backlog.clockTitle' })}
+              title={translate({ key: 'workspaces.tips.backlog.clockTitle' })}
+              body={translate({ key: 'workspaces.tips.backlog.clockBody' })}
+            />
           </div>
           <WsButton icon="check" onClick={save} disabled={!canSave}>{translate({ key: 'workspaces.scheduled.create' })}</WsButton>
         </div>

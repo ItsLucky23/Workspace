@@ -12,7 +12,7 @@ import { AnimatePresence, motion } from 'motion/react';
 
 import Icon from '../../_components/Icon';
 import { SPRING_SOFT } from '../../_components/motion';
-import { EmptyState, FOCUS_RING, Segmented, statusColorVar } from '../../_components/primitives';
+import { EmptyState, FOCUS_RING, InfoTip, Segmented, statusColorVar } from '../../_components/primitives';
 import { SetupNotice } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import TerminalPanel from './TerminalPanel';
@@ -68,6 +68,19 @@ export default function Terminals() {
         <div className={`min-w-0`}>
           <div className={`flex items-center gap-3 flex-wrap`}>
             <h1 className={`text-xl md:text-2xl font-semibold text-title`}>{translate({ key: 'workspaces.terminals.title' })}</h1>
+            {/* This is not a scratch shell: the relay execs into the SAME per-ticket container the coding
+                agent runs in, at the same /work checkout. But nothing auto-commits and the forge step
+                bundles refs/heads/<branch> only when the finishing stage is a gate or the last one —
+                so the second point says "committed work", not "this folder". */}
+            <InfoTip
+              title={translate({ key: 'workspaces.tips.code.termShellTitle' })}
+              body={translate({ key: 'workspaces.tips.code.termShellBody' })}
+              points={[
+                { id: 'agent', label: translate({ key: 'workspaces.tips.code.termShellAgent' }), desc: translate({ key: 'workspaces.tips.code.termShellAgentDesc' }) },
+                { id: 'push', label: translate({ key: 'workspaces.tips.code.termShellPush' }), desc: translate({ key: 'workspaces.tips.code.termShellPushDesc' }) },
+              ]}
+              align="start"
+            />
           </div>
           <p className={`text-sm text-muted mt-0.5`}>{translate({ key: 'workspaces.terminals.subtitle' })}</p>
         </div>
@@ -115,14 +128,29 @@ export default function Terminals() {
 
       {terminals.length > 0 && layout === 'tabs' && (
         <div className={`flex-1 min-h-0 flex flex-col px-4 md:px-6 pb-6`}>
-          <div className={`flex items-center gap-1 mb-3 shrink-0 overflow-x-auto ws-no-scrollbar`}>
-            {terminals.map((t) => (
-              <button key={t.ticketId} type="button" onClick={() => { setActiveTab(t.ticketId); }}
-                className={`flex items-center gap-2 rounded-lg px-3 h-8 text-sm font-mono whitespace-nowrap cursor-pointer transition-colors ${FOCUS_RING} ${shownTab === t.ticketId ? 'bg-container1 text-title shadow-sm' : 'text-muted hover:text-common'}`}>
-                <span className={`w-1.5 h-1.5 rounded-full`} style={{ background: statusColorVar(termStatus(t)) }} />
-                {t.ticketId}
-              </button>
-            ))}
+          <div className={`flex items-center gap-2 mb-3 shrink-0`}>
+            <div className={`flex items-center gap-1 min-w-0 overflow-x-auto ws-no-scrollbar`}>
+              {terminals.map((t) => (
+                <button key={t.ticketId} type="button" onClick={() => { setActiveTab(t.ticketId); }}
+                  className={`flex items-center gap-2 rounded-lg px-3 h-8 text-sm font-mono whitespace-nowrap cursor-pointer transition-colors ${FOCUS_RING} ${shownTab === t.ticketId ? 'bg-container1 text-title shadow-sm' : 'text-muted hover:text-common'}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full`} style={{ background: statusColorVar(termStatus(t)) }} />
+                  {t.ticketId}
+                </button>
+              ))}
+            </div>
+            {/* The strip is a 5-second poll of every RUNNING ticket-labelled container, not a ticket
+                list and not only stage containers (the editor, previews, public CI and deploy envs
+                launch labelled containers too) — it answers "why is my ticket missing?" and "what is
+                that tab?". Pinned outside the scroller so it stays reachable when the tabs overflow. */}
+            <InfoTip
+              title={translate({ key: 'workspaces.tips.code.termTabsTitle' })}
+              body={translate({ key: 'workspaces.tips.code.termTabsBody' })}
+              points={[
+                { id: 'running', label: translate({ key: 'workspaces.tips.code.termTabsRunning' }), desc: translate({ key: 'workspaces.tips.code.termTabsRunningDesc' }) },
+                { id: 'poll', label: translate({ key: 'workspaces.tips.code.termTabsPoll' }), desc: translate({ key: 'workspaces.tips.code.termTabsPollDesc' }) },
+              ]}
+              align="end"
+            />
           </div>
           {terminals.filter((t) => t.ticketId === shownTab).map((t) => <TerminalPanel key={t.ticketId} workspaceId={activeWorkspace.id} terminal={t} viewerName={currentUser.name} fill />)}
         </div>

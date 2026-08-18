@@ -14,10 +14,10 @@ import { languageForPath } from 'src/_components/editor/languages';
 import { getPalette, loadThemeId } from 'src/_components/editor/editorThemes';
 
 import Icon from '../../_components/Icon';
-import { SetupNotice } from '../../_components/SetupNotice';
+import { EmptyPicker, SetupNotice } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { Collapse } from '../../_components/motion';
-import { InfoDot, WsButton } from '../../_components/primitives';
+import { InfoTip, WsButton } from '../../_components/primitives';
 
 //? Lazy so Monaco (multi-MB) only loads once a file is actually opened.
 const LazyMonacoEditor = lazy(() => import('src/_components/editor/MonacoEditor').then((m) => ({ default: m.MonacoEditor })));
@@ -31,6 +31,7 @@ export const template = 'workspaces';
 //? translate/render on both the linked + empty-state paths without prop-drilling the translator.
 function CodeHeader({ branch, onToggleFiles }: { branch: string | null; onToggleFiles: (() => void) | null }) {
   const translate = useTranslator();
+  const { focusSetup } = useWorkspaces();
   return (
     <div className={`flex items-start justify-between gap-3 px-4 md:px-6 py-3 md:py-4`}>
       <div className={`min-w-0`}>
@@ -43,11 +44,47 @@ function CodeHeader({ branch, onToggleFiles }: { branch: string | null; onToggle
               <span className={`inline-flex items-center gap-1.5 rounded-lg bg-container2 px-2 h-7 text-xs font-medium text-common`}>
                 <Icon name="code-branch" /> {branch} <span className={`text-meta`}>· {translate({ key: 'workspaces.code.baselineReadOnly' })}</span>
               </span>
-              <InfoDot title={translate({ key: 'workspaces.code.branchInfoTitle' })} body={translate({ key: 'workspaces.code.branchInfoBody' })} />
+              {/* The chip's branch AND everything below it are read from the server's own bare mirror.
+                  That mirror is created at link time but is ALSO the repo Workspaces itself writes to
+                  (MR merge / rollback / conductor commit land there first) — so it is not a frozen
+                  snapshot. What never happens is a fetch FROM origin: nothing in server/ pulls, so
+                  outside pushes stay invisible until a re-link, which re-clones from scratch and drops
+                  the local ticket branches — hence the split third point around the destructive fix. */}
+              <InfoTip
+                title={translate({ key: 'workspaces.code.branchInfoTitle' })}
+                body={translate({ key: 'workspaces.code.branchInfoBody' })}
+                points={[
+                  { id: 'copy', label: translate({ key: 'workspaces.tips.code.mirrorCopy' }), desc: translate({ key: 'workspaces.tips.code.mirrorCopyDesc' }) },
+                  { id: 'refresh', label: translate({ key: 'workspaces.tips.code.mirrorRefresh' }), desc: translate({ key: 'workspaces.tips.code.mirrorRefreshDesc' }) },
+                  {
+                    id: 'relink',
+                    label: translate({ key: 'workspaces.tips.code.mirrorRelink' }),
+                    desc: translate({ key: 'workspaces.tips.code.mirrorRelinkDesc' }),
+                    onGo: () => { focusSetup({ view: 'workspace', tab: 'repository' }); },
+                    goLabel: translate({ key: 'workspaces.tips.code.mirrorRefreshGo' }),
+                  },
+                ]}
+                align="end"
+              />
             </span>
           )}
         </div>
-        <p className={`text-sm text-muted mt-0.5`}>{translate({ key: 'workspaces.code.subtitle' })}</p>
+        <div className={`flex items-center gap-1.5 mt-0.5`}>
+          <p className={`text-sm text-muted`}>{translate({ key: 'workspaces.code.subtitle' })}</p>
+          {/* Two invisible inputs decide WHICH files this is: the active project, and the server's
+              5000-file listing cap (the page never sees the `truncated` flag). */}
+          {branch !== null && (
+            <InfoTip
+              title={translate({ key: 'workspaces.tips.code.scopeTitle' })}
+              body={translate({ key: 'workspaces.tips.code.scopeBody' })}
+              points={[
+                { id: 'project', label: translate({ key: 'workspaces.tips.code.scopeProject' }), desc: translate({ key: 'workspaces.tips.code.scopeProjectDesc' }) },
+                { id: 'cap', label: translate({ key: 'workspaces.tips.code.scopeCap' }), desc: translate({ key: 'workspaces.tips.code.scopeCapDesc' }) },
+              ]}
+              align="start"
+            />
+          )}
+        </div>
       </div>
       {onToggleFiles !== null && (
         <WsButton variant="secondary" icon="bars" onClick={onToggleFiles} className={`md:hidden shrink-0`}>
@@ -143,13 +180,31 @@ export default function CodeBrowser() {
     );
   }
 
+  //? Same shape as renderPreview below: early returns rather than a ternary chain, so adding the
+  //? empty-repo case did not turn this into three nested conditionals.
+  const renderTree = (): ReactNode => {
+    if (treeLoading && entries.length === 0) return <div className={`h-full flex items-center justify-center text-sm text-muted`}>{translate({ key: 'workspaces.ticket.loadingEditor' })}</div>;
+    if (treeError) return <div className={`h-full flex items-center justify-center px-4 text-center text-sm text-wrong`}>{translate({ key: 'workspaces.code.treeError' })}</div>;
+    //? A linked repo with an EMPTY listing (a repo with no commits yet, or a listing that failed)
+    //? used to render a blank panel with no reason and no way out — say which, and point at the one
+    //? place a repo is linked/replaced.
+    if (entries.length === 0) {
+      return (
+        <div className={`h-full overflow-y-auto p-2`}>
+          <EmptyPicker
+            icon="file-lines"
+            label={translate({ key: 'workspaces.tips.code.emptyTree' })}
+            fix={{ cap: 'workspaceSettings', view: 'workspace', tab: 'repository', cta: translate({ key: 'workspaces.tips.code.emptyTreeCta' }) }}
+          />
+        </div>
+      );
+    }
+    return <FileExplorer tree={tree} activePath={activePath} onOpen={openFile} palette={palette} expanded={expanded} onToggleDir={toggleDir} />;
+  };
+
   const treePanel = (
     <div className={`h-full min-h-0 overflow-hidden rounded-lg border border-container1-border`} style={{ background: palette.bgAlt }}>
-      {treeLoading && entries.length === 0
-        ? <div className={`h-full flex items-center justify-center text-sm text-muted`}>{translate({ key: 'workspaces.ticket.loadingEditor' })}</div>
-        : (treeError
-          ? <div className={`h-full flex items-center justify-center px-4 text-center text-sm text-wrong`}>{translate({ key: 'workspaces.code.treeError' })}</div>
-          : <FileExplorer tree={tree} activePath={activePath} onOpen={openFile} palette={palette} expanded={expanded} onToggleDir={toggleDir} />)}
+      {renderTree()}
     </div>
   );
 

@@ -14,7 +14,8 @@ import Icon from '../../../_components/Icon';
 import MarkdownView from '../../../_components/MarkdownView';
 import { MediaUploadButton } from '../../../_components/MediaUploadButton';
 import { Collapse } from '../../../_components/motion';
-import { EmptyState, InfoDot, SectionCard, Segmented, WsButton } from '../../../_components/primitives';
+import { EmptyState, InfoDot, InfoTip, SectionCard, Segmented, WsButton } from '../../../_components/primitives';
+import { EmptyPicker } from '../../../_components/SetupNotice';
 import DiffView from '../../../develop/board/[ticketId]/DiffView';
 import { AssetPicker, type PickableAsset } from '../../../_components/AssetPicker';
 import { useWorkspaces } from '../../../_shell/WorkspacesContext';
@@ -125,6 +126,24 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
         <WsButton icon="wand-magic-sparkles" disabled={aiBusy} onClick={runAi}>
           {translate({ key: aiBusy ? 'workspaces.documents.aiBusy' : 'workspaces.documents.aiRun' })}
         </WsButton>
+        {/* ADR 0312 — what-else-affects-it: the draft is never just the instruction (server/documents/docs.ts:119-171),
+            and it grounds on the SAVED document — the op sends only { documentId, mode, instruction } and there is
+            no save-first/autosave, so unsaved textarea edits never reach the run. */}
+        <InfoTip
+          align="end"
+          label={translate({ key: 'workspaces.tips.documents.aiSourcesTitle' })}
+          title={translate({ key: 'workspaces.tips.documents.aiSourcesTitle' })}
+          body={translate({ key: 'workspaces.tips.documents.aiSourcesBody' })}
+          points={[
+            { id: 'files', label: translate({ key: 'workspaces.tips.documents.aiSourcesFiles' }), desc: translate({ key: 'workspaces.tips.documents.aiSourcesFilesDesc' }) },
+            { id: 'docs', label: translate({ key: 'workspaces.tips.documents.aiSourcesDocs' }), desc: translate({ key: 'workspaces.tips.documents.aiSourcesDocsDesc' }) },
+            { id: 'template', label: translate({ key: 'workspaces.tips.documents.aiSourcesTemplate' }), desc: translate({ key: 'workspaces.tips.documents.aiSourcesTemplateDesc' }) },
+            {
+              id: 'workspace', label: translate({ key: 'workspaces.tips.documents.aiSourcesWorkspace' }), desc: translate({ key: 'workspaces.tips.documents.aiSourcesWorkspaceDesc' }),
+              onGo: () => { focusSetup({ view: 'workspace', tab: 'aibehavior' }); }, goLabel: translate({ key: 'workspaces.tips.documents.aiSourcesGo' }),
+            },
+          ]}
+        />
       </div>
 
       {/* Pending AI draft: preview + apply/discard. */}
@@ -175,7 +194,18 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
         : <div className="rounded-lg border border-container1-border bg-container1 p-4 min-h-96"><MarkdownView markdown={content} /></div>}
 
       {/* EXP — export the markdown source to a target format; results appear under attachments. */}
-      <SectionCard title={translate({ key: 'workspaces.documents.exportTitle' })}>
+      <SectionCard title={(
+        <span className={`inline-flex items-center gap-1.5`}>
+          {translate({ key: 'workspaces.documents.exportTitle' })}
+          {/* ADR 0312 — what-happens-if-i-change-it: the export renders the SAVED content (conductor.ts:3820-3838). */}
+          <InfoTip
+            align="start"
+            label={translate({ key: 'workspaces.tips.documents.exportTitle' })}
+            title={translate({ key: 'workspaces.tips.documents.exportTitle' })}
+            body={translate({ key: 'workspaces.tips.documents.exportBody' })}
+          />
+        </span>
+      )}>
         <div className="flex flex-wrap gap-2">
           {(['md', 'html', 'pdf', 'docx', 'xlsx'] as const).map((f) => (
             <WsButton key={f} variant="secondary" icon="file-lines" onClick={() => { setExporting(f); exportDocument(doc.id, f); }} disabled={exporting !== null}>
@@ -211,6 +241,15 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
           <input value={imgPrompt} onChange={(e) => { setImgPrompt(e.target.value); }} placeholder={translate({ key: 'workspaces.documents.imagePromptPlaceholder' })} className={`${fieldCls} flex-1 min-w-52 max-w-md`} />
           <WsButton icon="image" disabled={imgPrompt.trim().length === 0} onClick={() => { genDocumentImage(doc.id, imgPrompt.trim()); setImgPrompt(''); }}>{translate({ key: 'workspaces.documents.genImage' })}</WsButton>
           <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*,.pdf,.docx,.txt,.md" labelKey="workspaces.documents.upload" icon="plus" onUploaded={(url, kind) => { editDocument({ documentId: doc.id, addAssetUrl: url, addAssetKind: kind, addAssetLabel: translate({ key: 'workspaces.documents.uploadedLabel' }) }); }} />
+          {/* ADR 0312 — what-else-affects-it: only successfully READ text files feed the AI (docs.ts:120,
+              parseUpload.ts:29) and only THIS document's — the doc-assets RAG corpus is written but never
+              retrieved anywhere; an 'empty' extract (scanned pdf) shows the plain file icon yet feeds nothing. */}
+          <InfoTip
+            align="end"
+            label={translate({ key: 'workspaces.tips.documents.uploadTitle' })}
+            title={translate({ key: 'workspaces.tips.documents.uploadTitle' })}
+            body={translate({ key: 'workspaces.tips.documents.uploadBody' })}
+          />
           {/* GAP_SCAN C2 — reuse before regenerate: the workspace's already-approved media is offered
               first, so an existing visual costs nothing instead of a fresh image-gen. */}
           {reusableAssets.length > 0 && (
@@ -219,6 +258,16 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
             </WsButton>
           )}
         </div>
+        {/* ADR 0312 — the reuse affordance is hidden while the library is empty: say so, and where images are made. */}
+        {reusableAssets.length === 0 && (
+          <div className={`mt-2`}>
+            <EmptyPicker
+              icon="image"
+              label={translate({ key: 'workspaces.tips.documents.reuseEmptyLabel' })}
+              fix={{ cap: 'workTickets', view: 'content', cta: translate({ key: 'workspaces.tips.documents.reuseEmptyCta' }) }}
+            />
+          </div>
+        )}
         <Collapse open={showReuse}>
           <AssetPicker
             assets={reusableAssets}
@@ -234,7 +283,18 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
 
       {/* History: prior revisions (restore snapshots current first, so it's undoable). */}
       {doc.revisions.length > 0 && (
-        <SectionCard title={translate({ key: 'workspaces.documents.historyTitle' })}>
+        <SectionCard title={(
+          <span className={`inline-flex items-center gap-1.5`}>
+            {translate({ key: 'workspaces.documents.historyTitle' })}
+            {/* ADR 0312 — what-happens-if-i-change-it: a restore also drops a pending AI draft (conductor.ts:3783-3789). */}
+            <InfoTip
+              align="start"
+              label={translate({ key: 'workspaces.tips.documents.restoreTitle' })}
+              title={translate({ key: 'workspaces.tips.documents.restoreTitle' })}
+              body={translate({ key: 'workspaces.tips.documents.restoreBody' })}
+            />
+          </span>
+        )}>
           <div className="flex flex-col gap-1">
             {doc.revisions.slice(0, 12).map((r) => (
               <div key={r.id} className="flex items-center justify-between gap-2 text-xs rounded-lg border border-container1-border bg-container1 px-2.5 py-1.5">

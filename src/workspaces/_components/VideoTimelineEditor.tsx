@@ -16,6 +16,7 @@ import { useEscapeKey } from '../_functions/useEscapeKey';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import Icon from './Icon';
 import { WsButton } from './primitives';
+import { EmptyPicker } from './SetupNotice';
 
 type EditScene = VideoSceneSummary;
 type Transition = 'cut' | 'fade' | 'xfade';
@@ -230,7 +231,10 @@ export default function VideoTimelineEditor({ pieceId, scenes, assetUrls, pickab
           )}
         <div className="text-xs text-muted">{totalLabel}</div>
 
-        {/* V-upload — add a scene from an existing asset (an uploaded or generated video/image). */}
+        {/* V-upload — add a scene from an existing asset (an uploaded or generated video/image).
+            ADR 0312 — with nothing pickable the control used to vanish without a word; say what would fill it
+            (a ready video/image on this piece — the piece page's generate or import actions). */}
+        {pickableAssets.length === 0 && <EmptyPicker icon="film" label={translate({ key: 'workspaces.tips.piece.timelineAssetsEmpty' })} />}
         {pickableAssets.length > 0 && (
           <div className="flex items-center gap-2">
             <Dropdown size="sm" items={pickableAssets.map((a, i) => ({ id: a.id, value: a.id, item: `${a.kind} ${String(i + 1)}` }))} value={pickableAssets.map((a, i) => ({ id: a.id, value: a.id, item: `${a.kind} ${String(i + 1)}` })).find((it) => it.id === pickAssetId)} onChange={(it) => { setPickAssetId(String(it.value)); }} />

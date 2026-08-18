@@ -14,7 +14,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { menuHandler } from 'src/_functions/menuHandler';
 
 import Icon from '../../_components/Icon';
-import { EmptyState, PopMenu, Tabs, Toggle, WsButton, type TabDef } from '../../_components/primitives';
+import { EmptyState, InfoTip, PopMenu, Tabs, Toggle, WsButton, type TabDef } from '../../_components/primitives';
 import { useTrailSegment } from '../../_components/sections';
 import { HOOK_CATALOG } from '../../_data/seed';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
@@ -165,6 +165,7 @@ export default function Pipeline() {
           <WsButton variant="ghost" icon="wand-magic-sparkles" onClick={validate} title={translate({ key: 'workspaces.pipeline.validateWithAi' })}>
             <span className="hidden sm:inline">{translate({ key: 'workspaces.pipeline.validateWithAi' })}</span>
           </WsButton>
+          <InfoTip align="end" title={translate({ key: 'workspaces.tips.pipeline.validateLocalTitle' })} body={translate({ key: 'workspaces.tips.pipeline.validateLocalBody' })} />
           <WsButton icon="plus" onClick={addStage}>{translate({ key: 'workspaces.pipeline.addStage' })}</WsButton>
         </div>
       </div>

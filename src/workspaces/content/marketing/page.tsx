@@ -12,7 +12,7 @@ import { i18nNotify as notify, useTranslator } from '@luckystack/core/client';
 
 import { menuHandler } from 'src/_functions/menuHandler';
 import Icon from '../../_components/Icon';
-import { Disclosure, EmptyState, PopMenu, WsButton } from '../../_components/primitives';
+import { Disclosure, EmptyState, InfoTip, PopMenu, WsButton } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { isSectionEnabled } from '../../_data/modules';
 import type { StudioArtifact, StudioArtifactKind, StudioBrief } from '../../_data/types';
@@ -31,7 +31,7 @@ type View = 'main' | 'brand' | 'form';
 
 export default function Marketing() {
   const translate = useTranslator();
-  const { studioBriefs, studioArtifacts, studioBrand, generateArtifact, deleteBrief, deleteArtifact, promoteBrand, runContentOp, activeWorkspace } = useWorkspaces();
+  const { studioBriefs, studioArtifacts, studioBrand, generateArtifact, deleteBrief, deleteArtifact, promoteBrand, runContentOp, activeWorkspace, focusSetup } = useWorkspaces();
   //? Send-to-Content: only offered when the content lane is enabled for this workspace.
   const contentOn = isSectionEnabled(activeWorkspace.enabledSections, 'content');
 
@@ -113,7 +113,22 @@ export default function Marketing() {
             <div className={`text-xs text-muted truncate`}>{translate({ key: 'workspaces.studio.marketingIntro' })}</div>
           </div>
         </div>
-        {view !== 'brand' && <WsButton variant="secondary" icon="swatchbook" onClick={() => { setView('brand'); }}>{translate({ key: 'workspaces.studio.brandLibrary' })}</WsButton>}
+        {view !== 'brand' && (
+          <div className={`flex items-center gap-1.5`}>
+            <WsButton variant="secondary" icon="swatchbook" onClick={() => { setView('brand'); }}>{translate({ key: 'workspaces.studio.brandLibrary' })}</WsButton>
+            {/* The button reads like a reference shelf; what is behind it is folded into every generation here. */}
+            <InfoTip
+              align="end"
+              label={translate({ key: 'workspaces.tips.studio.brandGateLabel' })}
+              title={translate({ key: 'workspaces.tips.studio.brandGateTitle' })}
+              body={translate({ key: 'workspaces.tips.studio.brandGateBody' })}
+              points={[
+                { id: 'sent', label: translate({ key: 'workspaces.tips.studio.brandGateSent' }), desc: translate({ key: 'workspaces.tips.studio.brandGateSentDesc' }) },
+                { id: 'voice', label: translate({ key: 'workspaces.tips.studio.brandGateVoice' }), desc: translate({ key: 'workspaces.tips.studio.brandGateVoiceDesc' }) },
+              ]}
+            />
+          </div>
+        )}
       </div>
 
       {/* brand library drill-in */}
@@ -190,7 +205,22 @@ export default function Marketing() {
                       {translate({ key: 'workspaces.studio.generateHeading' })}
                     </div>
                     {/* duplicateConcepts #2 — the second AI prompt stack, visible before you generate */}
-                    <ContentPromptPreview briefTone={selected.tone} brandVoice={studioBrand?.voice ?? ''} refine={refine} />
+                    <div className={`flex items-start gap-1.5`}>
+                      <div className={`min-w-0 flex-1`}><ContentPromptPreview briefTone={selected.tone} brandVoice={studioBrand?.voice ?? ''} refine={refine} /></div>
+                      {/* The preview only lists what THIS page sets; the workspace AI settings add more at the provider. */}
+                      <InfoTip
+                        align="end"
+                        className={`mt-1.5`}
+                        label={translate({ key: 'workspaces.tips.studio.promptExtrasLabel' })}
+                        title={translate({ key: 'workspaces.tips.studio.promptExtrasTitle' })}
+                        body={translate({ key: 'workspaces.tips.studio.promptExtrasBody' })}
+                        points={[
+                          { id: 'language', label: translate({ key: 'workspaces.tips.studio.promptExtrasLanguage' }), desc: translate({ key: 'workspaces.tips.studio.promptExtrasLanguageDesc' }), onGo: () => { focusSetup({ view: 'workspace', tab: 'aibehavior' }); } },
+                          { id: 'skills', label: translate({ key: 'workspaces.tips.studio.promptExtrasSkills' }), desc: translate({ key: 'workspaces.tips.studio.promptExtrasSkillsDesc' }), onGo: () => { focusSetup({ view: 'workspace', tab: 'aibehavior' }); } },
+                          { id: 'knowledge', label: translate({ key: 'workspaces.tips.studio.promptExtrasKnowledge' }), desc: translate({ key: 'workspaces.tips.studio.promptExtrasKnowledgeDesc' }) },
+                        ]}
+                      />
+                    </div>
                     <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2`}>
                       {MARKETER_KINDS.map(({ kind, icon }) => (
                         <button
@@ -216,7 +246,20 @@ export default function Marketing() {
 
                   {/* generated assets for the selected brief */}
                   <div className={`flex flex-col gap-2`}>
-                    <div className={`text-xs font-medium text-muted uppercase tracking-wide`}>{translate({ key: 'workspaces.studio.assetsHeading' })}</div>
+                    <div className={`flex items-center gap-1.5`}>
+                      <div className={`text-xs font-medium text-muted uppercase tracking-wide`}>{translate({ key: 'workspaces.studio.assetsHeading' })}</div>
+                      {/* Regenerate reads like "replace"; every run creates a NEW row, and this page also empties the refine box. */}
+                      <InfoTip
+                        align="start"
+                        label={translate({ key: 'workspaces.tips.studio.regenerateLabel' })}
+                        title={translate({ key: 'workspaces.tips.studio.regenerateTitle' })}
+                        body={translate({ key: 'workspaces.tips.studio.regenerateBody' })}
+                        points={[
+                          { id: 'published', label: translate({ key: 'workspaces.tips.studio.regeneratePublished' }), desc: translate({ key: 'workspaces.tips.studio.regeneratePublishedDesc' }) },
+                          { id: 'refine', label: translate({ key: 'workspaces.tips.studio.regenerateRefineCleared' }), desc: translate({ key: 'workspaces.tips.studio.regenerateRefineClearedDesc' }) },
+                        ]}
+                      />
+                    </div>
                     {artifacts.length === 0 && !busyKind
                       ? (
                         //? Teaching empty state: the grid above is the way to fill this list.

@@ -17,10 +17,11 @@ import TerminalPanel from './TerminalPanel';
 import TimeTravelForm, { type TravelSpec } from './TimeTravelForm';
 import MrReviewPanel from '../../../_components/MrReviewPanel';
 import Icon from '../../../_components/Icon';
-import { AvatarBubble, AvatarStack, Disclosure, EmptyState, IconButton, LabelChip, PopMenu, StatusPill, Tabs, WsButton, type PopMenuItem, type TabDef } from '../../../_components/primitives';
+import { AvatarBubble, AvatarStack, Disclosure, EmptyState, IconButton, InfoTip, LabelChip, PopMenu, StatusPill, Tabs, WsButton, type PopMenuItem, type TabDef } from '../../../_components/primitives';
+import { EmptyPicker } from '../../../_components/SetupNotice';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import { useWorkspaces } from '../../../_shell/WorkspacesContext';
-import { isModuleEnabled } from '../../../_data/modules';
+import { isModuleEnabled, isSectionEnabled } from '../../../_data/modules';
 import type { Member, Ticket } from '../../../_data/types';
 import { PRIORITY_DOT, PRIORITY_LABEL_KEY, PRIORITY_ORDER } from '../../../_functions/priority';
 import { parseStructuredQuestion } from '../../../_functions/structuredQuestion';
@@ -197,6 +198,30 @@ function TicketControls({ ticket, primary, onOpenTerminal }: { ticket: Ticket; p
       <WsButton variant={primary ? 'primary' : 'secondary'} icon="display" disabled={preview.loading} onClick={() => { void openPreview(); }}>
         {translate({ key: preview.loading ? 'workspaces.ticket.previewOpening' : 'workspaces.ticket.openPreview' })}
       </WsButton>
+      {/* ADR 0312 — the two things that decide whether a preview can work at all are both off-screen:
+          the ticket needs its own branch (else the route answers `preview.notActivated`), and whatever
+          dev command resolves (service → project → stack default) must actually bind the preview port
+          within the readiness window. An unset devCommand is NOT a blocker — every stack default serves
+          except 'generic', whose placeholder never binds. */}
+      <InfoTip
+        align="start"
+        label={translate({ key: 'workspaces.tips.ticket.previewLabel' })}
+        title={translate({ key: 'workspaces.tips.ticket.previewTitle' })}
+        body={translate({ key: 'workspaces.tips.ticket.previewBody' })}
+        points={[
+          { id: 'branch', label: translate({ key: 'workspaces.tips.ticket.previewBranchLabel' }), desc: translate({ key: 'workspaces.tips.ticket.previewBranchDesc' }) },
+          {
+            id: 'devcmd',
+            label: translate({ key: 'workspaces.tips.ticket.previewCmdLabel' }),
+            desc: translate({ key: 'workspaces.tips.ticket.previewCmdDesc' }),
+            //? The dev command lives in the project's settings. Target the page itself, not a tab/section
+            //? trail: the router registers exact page paths only, so the deeper address renders the error
+            //? page — an affordance that lands nowhere is worse than one that lands one click away.
+            onGo: () => { ctx.focusSetup({ view: 'workspace' }); },
+            goLabel: translate({ key: 'workspaces.tips.ticket.previewCmdGo' }),
+          },
+        ]}
+      />
       <PopMenu items={agentMenu} />
       {preview.url !== undefined && <a href={preview.url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline truncate max-w-xs">{preview.url}</a>}
       {/* #37 — stop a running preview (closePreview existed but had no UI trigger). */}
@@ -498,30 +523,78 @@ function OverviewTab({ ticket, stage }: { ticket: Ticket; stage?: string }) {
                   <Icon name="triangle-exclamation" className="text-[10px]" />{translate({ key: 'workspaces.priority.urgentHint' })}
                 </span>
               )}
+              {/* ADR 0312 — 'urgent' has a SECOND server effect the hint chip never names: the Conductor
+                  skips the blocked-by gate for it, so the agent starts while declared blockers are open. */}
+              <InfoTip
+                align="start"
+                label={translate({ key: 'workspaces.tips.ticket.priorityLabel' })}
+                title={translate({ key: 'workspaces.tips.ticket.priorityTitle' })}
+                body={translate({ key: 'workspaces.tips.ticket.priorityBody' })}
+                points={[
+                  { id: 'queue', label: translate({ key: 'workspaces.tips.ticket.priorityQueueLabel' }), desc: translate({ key: 'workspaces.tips.ticket.priorityQueueDesc' }) },
+                  { id: 'blocked', label: translate({ key: 'workspaces.tips.ticket.priorityBlockedLabel' }), desc: translate({ key: 'workspaces.tips.ticket.priorityBlockedDesc' }) },
+                ]}
+              />
             </div>
           </SettingSection>
           {/* Per-service CI/preview: which monorepo unit this ticket's work belongs to. It decides which
               service a preview boots and which service's CI gates the ticket — both of which silently used the
-              project root before. Only shown when the project actually declares units; a single-unit repo is
-              not asked a question it has no answer to. */}
-          {ticketServices.length > 0 && (
-            <SettingSection label={translate({ key: 'workspaces.ticket.serviceLabel' })}>
-              <Dropdown
-                size="sm"
-                items={serviceItems}
-                value={serviceItems.find((i) => i.id === (ticket.serviceId ?? 'root'))}
-                onChange={(it) => {
-                  const next = it.id === 'root' ? null : String(it.id);
-                  if (next !== (ticket.serviceId ?? null)) ctx.editTicket(ticket.id, { serviceId: next });
-                }}
-              />
-            </SettingSection>
-          )}
+              project root before. ADR 0312 — a project without units keeps the picker, as an EmptyPicker that
+              names the "whole project" fallback instead of hiding the whole question. */}
+          <SettingSection label={translate({ key: 'workspaces.ticket.serviceLabel' })}>
+            {ticketServices.length > 0 ? (
+              <div className={`flex items-center gap-2`}>
+                <Dropdown
+                  size="sm"
+                  items={serviceItems}
+                  value={serviceItems.find((i) => i.id === (ticket.serviceId ?? 'root'))}
+                  onChange={(it) => {
+                    const next = it.id === 'root' ? null : String(it.id);
+                    if (next !== (ticket.serviceId ?? null)) ctx.editTicket(ticket.id, { serviceId: next });
+                  }}
+                />
+                {/* ADR 0312 — the unit re-points ONE thing in practice: the working directory the preview's
+                    dev server starts in. `Service.baseImageRef`/`devCommand` are read by previewSession but
+                    no op can ever write them (service-create persists name/path/buildCmd/deployUnit only, and
+                    there is no service-edit op), and a per-ticket container is reused by name regardless of
+                    the requested image — so image + command always come from the project. Switching the unit
+                    can still turn a working preview into a failing one, via the start folder. */}
+                <InfoTip
+                  align="start"
+                  label={translate({ key: 'workspaces.tips.ticket.serviceLabel' })}
+                  title={translate({ key: 'workspaces.tips.ticket.serviceTitle' })}
+                  body={translate({ key: 'workspaces.tips.ticket.serviceBody' })}
+                />
+              </div>
+            ) : (
+              //? ADR 0312 — the setting used to vanish entirely, so the "whole project" fallback that IS in
+              //? force was never named. Services are created only from the top-bar project menu, which is not a
+              //? settings view/tab — so there is no address to deep-link to (see notes: product gap).
+              <EmptyPicker icon="diagram-project" label={translate({ key: 'workspaces.tips.ticket.serviceEmpty' })} />
+            )}
+          </SettingSection>
           <SettingSection label={translate({ key: 'workspaces.ticket.stageConfig' })}>
             <div className="flex items-center gap-2 text-sm text-common">
               <Icon name="diagram-project" className="text-muted" />
               <span className="text-title font-medium">{stage ?? '—'}</span>
               <span className="text-muted">· {stageCfg?.aiEnabled === true ? translate({ key: 'workspaces.board.aiDrivenStage' }) : translate({ key: 'workspaces.board.noAi' })}{stageSkills.length > 0 ? ` · ${stageSkills.join(', ')}` : ''}</span>
+              {/* ADR 0312 — read-only projection of the stage's own config, edited on the stage editor.
+                  'No AI' is the one part with a hard runtime meaning (no turn ever runs). The skill chips are
+                  runtime-dead (renderStage emits `.mcp.json` entries for a `ws-skill` command that does not
+                  exist; the workspace-level skill layer is what actually reaches the agent), and the source
+                  count includes the default 'summary' placeholder that loadStageContextDocs drops — both
+                  said plainly in the tip rather than promised as working. */}
+              <InfoTip
+                align="start"
+                label={translate({ key: 'workspaces.tips.ticket.stageLabel' })}
+                title={translate({ key: 'workspaces.tips.ticket.stageTitle' })}
+                body={translate({ key: 'workspaces.tips.ticket.stageBody' })}
+                points={[
+                  { id: 'ai', label: translate({ key: 'workspaces.tips.ticket.stageAiLabel' }), desc: translate({ key: 'workspaces.tips.ticket.stageAiDesc' }), onGo: () => { ctx.navigate('pipeline', [ticket.stageId, 'general']); } },
+                  { id: 'skills', label: translate({ key: 'workspaces.tips.ticket.stageSkillsLabel' }), desc: translate({ key: 'workspaces.tips.ticket.stageSkillsDesc' }), onGo: () => { ctx.navigate('pipeline', [ticket.stageId, 'context']); } },
+                  { id: 'sources', label: translate({ key: 'workspaces.tips.ticket.stageSourcesLabel' }), desc: translate({ key: 'workspaces.tips.ticket.stageSourcesDesc' }), onGo: () => { ctx.navigate('pipeline', [ticket.stageId, 'context']); } },
+                ]}
+              />
             </div>
           </SettingSection>
           {ticket.carryOver && (
@@ -565,10 +638,20 @@ function LinkedArtifactsSection({ ticketKey }: { ticketKey: string }) {
     const name = kind === 'design' ? ctx.designArtifacts.find((d) => d.id === aid)?.name : ctx.studioArtifacts.find((s) => s.id === aid)?.title;
     ctx.linkArtifact(ticketKey, aid, kind, name);
   };
+  //? ADR 0312 — an empty library used to REMOVE the picker, leaving only "link one so the AI builds to it"
+  //? with no control and no destination. Point at where artifacts are actually made — or, when neither
+  //? section is enabled in this workspace, at the module toggles that would unlock them.
+  const designerOn = isSectionEnabled(ctx.activeWorkspace.enabledSections, 'designer');
+  const studioOn = isSectionEnabled(ctx.activeWorkspace.enabledSections, 'studio');
+  const emptyFix = designerOn
+    ? { cap: 'workspaceSettings' as const, view: 'designer', cta: translate({ key: 'workspaces.tips.ticket.artifactsGoDesigner' }) }
+    : (studioOn
+      ? { cap: 'workTickets' as const, view: 'studio', cta: translate({ key: 'workspaces.tips.ticket.artifactsGoStudio' }) }
+      : { cap: 'workspaceSettings' as const, view: 'workspace', tab: 'modules', cta: translate({ key: 'workspaces.tips.ticket.artifactsGoModules' }) });
   return (
     <SettingSection label={translate({ key: 'workspaces.ticket.linkedArtifacts' })}>
       <div className="flex flex-col gap-2">
-        {links.length === 0 && <div className="text-xs text-muted">{translate({ key: 'workspaces.ticket.noLinkedArtifacts' })}</div>}
+        {links.length === 0 && options.length > 0 && <div className="text-xs text-muted">{translate({ key: 'workspaces.ticket.noLinkedArtifacts' })}</div>}
         {links.map((l) => (
           <div key={l.id} className="flex items-center gap-2 rounded-lg border border-container1-border bg-container2/40 px-2.5 py-1.5">
             <Icon name={l.artifactKind === 'design' ? 'palette' : (l.artifactKind === 'ui-review' ? 'display' : 'bullhorn')} className="text-primary text-sm shrink-0" />
@@ -576,7 +659,21 @@ function LinkedArtifactsSection({ ticketKey }: { ticketKey: string }) {
             <IconButton icon="xmark" size="sm" title={translate({ key: 'workspaces.ticket.unlinkArtifact' })} onClick={() => { ctx.unlinkArtifact(l.id); }} className="hover:text-wrong shrink-0" />
           </div>
         ))}
-        {options.length > 0 && <Dropdown width="full" items={options} placeholder={translate({ key: 'workspaces.ticket.linkArtifactPlaceholder' })} onChange={onPick} />}
+        {options.length > 0 ? (
+          <div className={`flex items-center gap-2`}>
+            <div className={`min-w-0 flex-1`}>
+              <Dropdown width="full" items={options} placeholder={translate({ key: 'workspaces.ticket.linkArtifactPlaceholder' })} onChange={onPick} />
+            </div>
+            {/* ADR 0312 — the injection is bounded and invisible: only the 8 OLDEST links are read, each
+                content is truncated, and it happens at the START of a turn (never mid-turn). */}
+            <InfoTip
+              align="end"
+              label={translate({ key: 'workspaces.tips.ticket.artifactsLabel' })}
+              title={translate({ key: 'workspaces.tips.ticket.artifactsTitle' })}
+              body={translate({ key: 'workspaces.tips.ticket.artifactsBody' })}
+            />
+          </div>
+        ) : <EmptyPicker icon="palette" label={translate({ key: 'workspaces.tips.ticket.artifactsEmpty' })} fix={emptyFix} />}
       </div>
     </SettingSection>
   );

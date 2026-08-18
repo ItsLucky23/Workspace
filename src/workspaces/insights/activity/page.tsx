@@ -15,7 +15,7 @@ import { useTranslator } from '@luckystack/core/client';
 import { AnimatePresence, motion } from 'motion/react';
 
 import Icon from '../../_components/Icon';
-import { AvatarBubble, EmptyState, Segmented, WsButton } from '../../_components/primitives';
+import { AvatarBubble, EmptyState, InfoTip, Segmented, WsButton } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { ActivityEvent, Member } from '../../_data/types';
 
@@ -88,10 +88,20 @@ export default function Activity() {
           <span className={`inline-flex items-center gap-1.5 rounded-full bg-correct/15 text-correct px-2 h-6 text-xs font-medium`}><span className={`w-1.5 h-1.5 rounded-full bg-correct motion-safe:animate-pulse`} /> {translate({ key: 'workspaces.activity.live' })}</span>
         </div>
         <p className={`text-sm text-muted mt-0.5`}>{translate({ key: 'workspaces.activity.sub' })}</p>
-        <div className={`mt-3 overflow-x-auto ws-no-scrollbar`}>
-          <Segmented<Filter>
-            value={filter} onChange={setFilter}
-            options={[{ id: 'all', label: translate({ key: FILTER_LABEL.all }) }, { id: 'ai', label: translate({ key: FILTER_LABEL.ai }) }, { id: 'people', label: translate({ key: FILTER_LABEL.people }) }, { id: 'merges', label: translate({ key: FILTER_LABEL.merges }) }]}
+        <div className={`mt-3 flex items-center gap-2`}>
+          <div className={`min-w-0 overflow-x-auto ws-no-scrollbar`}>
+            <Segmented<Filter>
+              value={filter} onChange={setFilter}
+              options={[{ id: 'all', label: translate({ key: FILTER_LABEL.all }) }, { id: 'ai', label: translate({ key: FILTER_LABEL.ai }) }, { id: 'people', label: translate({ key: FILTER_LABEL.people }) }, { id: 'merges', label: translate({ key: FILTER_LABEL.merges }) }]}
+            />
+          </div>
+          {/* The filter narrows the fixed 50-event window the snapshot ships — it never fetches older
+              history, so a filtered-to-zero result does NOT mean those events don't exist. */}
+          <InfoTip
+            align="start"
+            label={translate({ key: 'workspaces.tips.insights.activityWindowAria' })}
+            title={translate({ key: 'workspaces.tips.insights.activityWindowTitle' })}
+            body={translate({ key: 'workspaces.tips.insights.activityWindowBody' })}
           />
         </div>
       </div>

@@ -12,7 +12,7 @@ import Dropdown from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../../_components/Icon';
 import { Collapse } from '../../_components/motion';
-import { EmptyState, PopMenu, WsButton } from '../../_components/primitives';
+import { EmptyState, InfoTip, PopMenu, WsButton } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import TemplateManager from './TemplateManager';
 
@@ -82,10 +82,22 @@ export default function DocumentsPage() {
           />
           <WsButton icon="plus" onClick={create} disabled={newTitle.trim().length === 0} className={`w-full sm:w-auto sm:shrink-0`}>{translate({ key: 'workspaces.documents.create' })}</WsButton>
         </div>
-        <button type="button" onClick={() => { setShowTemplates((v) => !v); }} className={`self-start text-xs text-muted hover:text-title cursor-pointer inline-flex items-center gap-1.5`}>
-          <Icon name="caret-down" className={`transition-transform motion-reduce:transition-none ${showTemplates ? 'rotate-180' : ''}`} />
-          {selectedTemplate ? selectedTemplate.name : translate({ key: 'workspaces.documents.useTemplate' })}
-        </button>
+        <div className={`self-start inline-flex items-center gap-1.5`}>
+          <button type="button" onClick={() => { setShowTemplates((v) => !v); }} className={`text-xs text-muted hover:text-title cursor-pointer inline-flex items-center gap-1.5`}>
+            <Icon name="caret-down" className={`transition-transform motion-reduce:transition-none ${showTemplates ? 'rotate-180' : ''}`} />
+            {selectedTemplate ? selectedTemplate.name : translate({ key: 'workspaces.documents.useTemplate' })}
+          </button>
+          {/* ADR 0312 — what-happens-if-i-change-it: the template becomes the doc's permanent `kind`, and on
+              every AI run its sections are re-read and injected as the REQUIRED STRUCTURE *prompt* block
+              (conductor.ts:3652-3658 + :3745-3747) — a request, not a validated constraint, and deleting a
+              user template makes resolveTemplate return null, so later drafts silently go free-form. */}
+          <InfoTip
+            align="start"
+            label={translate({ key: 'workspaces.tips.documents.templateTitle' })}
+            title={translate({ key: 'workspaces.tips.documents.templateTitle' })}
+            body={translate({ key: 'workspaces.tips.documents.templateBody' })}
+          />
+        </div>
         <Collapse open={showTemplates}>
           <div className={`flex flex-col gap-2`}>
             <div className={`flex items-center gap-2 flex-wrap`}>
@@ -160,9 +172,19 @@ export default function DocumentsPage() {
 
       {/* GAP_SCAN C7 — archived documents are kept (with their revisions) behind this foot-of-list toggle. */}
       {archivedCount > 0 && (
-        <button type="button" onClick={() => { setShowArchived((v) => !v); }} className={`self-start text-xs text-muted hover:text-title cursor-pointer inline-flex items-center gap-1.5`}>
-          <Icon name={showArchived ? 'eye-slash' : 'box-archive'} /> {translate({ key: showArchived ? 'workspaces.documents.hideArchived' : 'workspaces.documents.showArchived' })} ({String(archivedCount)})
-        </button>
+        <div className={`self-start inline-flex items-center gap-1.5`}>
+          <button type="button" onClick={() => { setShowArchived((v) => !v); }} className={`text-xs text-muted hover:text-title cursor-pointer inline-flex items-center gap-1.5`}>
+            <Icon name={showArchived ? 'eye-slash' : 'box-archive'} /> {translate({ key: showArchived ? 'workspaces.documents.hideArchived' : 'workspaces.documents.showArchived' })} ({String(archivedCount)})
+          </button>
+          {/* ADR 0312 — what-happens-if-i-change-it: archiving only sets `archived`; the RAG rows stay and
+              retrieval has no archived filter (conductor.ts:3716-3723 vs :3724-3734, docs.ts:146). */}
+          <InfoTip
+            align="start"
+            label={translate({ key: 'workspaces.tips.documents.archiveTitle' })}
+            title={translate({ key: 'workspaces.tips.documents.archiveTitle' })}
+            body={translate({ key: 'workspaces.tips.documents.archiveBody' })}
+          />
+        </div>
       )}
     </div>
   );

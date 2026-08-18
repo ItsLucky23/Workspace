@@ -9,7 +9,7 @@ import { apiRequest, tryCatch, useTranslator } from '@luckystack/core/client';
 
 import Icon from '../../_components/Icon';
 import { Collapse } from '../../_components/motion';
-import { EmptyState, IconButton, InteractiveRow, WsButton } from '../../_components/primitives';
+import { EmptyState, IconButton, InfoTip, InteractiveRow, WsButton } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 
 export const template = 'workspaces';
@@ -58,7 +58,7 @@ function NodeMarker({ type, x, y, size, className }: { type: NodeType; x: number
 }
 
 export default function KnowledgePage() {
-  const { activeWorkspace } = useWorkspaces();
+  const { activeWorkspace, navigate } = useWorkspaces();
   const translate = useTranslator();
   const workspaceId = activeWorkspace.id;
 
@@ -154,8 +154,19 @@ export default function KnowledgePage() {
           <h1 className={`text-xl md:text-2xl font-semibold text-title`}>{translate({ key: 'workspaces.knowledge.title' })}</h1>
           <span className={`text-sm text-muted`}>{translate({ key: 'workspaces.knowledge.subtitle' })}</span>
         </div>
-        {/* Refresh — secondary by design (data comes from work done elsewhere), so icon-only ghost. */}
-        <WsButton icon="arrows-rotate" variant="ghost" onClick={load} disabled={loading} title={translate({ key: 'workspaces.knowledge.refresh' })} className={`shrink-0`} />
+        {/* Refresh — secondary by design (data comes from work done elsewhere), so icon-only ghost.
+            It re-EMBEDS every node, which on a keyed install is a metered Gemini call (SpendRecord +
+            AI-activity entry), so the cost has to be sayable before the tap. */}
+        <div className={`flex items-center gap-1.5 shrink-0`}>
+          <InfoTip
+            align="end"
+            label={translate({ key: 'workspaces.tips.insights.graphRefreshAria' })}
+            title={translate({ key: 'workspaces.tips.insights.graphRefreshTitle' })}
+            body={translate({ key: 'workspaces.tips.insights.graphRefreshBody' })}
+            points={[{ id: 'caps', label: translate({ key: 'workspaces.tips.insights.graphRefreshCapsLabel' }), desc: translate({ key: 'workspaces.tips.insights.graphRefreshCapsDesc' }), onGo: () => { navigate('usage'); }, goLabel: translate({ key: 'workspaces.tips.insights.graphRefreshCapsGo' }) }]}
+          />
+          <WsButton icon="arrows-rotate" variant="ghost" onClick={load} disabled={loading} title={translate({ key: 'workspaces.knowledge.refresh' })} />
+        </div>
       </div>
 
       <div className={`flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-8`}>
@@ -176,6 +187,16 @@ export default function KnowledgePage() {
               <span className={`flex items-center gap-1.5`}><span className={`w-2.5 h-2.5 bg-current text-primary ${TYPE_SHAPE_CLASS.source}`} />{translate({ key: 'workspaces.knowledge.legendSources' })}</span>
               <span className={`flex items-center gap-1.5`}><span className={`w-2.5 h-2.5 bg-current text-secondary ${TYPE_SHAPE_CLASS.ticket}`} />{translate({ key: 'workspaces.knowledge.legendTickets' })}</span>
               <span className={`flex items-center gap-1.5`}><span className={`w-2.5 h-2.5 bg-current text-correct ${TYPE_SHAPE_CLASS.piece}`} />{translate({ key: 'workspaces.knowledge.legendPieces' })}</span>
+              {/* Every edge the builder returns is a similarity edge (cosine ≥ 0.3) — nobody draws these
+                  by hand, and the opacity is the score. top-4 bounds only what each node CONTRIBUTES:
+                  after the undirected dedup a popular node can be picked by many others, so its rendered
+                  degree is not capped at 4 (the copy must not promise that). */}
+              <InfoTip
+                align="start"
+                label={translate({ key: 'workspaces.tips.insights.graphEdgesAria' })}
+                title={translate({ key: 'workspaces.tips.insights.graphEdgesTitle' })}
+                body={translate({ key: 'workspaces.tips.insights.graphEdgesBody' })}
+              />
             </div>
 
             {/* Owner decision: cap instead of pan/zoom — past MAX_GRAPH_NODES the ring gets too
@@ -259,6 +280,17 @@ export default function KnowledgePage() {
               <span className={`flex items-center gap-4 tabular-nums`}>
                 <span>{translate({ key: 'workspaces.knowledge.nodeCount', params: [{ key: 'count', value: String(nodeCount) }] })}</span>
                 <span>{translate({ key: 'workspaces.knowledge.edgeCount', params: [{ key: 'count', value: String(edgeCount) }] })}</span>
+                {/* The node total is a FILTERED set (enabled sources / non-archived tickets / ALL content
+                    pieces, each with its own take limit) — different from the 40-node drawing cap above.
+                    Note the asymmetry the copy has to admit: pieces have no archived filter, and sources
+                    are filtered on `enabled` only, not on the ADR 0310 `archivedAt`. */}
+                <InfoTip
+                  align="end"
+                  label={translate({ key: 'workspaces.tips.insights.graphNodesAria' })}
+                  title={translate({ key: 'workspaces.tips.insights.graphNodesTitle' })}
+                  body={translate({ key: 'workspaces.tips.insights.graphNodesBody' })}
+                  points={[{ id: 'sources', label: translate({ key: 'workspaces.tips.insights.graphNodesSourcesLabel' }), desc: translate({ key: 'workspaces.tips.insights.graphNodesSourcesDesc' }), onGo: () => { navigate('sources'); }, goLabel: translate({ key: 'workspaces.tips.insights.graphNodesSourcesGo' }) }]}
+                />
               </span>
             </div>
 

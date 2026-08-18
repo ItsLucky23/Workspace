@@ -18,7 +18,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslator } from '@luckystack/core/client';
 
 import Icon from '../../_components/Icon';
-import { EmptyState } from '../../_components/primitives';
+import { EmptyState, InfoTip } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { PipelineStage, Ticket } from '../../_data/types';
 
@@ -86,9 +86,19 @@ function UnrefinedAddCard() {
   };
   if (!adding) {
     return (
-      <button type="button" onClick={() => { setAdding(true); }} className={`flex items-center gap-2 rounded-xl px-3 h-9 text-sm text-muted hover:text-common hover:bg-container2 transition-colors cursor-pointer`}>
-        <Icon name="plus" /> {translate({ key: 'workspaces.board.ticket' })}
-      </button>
+      <div className={`flex items-center gap-1`}>
+        <button type="button" onClick={() => { setAdding(true); }} className={`flex items-center gap-2 rounded-xl px-3 h-9 text-sm text-muted hover:text-common hover:bg-container2 transition-colors cursor-pointer`}>
+          <Icon name="plus" /> {translate({ key: 'workspaces.board.ticket' })}
+        </button>
+        {/* The quick-add has no options, so it always produces a ticket no agent will ever pick up
+            (conductor.ts:1674 + defaultPipeline.ts:45 — `unrefined` ships aiEnabled:false). */}
+        <InfoTip
+          align="start"
+          label={translate({ key: 'workspaces.tips.board.quickAddParkedTitle' })}
+          title={translate({ key: 'workspaces.tips.board.quickAddParkedTitle' })}
+          body={translate({ key: 'workspaces.tips.board.quickAddParkedBody' })}
+        />
+      </div>
     );
   }
   return (

@@ -155,6 +155,23 @@ function PermissionsTab() {
         <div>
           <span className="text-sm font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.rolesAndPermissions' })}</span>
           <span className="text-sm text-muted ml-2">{translate({ key: 'workspaces.workspaceSettings.thisWorkspace' })}</span>
+          {/* The matrix looks like eight local checkboxes; each tick is in fact re-checked on every
+              action (hasCapability re-reads role.perms per op) and scopes to THIS workspace only
+              (WorkspaceRole rows are per-workspace). The three built-in roles refuse the change
+              server-side (role.builtInImmutable), but the snapshot only marks Owner `locked`, so
+              Admin/Member cells still look clickable and silently fail — hence the wording. */}
+          <InfoTip
+            className={`ml-2 align-middle`}
+            label={translate({ key: 'workspaces.tips.workspace.permsAria' })}
+            title={translate({ key: 'workspaces.tips.workspace.permsTitle' })}
+            body={translate({ key: 'workspaces.tips.workspace.permsBody' })}
+            points={[
+              { id: 'builtin', label: translate({ key: 'workspaces.tips.workspace.permsBuiltinLabel' }), desc: translate({ key: 'workspaces.tips.workspace.permsBuiltinDesc' }) },
+              { id: 'instant', label: translate({ key: 'workspaces.tips.workspace.permsInstantLabel' }), desc: translate({ key: 'workspaces.tips.workspace.permsInstantDesc' }) },
+              { id: 'widest', label: translate({ key: 'workspaces.tips.workspace.permsWidestLabel' }), desc: translate({ key: 'workspaces.tips.workspace.permsWidestDesc' }) },
+            ]}
+            align="start"
+          />
         </div>
         {adding ? (
           <div className="flex items-center gap-2">
@@ -296,7 +313,22 @@ function EnvTab() {
 
   return (
     <div className="max-w-2xl mx-auto w-full flex flex-col gap-3">
-      <div><span className="text-sm font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.environmentVariables' })}</span><span className="text-sm text-muted ml-2">{translate({ key: 'workspaces.workspaceSettings.envSubtitle' })}</span></div>
+      {/* The dots are a placeholder, not the stored value — revealing a secret shows an EMPTY box,
+          and saving it empty deliberately keeps whatever is stored. */}
+      <div><span className="text-sm font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.environmentVariables' })}</span><span className="text-sm text-muted ml-2">{translate({ key: 'workspaces.workspaceSettings.envSubtitle' })}</span>
+        <InfoTip
+          className={`ml-2 align-middle`}
+          label={translate({ key: 'workspaces.tips.workspace.envSecretAria' })}
+          title={translate({ key: 'workspaces.tips.workspace.envSecretTitle' })}
+          body={translate({ key: 'workspaces.tips.workspace.envSecretBody' })}
+          points={[
+            { id: 'reveal', label: translate({ key: 'workspaces.tips.workspace.envSecretRevealLabel' }), desc: translate({ key: 'workspaces.tips.workspace.envSecretRevealDesc' }) },
+            { id: 'keep', label: translate({ key: 'workspaces.tips.workspace.envSecretKeepLabel' }), desc: translate({ key: 'workspaces.tips.workspace.envSecretKeepDesc' }) },
+            { id: 'replace', label: translate({ key: 'workspaces.tips.workspace.envSecretReplaceLabel' }), desc: translate({ key: 'workspaces.tips.workspace.envSecretReplaceDesc' }) },
+          ]}
+          align="start"
+        />
+      </div>
       {/* #64 — discoverability: the deploy-hook target is just two env vars, set here (save-env), used on export. */}
       <div className="text-xs text-muted rounded-xl border border-container1-border bg-container2/30 px-3 py-2">{translate({ key: 'workspaces.workspaceSettings.deployHookHint' })}</div>
       <Table columns={columns} rows={envVars} rowKey={(v) => v.id} empty={translate({ key: 'workspaces.workspaceSettings.noEnvVars' })} />
@@ -316,7 +348,7 @@ function EnvTab() {
 
 function IntegrationToolForm({ tool, onSave, onCancel }: { tool: IntegrationTool | null; onSave: (t: IntegrationTool) => void; onCancel: () => void }) {
   const translate = useTranslator();
-  const { envVars } = useWorkspaces();
+  const { envVars, navigate } = useWorkspaces();
   const [typeKey, setTypeKey] = useState(tool?.type ?? INTEGRATION_TYPES[0]?.key ?? '');
   const [name, setName] = useState(tool?.name ?? '');
   const [fields, setFields] = useState<IntegrationField[]>(tool?.fields ?? INTEGRATION_TYPES[0]?.fields.map((f, i) => ({ id: `imf-${String(i)}`, label: f.label, placeholder: f.placeholder, envVarId: null })) ?? []);
@@ -345,6 +377,14 @@ function IntegrationToolForm({ tool, onSave, onCancel }: { tool: IntegrationTool
       <div>
         <div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.workspaceSettings.configFieldsToEnvVars' })}</div>
         <div className="flex flex-col gap-2">
+          {/* Every picker below would hold only "— none —": say so, and say where variables are made. */}
+          {envVars.length === 0 && fields.length > 0 && (
+            <EmptyPicker
+              icon="sliders"
+              label={translate({ key: 'workspaces.tips.workspace.noEnvVarsLabel' })}
+              fix={{ cap: 'workspaceSettings', view: 'workspace', tab: 'env', cta: translate({ key: 'workspaces.tips.workspace.noEnvVarsCta' }) }}
+            />
+          )}
           {fields.map((f) => (
             <div key={f.id} className="flex items-center gap-2">
               <span className="text-sm text-title w-40 shrink-0 truncate">{f.label}</span>
@@ -356,7 +396,27 @@ function IntegrationToolForm({ tool, onSave, onCancel }: { tool: IntegrationTool
           {fields.length === 0 && <span className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.pickTypeHint' })}</span>}
         </div>
       </div>
-      <Toggle on={mcpEnabled} onChange={setMcpEnabled} label={translate({ key: 'workspaces.workspaceSettings.exposeViaMcp' })} />
+      {/* The switch alone mounts nothing: the MCP server needs a non-empty command AND a stage that
+          selects this tool at the read+write tier (server/orchestrator/stageRunner.ts). */}
+      <div className={`flex items-center gap-2`}>
+        <Toggle on={mcpEnabled} onChange={setMcpEnabled} label={translate({ key: 'workspaces.workspaceSettings.exposeViaMcp' })} />
+        <InfoTip
+          label={translate({ key: 'workspaces.tips.workspace.mcpAria' })}
+          title={translate({ key: 'workspaces.tips.workspace.mcpTitle' })}
+          body={translate({ key: 'workspaces.tips.workspace.mcpBody' })}
+          points={[
+            { id: 'command', label: translate({ key: 'workspaces.tips.workspace.mcpCommandLabel' }), desc: translate({ key: 'workspaces.tips.workspace.mcpCommandDesc' }) },
+            {
+              id: 'stage',
+              label: translate({ key: 'workspaces.tips.workspace.mcpStageLabel' }),
+              desc: translate({ key: 'workspaces.tips.workspace.mcpStageDesc' }),
+              onGo: () => { navigate('pipeline'); },
+              goLabel: translate({ key: 'workspaces.tips.workspace.mcpStageGo' }),
+            },
+          ]}
+          align="start"
+        />
+      </div>
       <Collapse open={mcpEnabled}>
         <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.workspaceSettings.mcpServerCommand' })}</div><input value={mcpCmd} onChange={(e) => { setMcpCmd(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.mcpCommandPlaceholder' })} className={`w-full font-mono ${fieldCls}`} /></div>
       </Collapse>
@@ -973,15 +1033,25 @@ function DangerTab() {
           <div className="text-sm font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.transferOwnership' })}</div>
           <div className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.transferOwnershipDesc' })}</div>
         </div>
-        <div className="flex items-center gap-2">
-          <Dropdown
-            size="sm" showSearch searchPlaceholder={translate({ key: 'workspaces.workspaceSettings.findMemberPlaceholder' })}
-            value={memberItems.find((m) => m.id === transferTarget)} placeholder={translate({ key: 'workspaces.workspaceSettings.transferToPlaceholder' })}
-            items={memberItems}
-            onChange={(it) => { setTransferTarget(String(it.id)); }}
+        {/* Alone in the workspace there is nobody to hand it to: the picker was empty ("No results")
+            next to a Transfer button that silently did nothing. Say WHY, and where members come from. */}
+        {memberItems.length === 0 ? (
+          <EmptyPicker
+            icon="users"
+            label={translate({ key: 'workspaces.tips.workspace.noTransferTargetLabel' })}
+            fix={{ cap: 'manageMembers', view: 'workspace', tab: 'invites', cta: translate({ key: 'workspaces.tips.workspace.noTransferTargetCta' }) }}
           />
-          <WsButton variant="secondary" onClick={startTransfer}>{translate({ key: 'workspaces.workspaceSettings.transfer' })}</WsButton>
-        </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Dropdown
+              size="sm" showSearch searchPlaceholder={translate({ key: 'workspaces.workspaceSettings.findMemberPlaceholder' })}
+              value={memberItems.find((m) => m.id === transferTarget)} placeholder={translate({ key: 'workspaces.workspaceSettings.transferToPlaceholder' })}
+              items={memberItems}
+              onChange={(it) => { setTransferTarget(String(it.id)); }}
+            />
+            <WsButton variant="secondary" onClick={startTransfer}>{translate({ key: 'workspaces.workspaceSettings.transfer' })}</WsButton>
+          </div>
+        )}
       </div>
       <div className="h-px bg-wrong/20" />
       {/* GAP_SCAN G2 — start a second workspace from this one's setup instead of re-onboarding from zero.
@@ -1124,7 +1194,21 @@ function SkillCard({ s }: { s: AiSkillEntry }) {
           <textarea value={instruction} onChange={(e) => { setInstruction(e.target.value); }} rows={6} className={`${fieldCls} min-h-28 py-2 resize-y`} placeholder={translate({ key: 'workspaces.workspaceSettings.skillsAi.instructionPlaceholder' })} />
           <textarea value={examples} onChange={(e) => { setExamples(e.target.value); }} rows={2} className={`${fieldCls} py-2 resize-y`} placeholder={translate({ key: 'workspaces.workspaceSettings.skillsAi.examplesPlaceholder' })} />
           <div>
-            <div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.workspaceSettings.skillsAi.applyPointsLabel' })}</div>
+            {/* Selecting nothing WIDENS the skill: the resolver treats an empty list like 'all'
+                (server/ai/skills.ts). Deselecting is not how you switch a skill off. */}
+            <div className="text-xs text-muted mb-1 flex items-center gap-1.5">
+              {translate({ key: 'workspaces.workspaceSettings.skillsAi.applyPointsLabel' })}
+              <InfoTip
+                label={translate({ key: 'workspaces.tips.workspace.skillScopeAria' })}
+                title={translate({ key: 'workspaces.tips.workspace.skillScopeTitle' })}
+                body={translate({ key: 'workspaces.tips.workspace.skillScopeBody' })}
+                points={[
+                  { id: 'none', label: translate({ key: 'workspaces.tips.workspace.skillScopeNoneLabel' }), desc: translate({ key: 'workspaces.tips.workspace.skillScopeNoneDesc' }) },
+                  { id: 'off', label: translate({ key: 'workspaces.tips.workspace.skillScopeOffLabel' }), desc: translate({ key: 'workspaces.tips.workspace.skillScopeOffDesc' }) },
+                ]}
+                align="start"
+              />
+            </div>
             <div className="flex flex-wrap gap-1.5">
               {AI_SKILL_APPLY_POINTS.map((p) => (
                 <button key={p} type="button" onClick={() => { togglePoint(p); }}
@@ -1179,7 +1263,7 @@ function SkillsSection() {
 
 function AiBehaviorTab() {
   const translate = useTranslator();
-  const { activeWorkspace, saveAiInstruction, aiOverrides, saveAiProvider, saveAutonomy, customTasks, saveCustomTask, runCustomTask, deleteCustomTask, aiSkills } = useWorkspaces();
+  const { activeWorkspace, saveAiInstruction, aiOverrides, saveAiProvider, saveAutonomy, customTasks, saveCustomTask, runCustomTask, deleteCustomTask, aiSkills, navigate } = useWorkspaces();
   const [newTaskName, setNewTaskName] = useState('');
   const [newTaskTemplate, setNewTaskTemplate] = useState('');
   const autonomyItems = (['gate-every', 'gate-key-stages', 'full-auto'] as const).map((id) => ({ id, value: id, item: translate({ key: `workspaces.workspaceSettings.autonomy.${id}` }) }));
@@ -1260,9 +1344,27 @@ function AiBehaviorTab() {
 
       {/* A4 — autonomy dial: how often the human is asked to approve a stage. */}
       <FormSection title={translate({ key: 'workspaces.workspaceSettings.autonomyTitle' })}>
+        {/* This dial overrides each stage's own "ask for approval" mark at the stage EXIT only
+            (resolveStageGate — whether a finished stage auto-advances). The stage ENTRY is decided
+            elsewhere: the watchdog's idle sweep reads `stage.gateForApproval` raw, with no autonomy
+            level, so even on full-auto a gated stage never auto-STARTS — the ticket advances into it
+            and parks. The copy below says exactly that. */}
         <SettingRow
           label={translate({ key: 'workspaces.workspaceSettings.autonomyTitle' })}
           help={translate({ key: 'workspaces.workspaceSettings.autonomyDesc' })}
+          infoTitle={translate({ key: 'workspaces.tips.workspace.autonomyTitle' })}
+          info={translate({ key: 'workspaces.tips.workspace.autonomyBody' })}
+          infoPoints={[
+            { id: 'full-auto', label: translate({ key: 'workspaces.tips.workspace.autonomyFullLabel' }), desc: translate({ key: 'workspaces.tips.workspace.autonomyFullDesc' }) },
+            { id: 'gate-every', label: translate({ key: 'workspaces.tips.workspace.autonomyEveryLabel' }), desc: translate({ key: 'workspaces.tips.workspace.autonomyEveryDesc' }) },
+            {
+              id: 'gate-key-stages',
+              label: translate({ key: 'workspaces.tips.workspace.autonomyKeyLabel' }),
+              desc: translate({ key: 'workspaces.tips.workspace.autonomyKeyDesc' }),
+              onGo: () => { navigate('pipeline'); },
+              goLabel: translate({ key: 'workspaces.tips.workspace.autonomyKeyGo' }),
+            },
+          ]}
           control={<Dropdown width="full" value={autonomyItems.find((a) => a.id === autonomyLevel)} items={autonomyItems} onChange={(it) => { saveAutonomy(String(it.id)); }} />}
         />
       </FormSection>

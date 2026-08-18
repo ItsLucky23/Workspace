@@ -1,6 +1,6 @@
 {
-  "hash": "bed2f270fc3e9b89",
-  "chunkCount": 248,
+  "hash": "962a60991b40cb4c",
+  "chunkCount": 249,
   "chunks": [
     {
       "id": "cap-001",
@@ -1489,6 +1489,12 @@
       "kind": "decision",
       "title": "Repository introspection is shown to the user, not only to the AI",
       "text": "ADR 0313: Repository introspection is shown to the user, not only to the AI. After linking a repository, the workspace Repository tab offers a Dockerfile draft and two blank text inputs — dev command and production command — and nothing else. The owner asked the obvious questions it cannot answer: what if my repo has a docker-compose setup and several Dockerfiles? why can I not see which npm commands exist? and is a separate terminal started per command? Two facts made this worse than it looked: - The server has read these files all along. `repoManifests` in `server/git/repoStore.ts` pulls package.json, lockfiles and a Dockerfile out of the bare clone to feed Dockerfile generation, docs generation and image builds. The capability existed; it was simply never pointed at the human. Its match list is also root-level and exact, so a monorepo's `services/api/package.json`, a `Dockerfile.prod`, and `docker-compose.yml` — which this product provisions service stacks from — were invisible to it. - The form could not show its own value. `Project.devCommand`, `prodCommand` and `allowCustomBase` were persisted but never included in the workspace snapshot, so the inputs rendered EMPTY on every mount. A user could overwrite their command but never see it. The third question had a real answer nobody had written down. `server/container/previewSession.ts` resolves `Service.devCommand` → `Project.devCommand` → the stack default and runs it inside the ticket's own preview container: one dev co"
+    },
+    {
+      "id": "adr-0314",
+      "kind": "decision",
+      "title": "Onboarding is a standing checklist, not a tour",
+      "text": "ADR 0314: Onboarding is a standing checklist, not a tour. A fresh workspace is a wall of empty pickers: no repository, no AI key, no context documents, no notifications, no channel. ADR 0312 gave every one of those a local explanation — `SetupNotice` at page scale, `EmptyPicker` at field scale — but both only speak once the user has already walked into the feature they block. Nothing ever said what \"set up\" means for this workspace, so the honest answer to \"why does nothing work yet?\" was: go and find out, one blocked screen at a time. A `SetupWizard` already existed: a three-step modal covering a media key and a spend budget, reached from a link on the workspace settings page. It is a good front door for two specific settings, but it is modal, partial, and reachable only from a page a new user has no reason to open. When asked, the owner chose a standing checklist over both a bare set of field-level redirects and a guided first-run tour. Decision: **A persistent, self-retiring checklist on the landing view.** `SetupChecklist` renders above the page content on the two category index views (`board`, `content`), listing what is left to configure. Each row deep-links to the exact place that fixes it, via the URL-addressed `focusSetup` from ADR 0312 — a checklist that says \"go to settings\" without taking you there is a worse version of the problem it solves. Three properties make it a checklist rather than a nag: - **It invents no state.** Every row reads a `readiness` boolean th"
     }
   ]
 }

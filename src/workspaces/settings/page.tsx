@@ -13,8 +13,9 @@ import { apiRequest } from 'src/_sockets/apiRequest';
 import Icon from '../_components/Icon';
 import { SectionLabel, Table, type TableColumn } from '../_components/dataDisplay';
 import { Collapse } from '../_components/motion';
-import { AvatarBubble, Disclosure, IconButton, PopMenu, Tabs, Toggle, WsButton } from '../_components/primitives';
+import { AvatarBubble, Disclosure, IconButton, InfoTip, PopMenu, Tabs, Toggle, WsButton } from '../_components/primitives';
 import { useTrailSegment } from '../_components/sections';
+import { EmptyPicker } from '../_components/SetupNotice';
 import { FormSection, SettingRow } from '../_components/settings';
 import { isModuleEnabled } from '../_data/modules';
 import type { EnvironmentSummary, PatSummary, PromptExperimentSummary } from '../_data/types';
@@ -616,6 +617,11 @@ export default function AccountSettings() {
                 mode or the separate repository-clone state. */}
             <SettingRow
               label={<span className="inline-flex items-center gap-2"><Icon name="diagram-project" className="text-muted" /> {translate({ key: activeForgeMode === 'github' ? 'workspaces.account.github' : 'workspaces.account.gitlab' })}{activeProject ? ` · ${activeProject.name}` : ''}</span>}
+              //? The green badge says "saved", never "works" — the connect op never calls the forge back
+              //? (conductor `forge-connect` writes status:'connected' unconditionally), so a typo'd token
+              //? looks identical to a working one until a repo job fails.
+              infoTitle={translate({ key: 'workspaces.tips.settings.forgeConnectedTitle' })}
+              info={translate({ key: 'workspaces.tips.settings.forgeConnectedBody' })}
               control={(
                 <div className="flex items-center justify-end gap-2 flex-wrap">
                   {forgeConnected && <span className="inline-flex items-center gap-1 text-xs text-correct"><Icon name="circle-check" /> {translate({ key: 'workspaces.account.connected' })}</span>}
@@ -630,10 +636,37 @@ export default function AccountSettings() {
                 </div>
               )}
             />
+            {/* Without an active project the Connect button is greyed with no reason given, while the row
+                still names a provider (the legacy workspace fallback) — it reads as "not connected yet". */}
+            {!activeProject && <EmptyPicker icon="diagram-project" label={translate({ key: 'workspaces.tips.settings.noProjectForge' })} />}
           </FormSection>
 
           {/* Environments (ADR 0037): deploy the active project to dev/staging/prod at a stable URL. */}
-          <Card title={translate({ key: 'workspaces.account.environmentsTitle' })} desc={translate({ key: 'workspaces.account.environmentsDesc' })}>
+          <Card
+            title={translate({ key: 'workspaces.account.environmentsTitle' })}
+            desc={translate({ key: 'workspaces.account.environmentsDesc' })}
+            //? The three things that make people deploy the wrong thing: promote ships the SOURCE env's
+            //? pinned commit (promote.ts F26), prod has no Deploy at all (conductor `env.prodViaPromote`),
+            //? and the CI/security gates are OPT-IN — `ciGreenForProject` returns green with zero runs and
+            //? `securityBlocksProdPromote` only bites on a high/critical finding FOR that commit, so without
+            //? CI no build check can refuse a promote (the source-live/known-commit health gates still do).
+            //? Never let the copy imply prod is protected by default.
+            right={(
+              <InfoTip
+                align="end"
+                label={translate({ key: 'workspaces.tips.settings.envTitle' })}
+                title={translate({ key: 'workspaces.tips.settings.envTitle' })}
+                body={translate({ key: 'workspaces.tips.settings.envBody' })}
+                points={[
+                  { id: 'promote', label: translate({ key: 'workspaces.tips.settings.envPromoteLabel' }), desc: translate({ key: 'workspaces.tips.settings.envPromoteDesc' }) },
+                  { id: 'prod', label: translate({ key: 'workspaces.tips.settings.envProdLabel' }), desc: translate({ key: 'workspaces.tips.settings.envProdDesc' }) },
+                  { id: 'checks', label: translate({ key: 'workspaces.tips.settings.envChecksLabel' }), desc: translate({ key: 'workspaces.tips.settings.envChecksDesc' }) },
+                ]}
+              />
+            )}
+          >
+            {/* Every button in this card sends the active project's id and is dropped when there is none. */}
+            {!activeProject && <EmptyPicker icon="cube" label={translate({ key: 'workspaces.tips.settings.noProjectEnvs' })} />}
             {['dev', 'staging', 'prod'].map((kind) => {
               const env = environments.find((e) => e.kind === kind && e.serviceId === undefined);
               return (
@@ -671,6 +704,15 @@ export default function AccountSettings() {
                 <Row>
                   <span className="flex items-center gap-2 min-w-0">
                     <span className="text-sm font-medium text-title uppercase w-16">{DEMO_ACCOUNT_LABEL}</span>
+                    {/* Blank pin = the demo follows main on a ~60s watcher (demoWatch), a pin freezes it —
+                        and a taken subdomain/domain is dropped without a word (environment.ts subFree/customFree). */}
+                    <InfoTip
+                      align="start"
+                      label={translate({ key: 'workspaces.tips.settings.demoTitle' })}
+                      title={translate({ key: 'workspaces.tips.settings.demoTitle' })}
+                      body={translate({ key: 'workspaces.tips.settings.demoBody' })}
+                      points={[{ id: 'dns', label: translate({ key: 'workspaces.tips.settings.demoDnsLabel' }), desc: translate({ key: 'workspaces.tips.settings.demoDnsDesc' }) }]}
+                    />
                     {demo
                       ? <span className={`inline-flex items-center gap-1 text-xs ${demo.status === 'live' ? 'text-correct' : (demo.status === 'error' ? 'text-wrong' : 'text-muted')}`}><span className={`w-1.5 h-1.5 rounded-full ${demo.status === 'live' ? 'bg-correct' : (demo.status === 'error' ? 'bg-wrong' : 'bg-muted')}`} />{demo.status}{demo.status === 'live' && demo.url ? <a href={demo.url} target="_blank" rel="noreferrer" className="text-primary hover:underline ml-1 truncate">{demo.route}</a> : null}</span>
                       : <input value={pinnedCommit} onChange={(e) => { setPinnedCommit(e.target.value); }} placeholder={translate({ key: 'workspaces.account.pinCommitPh' })} className="h-8 px-2 rounded-lg border border-container1-border bg-container2/50 text-xs text-title focus:outline-none focus:border-primary w-40" />}
@@ -693,6 +735,13 @@ export default function AccountSettings() {
             </Collapse>
             {/* #63 — per-service environments: a monorepo project's services deploy/teardown INDIVIDUALLY
                 (serviceId-scoped). Only shown when the active project declares services. */}
+            {/* Without services the whole block is invisible, so nothing on the page ever says that the
+                parts of a monorepo can be deployed separately — or where a service is added. */}
+            {activeProject && projectServices.length === 0 && (
+              <div className="mt-2 pt-2 border-t border-divider">
+                <EmptyPicker icon="server" label={translate({ key: 'workspaces.tips.settings.noServices' })} />
+              </div>
+            )}
             {projectServices.length > 0 && (
               <div className="mt-2 pt-2 border-t border-divider flex flex-col gap-1.5">
                 <SectionLabel>{translate({ key: 'workspaces.account.perServiceEnvs' })}</SectionLabel>
@@ -741,7 +790,28 @@ export default function AccountSettings() {
           </Card>
 
           {/* K1/K3 — Services: spin up a third-party service stack (Kafka/Postgres/…) to develop/test against. */}
-          <Card title={translate({ key: 'workspaces.services.title' })} desc={translate({ key: 'workspaces.services.desc' })}>
+          <Card
+            title={translate({ key: 'workspaces.services.title' })}
+            desc={translate({ key: 'workspaces.services.desc' })}
+            //? A provision is not only containers: conductor `service-provision` upserts the preset's OWN
+            //? generic keys (DATABASE_URL, REDIS_URL, SMTP_HOST, …) as encrypted EnvVars — there is NO
+            //? `SVC_<name>_` namespace anywhere in the code, so a same-named key the user already had is
+            //? clobbered, and teardown (deleteMany by `serviceName`) then DELETES that row rather than
+            //? restoring it. Whether a bring-your-own Compose stack writes env depends on the execution mode:
+            //? none on this host's Docker, the runner's own env under `isolated-v1` (conductor.ts:4211).
+            right={(
+              <InfoTip
+                align="end"
+                label={translate({ key: 'workspaces.tips.settings.servicesTitle' })}
+                title={translate({ key: 'workspaces.tips.settings.servicesTitle' })}
+                body={translate({ key: 'workspaces.tips.settings.servicesBody' })}
+                points={[
+                  { id: 'clash', label: translate({ key: 'workspaces.tips.settings.servicesClashLabel' }), desc: translate({ key: 'workspaces.tips.settings.servicesClashDesc' }) },
+                  { id: 'custom', label: translate({ key: 'workspaces.tips.settings.servicesCustomLabel' }), desc: translate({ key: 'workspaces.tips.settings.servicesCustomDesc' }) },
+                ]}
+              />
+            )}
+          >
             <Row>
               <span className="flex items-center gap-2 min-w-0">
                 <Dropdown size="sm" width="full" items={SERVICE_PRESETS.map((p) => ({ id: p.key, value: p.key, item: p.label }))} value={SERVICE_PRESETS.map((p) => ({ id: p.key, value: p.key, item: p.label })).find((it) => it.id === servicePreset)} onChange={(it) => { setServicePreset(String(it.value)); }} />
@@ -780,12 +850,27 @@ export default function AccountSettings() {
                 <input value={dbName} onChange={(e) => { setDbName(e.target.value); }} placeholder={translate({ key: 'workspaces.db.namePh' })} className={`${dbInputCls} flex-1 min-w-32`} />
                 <Dropdown size="sm" width="full" items={DB_KINDS.map((k) => ({ id: k.key, value: k.key, item: k.label }))} value={DB_KINDS.map((k) => ({ id: k.key, value: k.key, item: k.label })).find((it) => it.id === dbKind)} onChange={(it) => { setDbKind(String(it.value)); }} />
                 <Dropdown size="sm" width="full" items={['dev', 'staging', 'prod'].map((k) => ({ id: k, value: k, item: k }))} value={['dev', 'staging', 'prod'].map((k) => ({ id: k, value: k, item: k })).find((it) => it.id === dbEnvKind)} onChange={(it) => { setDbEnvKind(String(it.value)); }} />
+                {/* One dropdown, two writes: db-connect UPDATES the existing row for this environment
+                    (conductor `db-connect` findFirst → update), and it stamps a new migration's envKind —
+                    where applyMigration additionally demands a recorded rollback plan for prod. */}
+                <InfoTip
+                  align="end"
+                  label={translate({ key: 'workspaces.tips.settings.dbEnvTitle' })}
+                  title={translate({ key: 'workspaces.tips.settings.dbEnvTitle' })}
+                  body={translate({ key: 'workspaces.tips.settings.dbEnvBody' })}
+                  points={[
+                    { id: 'replace', label: translate({ key: 'workspaces.tips.settings.dbEnvReplaceLabel' }), desc: translate({ key: 'workspaces.tips.settings.dbEnvReplaceDesc' }) },
+                    { id: 'prod', label: translate({ key: 'workspaces.tips.settings.dbEnvProdLabel' }), desc: translate({ key: 'workspaces.tips.settings.dbEnvProdDesc' }) },
+                  ]}
+                />
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <input value={dbUrl} onChange={(e) => { setDbUrl(e.target.value); }} type="password" placeholder={translate({ key: 'workspaces.db.urlPh' })} className={`${dbInputCls} flex-1 min-w-48`} />
                 <WsButton variant="secondary" disabled={!dbName || !dbUrl} onClick={() => { dbConnect({ name: dbName, kind: dbKind, url: dbUrl, envKind: dbEnvKind }); setDbName(''); setDbUrl(''); }}>{translate({ key: 'workspaces.db.connect' })}</WsButton>
               </div>
             </div>
+            {/* Connect is enabled without a project, but the op is dropped client-side — say so up front. */}
+            {!activeProject && <EmptyPicker icon="database" label={translate({ key: 'workspaces.tips.settings.noProjectDb' })} />}
             {dbConnections.length === 0 && <div className="text-xs text-muted px-1 py-1">{translate({ key: 'workspaces.db.noConnections' })}</div>}
             {dbConnections.map((c) => (
               <Row key={c.id}>
@@ -803,6 +888,8 @@ export default function AccountSettings() {
               </div>
               <textarea value={migSql} onChange={(e) => { setMigSql(e.target.value); }} placeholder={translate({ key: 'workspaces.db.sqlPh' })} rows={3} className={`${dbInputCls} h-auto py-2 font-mono text-xs`} />
             </div>
+            {/* The only list in this card that rendered nothing at all when empty. */}
+            {migrations.length === 0 && <EmptyPicker icon="file-lines" label={translate({ key: 'workspaces.tips.settings.noMigrations' })} />}
             {migrations.map((m) => (
               <Row key={m.id}>
                 <span className="flex items-center gap-2 min-w-0">

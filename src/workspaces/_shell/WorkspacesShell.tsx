@@ -13,11 +13,17 @@ import { MobileHeader } from './MobileChrome';
 import { Onboarding } from './Onboarding';
 import { useWorkspaces } from './WorkspacesContext';
 import SearchPalette from '../_components/SearchPalette';
+import SetupChecklist from '../_components/SetupChecklist';
 import { PageTransition, Sheet } from '../_components/motion';
 import Icon from '../_components/Icon';
 import { GATEABLE_SECTIONS, isSectionEnabled } from '../_data/modules';
 import { WsButton } from '../_components/primitives';
 import { useTranslator } from '@luckystack/core/client';
+
+//? Where the setup checklist may appear: the two category INDEX pages a user lands on. Showing it
+//? above every view would make it a nag; showing it on only one would hide it from a content-only
+//? workspace, whose board is gated away.
+const LANDING_VIEWS = new Set(['board', 'content']);
 
 //? The views where the FAB's context-dependent "new" means a CONTENT piece; every other view
 //? creates a ticket (falling back to a piece when the dev module is off for this workspace).
@@ -115,6 +121,11 @@ export function WorkspacesShell({ children }: { children: React.ReactNode }) {
               {/* B1 — connection/queued-write state, above every view (phone + desktop). */}
               <OfflineBanner />
               <PausedBanner />
+              {/* ADR 0314 — the standing "finish setting up this workspace" list, on the landing view
+                  only. It retires itself once everything measurable is done, and it is the front door
+                  the per-feature SetupNotice/EmptyPicker affordances never had: those explain a gap
+                  once you have already walked into it. */}
+              {LANDING_VIEWS.has(ctx.view) && <SetupChecklist />}
               {/* open-ticket tabs — inside the content column so they don't overlap the AI panel */}
               <TabBar />
               {/* contextual back row — only when a reference was followed */}

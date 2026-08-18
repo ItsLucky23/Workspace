@@ -11,7 +11,7 @@ import { i18nNotify as notify, useTranslator } from '@luckystack/core/client';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import { menuHandler } from 'src/_functions/menuHandler';
 import Icon, { type IconName } from '../../_components/Icon';
-import { Disclosure, EmptyState, InteractiveRow, PopMenu, SectionCard, Segmented, WsButton, type PopMenuItem } from '../../_components/primitives';
+import { Disclosure, EmptyState, InfoTip, InteractiveRow, PopMenu, SectionCard, Segmented, WsButton, type InfoTipPoint, type PopMenuItem } from '../../_components/primitives';
 import { SetupNotice } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { isSectionEnabled } from '../../_data/modules';
@@ -67,7 +67,7 @@ function briefDraftFromPrefill(prefill: Record<string, string>): BriefDraft | nu
 //? page over one shared Studio. `/marketing` re-uses this with variant="marketing" (marketer kinds, no Brand tab).
 export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'marketing' }) {
   const translate = useTranslator();
-  const { studioBriefs, studioArtifacts, studioBrand, generateArtifact, deleteBrief, deleteArtifact, promoteBrand, runContentOp, activeWorkspace, copilotPrefill, consumeCopilotPrefill, readiness } = useWorkspaces();
+  const { studioBriefs, studioArtifacts, studioBrand, generateArtifact, deleteBrief, deleteArtifact, promoteBrand, runContentOp, activeWorkspace, copilotPrefill, consumeCopilotPrefill, readiness, focusSetup } = useWorkspaces();
   //? Send-to-Content (gap-fix): only offered when the content lane is enabled for this workspace.
   const contentOn = isSectionEnabled(activeWorkspace.enabledSections, 'content');
   //? GAP_SCAN G3 — put a generated landing page live at /s/<slug>. Re-publishing keeps the same URL, so
@@ -177,13 +177,24 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
       )}
       {/* ---- Assets | Brand — the brand library is a secondary tab, only on the studio variant ---- */}
       {variant === 'studio' && (
-        <div className={`px-4 md:px-6 pt-4 shrink-0 overflow-x-auto ws-no-scrollbar`}>
+        <div className={`px-4 md:px-6 pt-4 shrink-0 overflow-x-auto ws-no-scrollbar flex items-center gap-2`}>
           <Segmented
             options={[
               { id: 'assets', label: <span className={`inline-flex items-center gap-1.5`}><Icon name="table-cells-large" />{translate({ key: 'workspaces.studio.tabAssets' })}</span> },
               { id: 'brand', label: <span className={`inline-flex items-center gap-1.5`}><Icon name="book-open" />{translate({ key: 'workspaces.studio.tabBrand' })}<span className={`text-xs text-muted font-normal whitespace-nowrap`}>· {brandSignal}</span></span> },
             ]}
             value={tab} onChange={setTab}
+          />
+          {/* The Brand tab looks like a place to store colours; it is actually a switch on every generation. */}
+          <InfoTip
+            align="start"
+            label={translate({ key: 'workspaces.tips.studio.brandGateLabel' })}
+            title={translate({ key: 'workspaces.tips.studio.brandGateTitle' })}
+            body={translate({ key: 'workspaces.tips.studio.brandGateBody' })}
+            points={[
+              { id: 'sent', label: translate({ key: 'workspaces.tips.studio.brandGateSent' }), desc: translate({ key: 'workspaces.tips.studio.brandGateSentDesc' }) },
+              { id: 'voice', label: translate({ key: 'workspaces.tips.studio.brandGateVoice' }), desc: translate({ key: 'workspaces.tips.studio.brandGateVoiceDesc' }) },
+            ]}
           />
         </div>
       )}
@@ -259,7 +270,22 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
                           <div className={`text-sm text-muted mt-0.5`}>{translate({ key: 'workspaces.studio.generateHint' })}</div>
                         </div>
                         {/* duplicateConcepts #2 — the second AI prompt stack, visible before you generate */}
-                        <ContentPromptPreview briefTone={selected.tone} brandVoice={studioBrand?.voice ?? ''} refine={refine} />
+                        <div className={`flex items-start gap-1.5`}>
+                          <div className={`min-w-0 flex-1`}><ContentPromptPreview briefTone={selected.tone} brandVoice={studioBrand?.voice ?? ''} refine={refine} /></div>
+                          {/* The preview only lists what THIS page sets; the workspace AI settings add more at the provider. */}
+                          <InfoTip
+                            align="end"
+                            className={`mt-1.5`}
+                            label={translate({ key: 'workspaces.tips.studio.promptExtrasLabel' })}
+                            title={translate({ key: 'workspaces.tips.studio.promptExtrasTitle' })}
+                            body={translate({ key: 'workspaces.tips.studio.promptExtrasBody' })}
+                            points={[
+                              { id: 'language', label: translate({ key: 'workspaces.tips.studio.promptExtrasLanguage' }), desc: translate({ key: 'workspaces.tips.studio.promptExtrasLanguageDesc' }), onGo: () => { focusSetup({ view: 'workspace', tab: 'aibehavior' }); } },
+                              { id: 'skills', label: translate({ key: 'workspaces.tips.studio.promptExtrasSkills' }), desc: translate({ key: 'workspaces.tips.studio.promptExtrasSkillsDesc' }), onGo: () => { focusSetup({ view: 'workspace', tab: 'aibehavior' }); } },
+                              { id: 'knowledge', label: translate({ key: 'workspaces.tips.studio.promptExtrasKnowledge' }), desc: translate({ key: 'workspaces.tips.studio.promptExtrasKnowledgeDesc' }) },
+                            ]}
+                          />
+                        </div>
                         {roles.map((role) => (
                           <div key={role}>
                             <div className={`text-xs font-medium text-muted uppercase tracking-wide mb-1.5 flex items-center gap-1.5`}>
@@ -293,7 +319,17 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
 
                       {/* ---- Generated assets ---- */}
                       <div className={`flex flex-col gap-3`}>
-                        <div className={`text-base font-semibold text-title`}>{translate({ key: 'workspaces.studio.artifactsTitle' })}</div>
+                        <div className={`flex items-center gap-1.5`}>
+                          <div className={`text-base font-semibold text-title`}>{translate({ key: 'workspaces.studio.artifactsTitle' })}</div>
+                          {/* Regenerate reads like "replace"; every run creates a NEW row, and a published page keeps its own address. */}
+                          <InfoTip
+                            align="start"
+                            label={translate({ key: 'workspaces.tips.studio.regenerateLabel' })}
+                            title={translate({ key: 'workspaces.tips.studio.regenerateTitle' })}
+                            body={translate({ key: 'workspaces.tips.studio.regenerateBody' })}
+                            points={[{ id: 'published', label: translate({ key: 'workspaces.tips.studio.regeneratePublished' }), desc: translate({ key: 'workspaces.tips.studio.regeneratePublishedDesc' }) }]}
+                          />
+                        </div>
                         {artifacts.length === 0 && !busyKind && (
                           <EmptyState
                             icon="wand-magic-sparkles"
@@ -391,6 +427,7 @@ function BriefForm({ brief, initial, onSaved, onCancel }: { brief: StudioBrief |
 //? and labelled; secondary ones (Copy HTML, Download PNG, Regenerate, Delete) live in the overflow menu.
 function ArtifactCard({ artifact, busy, pendingRefine, onDelete, onRegenerate, onPromote, onSendToContent, onPublishLive }: { artifact: StudioArtifact; busy: boolean; pendingRefine: string; onDelete: () => void; onRegenerate: () => void; onPromote?: () => void; onSendToContent?: () => void; onPublishLive?: () => void }) {
   const translate = useTranslator();
+  const { navigate } = useWorkspaces();
   const c = asRecord(artifact.content);
   const when = new Date(artifact.createdAt).toLocaleString();
   const html = asStr(c.html);
@@ -416,6 +453,13 @@ function ArtifactCard({ artifact, busy, pendingRefine, onDelete, onRegenerate, o
     { divider: true },
     { icon: 'trash', label: translate({ key: 'workspaces.studio.deleteArtifact' }), danger: true, onClick: onDelete },
   ];
+  //? Each promoted action writes somewhere OTHER than this card, and the label alone never says where.
+  //? Only the actions this card actually offers are explained.
+  const actionPoints: InfoTipPoint[] = [
+    ...(onPromote ? [{ id: 'brand', label: translate({ key: 'workspaces.studio.useAsBrand' }), desc: translate({ key: 'workspaces.tips.studio.actionsBrandDesc' }) }] : []),
+    ...(onSendToContent ? [{ id: 'content', label: translate({ key: 'workspaces.studio.sendToContent' }), desc: translate({ key: 'workspaces.tips.studio.actionsContentDesc' }), onGo: () => { navigate('content'); } }] : []),
+    ...(onPublishLive ? [{ id: 'publish', label: translate({ key: 'workspaces.studio.publishLive' }), desc: translate({ key: 'workspaces.tips.studio.actionsPublishDesc' }) }] : []),
+  ];
   return (
     <div className={`rounded-2xl border border-container1-border bg-container1 overflow-hidden`}>
       <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2.5 border-b border-divider`}>
@@ -428,6 +472,15 @@ function ArtifactCard({ artifact, busy, pendingRefine, onDelete, onRegenerate, o
         {onSendToContent && <button type="button" onClick={onSendToContent} className={`text-xs text-primary hover:text-primary-hover cursor-pointer flex items-center gap-1`} title={translate({ key: 'workspaces.studio.sendToContentHint' })}><Icon name="paper-plane" className={`text-xs`} />{translate({ key: 'workspaces.studio.sendToContent' })}</button>}
         {/* G3 — one click from "generated page" to a real public URL (re-publish updates the same URL). */}
         {onPublishLive && <button type="button" onClick={onPublishLive} className={`text-xs text-primary hover:text-primary-hover cursor-pointer flex items-center gap-1`} title={translate({ key: 'workspaces.studio.publishLiveHint' })}><Icon name="up-right-from-square" className={`text-xs`} />{translate({ key: 'workspaces.studio.publishLive' })}</button>}
+        {actionPoints.length > 0 && (
+          <InfoTip
+            align="end"
+            label={translate({ key: 'workspaces.tips.studio.actionsLabel' })}
+            title={translate({ key: 'workspaces.tips.studio.actionsTitle' })}
+            body={translate({ key: 'workspaces.tips.studio.actionsBody' })}
+            points={actionPoints}
+          />
+        )}
         <PopMenu ariaLabel={translate({ key: 'workspaces.studio.artifactActions' })} items={menu} />
       </div>
       <div className={`p-4`}>

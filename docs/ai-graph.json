@@ -2,8 +2,8 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 440,
-    "edges": 627,
+    "nodes": 441,
+    "edges": 649,
     "symbols": 829,
     "callEdges": 272
   },
@@ -1000,6 +1000,11 @@
     },
     {
       "id": "workspaces/_components/settings.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_components/SetupChecklist.tsx",
       "kind": "other",
       "route": null
     },
@@ -2492,6 +2497,10 @@
     },
     {
       "from": "workspaces/_components/AutomationPanel.tsx",
+      "to": "workspaces/_components/SetupNotice.tsx"
+    },
+    {
+      "from": "workspaces/_components/AutomationPanel.tsx",
       "to": "workspaces/_data/types.ts"
     },
     {
@@ -2667,6 +2676,30 @@
       "to": "workspaces/_components/primitives.tsx"
     },
     {
+      "from": "workspaces/_components/SetupChecklist.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/_components/SetupChecklist.tsx",
+      "to": "workspaces/_components/motion.tsx"
+    },
+    {
+      "from": "workspaces/_components/SetupChecklist.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/_components/SetupChecklist.tsx",
+      "to": "workspaces/_data/capabilities.ts"
+    },
+    {
+      "from": "workspaces/_components/SetupChecklist.tsx",
+      "to": "workspaces/_data/modules.ts"
+    },
+    {
+      "from": "workspaces/_components/SetupChecklist.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
       "from": "workspaces/_components/SetupNotice.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
@@ -2709,6 +2742,10 @@
     {
       "from": "workspaces/_components/VideoTimelineEditor.tsx",
       "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/_components/VideoTimelineEditor.tsx",
+      "to": "workspaces/_components/SetupNotice.tsx"
     },
     {
       "from": "workspaces/_components/VideoTimelineEditor.tsx",
@@ -2916,6 +2953,10 @@
     },
     {
       "from": "workspaces/_shell/WorkspacesShell.tsx",
+      "to": "workspaces/_components/SetupChecklist.tsx"
+    },
+    {
+      "from": "workspaces/_shell/WorkspacesShell.tsx",
       "to": "workspaces/_data/modules.ts"
     },
     {
@@ -3100,6 +3141,10 @@
     },
     {
       "from": "workspaces/content/documents/[docId]/page.tsx",
+      "to": "workspaces/_components/SetupNotice.tsx"
+    },
+    {
+      "from": "workspaces/content/documents/[docId]/page.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
@@ -3165,6 +3210,10 @@
     {
       "from": "workspaces/content/insights/page.tsx",
       "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/content/insights/page.tsx",
+      "to": "workspaces/_components/SetupNotice.tsx"
     },
     {
       "from": "workspaces/content/insights/page.tsx",
@@ -3288,6 +3337,10 @@
     },
     {
       "from": "workspaces/content/page.tsx",
+      "to": "workspaces/_components/SetupNotice.tsx"
+    },
+    {
+      "from": "workspaces/content/page.tsx",
       "to": "workspaces/_data/types.ts"
     },
     {
@@ -3389,6 +3442,10 @@
     {
       "from": "workspaces/content/settings/ChannelsTab.tsx",
       "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/ChannelsTab.tsx",
+      "to": "workspaces/_components/SetupNotice.tsx"
     },
     {
       "from": "workspaces/content/settings/ChannelsTab.tsx",
@@ -3656,6 +3713,10 @@
     },
     {
       "from": "workspaces/develop/backlog/page.tsx",
+      "to": "workspaces/_components/SetupNotice.tsx"
+    },
+    {
+      "from": "workspaces/develop/backlog/page.tsx",
       "to": "workspaces/_data/types.ts"
     },
     {
@@ -3788,6 +3849,10 @@
     },
     {
       "from": "workspaces/develop/board/[ticketId]/page.tsx",
+      "to": "workspaces/_components/SetupNotice.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/page.tsx",
       "to": "workspaces/_data/modules.ts"
     },
     {
@@ -3864,6 +3929,14 @@
     },
     {
       "from": "workspaces/develop/board/ArtifactLinkPicker.tsx",
+      "to": "workspaces/_components/SetupNotice.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/ArtifactLinkPicker.tsx",
+      "to": "workspaces/_data/modules.ts"
+    },
+    {
+      "from": "workspaces/develop/board/ArtifactLinkPicker.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
@@ -3889,6 +3962,10 @@
     {
       "from": "workspaces/develop/board/BoardHeader.tsx",
       "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/BoardHeader.tsx",
+      "to": "workspaces/_components/SetupNotice.tsx"
     },
     {
       "from": "workspaces/develop/board/BoardHeader.tsx",
@@ -4408,6 +4485,10 @@
     },
     {
       "from": "workspaces/develop/pipeline/stageTabs.tsx",
+      "to": "workspaces/_components/SetupNotice.tsx"
+    },
+    {
+      "from": "workspaces/develop/pipeline/stageTabs.tsx",
       "to": "workspaces/_data/seed.ts"
     },
     {
@@ -4444,6 +4525,10 @@
     },
     {
       "from": "workspaces/develop/scheduled/page.tsx",
+      "to": "workspaces/_components/SetupNotice.tsx"
+    },
+    {
+      "from": "workspaces/develop/scheduled/page.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
@@ -4461,6 +4546,10 @@
     {
       "from": "workspaces/develop/sources/page.tsx",
       "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/develop/sources/page.tsx",
+      "to": "workspaces/_components/SetupNotice.tsx"
     },
     {
       "from": "workspaces/develop/sources/page.tsx",
@@ -4612,6 +4701,10 @@
     },
     {
       "from": "workspaces/settings/page.tsx",
+      "to": "workspaces/_components/SetupNotice.tsx"
+    },
+    {
+      "from": "workspaces/settings/page.tsx",
       "to": "workspaces/_data/modules.ts"
     },
     {
@@ -4738,6 +4831,7 @@
       "workspaces/_components/ImageRegionEditor.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
       "workspaces/_components/SearchPalette.tsx",
+      "workspaces/_components/SetupChecklist.tsx",
       "workspaces/_components/SetupNotice.tsx",
       "workspaces/_components/SetupWizard.tsx",
       "workspaces/_components/VideoTimelineEditor.tsx",
@@ -5034,6 +5128,7 @@
       "workspaces/_components/ImageRegionEditor.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
       "workspaces/_components/SearchPalette.tsx",
+      "workspaces/_components/SetupChecklist.tsx",
       "workspaces/_components/SetupNotice.tsx",
       "workspaces/_components/SetupWizard.tsx",
       "workspaces/_components/VideoTimelineEditor.tsx",
@@ -5121,6 +5216,7 @@
       "workspaces/_components/ImageRegionEditor.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
       "workspaces/_components/SearchPalette.tsx",
+      "workspaces/_components/SetupChecklist.tsx",
       "workspaces/_components/SetupNotice.tsx",
       "workspaces/_components/SetupWizard.tsx",
       "workspaces/_components/VideoTimelineEditor.tsx",
@@ -5208,6 +5304,7 @@
       "workspaces/_components/ImageRegionEditor.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
       "workspaces/_components/SearchPalette.tsx",
+      "workspaces/_components/SetupChecklist.tsx",
       "workspaces/_components/SetupNotice.tsx",
       "workspaces/_components/SetupWizard.tsx",
       "workspaces/_components/VideoTimelineEditor.tsx",
@@ -5440,6 +5537,7 @@
       "workspaces/_components/ModulePicker.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
       "workspaces/_components/SearchPalette.tsx",
+      "workspaces/_components/SetupChecklist.tsx",
       "workspaces/_components/SetupNotice.tsx",
       "workspaces/_components/SetupWizard.tsx",
       "workspaces/_components/VideoTimelineEditor.tsx",
@@ -5559,6 +5657,7 @@
       "workspaces/_components/ImageRegionEditor.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
       "workspaces/_components/SearchPalette.tsx",
+      "workspaces/_components/SetupChecklist.tsx",
       "workspaces/_components/SetupNotice.tsx",
       "workspaces/_components/SetupWizard.tsx",
       "workspaces/_components/VideoTimelineEditor.tsx",
@@ -5643,6 +5742,7 @@
       "workspaces/_components/ImageRegionEditor.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
       "workspaces/_components/SearchPalette.tsx",
+      "workspaces/_components/SetupChecklist.tsx",
       "workspaces/_components/SetupNotice.tsx",
       "workspaces/_components/SetupWizard.tsx",
       "workspaces/_components/VideoTimelineEditor.tsx",
@@ -5730,18 +5830,44 @@
       "workspaces/settings/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
+    "workspaces/_components/SetupChecklist.tsx": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
+      "workspaces/_shell/WorkspacesShell.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx"
+    ],
     "workspaces/_components/SetupNotice.tsx": [
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
+      "workspaces/_components/AutomationPanel.tsx",
+      "workspaces/_components/VideoTimelineEditor.tsx",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Shell.tsx",
       "workspaces/_shell/WorkspacesShell.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/content/[pieceId]/page.tsx",
+      "workspaces/content/documents/[docId]/page.tsx",
+      "workspaces/content/insights/page.tsx",
+      "workspaces/content/page.tsx",
+      "workspaces/content/settings/ChannelsTab.tsx",
+      "workspaces/content/settings/page.tsx",
       "workspaces/content/studio/page.tsx",
+      "workspaces/develop/automations/page.tsx",
+      "workspaces/develop/backlog/page.tsx",
+      "workspaces/develop/board/ArtifactLinkPicker.tsx",
+      "workspaces/develop/board/BoardHeader.tsx",
+      "workspaces/develop/board/KanbanCard.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/page.tsx",
       "workspaces/develop/code/page.tsx",
       "workspaces/develop/designer/page.tsx",
+      "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/stageTabs.tsx",
+      "workspaces/develop/scheduled/page.tsx",
+      "workspaces/develop/sources/page.tsx",
       "workspaces/develop/terminals/page.tsx",
+      "workspaces/settings/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
     "workspaces/_components/SetupWizard.tsx": [
@@ -5759,16 +5885,37 @@
     "workspaces/_data/capabilities.ts": [
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
+      "workspaces/_components/AutomationPanel.tsx",
+      "workspaces/_components/SetupChecklist.tsx",
       "workspaces/_components/SetupNotice.tsx",
+      "workspaces/_components/VideoTimelineEditor.tsx",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Shell.tsx",
       "workspaces/_shell/WorkspacesShell.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/content/[pieceId]/page.tsx",
+      "workspaces/content/documents/[docId]/page.tsx",
+      "workspaces/content/insights/page.tsx",
+      "workspaces/content/page.tsx",
+      "workspaces/content/settings/ChannelsTab.tsx",
+      "workspaces/content/settings/page.tsx",
       "workspaces/content/studio/page.tsx",
+      "workspaces/develop/automations/page.tsx",
+      "workspaces/develop/backlog/page.tsx",
+      "workspaces/develop/board/ArtifactLinkPicker.tsx",
+      "workspaces/develop/board/BoardHeader.tsx",
+      "workspaces/develop/board/KanbanCard.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/page.tsx",
       "workspaces/develop/code/page.tsx",
       "workspaces/develop/designer/page.tsx",
+      "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/stageTabs.tsx",
+      "workspaces/develop/scheduled/page.tsx",
+      "workspaces/develop/sources/page.tsx",
       "workspaces/develop/terminals/page.tsx",
+      "workspaces/settings/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
     "workspaces/_data/chatOps.ts": [
@@ -5782,6 +5929,7 @@
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
       "workspaces/_components/ModulePicker.tsx",
+      "workspaces/_components/SetupChecklist.tsx",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Onboarding.tsx",
       "workspaces/_shell/Shell.tsx",
@@ -5790,7 +5938,11 @@
       "workspaces/_sync/saveSections_server_v1.ts",
       "workspaces/content/marketing/page.tsx",
       "workspaces/content/studio/page.tsx",
+      "workspaces/develop/board/ArtifactLinkPicker.tsx",
+      "workspaces/develop/board/KanbanCard.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
@@ -5833,6 +5985,7 @@
       "workspaces/_components/ImageRegionEditor.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
       "workspaces/_components/SearchPalette.tsx",
+      "workspaces/_components/SetupChecklist.tsx",
       "workspaces/_components/SetupNotice.tsx",
       "workspaces/_components/SetupWizard.tsx",
       "workspaces/_components/VideoTimelineEditor.tsx",
@@ -5950,6 +6103,7 @@
       "workspaces/_components/ImageRegionEditor.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
       "workspaces/_components/SearchPalette.tsx",
+      "workspaces/_components/SetupChecklist.tsx",
       "workspaces/_components/SetupNotice.tsx",
       "workspaces/_components/SetupWizard.tsx",
       "workspaces/_components/VideoTimelineEditor.tsx",
@@ -6127,6 +6281,7 @@
       "workspaces/_components/ImageRegionEditor.tsx",
       "workspaces/_components/MrReviewPanel.tsx",
       "workspaces/_components/SearchPalette.tsx",
+      "workspaces/_components/SetupChecklist.tsx",
       "workspaces/_components/SetupNotice.tsx",
       "workspaces/_components/SetupWizard.tsx",
       "workspaces/_components/VideoTimelineEditor.tsx",
@@ -6440,62 +6595,62 @@
     {
       "id": "workspaces/_functions/controlApi.ts",
       "kind": "other",
-      "dependents": 106,
+      "dependents": 107,
       "directDependents": 9
     },
     {
       "id": "workspaces/_data/types.ts",
       "kind": "other",
-      "dependents": 98,
+      "dependents": 99,
       "directDependents": 51
     },
     {
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
-      "dependents": 88,
-      "directDependents": 78
+      "dependents": 89,
+      "directDependents": 79
     },
     {
       "id": "workspaces/_components/motion.tsx",
       "kind": "other",
-      "dependents": 84,
-      "directDependents": 25
+      "dependents": 85,
+      "directDependents": 26
     },
     {
       "id": "_components/inputs/fieldShell.tsx",
       "kind": "component",
-      "dependents": 82,
+      "dependents": 83,
       "directDependents": 2
     },
     {
       "id": "_components/inputs/Popover.tsx",
       "kind": "component",
-      "dependents": 80,
+      "dependents": 81,
       "directDependents": 2
     },
     {
       "id": "_components/inputs/Toggle.tsx",
       "kind": "component",
-      "dependents": 80,
+      "dependents": 81,
       "directDependents": 2
     },
     {
       "id": "_components/Avatar.tsx",
       "kind": "component",
-      "dependents": 79,
+      "dependents": 80,
       "directDependents": 2
     },
     {
       "id": "workspaces/_components/primitives.tsx",
       "kind": "other",
-      "dependents": 78,
-      "directDependents": 74
+      "dependents": 79,
+      "directDependents": 75
     },
     {
       "id": "workspaces/_shell/WorkspacesContext.tsx",
       "kind": "other",
-      "dependents": 67,
-      "directDependents": 59
+      "dependents": 68,
+      "directDependents": 60
     },
     {
       "id": "_components/ConfirmMenu.tsx",
@@ -6522,28 +6677,28 @@
       "directDependents": 28
     },
     {
-      "id": "workspaces/_functions/uploadMedia.ts",
-      "kind": "other",
-      "dependents": 16,
-      "directDependents": 4
-    },
-    {
-      "id": "workspaces/_data/modules.ts",
-      "kind": "other",
-      "dependents": 14,
-      "directDependents": 11
-    },
-    {
       "id": "workspaces/_data/capabilities.ts",
       "kind": "other",
-      "dependents": 13,
-      "directDependents": 1
+      "dependents": 34,
+      "directDependents": 2
     },
     {
       "id": "workspaces/_components/SetupNotice.tsx",
       "kind": "other",
-      "dependents": 12,
-      "directDependents": 7
+      "dependents": 32,
+      "directDependents": 21
+    },
+    {
+      "id": "workspaces/_data/modules.ts",
+      "kind": "other",
+      "dependents": 19,
+      "directDependents": 13
+    },
+    {
+      "id": "workspaces/_functions/uploadMedia.ts",
+      "kind": "other",
+      "dependents": 16,
+      "directDependents": 4
     },
     {
       "id": "workspaces/develop/designer/styles.ts",

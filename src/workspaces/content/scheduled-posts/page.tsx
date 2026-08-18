@@ -11,7 +11,7 @@ import { useTranslator } from '@luckystack/core/client';
 
 import Icon from '../../_components/Icon';
 import { Collapse } from '../../_components/motion';
-import { EmptyState, WsButton } from '../../_components/primitives';
+import { EmptyState, InfoTip, WsButton } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 
 export const template = 'workspaces';
@@ -61,7 +61,25 @@ function RowCard({ row, onOpen }: { row: ScheduledRow; onOpen: () => void }) {
           <Collapse open={showDetail}>
             <div className={`px-4 pb-3 flex flex-col gap-1.5`}>
               {row.error != null && <div className={`text-xs text-common break-words`}>{row.error}</div>}
-              {row.attempts != null && <div className={`text-xs text-muted`}>{translate({ key: 'workspaces.scheduledPosts.attempts', params: [{ key: 'count', value: String(row.attempts) }] })}</div>}
+              {row.attempts != null && (
+                <div className={`flex items-center gap-1.5 text-xs text-muted`}>
+                  {translate({ key: 'workspaces.scheduledPosts.attempts', params: [{ key: 'count', value: String(row.attempts) }] })}
+                  {/* ADR 0312 — where-does-this-come-from: FAILED is the TERMINAL state only, written after the
+                      3rd attempt (publish.ts:65,244-253); earlier attempts render as ordinary upcoming rows.
+                      The wait between attempts DOUBLES (publishRetryDelayMs = base * 2^(attempts-1), base 5 min
+                      or 30 min when rate-limited), and the owner's push is best-effort (webPush.ts:62-68). */}
+                  <InfoTip
+                    align="start"
+                    label={translate({ key: 'workspaces.tips.piece.failedTitle' })}
+                    title={translate({ key: 'workspaces.tips.piece.failedTitle' })}
+                    body={translate({ key: 'workspaces.tips.piece.failedBody' })}
+                    points={[
+                      { id: 'attempts', label: translate({ key: 'workspaces.tips.piece.failedAttempts' }), desc: translate({ key: 'workspaces.tips.piece.failedAttemptsDesc' }) },
+                      { id: 'notify', label: translate({ key: 'workspaces.tips.piece.failedNotify' }), desc: translate({ key: 'workspaces.tips.piece.failedNotifyDesc' }) },
+                    ]}
+                  />
+                </div>
+              )}
             </div>
           </Collapse>
         </>
@@ -124,7 +142,24 @@ export default function ScheduledPosts() {
         <div className={`flex items-center gap-2 text-title min-w-0 flex-1`}>
           <span className={`w-8 h-8 rounded-xl bg-primary/12 text-primary flex items-center justify-center shrink-0`}><Icon name="calendar-day" /></span>
           <div className={`min-w-0`}>
-            <div className={`text-xl font-semibold leading-tight`}>{translate({ key: 'workspaces.scheduledPosts.title' })}</div>
+            <div className={`flex items-center gap-1.5`}>
+              <div className={`text-xl font-semibold leading-tight`}>{translate({ key: 'workspaces.scheduledPosts.title' })}</div>
+              {/* ADR 0312 — what-else-affects-it: a row's time is a not-before (scanned every
+                  PUBLISH_INTERVAL_MS, publish.ts:34). Two things rewrite scheduledAt: the per-account
+                  stagger, which spaces a burst CUMULATIVELY (now + index * PUBLISH_STAGGER_MS —
+                  publishHealth.ts:105-116, so the 2nd slips 5 min, the 3rd 10 min…), and a NON-terminal
+                  retry (publish.ts:244-249); the 3rd failure keeps its time and goes 'error' (line 251). */}
+              <InfoTip
+                align="start"
+                label={translate({ key: 'workspaces.tips.piece.timeTitle' })}
+                title={translate({ key: 'workspaces.tips.piece.timeTitle' })}
+                body={translate({ key: 'workspaces.tips.piece.timeBody' })}
+                points={[
+                  { id: 'stagger', label: translate({ key: 'workspaces.tips.piece.timeStagger' }), desc: translate({ key: 'workspaces.tips.piece.timeStaggerDesc' }) },
+                  { id: 'retry', label: translate({ key: 'workspaces.tips.piece.timeRetry' }), desc: translate({ key: 'workspaces.tips.piece.timeRetryDesc' }) },
+                ]}
+              />
+            </div>
             <div className={`text-xs text-muted truncate`}>{translate({ key: 'workspaces.scheduledPosts.tagline' })}</div>
           </div>
         </div>
