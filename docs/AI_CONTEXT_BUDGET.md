@@ -6,14 +6,14 @@
 > Don't read every index every session. Pick the profile matching your task, LOAD only its
 > artifacts, and QUERY the rest via the `@luckystack/mcp` tools instead of reading whole files.
 
-## Artifact sizes (total ≈ 225,824 tokens if all loaded)
+## Artifact sizes (total ≈ 225,827 tokens if all loaded)
 
 | Artifact | Est. tokens | Bytes | Purpose |
 | --- | --- | --- | --- |
 | `contract` — `CLAUDE.md` | 11,809 | 47,234 | Always-on rules (read every session). |
 | `quick-index` — `docs/AI_QUICK_INDEX.md` | _(absent)_ | — | Framework surfaces + package map. |
 | `capabilities` — `docs/AI_CAPABILITIES.md` | 5,531 | 22,123 | Existing helpers/exports — check before authoring. |
-| `project-index` — `docs/AI_PROJECT_INDEX.md` | 9,307 | 37,229 | Routes/pages/helpers/components + test coverage. |
+| `project-index` — `docs/AI_PROJECT_INDEX.md` | 9,311 | 37,243 | Routes/pages/helpers/components + test coverage. |
 | `decisions` — `docs/AI_DECISIONS_INDEX.md` | 68,404 | 273,615 | Why-it-is-this-way (ADRs). |
 | `lessons` — `docs/AI_LESSONS_INDEX.md` | 8,385 | 33,538 | Known pitfalls (what failed). |
 | `runbooks` — `docs/AI_RUNBOOKS.md` | 1,177 | 4,706 | Task-shaped golden paths. |
@@ -36,14 +36,14 @@ _Adding an API/sync route: reuse before authoring, copy the canonical shape._
 
 _Adding a page: match an existing template/component + state the intent._
 
-- **Load** (≈ 26,870 tokens): `contract`, `project-index`, `examples`, `product`
+- **Load** (≈ 26,874 tokens): `contract`, `project-index`, `examples`, `product`
 - **Query via MCP** (don't read whole): `get_example('page-protected')`, `get_capability`, `find_route`
 
 ### `security-audit`
 
 _Auditing: lean on the why-record + risky hubs, not every page intent._
 
-- **Load** (≈ 89,520 tokens): `contract`, `decisions`, `project-index`
+- **Load** (≈ 89,524 tokens): `contract`, `decisions`, `project-index`
 - **Query via MCP** (don't read whole): `god_nodes`, `blast_radius`, `get_decision`, `list_decisions('security')`
 
 ### `debug`

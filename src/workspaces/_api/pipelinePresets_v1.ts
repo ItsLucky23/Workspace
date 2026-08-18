@@ -9,10 +9,10 @@
 //? defaultPipeline.ts` is what actually seeds a pipeline, so a second copy in the client would drift the
 //? moment either side is edited — and the drift is invisible (the UI would still say "restore defaults").
 //?
-//? A direct `_api` read, NOT a control-op: it writes nothing. Membership-gated only — these are the
-//? framework's own defaults, not workspace data.
-//?
-//? @docs owner ItsLucky23
+//? A direct `_api` read, NOT a control-op: it writes nothing. Gated on `editPipeline` — the only
+//? reason to read a blueprint is to apply one, and that is the capability applying needs.
+
+/** @docs owner ItsLucky23 */
 
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, ApiResponse } from '../../../src/_sockets/apiTypes.generated';

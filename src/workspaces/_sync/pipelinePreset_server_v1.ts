@@ -4,6 +4,8 @@
 //? not have, moving their tickets back first. Requires editPipeline (OP_CAPABILITY). The client refetches
 //? because a switch is structural (stages added/removed/reordered), not a single-row delta.
 
+/** @docs owner ItsLucky23 */
+
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, SyncServerResponse } from '../../../src/_sockets/apiTypes.generated';
 import { dispatchControlSync } from '../../../server/control/dispatchSync';
