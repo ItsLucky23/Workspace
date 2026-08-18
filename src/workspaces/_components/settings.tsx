@@ -24,7 +24,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { tryCatch, useTranslator } from '@luckystack/core/client';
 
 import Icon from './Icon';
-import { InfoDot } from './primitives';
+import { InfoTip, type InfoTipPoint } from './primitives';
 
 /** Per-row autosave state. `idle` renders nothing — a settled row should be quiet. */
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
@@ -134,11 +134,17 @@ export function FormSection({ title, desc, right, children, className = '' }: {
  *  anything that needs the horizontal room (and what the layout falls back to on phones anyway).
  *  `inherits` is the inheritance note: a layered setting states what it builds on RIGHT THERE, so
  *  a user never has to infer the relationship from a hint elsewhere in the app. */
-export function SettingRow({ label, help, info, control, status, errorText, inherits, stacked = false, className = '' }: {
+export function SettingRow({ label, help, info, infoTitle, infoPoints, control, status, errorText, inherits, stacked = false, className = '' }: {
   label: ReactNode;
   help?: ReactNode;
-  /** Longer explanation that would crowd the row — goes behind a hover "?" instead. */
+  /** Longer explanation that would crowd the row — goes behind a "?" instead. */
   info?: ReactNode;
+  /** Heading for that explanation, when the body alone needs framing. */
+  infoTitle?: ReactNode;
+  //? ADR 0312 — the parts that make up this setting, each optionally deep-linking to where it is
+  //? edited. This is what turns the "?" from a footnote into an answer: "where does this come from"
+  //? is only useful if the user can then GO there.
+  infoPoints?: InfoTipPoint[];
   control: ReactNode;
   status?: SaveStatus;
   errorText?: string;
@@ -152,7 +158,7 @@ export function SettingRow({ label, help, info, control, status, errorText, inhe
         <div className={`min-w-0 ${stacked ? '' : 'sm:max-w-md'}`}>
           <div className={`flex items-center gap-1.5`}>
             <span className={`text-sm font-semibold text-title`}>{label}</span>
-            {info && <InfoDot body={info} align="left" />}
+            {(info !== undefined || infoPoints !== undefined) && <InfoTip title={infoTitle} body={info} points={infoPoints} align="start" />}
             {status && <SavePill status={status} errorText={errorText} />}
           </div>
           {help && <div className={`text-xs text-muted mt-1 leading-relaxed`}>{help}</div>}

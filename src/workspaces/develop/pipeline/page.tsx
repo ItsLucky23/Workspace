@@ -15,6 +15,7 @@ import { menuHandler } from 'src/_functions/menuHandler';
 
 import Icon from '../../_components/Icon';
 import { EmptyState, PopMenu, Tabs, Toggle, WsButton, type TabDef } from '../../_components/primitives';
+import { useTrailSegment } from '../../_components/sections';
 import { HOOK_CATALOG } from '../../_data/seed';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { CarryoverTab, CommandsTab, ContextTab, GeneralTab, HooksTab, IntegrationsTab, ModelTab, NetworkTab, ProcessTab, VisibilityTab } from './stageTabs';
@@ -39,20 +40,29 @@ function blankStage(projectId: string, id: string, name: string, order: number):
 /* ----------------------------------------------------------------- main */
 export const template = 'workspaces';
 
+//? Every tab id, basic + advanced, in one list: the URL segment is validated against ALL of them so a
+//? deep link to an advanced tab resolves (the tab bar then surfaces it), while an unknown segment
+//? still falls back to General instead of rendering an empty panel.
+const STAGE_TAB_IDS = ['general', 'context', 'model', 'commands', 'integrations', 'visibility', 'process', 'carryover', 'network', 'hooks'];
+
 export default function Pipeline() {
   const translate = useTranslator();
   const { activeWorkspace, activeProjectId, stageConfigs, saveStageConfig, createStage, deleteStage, reorderStages, navigate } = useWorkspaces();
   const [stages, setStages] = useState<PipelineStageCfg[]>(stageConfigs);
-  const [selectedId, setSelectedId] = useState<string>(stageConfigs[0]?.id ?? '');
-  const [tab, setTab] = useState('general');
+  //? ADR 0312 — the selected stage and its tab are the URL
+  //? (`/workspaces/develop/pipeline/<stageId>/context`), so a stage is linkable and the "open this
+  //? stage" deep-link from Sources actually lands on it. It used to navigate to the page and select
+  //? nothing, because the focus request had no consumer here.
+  const [selectedId, setSelectedId] = useTrailSegment(0, stages.map((st) => st.id), stageConfigs[0]?.id ?? '');
+  const [tab, setTab] = useTrailSegment(1, STAGE_TAB_IDS, 'general');
+
   const [warnings, setWarnings] = useState<StageWarning[]>([]);
 
   //? Re-seed the editable copy whenever the live snapshot loads/changes (initial
   //? load + after a save round-trips through the Conductor + refetch).
-  useEffect(() => {
-    setStages(stageConfigs);
-    setSelectedId((prev) => (stageConfigs.some((st) => st.id === prev) ? prev : stageConfigs[0]?.id ?? ''));
-  }, [stageConfigs]);
+  //? The stale-selection guard that used to live here is now inherent: the selection is read from the
+  //? URL and validated against the stages that exist, so a deleted stage falls back on its own.
+  useEffect(() => { setStages(stageConfigs); }, [stageConfigs]);
 
   const s = stages.find((x) => x.id === selectedId) ?? stages[0];
   const update = (patch: Partial<PipelineStageCfg>) => { setStages((p) => p.map((st) => (st.id === selectedId ? { ...st, ...patch } : st))); };

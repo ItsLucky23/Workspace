@@ -24,10 +24,18 @@ export type WsView =
 
 export interface WorkspacesCtx {
   view: WsView;
+  //? ADR 0312 — the current view's sub-navigation, read from the URL path segments after the view
+  //? (`/workspaces/workspace/repository/runtime` → `['repository','runtime']`). Empty for views that
+  //? have no sub-navigation, and for views whose extra segments are real nested routes. A page reads
+  //? `trail[0]` as its tab and `trail[1]` as its section, falling back to its own default when the
+  //? segment is unknown — never blank.
+  trail: string[];
   //? Chrome navigation (nav rail, tab bar, switcher) — does NOT push the back
   //? stack. Use `pushTo`/`openTicket` for reference navigations (clicking a
   //? ticket/link from page content) so only those land in the back history.
-  navigate: (view: WsView) => void;
+  navigate: (view: WsView, trail?: readonly string[]) => void;
+  //? Change tab/section on the CURRENT view. Pushes, so back walks out of the sub-section.
+  setTrail: (trail: readonly string[]) => void;
   pushTo: (view: WsView) => void;
   goBack: () => void;
   canGoBack: boolean;
@@ -78,11 +86,10 @@ export interface WorkspacesCtx {
   //? is the sugar a blocked-feature notice uses to decide "fix it" button vs "ask someone with <capability>".
   myPerms: boolean[];
   can: (cap: number) => boolean;
-  //? Deep-link to a setup destination: navigate to a settings view AND pre-select the tab that holds the fix
-  //? (`navigate` alone lands on the page's default tab). The target settings page consumes `settingsFocus`.
-  focusSetup: (target: { view: WsView; tab?: string }) => void;
-  settingsFocus: { view: WsView; tab: string } | null;
-  consumeSettingsFocus: () => void;
+  //? Deep-link to a setup destination — an ADDRESS, not a request (ADR 0312): it navigates straight to
+  //? `/workspaces/<view>/<tab>[/<section>]`, so the fix is linkable, survives a refresh and the back
+  //? button returns the user to where they were blocked.
+  focusSetup: (target: { view: WsView; tab?: string; section?: string }) => void;
   //? Proposal/plan acceptance is project-bound: a switch makes the old offer stale
   //? and the provider rejects it instead of retargeting it to the new active project.
   acceptChatProposal: (messageId: string, proposal: ChatProposal) => void;

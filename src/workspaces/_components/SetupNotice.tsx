@@ -84,3 +84,44 @@ export function SetupNotice({ icon, title, body, fix, hint, variant = 'block' }:
     />
   );
 }
+
+/* --------------------------------------------------------------- empty picker */
+//? SetupNotice's field-level sibling (ADR 0312). A picker with nothing to pick — "link a context
+//? document", "attach a skill" — used to render an empty list or a disabled dropdown, which reads as
+//? BROKEN rather than as not-yet-created. The user cannot tell whether the feature is unavailable,
+//? whether they lack permission, or whether they simply haven't made one yet, and nothing on screen
+//? says where such a thing is created. That dead end is the single most common shape of "the app
+//? doesn't explain itself", and it is worst for a new user, who meets nothing BUT empty pickers.
+//?
+//? Same three answers as SetupNotice (what · why · how) at row scale, and the same permission
+//? awareness: it deep-links when the user may create one, and names the capability to ask for when
+//? they may not. Deliberately quiet — a dashed row, not a warning box — because an empty picker on a
+//? fresh workspace is the normal state, not an error.
+export function EmptyPicker({ icon, label, fix }: {
+  icon?: IconName;
+  /** What is missing, e.g. "No context documents yet" (already translated). */
+  label: ReactNode;
+  /** Where they are created. Omit when there is nowhere to send the user. */
+  fix?: SetupFix;
+}) {
+  const translate = useTranslator();
+  const { can, focusSetup } = useWorkspaces();
+
+  return (
+    <div className="rounded-lg border border-dashed border-container1-border px-3 py-2.5 flex items-center gap-2.5 flex-wrap">
+      <Icon name={icon ?? 'circle-info'} className="text-disabled shrink-0" />
+      <span className="text-sm text-muted min-w-0 flex-1">{label}</span>
+      {fix && (can(CAP[fix.cap])
+        ? (
+          <WsButton
+            variant="ghost"
+            icon="arrow-right"
+            onClick={() => { focusSetup({ view: fix.view, ...(fix.tab === undefined ? {} : { tab: fix.tab }) }); }}
+          >
+            {fix.cta}
+          </WsButton>
+        )
+        : <span className="text-xs text-meta">{translate({ key: 'workspaces.setup.askCapability', params: [{ key: 'cap', value: translate({ key: capLabelKey(fix.cap) }) }] })}</span>)}
+    </div>
+  );
+}

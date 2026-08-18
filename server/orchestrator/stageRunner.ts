@@ -30,6 +30,7 @@ import { postIssueComment } from '../git/gitlabSync';
 import { retrieve } from '../rag';
 import { retrieveProductKnowledge } from '../rag/productKnowledge';
 import { skillPromptBlock } from '../ai/skills';
+import { workspaceAiPrefix } from '../ai/registry';
 import { budgetForStage, shouldHandoff, parseHandoff, latestHandoff, renderHandoffReload, DEFAULT_HANDOFF_INSTRUCTION } from './handoff';
 import { killClaudeByContainer } from './agentControl';
 import { waitForOutput, matchesReady, matchesTrustOrReady } from './ptyReady';
@@ -648,6 +649,11 @@ async function runStageInTenant(workspaceId: string, ticketKey: string, stageKey
   //? SK2 — enabled 'dev' skills reach the PTY coding agent as a context-doc (the one-shot choke-point
   //? in ai/registry.ts doesn't cover the PTY path). Best-effort: read failure = no doc.
   const [, skillsDoc] = await tryCatch(() => skillPromptBlock(workspaceId, 'dev'));
+  //? ADR 0311 — the workspace-wide AI instruction + output language. `ai/registry.ts` prefixes it onto
+  //? every ONE-SHOT feature's system prompt, but the PTY path renders its own prompt and so never saw
+  //? it: a user's "always-on" instruction steered docs/Dockerfile/chat and silently skipped the agent
+  //? that writes the code. Same function, so the two paths can't drift apart again.
+  const [, wsPrefix] = await tryCatch(() => workspaceAiPrefix(workspaceId));
   const contextDocs = [...starterDocs, ...visibleDocs, ...linkedArtifacts, ...(productDoc.length > 0 ? [{ name: 'Platform capabilities (product knowledge)', content: productDoc, provenance: 'RAG chunks: product knowledge' }] : []), ...((skillsDoc ?? '').length > 0 ? [{ name: 'Active skills', content: skillsDoc ?? '', trusted: true }] : [])];
 
   //? RAG (07 §D): retrieve the code most relevant to this ticket + inject it. Best-effort — a
@@ -683,7 +689,7 @@ async function runStageInTenant(workspaceId: string, ticketKey: string, stageKey
   const handoffReload = reloadHandoff ? renderHandoffReload(reloadHandoff) : undefined;
 
   const integrations = await loadMcpIntegrations(prisma, workspaceId, cfg.tools);
-  const artifacts = renderStage(cfg, { ticketId: ticket.key, ...(ticket.commitHash ? { commitHash: ticket.commitHash } : {}), carryOver, contextDocs, retrieved, ...(handoffReload ? { handoffReload } : {}), ...(integrations.length > 0 ? { integrations } : {}), modelChoice: choice });
+  const artifacts = renderStage(cfg, { ticketId: ticket.key, ...(ticket.commitHash ? { commitHash: ticket.commitHash } : {}), carryOver, contextDocs, retrieved, ...(handoffReload ? { handoffReload } : {}), ...(integrations.length > 0 ? { integrations } : {}), modelChoice: choice, ...((wsPrefix ?? '').length > 0 ? { workspaceInstruction: wsPrefix ?? '' } : {}) });
   if (!(await materializeStageConfig(container.name, artifacts))) {
     await cleanupFailedStageContainer(workspaceId, ticketKey, opts.runToken, opts.runFence, container);
     return { ok: false, error: 'materialize.failed' };

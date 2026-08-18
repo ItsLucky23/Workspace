@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (64)
+## API routes (65)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -53,6 +53,7 @@
 | `api/workspaces/pushConfig/v1` | POST | login | 60 | — | yes | — | Deliver the Web Push VAPID PUBLIC key to the browser (FREEDOM_PROGRAM A1) so it can subscribe. The public |
 | `api/workspaces/readWorktreeFile/v1` | POST | login | 30 | ItsLucky23 | yes | — | Workspaces — [read-worktree-file] read the REAL content of one file from a ticket's container worktree |
 | `api/workspaces/repoFile/v1` | POST | login | 60 | ItsLucky23 | yes | — | Workspaces — [repo-file] read ONE file's content from the active project's linked repo at its baseline |
+| `api/workspaces/repoIntrospect/v1` | POST | login | 30 | — | yes | — | Workspaces — [repo-introspect] what the linked repo ACTUALLY contains: runnable package.json |
 | `api/workspaces/repoTree/v1` | POST | login | 30 | ItsLucky23 | yes | — | Workspaces — [repo-tree] list EVERY file of the active project's linked repo at its baseline branch, |
 | `api/workspaces/revokePat/v1` | POST | login | 20 | — | yes | — | X3 — revoke a Personal Access Token (the owner only). A revoked PAT resolves to null → all its API calls |
 | `api/workspaces/rotateWebhookSecret/v1` | POST | login | 10 | ItsLucky23 | yes | — | Rotates the forge webhook credential. Unlike room-broadcast sync output, this API response |
@@ -155,9 +156,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 24 |
-| _(unowned)_ | 107 |
+| _(unowned)_ | 108 |
 
-**Test coverage**: 129/131 routes have a per-route `.tests.ts`.
+**Test coverage**: 130/132 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 

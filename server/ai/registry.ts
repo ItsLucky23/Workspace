@@ -23,7 +23,11 @@ import { applyAiPromptBudget } from './promptBudget';
 //? Q4 + K4 — the workspace-wide AI steering prepended to EVERY feature's system prompt at this single
 //? choke-point: the "how the AI should work here" instruction (Workspace.aiInstruction) + a strong output-
 //? LANGUAGE directive (Workspace.outputLanguage). Best-effort: any read failure ⇒ no prefix.
-async function workspaceAiPrefix(workspaceId?: string): Promise<string> {
+//? EXPORTED because this choke-point only covers the one-shot completion path: the PTY stage-runner
+//? renders its own prompt and therefore has to call this itself (ADR 0311). The field is documented —
+//? in the op catalog and in the settings UI — as applying to EVERY AI run, so the coding agent silently
+//? skipping it was a defect. One definition, both paths.
+export async function workspaceAiPrefix(workspaceId?: string): Promise<string> {
   if (!workspaceId) return '';
   const [err, ws] = await tryCatch(() => getPrismaClient().workspace.findUnique({ where: { id: workspaceId }, select: { aiInstruction: true, outputLanguage: true } }));
   if (err || !ws) return '';

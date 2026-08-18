@@ -23,7 +23,10 @@ import SetupWizard from '../_components/SetupWizard';
 import { Table, type TableColumn } from '../_components/dataDisplay';
 import { EffectivePromptPreview, LayerNote } from '../_components/EffectivePromptPreview';
 import { Collapse } from '../_components/motion';
-import { AvatarBubble, IconButton, PopMenu, Tabs, Toggle, WsButton, type PopMenuItem, type TabDef } from '../_components/primitives';
+import { AvatarBubble, IconButton, InfoTip, PopMenu, Tabs, Toggle, WsButton, type PopMenuItem, type TabDef } from '../_components/primitives';
+import { EmptyPicker } from '../_components/SetupNotice';
+import { PageSections, useTrailSegment } from '../_components/sections';
+import { RepoInventoryPanel, RepoScriptPicker, useRepoIntrospection } from './repoIntrospection';
 import { FormSection, SavePill, SettingRow, useAutosave } from '../_components/settings';
 import { resolveAiLayers } from '../_functions/aiLayers';
 import { INTEGRATION_TYPES, RBAC_CAPABILITIES, ROLE_DISPLAY } from '../_data/seed';
@@ -606,47 +609,128 @@ function WorkflowTab() {
 //
 //? Set the project's dev command (the command that starts the app inside the ticket container
 //? for the live preview flow). Empty clears it → falls back to package.json scripts.dev.
-function DevCommandCard({ workspaceId }: { workspaceId: string }) {
+//? ADR 0313 — how this project RUNS. Three changes over the card this replaces:
+//?
+//?   1. It shows what is SAVED. The fields used to start empty on every mount, because devCommand /
+//?      prodCommand were persisted but never sent to the client — you could overwrite your command
+//?      but never see it.
+//?   2. The repo's own scripts are pickable, instead of asking you to remember what your package.json
+//?      calls things. The server already read that file; it just never told you.
+//?   3. It says what actually happens when a ticket runs, which is the question the owner asked and
+//?      the screen never answered: ONE dev command per project (a monorepo service may override it),
+//?      started in that ticket's preview container — not a terminal per command.
+//?
+//? Autosave per row like the rest of the settings surface, so there is no save button to forget.
+function RuntimeSection({ workspaceId }: { workspaceId: string }) {
   const translate = useTranslator();
-  const { activeProject } = useWorkspaces();
+  const { activeProject, navigate } = useWorkspaces();
   const projectId = activeProject?.id;
-  const [cmd, setCmd] = useState('');
-  //? D1/E1/E2 — the prod serve command, the stack (any-stack base image + defaults), and the expert custom-base opt-in.
-  const [prodCmd, setProdCmd] = useState('');
-  const [stack, setStack] = useState('node');
-  const [allowCustomBase, setAllowCustomBase] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [status, setStatus] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
-  const STACK_ITEMS = (['node', 'python', 'go', 'rust', 'java', 'php', 'dotnet', 'ruby', 'generic'] as const).map((s) => ({ id: s, value: s, item: s }));
-  const save = async (): Promise<void> => {
+  const { data: repoScan, loading: scanning } = useRepoIntrospection(workspaceId, projectId);
+
+  //? Seeded from the snapshot, and re-seeded when the project changes — `resetKey` stops that re-seed
+  //? from being read as an edit and written straight back.
+  const [cmd, setCmd] = useState(activeProject?.devCommand ?? '');
+  const [prodCmd, setProdCmd] = useState(activeProject?.prodCommand ?? '');
+  const [stack, setStack] = useState(activeProject?.stack ?? 'node');
+  const [allowCustomBase, setAllowCustomBase] = useState(activeProject?.allowCustomBase ?? false);
+  useEffect(() => {
+    setCmd(activeProject?.devCommand ?? '');
+    setProdCmd(activeProject?.prodCommand ?? '');
+    setStack(activeProject?.stack ?? 'node');
+    setAllowCustomBase(activeProject?.allowCustomBase ?? false);
+  }, [activeProject?.id, activeProject?.devCommand, activeProject?.prodCommand, activeProject?.stack, activeProject?.allowCustomBase]);
+
+  const [saveError, setSaveError] = useState('');
+  const status = useAutosave([cmd, prodCmd, stack, allowCustomBase], async () => {
     if (!projectId) return;
-    setSaving(true); setStatus(null);
+    setSaveError('');
     const [err, res] = await tryCatch(() => apiRequest({ name: 'workspaces/saveDevCommand', version: 'v1', data: { workspaceId, projectId, clientRequestId: globalThis.crypto.randomUUID(), devCommand: cmd, prodCommand: prodCmd, stack, allowCustomBase } }));
-    setSaving(false);
-    if (err || res?.status !== 'success') { setStatus({ kind: 'err', text: translate({ key: 'workspaces.workspaceSettings.devCommandError' }) }); return; }
-    setStatus({ kind: 'ok', text: translate({ key: 'workspaces.workspaceSettings.devCommandSaved' }) });
-  };
-  const inputCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm font-mono text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
+    if (err || res?.status !== 'success') {
+      setSaveError(translate({ key: 'workspaces.workspaceSettings.devCommandError' }));
+      throw new Error('save.failed');
+    }
+  }, { resetKey: projectId ?? '' });
+
+  const STACK_ITEMS = (['node', 'python', 'go', 'rust', 'java', 'php', 'dotnet', 'ruby', 'generic'] as const).map((s) => ({ id: s, value: s, item: s }));
+  const inputCls = `h-9 w-full px-3 rounded-lg border border-container1-border bg-container2/50 text-sm font-mono text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30`;
+
+  //? The verified answer to "is a separate terminal started per command?" — resolution order from
+  //? server/container/previewSession.ts, which reads Service.devCommand → Project.devCommand → the
+  //? stack default and runs it in the ticket's preview container.
+  const runInfo = (
+    <InfoTip
+      title={translate({ key: 'workspaces.repoScan.howItRunsTitle' })}
+      body={translate({ key: 'workspaces.repoScan.howItRunsBody' })}
+      points={[
+        { id: 'service', label: translate({ key: 'workspaces.repoScan.orderService' }), desc: translate({ key: 'workspaces.repoScan.orderServiceDesc' }) },
+        { id: 'project', label: translate({ key: 'workspaces.repoScan.orderProject' }), desc: translate({ key: 'workspaces.repoScan.orderProjectDesc' }) },
+        { id: 'stack', label: translate({ key: 'workspaces.repoScan.orderStack' }), desc: translate({ key: 'workspaces.repoScan.orderStackDesc' }) },
+      ]}
+      align="start"
+    />
+  );
+
   return (
-    <div className="w-full rounded-2xl border border-container1-border bg-container1 p-5 flex flex-col gap-3">
-      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.devCommandTitle' })}</div>
-      <div className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.devCommandDescription' })}</div>
-      {status !== null && (
-        <div className={`rounded-lg border px-3 py-2 text-sm flex items-center gap-2 ${status.kind === 'ok' ? 'border-correct-border bg-correct/10 text-common' : 'border-wrong-border bg-wrong/10 text-wrong'}`}>
-          <Icon name={status.kind === 'ok' ? 'circle-check' : 'triangle-exclamation'} className={status.kind === 'ok' ? 'text-correct' : ''} /><span>{status.text}</span>
-        </div>
+    <div className={`flex flex-col gap-4`}>
+      <FormSection
+        title={translate({ key: 'workspaces.workspaceSettings.devCommandTitle' })}
+        desc={translate({ key: 'workspaces.workspaceSettings.devCommandDescription' })}
+        right={runInfo}
+      >
+        <SettingRow
+          label={translate({ key: 'workspaces.workspaceSettings.stack' })}
+          help={translate({ key: 'workspaces.repoScan.stackHelp' })}
+          control={<Dropdown size="sm" width="full" items={STACK_ITEMS} value={STACK_ITEMS.find((it) => it.id === stack)} onChange={(it) => { setStack(String(it.value)); }} />}
+          status={status}
+          errorText={saveError}
+        />
+        <SettingRow
+          stacked
+          label={translate({ key: 'workspaces.repoScan.devCommandLabel' })}
+          help={translate({ key: 'workspaces.repoScan.devCommandHelp' })}
+          control={(
+            <div className={`flex flex-col gap-2.5`}>
+              <input value={cmd} onChange={(e) => { setCmd(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.devCommandPlaceholder' })} className={inputCls} />
+              <RepoScriptPicker scripts={repoScan.scripts} packageManager={repoScan.packageManager} activeCommand={cmd} onPick={setCmd} />
+            </div>
+          )}
+        />
+        <SettingRow
+          stacked
+          label={translate({ key: 'workspaces.repoScan.prodCommandLabel' })}
+          help={translate({ key: 'workspaces.repoScan.prodCommandHelp' })}
+          control={(
+            <div className={`flex flex-col gap-2.5`}>
+              <input value={prodCmd} onChange={(e) => { setProdCmd(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.prodCommandPlaceholder' })} className={inputCls} />
+              <RepoScriptPicker scripts={repoScan.scripts} packageManager={repoScan.packageManager} activeCommand={prodCmd} onPick={setProdCmd} />
+            </div>
+          )}
+        />
+        <SettingRow
+          label={translate({ key: 'workspaces.workspaceSettings.allowCustomBase' })}
+          help={translate({ key: 'workspaces.repoScan.customBaseHelp' })}
+          control={<Toggle on={allowCustomBase} onChange={setAllowCustomBase} />}
+        />
+      </FormSection>
+
+      {/* Nothing detected is a real answer worth showing: it means the picker above is empty because
+          the repo has no package scripts, not because the scan is broken. */}
+      {!scanning && repoScan.scripts.length === 0 && (
+        <EmptyPicker
+          icon="terminal"
+          label={translate({ key: 'workspaces.repoScan.noScripts' })}
+        />
       )}
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-muted w-20">{translate({ key: 'workspaces.workspaceSettings.stack' })}</span>
-        <Dropdown size="sm" items={STACK_ITEMS} value={STACK_ITEMS.find((it) => it.id === stack)} onChange={(it) => { setStack(String(it.value)); }} />
-      </div>
-      <input value={cmd} onChange={(e) => { setCmd(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.devCommandPlaceholder' })} className={inputCls} />
-      <input value={prodCmd} onChange={(e) => { setProdCmd(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.prodCommandPlaceholder' })} className={inputCls} />
-      <label className="flex items-center gap-2 text-sm text-common cursor-pointer">
-        <input type="checkbox" checked={allowCustomBase} onChange={(e) => { setAllowCustomBase(e.target.checked); }} />
-        {translate({ key: 'workspaces.workspaceSettings.allowCustomBase' })}
-      </label>
-      <div><WsButton icon="check" disabled={saving || !projectId} onClick={() => { void save(); }}>{translate({ key: saving ? 'workspaces.workspaceSettings.devCommandSaving' : 'workspaces.workspaceSettings.devCommandSave' })}</WsButton></div>
+      {repoScan.units.length > 1 && (
+        <EmptyPicker
+          icon="diagram-project"
+          label={translate({ key: 'workspaces.repoScan.monorepoHint', params: [{ key: 'n', value: String(repoScan.units.length) }] })}
+          fix={{ cap: 'workspaceSettings', view: 'settings', tab: 'workspace', cta: translate({ key: 'workspaces.repoScan.manageServices' }) }}
+        />
+      )}
+      <button type="button" onClick={() => { navigate('code'); }} className={`self-start text-xs text-primary hover:text-primary-hover cursor-pointer`}>
+        {translate({ key: 'workspaces.repoScan.browseCode' })}
+      </button>
     </div>
   );
 }
@@ -791,9 +875,11 @@ function RepositoryTab() {
       input: activeProject.name,
     }).then((ok) => { if (ok) { setLinking(true); unlinkRepo(); } });
   };
-  return (
-    <>
-    <div className="max-w-2xl mx-auto w-full flex flex-col gap-4">
+  //? ADR 0312/0313 — four sections instead of one stacked wall. The tab mixed three lifecycles:
+  //? linking a repo (once), describing how it runs (rarely), and its container image (iteratively).
+  //? Each is now its own address, so "Repository → Runtime" is a link you can send someone.
+  const linkSection = (
+    <div className="max-w-2xl w-full flex flex-col gap-4">
       <FormSection title={translate({ key: 'workspaces.workspaceSettings.tabRepository' })} desc={translate({ key: 'workspaces.workspaceSettings.repoDescription' })}>
         {repo.linked && (
           <div className="px-5 py-3">
@@ -827,10 +913,23 @@ function RepositoryTab() {
           {repo.linked && <WsButton variant="danger" icon="xmark" disabled={linking} onClick={disconnect}>{translate({ key: 'workspaces.workspaceSettings.repoUnlink' })}</WsButton>}
         </div>
       </FormSection>
+      <RepoInventoryPanel workspaceId={activeWorkspace.id} />
     </div>
-    {repo.linked && <div className="max-w-2xl mx-auto w-full mt-4"><DockerfileReview key={activeWorkspace.id} workspaceId={activeWorkspace.id} /></div>}
-    {repo.linked && <div className="max-w-2xl mx-auto w-full mt-4"><DevCommandCard key={`dc-${activeWorkspace.id}`} workspaceId={activeWorkspace.id} /></div>}
-    </>
+  );
+
+  //? Until a repo is linked there is nothing for the other three sections to describe, so the tab
+  //? stays a single form rather than an index of three empty pages.
+  if (!repo.linked) return <div className="mx-auto w-full max-w-2xl">{linkSection}</div>;
+
+  return (
+    <PageSections
+      ariaLabel={translate({ key: 'workspaces.workspaceSettings.tabRepository' })}
+      sections={[
+        { id: 'link', label: translate({ key: 'workspaces.repoScan.sectionLink' }), icon: 'link', body: linkSection },
+        { id: 'runtime', label: translate({ key: 'workspaces.repoScan.sectionRuntime' }), icon: 'play', body: <div className="max-w-2xl w-full"><RuntimeSection key={`rt-${activeWorkspace.id}`} workspaceId={activeWorkspace.id} /></div> },
+        { id: 'image', label: translate({ key: 'workspaces.repoScan.sectionImage' }), icon: 'cube', body: <div className="max-w-2xl w-full"><DockerfileReview key={activeWorkspace.id} workspaceId={activeWorkspace.id} /></div> },
+      ]}
+    />
   );
 }
 
@@ -1281,13 +1380,7 @@ export const template = 'workspaces';
 
 export default function WorkspaceSettings() {
   const translate = useTranslator();
-  const { activeWorkspace, renameWorkspace, settingsFocus, consumeSettingsFocus } = useWorkspaces();
-  const [tab, setTab] = useState('members');
-  //? Deep-link from a "fix it" button elsewhere: pre-select the tab that holds the fix (repository/env/…),
-  //? then clear the request so a later manual tab change isn't overridden.
-  useEffect(() => {
-    if (settingsFocus?.view === 'workspace' && settingsFocus.tab.length > 0) { setTab(settingsFocus.tab); consumeSettingsFocus(); }
-  }, [settingsFocus, consumeSettingsFocus]);
+  const { activeWorkspace, renameWorkspace } = useWorkspaces();
   const [renaming, setRenaming] = useState(false);
   const [nameInput, setNameInput] = useState(activeWorkspace.name);
   const [showWizard, setShowWizard] = useState(false);
@@ -1318,9 +1411,11 @@ export default function WorkspaceSettings() {
     ...(isAdmin ? adminTabs : []),
   ];
 
-  //? If the selected tab was gated away (dev tabs hidden after disabling the module),
-  //? fall back to Members so the panel never renders blank.
-  const activeTab = tabs.some((t) => t.id === tab) ? tab : 'members';
+  //? ADR 0312 — the tab IS the URL (`/workspaces/workspace/repository`), so it is linkable, survives a
+  //? refresh and the back button leaves it. `useTrailSegment` validates against the tabs that actually
+  //? exist, which also covers the old fallback: a tab gated away (dev tabs hidden after disabling the
+  //? module) or a stale bookmark resolves to Members rather than rendering a blank panel.
+  const [activeTab, setTab] = useTrailSegment(0, tabs.map((t) => t.id), 'members');
 
   const startRename = () => { setNameInput(activeWorkspace.name); setRenaming(true); };
   const commitRename = () => {

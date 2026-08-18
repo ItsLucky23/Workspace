@@ -9,7 +9,7 @@
 > and the private per-dev `~/.claude` memory. The AI records these automatically — see
 > `docs/LESSONS_PROTOCOL.md`.
 
-## Lessons (27)
+## Lessons (28)
 
 | # | Lesson | Severity | Area | Tags | File |
 | --- | --- | --- | --- | --- | --- |
@@ -40,6 +40,7 @@
 | 0025 | Pi model-detection failure can mean an incompatible GPIO stack | 🟡 medium | production, raspberry-pi, systemd | — | `docs/lessons/0025-pi-model-detection-failure-can-mean-incompatible-gpio-stack.md` |
 | 0026 | A newer npm can emit a lockfile that production npm refuses | 🟠 high | dependencies, deployment, arm64 | — | `docs/lessons/0026-newer-npm-can-emit-a-lockfile-older-production-npm-refuses.md` |
 | 0027 | Do not rebuild platform-neutral Vite assets on the Pi | 🟡 medium | deployment, raspberry-pi, frontend | — | `docs/lessons/0027-do-not-rebuild-platform-neutral-vite-assets-on-the-pi.md` |
+| 0028 | An explanation surface not pinned to its code goes confidently wrong | 🟠 high | ai, ux, documentation, testing | — | `docs/lessons/0028-an-explanation-surface-not-pinned-to-its-code-goes-confidently-wrong.md` |
 
 ## Takeaways
 
@@ -258,3 +259,11 @@ Pin the project's package manager version and use it to regenerate the lockfile.
 Build and test `dist/` once on the release source, then transfer that exact artifact to the Pi. On the Pi run the clean dependency install and only architecture-relevant/small compilation steps. Give every remote build a short progress checkpoint; if no progress appears, inspect CPU/process state instead of waiting indefinitely. Compare source/artifact checksums across release source and host before restart.
 
 → `docs/lessons/0027-do-not-rebuild-platform-neutral-vite-assets-on-the-pi.md`
+
+### 0028 — An explanation surface not pinned to its code goes confidently wrong
+
+**0028** · high · ai, ux, documentation, testing · 2026-08-18
+
+When adding a surface that EXPLAINS backend behaviour (ordering, precedence, "what the AI receives", "what happens when you click this"), read the implementing code first and cite the file in the model's header comment. Treat "I'll describe the intended design" as a red flag. Pin it with a structural test that reads the implementing source, the way `tests/unit/aiLayers.test.mts` asserts the channel model against `renderStage.ts`. Source-text matching is acceptable here: the failure being guarded is "someone reorders the array and the explanation keeps its old story", and a test that fails on an honest rename is doing its job. Prefer having the renderer import the model over asserting they agree. Where that is impossible (server renders a container prompt, client renders a settings page), the test is the link. When the check reveals the code is wrong rather than the docs — as here, where an "always-on" field applied to five AI features but not the sixth — fix the code. Documenting a gap that contradicts the field's own label just moves the lie.
+
+→ `docs/lessons/0028-an-explanation-surface-not-pinned-to-its-code-goes-confidently-wrong.md`

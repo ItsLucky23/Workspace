@@ -636,6 +636,11 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
           ...(forge?.repoPath ? { forgeRepoPath: forge.repoPath } : {}),
           ...(p.baseImageRef ? { baseImageRef: p.baseImageRef } : {}),
           ...(p.stack ? { stack: p.stack } : {}),
+          //? ADR 0313 — the runtime commands the settings form edits. Absent until now, so that form
+          //? could never show what was saved.
+          ...(p.devCommand ? { devCommand: p.devCommand } : {}),
+          ...(p.prodCommand ? { prodCommand: p.prodCommand } : {}),
+          ...(p.allowCustomBase ? { allowCustomBase: true } : {}),
         };
       }),
       activeProjectId,

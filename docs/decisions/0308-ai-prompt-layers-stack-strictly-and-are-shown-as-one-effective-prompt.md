@@ -1,11 +1,17 @@
 ---
 id: 0308
 title: AI prompt layers stack strictly, and are shown as one effective prompt
-status: accepted
+status: superseded
 date: 2026-08-17
 tags: [ai, pipeline, ia, ux]
 supersedes: []
+superseded_by: [0311]
 ---
+
+> **Superseded by ADR 0311.** The "one strict stack of five" described below was never checked
+> against `server/orchestrator/renderStage.ts`, and is wrong: the fields travel in two independent
+> channels, and layer 1 never reached the coding agent at all. The *problem* stated here is real and
+> still worth reading; the *decision* is not what the code does.
 
 ## Context
 

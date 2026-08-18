@@ -24,7 +24,7 @@ import { backendUrl, loginPageUrl } from '../../../config';
 import type { SessionLayout } from '../../../config';
 import { menuHandler } from 'src/_functions/menuHandler';
 import { isChatEnabledOp } from '../_data/chatOps';
-import { VIEW_CATEGORY } from '../_data/nav';
+import { VIEW_CATEGORY, TRAIL_ROOTS } from '../_data/nav';
 import { executeTrackedChatDispatch, isChatProposalForProject } from '../_functions/chatDispatch';
 import { INITIAL_CHAT } from '../_data/seed';
 import type {
@@ -155,6 +155,26 @@ function pathForView(view: WsView): string {
   const cat = VIEW_CATEGORY[view];
   return cat ? `${BASE}/${cat}/${view}` : `${BASE}/${view}`;
 }
+
+//? ADR 0312 — a view's sub-navigation as URL segments, so a tab/section is a real address: linkable,
+//? bookmarkable, survives a refresh, and the back button walks it. Only allowlisted views (nav.ts)
+//? get one; everywhere else the extra segments belong to a nested ROUTE and must be left alone.
+const relativePath = (pathname: string): string => pathname.replace(/^\/workspaces\/?/, '').replace(/\/+$/, '');
+
+function pathForTrail(view: WsView, trail: readonly string[] = []): string {
+  const base = pathForView(view);
+  if (!TRAIL_ROOTS.includes(relativePath(base))) return base;
+  const clean = trail.filter((s) => s.length > 0).map((s) => encodeURIComponent(s));
+  return clean.length > 0 ? `${base}/${clean.join('/')}` : base;
+}
+function trailFromPath(pathname: string): string[] {
+  const rest = relativePath(pathname);
+  for (const root of TRAIL_ROOTS) {
+    if (rest === root) return [];
+    if (rest.startsWith(`${root}/`)) return rest.slice(root.length + 1).split('/').map((s) => decodeURIComponent(s));
+  }
+  return [];
+}
 function viewFromPath(pathname: string): WsView {
   const rest = pathname.replace(/^\/workspaces\/?/, '').replace(/\/+$/, '');
   if (!rest) return 'board';
@@ -233,6 +253,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   const navigate = useNavigate();
   const location = useLocation();
   const view = viewFromPath(location.pathname);
+  //? The view's sub-navigation, read straight off the URL — there is no second copy in state to keep
+  //? in sync, which is the whole point (ADR 0312).
+  const trail = useMemo(() => trailFromPath(location.pathname), [location.pathname]);
 
   const [snap, setSnap] = useState<Snap>(EMPTY_SNAP);
   const [loading, setLoading] = useState(true);
@@ -304,10 +327,6 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   //? #109 — the pending copilot form pre-fill (field→value) the AI-drives-UI directive dropped; the target
   //? page reads + consumes it. null between directives.
   const [copilotPrefill, setCopilotPrefill] = useState<Record<string, string> | null>(null);
-  //? Setup deep-link: a blocked feature's "fix it" button sets which settings TAB to open (navigate alone lands
-  //? on the page default). The target settings page reads + clears this on mount. null when no fix is pending.
-  const [settingsFocus, setSettingsFocus] = useState<{ view: WsView; tab: string } | null>(null);
-
   const refetch = useCallback(() => {
     const target = { workspaceId: wantWorkspaceId, projectId: wantProjectId };
     //? A timer/callback from the previous render may still hold an old refetch closure.
@@ -1427,7 +1446,11 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     const lastNav = navStack.at(-1);
     return {
       view,
-      navigate: (v) => { void navigate(pathForView(v)); },
+      trail,
+      navigate: (v, t) => { void navigate(pathForTrail(v, t)); },
+      //? Replaces the trail on the CURRENT view — a tab/section change. It pushes rather than
+      //? replaces, so "back" walks out of a sub-section the way a user expects it to.
+      setTrail: (t) => { void navigate(pathForTrail(view, t)); },
       pushTo: (v) => { push(v); void navigate(pathForView(v)); },
       goBack: () => {
         const prev = navStack.at(-1);
@@ -1496,9 +1519,13 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       readiness: snap.readiness,
       myPerms: snap.myPerms,
       can: (cap) => snap.myPerms[cap] === true,
-      focusSetup: (target) => { setSettingsFocus({ view: target.view, tab: target.tab ?? '' }); void navigate(pathForView(target.view)); },
-      settingsFocus,
-      consumeSettingsFocus: () => { setSettingsFocus(null); },
+      //? ADR 0312 — a deep-link is now just a URL. It used to navigate AND push a separate focus
+      //? request through context, which the target page had to consume and clear; the destination was
+      //? therefore unlinkable and lost on refresh, and "fix it over there" landed on the default tab
+      //? whenever the two mechanisms disagreed.
+      focusSetup: (target) => {
+        void navigate(pathForTrail(target.view, [target.tab ?? '', target.section ?? '']));
+      },
       acceptChatProposal,
       acceptChatPlan,
       rejectChatProposal,
@@ -1952,7 +1979,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, offline, queuedWrites, retryQueuedWrites, parkWrite, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, wantWorkspaceId, currentProjectScope, afterWrite, quickAddApi, sprintCreateApi, editSprintApi, createProjectApi, createFromTemplateApi, applyDesignTokensApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, disconnectForgeApi, deployEnvApi, teardownEnvApi, rollbackEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, viewCounts, agentTerm, copilotPrefill, settingsFocus, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut, pendingAnswers]);
+  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, offline, queuedWrites, retryQueuedWrites, parkWrite, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, wantWorkspaceId, currentProjectScope, afterWrite, quickAddApi, sprintCreateApi, editSprintApi, createProjectApi, createFromTemplateApi, applyDesignTokensApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, disconnectForgeApi, deployEnvApi, teardownEnvApi, rollbackEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, viewCounts, agentTerm, copilotPrefill, trail, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut, pendingAnswers]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

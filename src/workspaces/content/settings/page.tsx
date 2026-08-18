@@ -3,12 +3,11 @@
 //? tabs: Brand & styles / Channels & publishing / Admin (provider keys, media €-budget, app credentials —
 //? role-gated, fail-open). Keys stay write-only; every save is a control-op (the Conductor writes, B-23).
 
-import { useEffect, useState } from 'react';
-
 import { useTranslator } from '@luckystack/core/client';
 
 import Icon from '../../_components/Icon';
 import { Disclosure, Tabs, type TabDef } from '../../_components/primitives';
+import { useTrailSegment } from '../../_components/sections';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { AdminTab } from './AdminTab';
 import { BrandStylesTab } from './BrandStylesTab';
@@ -18,15 +17,14 @@ export const template = 'workspaces';
 
 export default function ContentSettings() {
   const translate = useTranslator();
-  const { activeWorkspace, navigate, settingsFocus, consumeSettingsFocus } = useWorkspaces();
+  const { activeWorkspace, navigate } = useWorkspaces();
   //? Role gate — deliberately fail-open: only an explicit 'member' hides the Admin tab (an unresolved role keeps it).
   const showAdmin = activeWorkspace.role !== 'member';
-  const [tab, setTab] = useState('brand');
-  //? Deep-link from a "fix it" button (e.g. add a media/AI key → Admin tab, connect a channel → Channels tab).
-  useEffect(() => {
-    if (settingsFocus?.view === 'content/settings' && settingsFocus.tab.length > 0) { setTab(settingsFocus.tab); consumeSettingsFocus(); }
-  }, [settingsFocus, consumeSettingsFocus]);
-  const active = tab === 'admin' && !showAdmin ? 'brand' : tab;
+  //? ADR 0312 — the tab is the URL (`/workspaces/content/settings/channels`), so a "fix it" deep-link
+  //? from a blocked feature is an address. Validated against the tabs this user can actually see, which
+  //? subsumes the old admin-gate fallback.
+  const visibleTabIds = ['brand', 'channels', ...(showAdmin ? ['admin'] : [])];
+  const [active, setTab] = useTrailSegment(0, visibleTabIds, 'brand');
   //? First-run banner: the full guided card until the brand context (the page's primary action) is saved,
   //? then collapsed to a one-line disclosure so the guide + cost warning stay one tap away.
   const setupDone = (activeWorkspace.productContext ?? '').trim().length > 0;

@@ -13,6 +13,9 @@ import { useTranslator } from '@luckystack/core/client';
 
 import BaseAvatar from 'src/_components/Avatar';
 import BaseToggle from 'src/_components/inputs/Toggle';
+//? The POSITIONED popover (floating layer, auto-flip, Escape, outside-click). Aliased because this
+//? module already imports a same-named PRESENCE wrapper from ./motion — they do different jobs.
+import FloatingPopover from 'src/_components/inputs/Popover';
 
 import Icon, { type IconName } from './Icon';
 import { Collapse, Popover } from './motion';
@@ -277,19 +280,116 @@ export function EmptyState({ icon, title, sub, action }: { icon?: IconName; titl
   );
 }
 
-/* ----------------------------------------------------------------- info dot */
-//? A small "?" that reveals an info popover on hover. Pure CSS group-hover so
-//? it works inside scroll containers without portals.
-export function InfoDot({ title, body, align = 'right' }: { title?: string; body: ReactNode; align?: 'left' | 'right' }) {
+/* ----------------------------------------------------------------- info tip */
+//? THE progressive-disclosure affordance (ADR 0312): the extra explanation a screen needs but should
+//? not spend layout on. One implementation, so it behaves identically everywhere.
+//?
+//? It replaces a CSS-only `group-hover` tooltip that had two disqualifying faults. It opened on hover
+//? ONLY — so on the phone this product is designed around, the explanation simply did not exist — and
+//? it was a fixed `w-60` box positioned with `absolute`, so near a viewport edge or inside a scroll
+//? container it clipped. This delegates to the framework Popover (floating layer: auto-flip,
+//? outside-click, Escape, `aria-haspopup`), opens on click/Enter/Space everywhere, and ADDITIONALLY on
+//? hover where the pointer supports it. Touch users get 44px via the coarse-pointer rule in index.css.
+//?
+//? `points` is what makes it worth having over a `title=` attribute: it answers "what are the other
+//? parts of this, and where do I edit them?" — each row may deep-link to its owning surface. That is
+//? the whole progressive-disclosure idea: say more without occupying the screen, and let the answer be
+//? navigable rather than something the user has to go hunting for.
+//?
+//? House rule — an InfoTip may only answer one of: where does this value come from · what else
+//? affects it · what happens if I change it. If it restates the label it is noise, and 200 of those
+//? recreate the crowding it exists to relieve.
+export interface InfoTipPoint {
+  /** Stable identity for the row — usually the id of the thing it describes (a layer, a setting). */
+  id: string;
+  label: ReactNode;
+  desc?: ReactNode;
+  /** Deep-link to where this part is actually edited. Closes the tip first. */
+  onGo?: () => void;
+  goLabel?: ReactNode;
+}
+
+export function InfoTip({ title, body, points, align = 'center', label, icon, className }: {
+  title?: ReactNode;
+  body?: ReactNode;
+  points?: InfoTipPoint[];
+  align?: 'start' | 'center' | 'end';
+  /** Accessible name for the trigger — say what it explains, not "info". */
+  label?: string;
+  icon?: IconName;
+  className?: string;
+}) {
+  const translate = useTranslator();
+  const [open, setOpen] = useState(false);
+  //? Hover is an ENHANCEMENT, never the only way in: a coarse pointer has no hover state, and a
+  //? keyboard user never fires one. Click/Enter/Space is the baseline, handled by the Popover itself.
+  const [hoverCapable, setHoverCapable] = useState(false);
+  useEffect(() => {
+    if (typeof globalThis.matchMedia !== 'function') return;
+    const mq = globalThis.matchMedia('(hover: hover) and (pointer: fine)');
+    setHoverCapable(mq.matches);
+    const onChange = (e: MediaQueryListEvent): void => { setHoverCapable(e.matches); };
+    mq.addEventListener('change', onChange);
+    return () => { mq.removeEventListener('change', onChange); };
+  }, []);
+
+  const content = (
+    <div className={`w-64 max-w-[min(16rem,calc(100vw-2rem))] flex flex-col gap-2`}>
+      {title !== undefined && <div className={`text-xs font-semibold text-title break-words`}>{title}</div>}
+      {body !== undefined && <div className={`text-xs text-common leading-relaxed break-words`}>{body}</div>}
+      {points !== undefined && points.length > 0 && (
+        <ol className={`flex flex-col gap-1.5`}>
+          {points.map((point, index) => (
+            <li key={point.id} className={`flex items-start gap-2 text-xs`}>
+              <span className={`mt-0.5 w-4 h-4 shrink-0 rounded flex items-center justify-center bg-container2 text-meta text-[10px] font-bold tabular-nums`}>{index + 1}</span>
+              <span className={`min-w-0 flex-1`}>
+                <span className={`font-medium text-title break-words`}>{point.label}</span>
+                {point.desc !== undefined && <span className={`block text-meta break-words`}>{point.desc}</span>}
+                {point.onGo !== undefined && (
+                  <button
+                    type="button"
+                    className={`min-h-0 mt-0.5 inline-flex items-center gap-1 text-primary hover:text-primary-hover font-medium cursor-pointer ${FOCUS_RING} rounded`}
+                    onClick={() => { setOpen(false); point.onGo?.(); }}
+                  >
+                    {point.goLabel ?? translate({ key: 'workspaces.common.infoGo' })}
+                    <Icon name="arrow-right" className={`text-[10px]`} />
+                  </button>
+                )}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+
   return (
-    <span className="relative group/info inline-flex shrink-0">
-      <span className="w-4 h-4 rounded-full bg-container2 text-muted text-[10px] font-bold flex items-center justify-center cursor-help transition-colors hover:bg-primary/15 hover:text-primary">?</span>
-      <span className={`pointer-events-none absolute ${align === 'right' ? 'right-0' : 'left-0'} top-5 z-40 w-60 rounded-xl border border-container1-border bg-container1 p-3 text-xs text-common shadow-lg opacity-0 translate-y-1 group-hover/info:opacity-100 group-hover/info:translate-y-0 transition-all duration-150`}>
-        {title && <span className="font-semibold text-title block mb-1 break-words">{title}</span>}
-        <span className="break-words">{body}</span>
-      </span>
+    <span
+      className={`inline-flex shrink-0 ${className ?? ''}`}
+      onMouseEnter={() => { if (hoverCapable) setOpen(true); }}
+      onMouseLeave={() => { if (hoverCapable) setOpen(false); }}
+    >
+      <FloatingPopover
+        trigger="click"
+        placement="bottom"
+        align={align}
+        open={open}
+        onOpenChange={setOpen}
+        content={content}
+        ariaLabel={label ?? translate({ key: 'workspaces.common.moreInfo' })}
+      >
+        <span className={`w-4 h-4 rounded-full bg-container2 text-muted text-[10px] font-bold flex items-center justify-center transition-colors hover:bg-primary/15 hover:text-primary ${open ? 'bg-primary/15 text-primary' : ''}`}>
+          {icon === undefined ? '?' : <Icon name={icon} />}
+        </span>
+      </FloatingPopover>
     </span>
   );
+}
+
+//? The original call shape, kept so the 14 existing sites keep working — and so nobody has a reason to
+//? reach for the old hover-only behaviour. Same component underneath.
+export function InfoDot({ title, body, align = 'right' }: { title?: string; body: ReactNode; align?: 'left' | 'right' }) {
+  return <InfoTip title={title} body={body} align={align === 'right' ? 'end' : 'start'} />;
 }
 
 /* ----------------------------------------------------------------- pop menu */

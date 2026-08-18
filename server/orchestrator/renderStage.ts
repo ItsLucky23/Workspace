@@ -33,6 +33,11 @@ export interface StageRenderCtx {
   //? settings.json `model` backstop + the MAX_THINKING_TOKENS effort budget; the spawn's `--model`
   //? flag (stageRunner) is the authoritative half of the same wiring.
   modelChoice?: StageModelChoice;
+  //? ADR 0311 — the workspace-wide AI steering (`Workspace.aiInstruction` + the output-language
+  //? directive), resolved by stageRunner via ai/registry's `workspaceAiPrefix`. It opens the
+  //? system-prompt channel, exactly as it prefixes the system prompt on the one-shot path. Until
+  //? ADR 0311 it never reached the coding agent at all, despite being documented as always-on.
+  workspaceInstruction?: string;
 }
 
 export interface McpIntegration { name: string; command: string; env?: Record<string, string> }
@@ -117,6 +122,9 @@ export function renderStage(cfg: PipelineStageCfg, ctx: StageRenderCtx): StageAr
     ? `This stage is DONE when: ${cfg.definitionOfDone}. When that is satisfied, end your final message with the fenced block below.`
     : 'Judge for yourself when this stage\'s goal is achieved, then end your final message with the fenced block below.';
   const stageInstructions = [
+    //? ADR 0311 — workspace-wide steering opens the channel, so a stage's own system prompt refines it
+    //? rather than competing with it. Same position it holds on the one-shot path (ai/registry.ts).
+    ctx.workspaceInstruction ?? '',
     cfg.systemPrompt ?? '',
     renderPromptTemplate(cfg.promptTemplate, ctx.carryOver),
     doneGuidance,

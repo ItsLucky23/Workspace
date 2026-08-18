@@ -81,6 +81,7 @@ Every typed API route in this project. Sourced from `_ProjectApiTypeMap` in `src
 | `workspaces/pushConfig/v1` | POST | 60 | — | ✓ |
 | `workspaces/readWorktreeFile/v1` | POST | 30 | — | ✓ |
 | `workspaces/repoFile/v1` | POST | 60 | — | ✓ |
+| `workspaces/repoIntrospect/v1` | POST | 30 | — | ✓ |
 | `workspaces/repoTree/v1` | POST | 30 | — | ✓ |
 | `workspaces/revokePat/v1` | POST | 20 | — | ✓ |
 | `workspaces/rotateWebhookSecret/v1` | POST | 10 | — | ✓ |

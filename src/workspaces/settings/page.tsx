@@ -14,6 +14,7 @@ import Icon from '../_components/Icon';
 import { SectionLabel, Table, type TableColumn } from '../_components/dataDisplay';
 import { Collapse } from '../_components/motion';
 import { AvatarBubble, Disclosure, IconButton, PopMenu, Tabs, Toggle, WsButton } from '../_components/primitives';
+import { useTrailSegment } from '../_components/sections';
 import { FormSection, SettingRow } from '../_components/settings';
 import { isModuleEnabled } from '../_data/modules';
 import type { EnvironmentSummary, PatSummary, PromptExperimentSummary } from '../_data/types';
@@ -445,12 +446,12 @@ export default function AccountSettings() {
   //? so it stays visible). A plain 'member' or a content/design-only workspace sees a clean account page.
   //? Collapsed by default so even an admin's first paint stays light (progressive disclosure).
   const showDevOps = isModuleEnabled(activeWorkspace.enabledSections, 'development') && activeWorkspace.role !== 'member';
-  const [tab, setTab] = useState<SettingsTab>('account');
-  //? Deep-link from a "fix it" button (e.g. connect a forge → developer tab); clear the request after applying.
-  const { settingsFocus, consumeSettingsFocus } = useWorkspaces();
-  useEffect(() => {
-    if (settingsFocus?.view === 'settings' && (settingsFocus.tab === 'account' || settingsFocus.tab === 'workspace' || settingsFocus.tab === 'developer')) { setTab(settingsFocus.tab); consumeSettingsFocus(); }
-  }, [settingsFocus, consumeSettingsFocus]);
+  //? ADR 0312 — the tab is the URL (`/workspaces/settings/developer`), so a "fix it" deep-link from a
+  //? blocked feature is an address rather than a focus request the page has to consume and clear.
+  //? Validated against the VISIBLE tabs, not all of them: a link to /settings/developer sent to someone
+  //? without the developer surface must land on Account, not render an empty panel.
+  const visibleTabs = SETTINGS_TABS.filter((t) => t.id !== 'developer' || showDevOps);
+  const [tab, setTab] = useTrailSegment<SettingsTab>(0, visibleTabs.map((t) => t.id), 'account');
 
   //? Forge identity is per PROJECT (ADR 0036). Never infer it from the workspace legacy fallback
   //? or from repository-clone state: connecting forge APIs and cloning a worktree are separate steps.
@@ -490,8 +491,8 @@ export default function AccountSettings() {
               a workspace without the development module still needs. Three named destinations instead: what
               is MINE, what is this WORKSPACE's, and the developer surface. */}
           <Tabs
-            tabs={SETTINGS_TABS.filter((t) => t.id !== 'developer' || showDevOps).map((t) => ({ id: t.id, label: translate({ key: t.labelKey }) }))}
-            active={tab} onChange={(id) => { setTab(id as SettingsTab); }}
+            tabs={visibleTabs.map((t) => ({ id: t.id, label: translate({ key: t.labelKey }) }))}
+            active={tab} onChange={(id) => { const found = visibleTabs.find((t) => t.id === id); if (found) setTab(found.id); }}
           />
 
           {tab === 'account' && (<>

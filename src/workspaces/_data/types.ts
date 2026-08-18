@@ -165,6 +165,13 @@ export interface ProjectSummary {
   forgeRepoPath?: string;
   baseImageRef?: string;   // #45 — the built/selected image tag, so a reload shows what image is built
   stack?: string;          // #45 — resolved stack (node/python/…) when no explicit image
+  //? ADR 0313 — the runtime commands. They were persisted but never sent to the client, so the
+  //? settings form rendered two permanently EMPTY inputs: you could not see what you had saved, only
+  //? overwrite it. A form that cannot show its own value is the "unclear what is even here" complaint
+  //? in its purest form.
+  devCommand?: string;
+  prodCommand?: string;
+  allowCustomBase?: boolean;
 }
 
 //? A persistent environment (ADR 0037): a dev/staging/prod deployment at a stable route.

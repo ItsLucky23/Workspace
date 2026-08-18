@@ -353,6 +353,98 @@ export async function repoManifests(workspaceId: string, projectId: string): Pro
   return { tree, manifests };
 }
 
+/* ------------------------------------------------------------------ introspection (for the USER) */
+
+//? ADR 0313 — the same bare-repo read as `repoManifests`, aimed at the HUMAN instead of the AI.
+//?
+//? The server has always read package.json, lockfiles and Dockerfiles out of a linked repo — but only
+//? to feed Dockerfile generation, docs generation and image builds. On screen, the person configuring
+//? the workspace got two blank text inputs and was expected to remember what their own repo's dev and
+//? prod commands were called. Turning the existing capability toward the user is most of the fix.
+//?
+//? Deliberately broader than MANIFEST_FILES, which matches exact ROOT-level paths only: a monorepo's
+//? `services/api/package.json`, a `Dockerfile.prod`, and `docker-compose.yml` (absent from that set
+//? entirely, despite this product provisioning compose stacks) are exactly the cases the owner asked
+//? about. Bounded on every axis — a big repo must not turn a settings page into a slow query.
+export interface RepoScript {
+  /** Repo-relative package.json the script came from — the monorepo unit it belongs to. */
+  file: string;
+  name: string;
+  command: string;
+}
+export interface RepoIntrospection {
+  packageManager: 'npm' | 'yarn' | 'pnpm' | 'bun' | 'unknown';
+  scripts: RepoScript[];
+  dockerfiles: string[];
+  composeFiles: string[];
+  /** Repo-relative directories holding a package.json — the monorepo units, '.' for a single app. */
+  units: string[];
+  /** True when the file tree hit its cap, so the lists below may be incomplete — said on screen
+   *  rather than presented as a complete answer. */
+  truncated: boolean;
+}
+
+const INTROSPECT_TREE_CAP = 4000;
+const INTROSPECT_PACKAGE_CAP = 12;
+
+const isComposeFile = (p: string): boolean => /(^|\/)(docker-)?compose(\.[\w-]+)?\.ya?ml$/i.test(p);
+const isDockerfile = (p: string): boolean => /(^|\/)dockerfile(\.[\w-]+)?$/i.test(p);
+const isPackageJson = (p: string): boolean => /(^|\/)package\.json$/i.test(p) && !p.includes('node_modules/');
+
+function detectPackageManager(paths: string[]): RepoIntrospection['packageManager'] {
+  //? Lockfile at ANY depth — a monorepo often keeps it at the root, but not always.
+  if (paths.some((p) => /(^|\/)pnpm-lock\.yaml$/i.test(p))) return 'pnpm';
+  if (paths.some((p) => /(^|\/)yarn\.lock$/i.test(p))) return 'yarn';
+  if (paths.some((p) => /(^|\/)bun\.lockb?$/i.test(p))) return 'bun';
+  if (paths.some((p) => /(^|\/)package-lock\.json$/i.test(p))) return 'npm';
+  return 'unknown';
+}
+
+/** What the user's linked repo actually contains: runnable scripts, Dockerfiles, compose stacks.
+ *  Returns empty (never throws) when no repo is linked — the caller renders "link a repo first". */
+export async function repoIntrospect(workspaceId: string, projectId: string): Promise<RepoIntrospection> {
+  const empty: RepoIntrospection = { packageManager: 'unknown', scripts: [], dockerfiles: [], composeFiles: [], units: [], truncated: false };
+  const bare = bareRepoPath(workspaceId, projectId);
+  if (!existsSync(bare)) return empty;
+
+  const listing = await git(['--git-dir', bare, 'ls-tree', '-r', 'HEAD', '--name-only']).catch(() => '');
+  const all = listing.split('\n').map((p) => p.trim()).filter((p) => p.length > 0);
+  if (all.length === 0) return empty;
+  const truncated = all.length > INTROSPECT_TREE_CAP;
+  const paths = all.slice(0, INTROSPECT_TREE_CAP);
+
+  //? Root-first, then shallowest: in a monorepo the root package.json holds the scripts a human
+  //? actually runs, and it must not be crowded out of the cap by twenty leaf packages.
+  const packageFiles = paths.filter((p) => isPackageJson(p))
+    .toSorted((a, b) => a.split('/').length - b.split('/').length || a.localeCompare(b))
+    .slice(0, INTROSPECT_PACKAGE_CAP);
+
+  const scripts: RepoScript[] = [];
+  const units: string[] = [];
+  for (const file of packageFiles) {
+    const raw = await git(['--git-dir', bare, 'show', `HEAD:${file}`]).catch(() => '');
+    if (raw.length === 0) continue;
+    const [parseError, parsed] = tryCatchSync(() => JSON.parse(raw) as { scripts?: Record<string, unknown> });
+    //? An unparseable package.json is the repo's business, not an error here — skip it and keep going.
+    if (parseError || !parsed) continue;
+    const dir = file.includes('/') ? file.slice(0, file.lastIndexOf('/')) : '.';
+    units.push(dir);
+    for (const [name, command] of Object.entries(parsed.scripts ?? {})) {
+      if (typeof command !== 'string' || command.trim().length === 0) continue;
+      scripts.push({ file, name, command: command.trim().slice(0, 400) });
+    }
+  }
+
+  return {
+    packageManager: detectPackageManager(paths),
+    scripts,
+    dockerfiles: paths.filter((p) => isDockerfile(p)),
+    composeFiles: paths.filter((p) => isComposeFile(p)),
+    units,
+    truncated,
+  };
+}
+
 //? Read the current bare-repo status from disk (for the snapshot). `linked` reflects
 //? whether the bare clone exists; branch/head are the current default-branch pointer.
 export async function repoStatus(workspaceId: string, projectId: string, gitUrl?: string): Promise<RepoStatus> {

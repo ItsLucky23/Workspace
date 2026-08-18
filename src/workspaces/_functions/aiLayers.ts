@@ -1,20 +1,54 @@
-//? The ONE definition of how a Develop-pipeline agent's prompt is composed (ADR 0308).
+//? The ONE definition of how a Develop-pipeline agent's prompt is composed (ADR 0311, supersedes 0308).
 //?
-//? Five separate free-text fields feed one agent prompt, spread over two pages, and until now
-//? nothing stated the order — the only hint in the UI read "layered above your instructions"
-//? without ever saying above WHAT. A user editing seven stages plus the workspace could not tell
-//? whether the workspace instruction was a default, a floor, or something a stage silently
-//? replaced. ADR 0308 settles it: STRICT layering, always concatenated in the order below, no
-//? per-stage opt-out.
+//? Five separate free-text fields feed one agent run, spread over two pages, and nothing stated how
+//? they combine — the only hint read "layered above your instructions" without ever saying above WHAT.
+//? ADR 0308 answered that with a single ordered stack of five. That answer was WRONG: it was written
+//? from the UI outward and never checked against `server/orchestrator/renderStage.ts`, which composes
+//? TWO INDEPENDENT CHANNELS reaching the agent by different routes:
 //?
-//? Everything that renders or explains the composition reads from here, so adding a sixth layer
-//? later means editing this file and nothing else.
+//?   • the SYSTEM channel (`--append-system-prompt`): workspace steering → the stage's system prompt →
+//?     the carry-over template filled with the previous stage's handoff. How the agent should behave.
+//?   • the PROJECT channel (`CLAUDE.md` on the container's /work volume): the stage's task instructions
+//?     verbatim → context documents, including the active skills block → RAG excerpts. What it works on.
+//?
+//? A layer therefore has no global position — "layer 4 of 5" was meaningless, and worse, it implied
+//? that layer 3 constrains layer 4 when they are not even in the same file. Position is per channel.
+//?
+//? Layer 1 carried a real defect alongside the wrong story: `Workspace.aiInstruction` is documented, in
+//? the op catalog and in the settings UI, as "prepended to every AI run" — but it was applied only at
+//? the one-shot choke-point in `server/ai/registry.ts`. The PTY coding agent renders its own prompt and
+//? never read it, so the one instruction a user writes to steer everything skipped the thing that
+//? writes their code. ADR 0311 fixes the server rather than documenting the gap.
+//?
+//? Everything that renders or explains the composition reads from here. Adding a layer means editing
+//? this file AND renderStage.ts — and if those two ever disagree again, this file is the one that lies.
+//? @adr 0311
 
 import type { AiSkillEntry, PipelineStageCfg, Workspace } from '../_data/types';
 
-/** The layers, in the exact order they reach the agent. Index + 1 is the human "layer N of 5". */
+/** The two routes a prompt fragment travels to reach the agent. They do not mix. */
+export const AI_LAYER_CHANNEL_ORDER = ['system', 'project'] as const;
+export type AiLayerChannel = (typeof AI_LAYER_CHANNEL_ORDER)[number];
+
+/** Every layer, grouped by the channel it actually travels in, each in its real order.
+ *  Mirrors `stageInstructions[]` and `claudeMd` in server/orchestrator/renderStage.ts. */
+export const AI_LAYER_ORDER_BY_CHANNEL: Record<AiLayerChannel, readonly AiLayerId[]> = {
+  system: ['workspace', 'stageSystemPrompt', 'carryOver'],
+  project: ['stageInstructions', 'skills'],
+};
+
 export const AI_LAYER_ORDER = ['workspace', 'skills', 'stageSystemPrompt', 'stageInstructions', 'carryOver'] as const;
 export type AiLayerId = (typeof AI_LAYER_ORDER)[number];
+
+/** Translation key for each channel's name + the one-line explanation of what it steers. */
+export const AI_LAYER_CHANNEL_LABEL_KEY: Record<AiLayerChannel, string> = {
+  system: 'workspaces.aiLayers.channelSystem',
+  project: 'workspaces.aiLayers.channelProject',
+};
+export const AI_LAYER_CHANNEL_HELP_KEY: Record<AiLayerChannel, string> = {
+  system: 'workspaces.aiLayers.channelSystemHelp',
+  project: 'workspaces.aiLayers.channelProjectHelp',
+};
 
 /** Translation key for each layer's short name (`workspaces.aiLayers.<id>`). */
 export const AI_LAYER_LABEL_KEY: Record<AiLayerId, string> = {
@@ -27,16 +61,31 @@ export const AI_LAYER_LABEL_KEY: Record<AiLayerId, string> = {
 
 export interface ResolvedAiLayer {
   id: AiLayerId;
-  /** 1-based position, for "layer 3 of 5". */
+  /** Which of the two channels carries this layer. */
+  channel: AiLayerChannel;
+  /** 1-based position WITHIN its channel — there is no meaningful global position. */
   position: number;
+  /** How many layers that channel holds, for "position 2 of 3". */
+  channelTotal: number;
   /** The field's current content. Empty means the layer contributes nothing right now. */
   text: string;
   /** Where the user edits this layer, for the "edit →" affordance. */
   source: 'workspace' | 'stage';
 }
 
-/** Total layer count — the "of 5" half of the inheritance note. */
+/** Total layer count across both channels — used only for "3 of 5 fields are filled in". */
 export const AI_LAYER_COUNT = AI_LAYER_ORDER.length;
+
+/** Where a layer sits: its channel and its 1-based position inside it. */
+export function layerPlacement(id: AiLayerId): { channel: AiLayerChannel; position: number; channelTotal: number } {
+  for (const channel of AI_LAYER_CHANNEL_ORDER) {
+    const order = AI_LAYER_ORDER_BY_CHANNEL[channel];
+    const index = order.indexOf(id);
+    if (index !== -1) return { channel, position: index + 1, channelTotal: order.length };
+  }
+  //? Unreachable while AI_LAYER_ORDER_BY_CHANNEL covers every id — the structural test pins that.
+  return { channel: 'system', position: 1, channelTotal: 1 };
+}
 
 /** Which skills actually apply to a run. `[]` or `['all']` on a skill means "every AI run"; an
  *  explicit list applies only when the run's apply-point matches. Disabled skills never apply. */
@@ -61,18 +110,38 @@ export function resolveAiLayers({ workspace, skills, stage, applyPoint }: {
     .filter((t) => t.length > 0)
     .join('\n\n');
 
-  return [
-    { id: 'workspace', position: 1, text: (workspace.aiInstruction ?? '').trim(), source: 'workspace' },
-    { id: 'skills', position: 2, text: skillText, source: 'workspace' },
-    { id: 'stageSystemPrompt', position: 3, text: (stage?.systemPrompt ?? '').trim(), source: 'stage' },
-    { id: 'stageInstructions', position: 4, text: (stage?.customInstructions ?? '').trim(), source: 'stage' },
-    { id: 'carryOver', position: 5, text: (stage?.promptTemplate ?? '').trim(), source: 'stage' },
-  ];
+  const text: Record<AiLayerId, string> = {
+    workspace: (workspace.aiInstruction ?? '').trim(),
+    skills: skillText,
+    stageSystemPrompt: (stage?.systemPrompt ?? '').trim(),
+    stageInstructions: (stage?.customInstructions ?? '').trim(),
+    carryOver: (stage?.promptTemplate ?? '').trim(),
+  };
+  const source: Record<AiLayerId, 'workspace' | 'stage'> = {
+    workspace: 'workspace', skills: 'workspace', stageSystemPrompt: 'stage', stageInstructions: 'stage', carryOver: 'stage',
+  };
+
+  //? Emitted channel by channel, so the list a user reads is the order the agent receives.
+  return AI_LAYER_CHANNEL_ORDER.flatMap((channel) =>
+    AI_LAYER_ORDER_BY_CHANNEL[channel].map((id, index) => ({
+      id,
+      channel,
+      position: index + 1,
+      channelTotal: AI_LAYER_ORDER_BY_CHANNEL[channel].length,
+      text: text[id],
+      source: source[id],
+    })));
 }
 
-/** The composed prompt exactly as the agent receives it: contributing layers only, in order. */
-export function composeEffectivePrompt(layers: ResolvedAiLayer[]): string {
-  return layers.filter((l) => l.text.length > 0).map((l) => l.text).join('\n\n');
+/** The layers of one channel, in order — what that channel actually carries. */
+export function layersInChannel(layers: ResolvedAiLayer[], channel: AiLayerChannel): ResolvedAiLayer[] {
+  return layers.filter((l) => l.channel === channel).toSorted((a, b) => a.position - b.position);
+}
+
+/** One channel's composed text, as the agent receives it: contributing layers only, in order.
+ *  Deliberately per channel — concatenating both would recreate the fiction ADR 0311 removed. */
+export function composeChannel(layers: ResolvedAiLayer[], channel: AiLayerChannel): string {
+  return layersInChannel(layers, channel).filter((l) => l.text.length > 0).map((l) => l.text).join('\n\n');
 }
 
 //? ---- Content/Studio/Marketing profile (duplicateConcepts #2 — a SECOND, unrelated layering stack) ----

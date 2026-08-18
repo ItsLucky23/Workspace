@@ -4860,3 +4860,71 @@ Tijdens het loggen bleek mijn eigen `npm install` onder npm 11.6.1 te hebben ged
 **Niet in deze patch (blijft open):** documentversie-diff (er is geen read-verb voor revisie-inhoud), project-services hernoemen/pad wijzigen, de "sleutel is ingesteld"-badge, en de interviewer-focus als tag op findings. Geen browserverificatie; sweep en Playwright niet gedraaid.
 
 **Los gevonden, niet gefixt (rapporteren i.p.v. autofixen):** `server/media/uploadRoute.ts` gebruikt errorCode `validation.failed`, een sleutel die in geen enkele locale bestaat — de gebruiker ziet daar de ruwe sleutel.
+
+## 2026-08-18 14:20 — URL-adressering, uitlegprimitieven en repo-introspectie (fase 0+1)
+
+**Prompt van de gebruiker.** Drie punten: (1) een icoon dat op hover uitlegt wat alle 5 prompt-lagen
+zijn en waar je ze vindt, generiek toepasbaar; (2) lege velden (docs/skills per stage) moeten een knop
+naar de aanmaakplek krijgen, samen met de ontbrekende onboarding; (3) de Repository-tab propt te veel
+opties op één hoop terwijl er ook nog dingen missen (compose, meerdere Dockerfiles, welke npm-commando's
+er zijn, of er een terminal per commando start) — voorstel: een extra sub-header. Aanvullend: elke
+sub-pagina moet in de navbar terug te herleiden zijn én via de URL bereikbaar, en het opdelen mag een
+AI-scan bepalen mits die kritisch is. Zo min mogelijk human input.
+
+**Wat ik heb gedaan.**
+
+*Eerst een verificatie die de rest blokkeerde.* De "laag 3 van 5"-belofte uit ADR 0308 klopte niet.
+`server/orchestrator/renderStage.ts` stelt geen stapel van vijf samen maar TWEE kanalen: het
+systeem-kanaal (`--append-system-prompt`) met stage-system-prompt → carry-over-sjabloon, en het
+project-kanaal (`CLAUDE.md` op het /work-volume) met stage-instructies → contextdocs incl. skills. En
+laag 1 — `Workspace.aiInstruction` — bereikte de PTY-code-agent helemaal niet; die wordt alleen
+toegepast in `server/ai/registry.ts` (het één-shot-pad), terwijl het veld in de op-catalogus én de UI
+omschreven staat als "prepended to every AI run". Beide gerepareerd: `workspaceAiPrefix` geëxporteerd
+en door de stagerunner aangeroepen (één definitie, beide paden), en het laagmodel + de preview
+herschreven naar twee kanalen. ADR 0311 vervangt 0308; lesson 0028 legt de klasse vast.
+
+*Fase 0 — gedeelde laag (bevroren voordat er agents draaiden).* `InfoTip` op de echte `Popover`
+(klik/Enter/Space overal, hover als extra op een muis, auto-flip, Escape) — de oude `InfoDot` was
+hover-only en dus dood op een telefoon, en een vaste `w-60` die in scroll-containers afknipte; hij is
+nu een dunne adapter zodat de 14 bestaande plekken gratis meeprofiteren. `EmptyPicker` als
+veld-niveau-broertje van `SetupNotice`. `PageSections` + `useTrailSegment` voor URL-geadresseerde
+sub-navigatie. `SettingRow` kreeg `infoTitle`/`infoPoints`.
+
+*Het URL-model.* `TRAIL_ROOTS` in `_data/nav.ts` is een allowlist van PAD-prefixen (niet view-ids,
+want `/workspaces/content/settings` resolvet naar view `content` zodat de rail Content blijft
+markeren). De parallelle `settingsFocus`-state is verwijderd — `focusSetup` navigeert nu naar een
+echt adres. Vier pagina's omgezet: workspace, settings, content/settings, pipeline. Daarbij bleek
+`focusSetup({view:'pipeline', tab: stage})` vanuit Sources stil kapot: de pipeline-pagina consumeerde
+de focus-request nooit. Werkt nu voor het eerst.
+
+*Fase 1 — repo-introspectie.* `repoIntrospect` in `server/git/repoStore.ts`: package.json-scripts op
+elke diepte, alle Dockerfiles, alle compose-bestanden (stonden niet eens in de AI-scanlijst), de
+package-manager uit het lockfile, de monorepo-units — met caps en een `truncated`-vlag. Nieuwe route
+`workspaces/repoIntrospect/v1` (workspaceSettings-gated, 3 per-route-tests). Repository-tab is nu drie
+secties: Koppeling · Draaien · Container-image. Draaien toont de gevonden scripts als aanklikbare
+rijen en legt de geverifieerde volgorde uit (Service → Project → stack-default, in de preview-container
+van het ticket — geen terminal per commando). `devCommand`/`prodCommand`/`allowCustomBase` zaten NIET
+in de snapshot, waardoor het formulier altijd leeg opende; toegevoegd + autosave per rij. ADR 0313.
+
+*De scanronde (ultracode, 16 agents, 0 fouten).* 15 paginagroepen, read-only, met de lat expliciet
+tegen zichzelf gericht: standaardoordeel = niet splitsen, en elk splitsvoorstel kreeg een aparte
+weerlegger. Uitkomst: **0 van de 29 pagina's heeft sectionering nodig** — één voorstel (settings) werd
+weerlegd omdat die pagina al correct getabde, URL-geadresseerde secties heeft. De Repository-tab was
+dus het enige echte geval. Verder 117 geverifieerde InfoTip-plekken en 43 doodlopende lege pickers.
+
+**Bestanden geraakt.** server: `ai/registry.ts`, `git/repoStore.ts`, `orchestrator/renderStage.ts`,
+`orchestrator/stageRunner.ts`, `read/workspaceSnapshot.ts`. src: `_components/{primitives,SetupNotice,
+settings,sections,EffectivePromptPreview}.tsx`, `_data/{nav,types}.ts`, `_functions/aiLayers.ts`,
+`_shell/{WorkspacesContext,WorkspacesProvider}.tsx`, `_api/repoIntrospect_v1{,.tests}.ts`,
+`workspace/{page,repoIntrospection}.tsx`, `settings/page.tsx`, `content/settings/page.tsx`,
+`develop/pipeline/page.tsx`, 4 locale-bestanden. docs: ADR 0311/0312/0313, lesson 0028, 0308 op
+superseded. tests: `unit/aiLayers.test.mts`, `unit/urlTrail.test.mts`.
+
+**Notities.** `tsc` ✅ `lint` ✅ `build` ✅ `ai:lint` ✅ `unit 122/122` ✅. Geen browserverificatie —
+die staat gepland ná fase 2. De scan vond en passant een reeks geverifieerde defecten van dezelfde
+klasse als ADR 0311 (UI beweert iets wat de server niet doet): het env-tab-secret toont dots ook als er
+niets is ingesteld terwijl `configured` al in de mapper zit, de prompt-A/B-panel meet niets
+(`resolvePromptVariant`/`recordTrial` hebben nul call-sites), `run-command`-triggers kunnen nooit
+draaien, de Terminals-statusdot is altijd grijs, `Channel.defaultStyleId` wordt nergens gelezen, en
+twee hint-teksten (`voicePrecedenceHint`, `integrationsHint`) staan omgekeerd/onwaar tegenover de
+server. Gemeld, niet gefixt — behalve de twee onjuiste teksten, die horen bij deze opdracht.
