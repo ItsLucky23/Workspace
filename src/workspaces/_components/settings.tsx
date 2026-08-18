@@ -134,7 +134,7 @@ export function FormSection({ title, desc, right, children, className = '' }: {
  *  anything that needs the horizontal room (and what the layout falls back to on phones anyway).
  *  `inherits` is the inheritance note: a layered setting states what it builds on RIGHT THERE, so
  *  a user never has to infer the relationship from a hint elsewhere in the app. */
-export function SettingRow({ label, help, info, infoTitle, infoPoints, control, status, errorText, inherits, stacked = false, className = '' }: {
+export function SettingRow({ label, help, info, infoTitle, infoPoints, control, status, errorText, inherits, stacked = false, className = '', htmlFor }: {
   label: ReactNode;
   help?: ReactNode;
   /** Longer explanation that would crowd the row — goes behind a "?" instead. */
@@ -151,13 +151,22 @@ export function SettingRow({ label, help, info, infoTitle, infoPoints, control, 
   inherits?: ReactNode;
   stacked?: boolean;
   className?: string;
+  //? The id of the control this row labels. Without it the label is a plain <span>, so the field has
+  //? a visible label and no PROGRAMMATIC one: a screen reader announces "edit text" with no name, and
+  //? `getByLabel` cannot find it either. The regression arrived when hand-written <label for> pairs
+  //? were converted to this row and nothing carried the association across — invisible to every check
+  //? except a browser one, which is how it survived a full green suite.
+  htmlFor?: string;
 }) {
+  //? `<label>` only when it points at something. A `for` naming no element is worse than a span:
+  //? assistive tech reports a broken association rather than none.
+  const LabelTag = htmlFor === undefined ? 'span' : 'label';
   return (
     <div className={`px-5 py-4 ${className}`}>
       <div className={`flex ${stacked ? 'flex-col gap-2.5' : 'flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-6'}`}>
         <div className={`min-w-0 ${stacked ? '' : 'sm:max-w-md'}`}>
           <div className={`flex items-center gap-1.5`}>
-            <span className={`text-sm font-semibold text-title`}>{label}</span>
+            <LabelTag {...(htmlFor === undefined ? {} : { htmlFor })} className={`text-sm font-semibold text-title`}>{label}</LabelTag>
             {(info !== undefined || infoPoints !== undefined) && <InfoTip title={infoTitle} body={info} points={infoPoints} align="start" />}
             {status && <SavePill status={status} errorText={errorText} />}
           </div>

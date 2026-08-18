@@ -54,7 +54,10 @@ export default function Pipeline() {
   //? stage" deep-link from Sources actually lands on it. It used to navigate to the page and select
   //? nothing, because the focus request had no consumer here.
   const [selectedId, setSelectedId] = useTrailSegment(0, stages.map((st) => st.id), stageConfigs[0]?.id ?? '');
-  const [tab, setTab] = useTrailSegment(1, STAGE_TAB_IDS, 'general');
+  //? The stage is level 0 and is often implicit (the page opens on the first stage without it being
+  //? in the URL), so the tab writer is told what that resolved to — otherwise a tab click would write
+  //? the tab into the stage slot.
+  const [tab, setTab] = useTrailSegment(1, STAGE_TAB_IDS, 'general', [selectedId]);
 
   const [warnings, setWarnings] = useState<StageWarning[]>([]);
 

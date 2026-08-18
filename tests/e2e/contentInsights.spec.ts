@@ -132,7 +132,8 @@ test('scheduled-posts + content insights render', async ({ authedPage }) => {
   await expect(page.getByRole('heading', { name: 'Content insights' })).toBeVisible();
   // The always-visible at-a-glance stats row (fresh workspace → zero pieces everywhere) + default tab.
   await expect(page.getByText('Pieces', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Performance' })).toBeVisible();
+  //? role="radio": the insights tab picker is a Segmented control (a radiogroup).
+  await expect(page.getByRole('radio', { name: 'Performance' })).toBeVisible();
 });
 
 test('content settings route loads', async ({ authedPage }) => {
@@ -145,6 +146,6 @@ test('content settings route loads', async ({ authedPage }) => {
   await gotoWs(page, '/workspaces/content/settings');
   await expect(page.getByRole('heading', { name: 'Content setup' })).toBeVisible();
   // Tabs render; Brand & styles is the default active tab.
-  await expect(page.getByRole('button', { name: 'Brand & styles' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Channels & publishing' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Brand & styles' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Channels & publishing' })).toBeVisible();
 });

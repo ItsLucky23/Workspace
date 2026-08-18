@@ -26,9 +26,9 @@ test.describe('pipeline', () => {
     await expect(flowStrip).toHaveClass(/ws-no-scrollbar/);
 
     // Stage editor tabs: General / Context & Skills / Model & Effort — everyone-visible, always-on tabs.
-    const generalTab = page.getByRole('button', { name: 'General', exact: true });
-    const contextTab = page.getByRole('button', { name: 'Context & Skills', exact: true });
-    const modelTab = page.getByRole('button', { name: 'Model & Effort', exact: true });
+    const generalTab = page.getByRole('tab', { name: 'General', exact: true });
+    const contextTab = page.getByRole('tab', { name: 'Context & Skills', exact: true });
+    const modelTab = page.getByRole('tab', { name: 'Model & Effort', exact: true });
     await expect(generalTab).toBeVisible();
 
     // The tab strip itself is the same ws-no-scrollbar-guarded row.
@@ -103,9 +103,11 @@ test.describe('terminals / answers / sources / scheduled — teaching empty stat
     await expect(page.getByRole('button', { name: 'Upload spec' })).toBeVisible();
     await expect(page.getByText('Conventional commits')).toBeVisible();
 
-    // Skills / MCP starts genuinely empty — that tab IS the teaching empty state.
-    await page.getByRole('button', { name: /Skills \/ MCP/ }).click();
-    await expect(page.getByText('No skills yet')).toBeVisible();
+    // Skills / MCP starts genuinely empty — that tab IS the teaching empty state. The copy now names
+    // the real dead end rather than just the absence: nothing in the app can create a skill yet, so a
+    // reindex will not fill this list either (ADR 0312's empty-picker pass).
+    await page.getByRole('tab', { name: /Skills \/ MCP/ }).click();
+    await expect(page.getByText(/No skills or MCP tools/)).toBeVisible();
   });
 
   test('scheduled renders its empty tasks teaching state', async ({ authedPage }) => {

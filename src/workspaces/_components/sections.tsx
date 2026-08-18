@@ -33,13 +33,22 @@ export interface PageSection {
 
 /** Read + write one level of the URL trail, validated against the ids that actually exist.
  *  Writing at a level CLEARS the deeper ones: changing tab must not keep the previous tab's section. */
-export function useTrailSegment<T extends string>(depth: number, ids: readonly T[], fallback: T): [T, (id: T) => void] {
+export function useTrailSegment<T extends string>(depth: number, ids: readonly T[], fallback: T, prefix: readonly string[] = []): [T, (id: T) => void] {
   const { trail, setTrail } = useWorkspaces();
   const raw = trail[depth] ?? '';
   //? `find` rather than `includes` so the result carries the caller's union type — a page that models
   //? its tabs as a union keeps it, instead of casting a bare string back (never-cast rule).
   const current = ids.find((id) => id === raw) ?? fallback;
-  const set = (id: T): void => { setTrail([...trail.slice(0, depth), id]); };
+  const set = (id: T): void => {
+    //? Every level ABOVE this one has to be written too, or the value lands at the wrong index and
+    //? the page reads it as something else entirely. On a page whose first level is still implicit —
+    //? the pipeline opens on its first stage without that stage being in the URL — writing depth 1
+    //? against an empty trail produced `/pipeline/<tab>`, which then resolved as a stage id and made
+    //? the click do nothing at all. `prefix` carries the caller's already-resolved values for those
+    //? levels; it wins over the raw URL because it has been validated against the ids that exist.
+    const head = Array.from({ length: depth }, (_, i) => prefix[i] ?? trail[i] ?? '');
+    setTrail([...head, id]);
+  };
   return [current, set];
 }
 

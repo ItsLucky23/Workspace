@@ -17,6 +17,9 @@ import { LocationProvider } from '@luckystack/presence/client';
 
 import { sessionBasedToken } from 'config';
 import { initInstallPrompt } from 'src/workspaces/_functions/installPrompt';
+//? ADR 0312 — which pages carry URL sub-navigation, so their trailing segments resolve to the page
+//? instead of the catch-all. One list, shared with the provider that reads those segments.
+import { TRAIL_ROOTS } from 'src/workspaces/_data/nav';
 
 import ErrorPage from 'src/_components/ErrorPage';
 import { MenuHandlerProvider } from 'src/_components/MenuHandler';
@@ -117,8 +120,15 @@ const getRoutes = (loaders: Record<string, PageLoader>): RouteObject[] => {
     //? even `/login` pull in every page + its deps). The page's `template` and
     //? per-page `middleware` live on the same module, so they resolve inside the
     //? loader.
+    //?
+    //? ADR 0312 — a page that carries URL sub-navigation (`/workspaces/workspace/repository/runtime`)
+    //? needs its trailing segments to resolve to the SAME page. File-based routing registers the exact
+    //? path only, so without this the first tab click landed on the `*` catch-all and rendered the
+    //? error page. Registered before the catch-all, so it wins; the page reads the segments from the
+    //? location, not from params, hence a bare splat.
+    for (const routePath of TRAIL_ROOTS.includes(finalPath.replace(/^\/workspaces\//, '')) ? [finalPath, `${finalPath}/*`] : [finalPath]) {
     routes.push({
-      path: finalPath,
+      path: routePath,
       lazy: async () => {
         const module = await loader();
         //? Auto-register the page's `export const middleware` (if any) against
@@ -146,6 +156,7 @@ const getRoutes = (loaders: Record<string, PageLoader>): RouteObject[] => {
         };
       },
     });
+    }
   }
   return routes;
 };

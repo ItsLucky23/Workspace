@@ -75,7 +75,14 @@ assert(settings.includes('visibleTabs.map((t) => t.id)'), 'settings validates th
 
 const sections = read('src/workspaces/_components/sections.tsx');
 assert(sections.includes('ids.find((id) => id === raw) ?? fallback'), 'an unknown segment falls back rather than rendering nothing');
-assert(sections.includes('setTrail([...trail.slice(0, depth), id])'), 'writing a level CLEARS the deeper ones (a new tab must not keep the old tab\'s section)');
+//? The guard is the SHAPE, not one expression: the setter builds a head of exactly `depth` entries
+//? and appends the new id, so the result is depth+1 long — deeper levels are dropped (a new tab must
+//? not keep the old tab's section) AND the id lands at its own index even when the levels above it
+//? were still implicit. That second half was a real bug: writing depth 1 against an empty trail put
+//? the tab in the stage slot, and a pipeline tab click silently did nothing.
+assert(sections.includes('Array.from({ length: depth }'), 'the setter writes every level above this one, so the id lands at its own index');
+assert(sections.includes('setTrail([...head, id])'), '…and nothing below it, so a new tab drops the old tab\'s section');
+assert(sections.includes('prefix[i] ?? trail[i]'), 'a caller-resolved value wins over the raw URL (it has been validated against the ids that exist)');
 eq(sections.includes('key={index}'), false, 'no index keys in the section index');
 
 report('urlTrail');

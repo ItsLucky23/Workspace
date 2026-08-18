@@ -4992,3 +4992,59 @@ Verder gemeld, buiten scope: het env-tab-geheim toont bolletjes ook zonder inges
 hebben nul call-sites); `run-command`-triggers kunnen nooit draaien; de Terminals-statusdot is altijd
 grijs; `Channel.defaultStyleId` wordt nergens gelezen; het UI-review-formulier meldt succes voor een
 write die niet gebeurt als er geen project actief is.
+
+## 2026-08-18 23:40 — Browserverificatie: twee echte regressies gevangen die geen enkele andere check zag
+
+**Prompt van de gebruiker.** Sluitstuk van dezelfde opdracht: de browserronde, met de servers die de
+gebruiker draaide (backend 127.0.0.1:4787, frontend localhost:5391).
+
+**Wat ik heb gedaan.** De Chrome-extensie was niet verbonden en `agent-browser` staat niet in
+node_modules, dus ik ben op de eigen Playwright-suite van het project gegaan — sterker dan handmatig
+klikken. Eerste run: **10 gefaald, 14 geslaagd**. Na diagnose en fixes: **23 geslaagd, 1 gefaald**
+(die ene is omgevingsafhankelijk).
+
+*Twee echte regressies, allebei onzichtbaar voor tsc/lint/unit:*
+
+1. **Sub-navigatie in de URL leidde naar de foutpagina.** File-based routing registreert alleen het
+   exacte pad, met een `*` die `ErrorPage` rendert. `/workspaces/workspace/gitlab` matchte dus niets:
+   de eerste tabklik op de workspace-instellingen liet de hele pagina crashen met "Something went
+   wrong". Gefixt in `src/main.tsx` — een pagina in `TRAIL_ROOTS` registreert nu ook een splat-variant
+   naar dezelfde lazy loader, vóór de catch-all. Dit was een gat in ADR 0312 dat alleen een browser
+   kon vinden.
+
+2. **`useTrailSegment` schreef naar de verkeerde index als een hoger niveau nog impliciet was.** De
+   pipeline opent op de eerste stage zónder dat die stage in de URL staat; een tabklik schreef dan
+   `[tab]` in plaats van `[stageId, tab]`, waarna 'context' als stage-id werd gelezen en terugviel —
+   de klik deed stil niets. De hook krijgt nu een `prefix` met de al opgeloste waarden van de niveaus
+   erboven; de pipeline geeft `[selectedId]` mee.
+
+*Eén echte toegankelijkheidsregressie uit de ronde van gisteren.* `SettingRow` renderde zijn label als
+`<span>`, dus elk veld dat via die rij loopt had wél een zichtbaar label en géén programmatisch label
+— een schermlezer meldt "edit text" zonder naam. Zichtbaar op `/settings`, waar de velden een `id`
+hebben waar niets naar wees. `SettingRow` heeft nu een optionele `htmlFor` die een echte `<label>`
+rendert; de accountpagina koppelt naam + de drie wachtwoordvelden.
+
+*Negen spec-selectors bijgewerkt, niet de code.* De toegankelijkheidsronde van gisteren maakte van
+`Tabs` een echte `tablist`/`tab` en van `Segmented` een `radiogroup`/`radio`. De specs zochten nog op
+`role="button"`. Het component werd correct, dus de selector volgt: `getByRole('tab')` /
+`getByRole('radio')`. Idem de Modules-toggle, die op een interne CSS-klasse testte en nu op
+`aria-checked` test — een klassenaam is niet wat een gebruiker of schermlezer waarneemt.
+
+*Eén copy-assertie bijgewerkt* omdat de tekst bewust beter is geworden: de Skills-tab op Sources zegt
+nu dat er nergens in de app een skill te maken is, in plaats van alleen "No skills yet".
+
+**Bestanden geraakt.** `src/main.tsx`, `src/workspaces/_components/sections.tsx`,
+`src/workspaces/_components/settings.tsx`, `src/workspaces/develop/pipeline/page.tsx`,
+`src/settings/page.tsx`, 4 e2e-specs, `tests/unit/urlTrail.test.mts`.
+
+**Notities.** `tsc` ✅ `lint` ✅ `ai:lint` ✅ `build` ✅ `unit 122/122` ✅ `playwright 23/24` ✅.
+
+De resterende Playwright-fout is GEEN regressie: Docker Desktop draait niet op deze machine, dus de
+Terminals-pagina toont correct de Docker-melding ("Docker isn't running — containers, terminals,
+previews, CI and deploys all need a Docker daemon") in plaats van de repo-melding die de spec
+verwacht. De spec veronderstelt een draaiende Docker; die stilzwijgend versoepelen zou een echte
+regressie later maskeren, dus hij blijft zoals hij is.
+
+Mijn eigen structurele bewaker in `urlTrail.test.mts` sloeg aan op de hook-wijziging en is verbreed
+naar de VORM (een head van precies `depth` plus de nieuwe id) in plaats van één letterlijke
+uitdrukking — hetzelfde patroon als bij de navStructure-guard.

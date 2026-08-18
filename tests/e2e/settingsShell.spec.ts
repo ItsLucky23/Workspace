@@ -46,14 +46,17 @@ test.describe('settingsShell', () => {
 
     // The full admin tab strip (creator is Owner -> isAdmin -> all admin tabs) + the dev-lane
     // tabs (Repository/Git/Workflow) since the Agency pack turns Development on.
+    //? role="tab", not "button": the tab strip is a real tablist (ADR 0312's accessibility pass).
+    //? These assertions read as button-shaped because they predate that; the strip is the thing that
+    //? became correct, so the selector follows it.
     for (const label of ['Members', 'Permissions', 'Modules', 'AI', 'Env', 'Integrations', 'Invites', 'Audit', 'Repository', 'Workflow', 'Danger zone']) {
-      await expect(page.getByRole('button', { name: label, exact: true })).toBeVisible();
+      await expect(page.getByRole('tab', { name: label, exact: true })).toBeVisible();
     }
     // The Git tab specifically must read "Git", never "GitLab" (owner decision — forge is
     // provider-agnostic since GitHub support landed).
-    const gitTab = page.getByRole('button', { name: 'Git', exact: true });
+    const gitTab = page.getByRole('tab', { name: 'Git', exact: true });
     await expect(gitTab).toBeVisible();
-    await expect(page.getByRole('button', { name: 'GitLab', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('tab', { name: 'GitLab', exact: true })).toHaveCount(0);
 
     // Click it: the panel underneath renders its own provider picker (unique text keeps this
     // assertion from colliding with the tab button that also happens to read "Git").
@@ -69,20 +72,20 @@ test.describe('settingsShell', () => {
 
     await wsSwitcherButtons(page, wsName).click();
     await page.getByRole('button', { name: 'Manage members' }).click();
-    await page.getByRole('button', { name: 'Modules', exact: true }).click();
+    await page.getByRole('tab', { name: 'Modules', exact: true }).click();
 
     // The Documents module resolves to exactly one section ("documents"), so toggling it off
     // is an unambiguous, single-section, still->=1-section-left change.
     const docsRow = page.getByTestId('ws-workspace-section-documents');
     await expect(docsRow).toBeVisible();
-    const docsToggle = docsRow.getByRole('button');
-    // The Toggle primitive puts the on/off styling on its inner pill span (`w-9 h-5
-    // rounded-full`), not on the button element itself.
-    const docsTogglePill = docsToggle.locator('span.rounded-full').first();
+    //? The toggle is a `role="switch"`, so assert its ACCESSIBLE state rather than the class on an
+    //? inner pill span. The old assertion tested styling internals and broke the moment the primitive
+    //? gained a proper switch role — and a class name is not what a user or a screen reader perceives.
+    const docsToggle = docsRow.getByRole('switch');
     // Toggle starts ON (Agency pack enables all 4 modules).
-    await expect(docsTogglePill).toHaveClass(/bg-primary\b/);
+    await expect(docsToggle).toHaveAttribute('aria-checked', 'true');
     await docsToggle.click();
-    await expect(docsTogglePill).not.toHaveClass(/bg-primary\b/);
+    await expect(docsToggle).toHaveAttribute('aria-checked', 'false');
 
     // The [save-sections] control-op fires over the existing socket (B-23 single-writer
     // Conductor) — a `page.reload()` issued before that request's frame is actually flushed can
@@ -101,9 +104,9 @@ test.describe('settingsShell', () => {
     await expectOnboarded(page);
     await wsSwitcherButtons(page, wsName).click();
     await page.getByRole('button', { name: 'Manage members' }).click();
-    await page.getByRole('button', { name: 'Modules', exact: true }).click();
-    const docsTogglePillAfterReload = page.getByTestId('ws-workspace-section-documents').getByRole('button').locator('span.rounded-full').first();
-    await expect(docsTogglePillAfterReload).not.toHaveClass(/bg-primary\b/);
+    await page.getByRole('tab', { name: 'Modules', exact: true }).click();
+    const docsToggleAfterReload = page.getByTestId('ws-workspace-section-documents').getByRole('switch');
+    await expect(docsToggleAfterReload).toHaveAttribute('aria-checked', 'false');
   });
 
   test('insights: Activity, Usage and Knowledge each render their own page', async ({ authedPage }) => {

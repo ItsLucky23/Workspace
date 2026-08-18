@@ -350,6 +350,7 @@ export default function Home() {
 
           <SettingRow
             label={translate({ key: 'settings.name' })}
+            htmlFor="settings-name"
             status={profileStatus}
             control={<input id="settings-name" className={`${fieldCls} w-full`} value={newName} onChange={(e) => { setNewName(e.target.value); }} />}
           />
@@ -434,16 +435,19 @@ export default function Home() {
               <SettingRow
                 stacked
                 label={translate({ key: 'settings.currentPassword' })}
+                htmlFor="current-pw"
                 control={<input id="current-pw" type="password" autoComplete="current-password" ref={passwordCurrentRef} className={`${fieldCls} w-full`} required />}
               />
               <SettingRow
                 stacked
                 label={translate({ key: 'settings.newPassword' })}
+                htmlFor="new-pw"
                 control={<input id="new-pw" type="password" autoComplete="new-password" ref={passwordNewRef} className={`${fieldCls} w-full`} required />}
               />
               <SettingRow
                 stacked
                 label={translate({ key: 'settings.confirmNewPassword' })}
+                htmlFor="confirm-pw"
                 control={<input id="confirm-pw" type="password" autoComplete="new-password" ref={passwordConfirmRef} className={`${fieldCls} w-full`} required />}
               />
               <div className="px-5 py-4">

@@ -110,22 +110,22 @@ test.describe('ticket page', () => {
 
     // A brand-new ticket has no linked files/branch/stage-processes yet, so every non-Overview
     // tab lands on a deterministic, data-independent empty state — no seeded fixtures needed.
-    await tabs.getByRole('button', { name: 'Code', exact: true }).click();
+    await tabs.getByRole('tab', { name:'Code', exact: true }).click();
     await expect(page.getByText('No file changes yet')).toBeVisible();
 
-    await tabs.getByRole('button', { name: 'Terminal', exact: true }).click();
+    await tabs.getByRole('tab', { name:'Terminal', exact: true }).click();
     await expect(page.getByText('No terminal running')).toBeVisible();
 
-    await tabs.getByRole('button', { name: 'Review', exact: true }).click();
+    await tabs.getByRole('tab', { name:'Review', exact: true }).click();
     await expect(page.getByText('No branch yet')).toBeVisible();
 
-    await tabs.getByRole('button', { name: 'Activity', exact: true }).click();
+    await tabs.getByRole('tab', { name:'Activity', exact: true }).click();
     // The create event may arrive in the snapshot before or after navigation; these disclosures are
     // the stable Activity-panel contract regardless of whether its feed is empty or already populated.
     await expect(page.getByRole('button', { name: 'Related tickets' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Stage history' })).toBeVisible();
 
-    await tabs.getByRole('button', { name: 'Overview', exact: true }).click();
+    await tabs.getByRole('tab', { name:'Overview', exact: true }).click();
     await expect(page.getByText('Description', { exact: true })).toBeVisible();
   });
 });
@@ -151,11 +151,12 @@ test.describe('backlog', () => {
     // No AI turn has ever run in this fresh workspace, so no ticket can be 'needs-input' —
     // filtering to it deterministically empties the list (no live-AI dependency, per the
     // no-AI-chat guard on this suite).
-    await page.getByRole('button', { name: 'Needs input', exact: true }).click();
+    //? role="radio": the quick filters are a Segmented control (a radiogroup), not loose buttons.
+    await page.getByRole('radio', { name: 'Needs input', exact: true }).click();
     await expect(page.getByText('No tickets match')).toBeVisible();
     await expect(rows).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'All', exact: true }).click();
+    await page.getByRole('radio', { name: 'All', exact: true }).click();
     await expect(rows.first()).toBeVisible();
     await expect(rows).toHaveCount(totalCount);
   });
