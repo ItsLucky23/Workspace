@@ -13,6 +13,7 @@ import * as pty from 'node-pty';
 import type { PrismaClient } from '@prisma/client';
 import { tryCatch, tryCatchSync, getPrismaClient } from '@luckystack/core';
 import { docker, DOCKER_BIN, isWorkspacesContainer, launchTicketContainer, teardownTicketContainer, type ContainerInfo, type DockerResult } from '../container/runtime';
+import { startProcesses } from '../container/runtimeProcesses';
 import { resolveProjectBaseImage } from '../container/baseImages';
 import { workspaceContainerContext } from '../container/composeEngine';
 import { isTestStage } from '../ci/gate';
@@ -170,24 +171,10 @@ export async function materializeStageConfig(container: string, artifacts: Stage
 //? /work volume so the terminal tab can show what it actually did. Best-effort: a stage must still run
 //? when a user's dev-server command is wrong, so a failure is logged, not fatal.
 async function startStageProcesses(container: string, processes: StageProcessCfg[]): Promise<void> {
-  for (const proc of processes) {
-    const commands = proc.commands.filter((c) => c.trim().length > 0);
-    if (commands.length === 0) continue;
-    //? Shell-quoting: the name reaches a file path and the values reach `export`, so both are
-    //? single-quoted with embedded quotes escaped rather than interpolated raw.
-    const safeName = proc.name.replaceAll(/[^a-zA-Z0-9._-]/g, '-').slice(0, 40) || 'process';
-    const cwd = quoteForShell(proc.cwd.trim().length > 0 ? proc.cwd.trim() : '/work');
-    const exports = proc.env.map((e) => `export ${e.key.replaceAll(/[^A-Za-z0-9_]/g, '')}=${quoteForShell(e.value)};`).join(' ');
-    const script = `cd ${cwd} 2>/dev/null || cd /work; ${exports} ${commands.join(' && ')}`;
-    const logPath = `/work/.claude/process-${safeName}.log`;
-    const [error, result] = await tryCatch(() => docker(['exec', '-d', container, 'sh', '-lc', `mkdir -p /work/.claude; { ${script}; } >> ${logPath} 2>&1`]));
-    if (error || result?.code !== 0) console.warn(`[stage] process '${proc.name}' failed to start in ${container}`);
-  }
-}
-
-//? Single-quote a value for `sh -lc`, closing and reopening around embedded quotes.
-function quoteForShell(value: string): string {
-  return `'${value.replaceAll("'", String.raw`'''`)}'`;
+  //? ADR 0317 — one implementation, shared with the project runtime. The stage list stays as the
+  //? per-stage EXTRA (a test stage that also wants a fixture server); the app's own processes now live
+  //? on the project, which is where a user looks for them and where they stop changing per stage.
+  await startProcesses(container, processes);
 }
 
 //? Copy the RO-projected subscription creds into a writable, agent-owned ~/.claude (0600)

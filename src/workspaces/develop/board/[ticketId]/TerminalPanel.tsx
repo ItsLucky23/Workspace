@@ -1,7 +1,13 @@
-//? Workspaces — the ticket "Terminal" tab. Which terminals exist comes from the
-//? ticket's CURRENT stage pipeline config (`ctx.stageConfigs[stageId].processes`),
-//? not a per-ticket terminal catalog. A stage with no configured processes (e.g.
-//? `unrefined` human-triage) has NO terminal — the empty state teaches exactly that.
+//? Workspaces — the ticket "Terminal" tab: one tab per process running in this ticket's container.
+//?
+//? ADR 0317 — the tabs come from TWO lists, in this order:
+//?   1. the PROJECT's runtime processes — what it takes to run this app (frontend, backend, a tunnel).
+//?      These are the same for every ticket and every stage, because running the app is.
+//?   2. the ticket's CURRENT stage processes — the per-stage extra (a test stage's fixture server).
+//? Before 0317 only (2) existed, so the tabs changed as a ticket moved and were empty in every stage
+//? of a real pipeline: the runtime lived in a single `devCommand` string that had no terminal at all.
+//? Deduped by NAME, project-first, because the name is what the tab is called and what the process log
+//? on the /work volume is keyed by — two tabs with one name would read the same log twice.
 
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 
@@ -23,7 +29,9 @@ export default function TerminalPanel({ ticketId, stageId }: { ticketId: string;
   const translate = useTranslator();
   const ctx = useWorkspaces();
   const stageCfg = ctx.stageConfigs.find((s) => s.id === stageId);
-  const processes = stageCfg?.processes ?? [];
+  const runProcesses = ctx.activeProject?.runProcesses ?? [];
+  const stageProcesses = (stageCfg?.processes ?? []).filter((p) => !runProcesses.some((r) => r.name === p.name));
+  const processes = [...runProcesses, ...stageProcesses];
   //? #20/relationship-fix — the inline "live agent" tail (page.tsx TicketControls) and this tab's
   //? per-process PTYs are the SAME underlying observability: `agentTerm` is a throttled, read-only tee of
   //? the container's `claude` PTY (see docs/07_ORCHESTRATOR.md §A step 7). Rather than leave a user to guess

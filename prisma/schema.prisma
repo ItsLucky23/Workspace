@@ -271,7 +271,15 @@ model Project {
   baseImageRef      String?                                    // Q-CT-IMAGESEL — L2 per-project image selector (default = framework base, P2)
   stack             String?                                    // S1/E1 — 'node'|'python'|'go'|'rust'|'java'|'php'|'dotnet'|'ruby'|'generic' → the L1 base image when no baseImageRef (any-stack); null = node
   dockerfilePath    String?                                    // optional per-project Dockerfile
-  devCommand        String?                                    // the command that starts the app's dev server in the ticket container (preview flow); default = package.json scripts.dev
+  devCommand        String?                                    // LEGACY single dev command (still the fallback when runProcesses is empty); default = package.json scripts.dev
+  //? ADR 0317 — running an app is rarely ONE command (a frontend AND a backend, plus an ssh tunnel or a
+  //? worker). Each entry starts in the ticket's container and gets its own terminal tab. Reuses the
+  //? StageProcessCfg shape a pipeline stage already uses, so there is one notion of "a process" here.
+  //? Empty ⇒ fall back to `devCommand` → the stack default, i.e. every existing project is unchanged.
+  runProcesses      StageProcessCfg[]
+  //? Which of `runProcesses` binds the preview port and gets the preview URL. The others just run.
+  //? Null / unknown ⇒ the first entry.
+  previewProcessId  String?
   prodCommand       String?                                    // D1 — the production serve command for prod/demo envs (build then serve); default = the stack's prod command
   allowCustomBase   Boolean  @default(false)                   // E2 — expert opt-in: allow an arbitrary Dockerfile FROM (agent/editor features may be degraded)
   createdAt         DateTime     @default(now())

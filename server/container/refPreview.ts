@@ -7,7 +7,8 @@
 import { getPrismaClient } from '@luckystack/core';
 
 import { launchTicketContainer, docker, isSafeRef, refSlug } from './runtime';
-import { resolveProjectBaseImage, resolveDevCommand } from './baseImages';
+import { resolveProjectBaseImage } from './baseImages';
+import { resolveRuntime, startProcesses } from './runtimeProcesses';
 import { workspaceContainerContext } from './composeEngine';
 import { ensureWorkerProxyNetwork } from './egress';
 import { waitForContainerReady } from './health';
@@ -25,7 +26,7 @@ export async function openRefPreview(workspaceId: string, ticketKey: string, ref
   const prisma = getPrismaClient();
   const ticket = await prisma.ticket.findFirst({ where: { workspaceId, key: ticketKey }, select: { branch: true, projectId: true, serviceId: true } });
   if (!ticket?.branch) return { ok: false, error: 'preview.notActivated' };
-  const project = await prisma.project.findFirst({ where: { workspaceId, id: ticket.projectId }, select: { baseImageRef: true, stack: true, devCommand: true } });
+  const project = await prisma.project.findFirst({ where: { workspaceId, id: ticket.projectId }, select: { baseImageRef: true, stack: true, devCommand: true, runProcesses: true, previewProcessId: true } });
   //? Same per-unit resolution as the branch preview: a ref preview of a service ticket must boot THAT
   //? service, not the project root, or it shows the reviewer something other than what they asked for.
   const service = ticket.serviceId === null
@@ -41,9 +42,14 @@ export async function openRefPreview(workspaceId: string, ticketKey: string, ref
   if (!(await ensureWorkerProxyNetwork(NET))) return { ok: false, error: 'egress.unsafeProxyNetwork' };
   await docker(['network', 'connect', NET, container.name]);
 
-  //? S3 — the SERVICE's devCommand wins, then the project's, then its stack default.
-  const devCmd = resolveDevCommand({ devCommand: service?.devCommand ?? project?.devCommand ?? null, stack: project?.stack ?? null });
-  await docker(['exec', '-d', '-w', workdirOrRoot(service?.path), '-e', 'HOST=0.0.0.0', '-e', `PORT=${String(PREVIEW_PORT)}`, container.name, 'sh', '-lc', devCmd]);
+  //? ADR 0317 — the same multi-process runtime the branch preview starts, so a ref preview of an app
+  //? that needs a backend is not silently half an app.
+  const runtime = resolveRuntime(project, service);
+  await startProcesses(container.name, runtime.processes, {
+    baseDir: workdirOrRoot(service?.path),
+    previewId: runtime.previewId,
+    previewEnv: { HOST: '0.0.0.0', PORT: String(PREVIEW_PORT) },
+  });
 
   const ready = await waitForContainerReady(container.name, PREVIEW_PORT);
   if (!ready) return { ok: false, error: 'preview.notReady' };

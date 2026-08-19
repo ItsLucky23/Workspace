@@ -2,8 +2,8 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 445,
-    "edges": 653,
+    "nodes": 446,
+    "edges": 658,
     "symbols": 840,
     "callEdges": 275
   },
@@ -2230,6 +2230,11 @@
     },
     {
       "id": "workspaces/workspace/repoIntrospection.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/workspace/runProcesses.tsx",
       "kind": "other",
       "route": null
     }
@@ -4836,6 +4841,10 @@
       "to": "workspaces/workspace/repoIntrospection.tsx"
     },
     {
+      "from": "workspaces/workspace/page.tsx",
+      "to": "workspaces/workspace/runProcesses.tsx"
+    },
+    {
       "from": "workspaces/workspace/repoIntrospection.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
@@ -4846,6 +4855,22 @@
     {
       "from": "workspaces/workspace/repoIntrospection.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/workspace/runProcesses.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/workspace/runProcesses.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/workspace/runProcesses.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/workspace/runProcesses.tsx",
+      "to": "workspaces/workspace/repoIntrospection.tsx"
     }
   ],
   "blastRadius": {
@@ -4935,7 +4960,8 @@
       "workspaces/insights/usage/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/page.tsx",
-      "workspaces/workspace/repoIntrospection.tsx"
+      "workspaces/workspace/repoIntrospection.tsx",
+      "workspaces/workspace/runProcesses.tsx"
     ],
     "_components/ConfirmMenu.tsx": [
       "_components/MenuHandler.tsx",
@@ -5235,7 +5261,8 @@
       "workspaces/insights/usage/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/page.tsx",
-      "workspaces/workspace/repoIntrospection.tsx"
+      "workspaces/workspace/repoIntrospection.tsx",
+      "workspaces/workspace/runProcesses.tsx"
     ],
     "_components/inputs/floatingLayer.tsx": [
       "_components/inputs/DatePicker.tsx",
@@ -5323,7 +5350,8 @@
       "workspaces/insights/usage/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/page.tsx",
-      "workspaces/workspace/repoIntrospection.tsx"
+      "workspaces/workspace/repoIntrospection.tsx",
+      "workspaces/workspace/runProcesses.tsx"
     ],
     "_components/inputs/TextField.tsx": [
       "_components/inputs/DatePicker.tsx",
@@ -5411,7 +5439,8 @@
       "workspaces/insights/usage/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/page.tsx",
-      "workspaces/workspace/repoIntrospection.tsx"
+      "workspaces/workspace/repoIntrospection.tsx",
+      "workspaces/workspace/runProcesses.tsx"
     ],
     "_components/LoginForm.tsx": [
       "login/page.tsx",
@@ -5651,7 +5680,8 @@
       "workspaces/insights/usage/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/page.tsx",
-      "workspaces/workspace/repoIntrospection.tsx"
+      "workspaces/workspace/repoIntrospection.tsx",
+      "workspaces/workspace/runProcesses.tsx"
     ],
     "workspaces/_components/ImageEditor.tsx": [
       "workspaces/content/[pieceId]/page.tsx"
@@ -5765,7 +5795,8 @@
       "workspaces/insights/usage/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/page.tsx",
-      "workspaces/workspace/repoIntrospection.tsx"
+      "workspaces/workspace/repoIntrospection.tsx",
+      "workspaces/workspace/runProcesses.tsx"
     ],
     "workspaces/_components/MrReviewPanel.tsx": [
       "workspaces/develop/board/[ticketId]/page.tsx"
@@ -5849,7 +5880,8 @@
       "workspaces/insights/usage/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/page.tsx",
-      "workspaces/workspace/repoIntrospection.tsx"
+      "workspaces/workspace/repoIntrospection.tsx",
+      "workspaces/workspace/runProcesses.tsx"
     ],
     "workspaces/_components/SearchPalette.tsx": [
       "_components/templates/TemplateProvider.tsx",
@@ -6112,7 +6144,8 @@
       "workspaces/insights/usage/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/page.tsx",
-      "workspaces/workspace/repoIntrospection.tsx"
+      "workspaces/workspace/repoIntrospection.tsx",
+      "workspaces/workspace/runProcesses.tsx"
     ],
     "workspaces/_data/uiReviewTaxonomy.ts": [
       "workspaces/develop/designer/page.tsx"
@@ -6238,7 +6271,8 @@
       "workspaces/insights/usage/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/page.tsx",
-      "workspaces/workspace/repoIntrospection.tsx"
+      "workspaces/workspace/repoIntrospection.tsx",
+      "workspaces/workspace/runProcesses.tsx"
     ],
     "workspaces/_functions/imageCrop.ts": [
       "workspaces/_components/ImageEditor.tsx",
@@ -6382,7 +6416,8 @@
       "workspaces/insights/usage/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/page.tsx",
-      "workspaces/workspace/repoIntrospection.tsx"
+      "workspaces/workspace/repoIntrospection.tsx",
+      "workspaces/workspace/runProcesses.tsx"
     ],
     "workspaces/_shell/WorkspacesProvider.tsx": [
       "_components/templates/TemplateProvider.tsx",
@@ -6630,6 +6665,10 @@
       "workspaces/develop/terminals/page.tsx"
     ],
     "workspaces/workspace/repoIntrospection.tsx": [
+      "workspaces/workspace/page.tsx",
+      "workspaces/workspace/runProcesses.tsx"
+    ],
+    "workspaces/workspace/runProcesses.tsx": [
       "workspaces/workspace/page.tsx"
     ]
   },
@@ -6637,61 +6676,61 @@
     {
       "id": "workspaces/_functions/controlApi.ts",
       "kind": "other",
-      "dependents": 107,
+      "dependents": 108,
       "directDependents": 9
     },
     {
       "id": "workspaces/_data/types.ts",
       "kind": "other",
-      "dependents": 99,
-      "directDependents": 52
+      "dependents": 100,
+      "directDependents": 53
     },
     {
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
-      "dependents": 89,
-      "directDependents": 78
+      "dependents": 90,
+      "directDependents": 79
     },
     {
       "id": "workspaces/_components/motion.tsx",
       "kind": "other",
-      "dependents": 85,
+      "dependents": 86,
       "directDependents": 26
     },
     {
       "id": "_components/inputs/fieldShell.tsx",
       "kind": "component",
-      "dependents": 83,
+      "dependents": 84,
       "directDependents": 2
     },
     {
       "id": "_components/inputs/Popover.tsx",
       "kind": "component",
-      "dependents": 81,
+      "dependents": 82,
       "directDependents": 2
     },
     {
       "id": "_components/inputs/Toggle.tsx",
       "kind": "component",
-      "dependents": 81,
+      "dependents": 82,
       "directDependents": 2
     },
     {
       "id": "_components/Avatar.tsx",
       "kind": "component",
-      "dependents": 80,
+      "dependents": 81,
       "directDependents": 2
     },
     {
       "id": "workspaces/_components/primitives.tsx",
       "kind": "other",
-      "dependents": 79,
-      "directDependents": 75
+      "dependents": 80,
+      "directDependents": 76
     },
     {
       "id": "workspaces/_shell/WorkspacesContext.tsx",
       "kind": "other",
-      "dependents": 69,
+      "dependents": 70,
       "directDependents": 61
     },
     {

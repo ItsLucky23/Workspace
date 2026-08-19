@@ -639,6 +639,9 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
           //? ADR 0313 — the runtime commands the settings form edits. Absent until now, so that form
           //? could never show what was saved.
           ...(p.devCommand ? { devCommand: p.devCommand } : {}),
+          //? ADR 0317 — the runtime process list + which one owns the preview URL.
+          runProcesses: p.runProcesses.map((proc) => ({ id: proc.id, name: proc.name, cwd: proc.cwd, env: proc.env.map((e) => ({ key: e.key, value: e.value })), commands: proc.commands })),
+          ...(p.previewProcessId ? { previewProcessId: p.previewProcessId } : {}),
           ...(p.prodCommand ? { prodCommand: p.prodCommand } : {}),
           ...(p.allowCustomBase ? { allowCustomBase: true } : {}),
         };

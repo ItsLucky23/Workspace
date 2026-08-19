@@ -5186,3 +5186,53 @@ Dat staat op zijn eigen pagina en stapelt niet met iets anders, dus buiten de sc
 
 **Verificatie.** `tsc` ✅ · `lint` ✅ · `ai:lint` ✅ · `build` ✅ · unit **122/122** · Playwright
 **25/25** (was 24 — de nieuwe onboarding-spec erbij).
+
+## 2026-08-19 — De runtime is een lijst processen, geen één commando
+
+**Prompt van de gebruiker.** "Voor mijn gevoel kunnen we maar 1 command definiëren per environment,
+maar voor mij is de frontend runnen 2 commands: 1 voor de frontend en 1 voor de backend, en wie weet
+zijn er nog meer nodig om bijvoorbeeld een ssh-tunnel te openen." Na doorvragen: "of alles met 1
+commando of meerdere, en iedere command die je toevoegt moet een eigen terminal worden per ticket."
+
+**Wat ik heb gevonden.** Het gevoel klopte: `Project.devCommand` is één nullable string, met een
+optionele `Service.devCommand`-override en een stack-default eronder. `previewSession.ts` en
+`refPreview.ts` deden allebei één `docker exec -d … sh -lc <devCmd>`.
+
+Maar het model dat de gebruiker beschrijft BESTOND al, een laag hoger: `PipelineStage.processes`
+(`{id,name,cwd,env[],commands[]}`), gestart door `startStageProcesses` in de container van het ticket,
+met per proces een log op `/work/.claude/` — en `TerminalPanel` rendert daar één terminal-tab per
+proces van. Stage-runner, preview en editor gaan allemaal via `launchTicketContainer`, dus het is
+dezelfde container. Het hing alleen aan de STAGE in plaats van aan het project: de set wisselt dus
+terwijl een ticket doorschuift, en `createDefaultPipeline` seedt `processes: []` voor élke stage, dus
+in een echte (niet-demo) workspace was hij overal leeg. Twee halve antwoorden op "welke commando's
+starten mijn app", allebei op een plek waar je niet kijkt.
+
+**Wat ik heb gebouwd** (ADR 0317).
+
+- `Project.runProcesses` (hergebruikt het `StageProcessCfg`-composite type) + `previewProcessId`.
+- `server/container/runtimeProcesses.ts`: één gedeelde `startProcesses`, waar `startStageProcesses` nu
+  ook doorheen loopt. HOST/PORT gaan ALLEEN naar het preview-proces — een worker of tunnel vertellen
+  dat hij op de frontend-poort moet luisteren is hoe je twee processen om één socket laat vechten.
+- Preview + ref-preview starten nu alles; alleen het preview-proces wordt geprobed en geproxied.
+- Repository → Runtime: het ene tekstveld is een lijst geworden (naam, commando, werkmap, radio voor
+  "preview-URL"), met de repo-scriptkiezer per rij (alleen bij de rij die je bewerkt).
+- Ticket-terminals tonen nu project-processen + stage-processen, gededupliceerd op naam.
+- Terugwaarts compatibel: lege lijst → `devCommand` → stack-default, precies de oude resolutie. De
+  editor seedt zichzelf uit het oude commando en houdt `devCommand` gelijk aan het preview-proces,
+  want deploy leest dat veld nog voor een dev-omgeving.
+- De "How this runs"-uitleg zei letterlijk "not a separate terminal per command" — dat was precies
+  omgekeerd geworden en is herschreven (4 talen). 3 verweesde keys verwijderd.
+
+**Bewust NIET gedaan.** Een eigen subdomein per proces (de gebruiker koos dat niet; het routemodel
+kan het al via het `refPreviewRoute`-patroon, dus het staat open). En géén `runProcesses` op `Service`:
+er is geen scherm om die te vullen, en schema dat geen scherm kan vullen is hoe je settings krijgt die
+stilzwijgend niets doen. De bestaande per-service single-command-override blijft exact zoals hij was.
+
+**Verificatie.** `tsc` ✅ · `lint` ✅ · `ai:lint` ✅ · `build` ✅ · unit **123/123** (nieuw:
+`runtimeProcesses.test.mts`, 15 asserties op de resolutie) · sweep **450/450** · Playwright **25/25**.
+De lijst-EDITOR heeft bewust geen Playwright-dekking: de Repository-tab toont alleen het koppelformulier
+tot er een repo gekoppeld is, en dat vereist een echte server-side clone die de e2e-harness niet kan
+maken (`excluded:infra`, staat in de ADR).
+
+**Actie voor de developer.** `prisma generate` is al gedraaid, maar de engine-DLL kon niet vervangen
+worden omdat de backend draaide. Herstart de backend voordat je dit test.

@@ -1272,16 +1272,14 @@
       "composeNote": "Compose-bestanden worden niet vanzelf gestart. Maak er een service-stack van bij de projectinstellingen.",
       "pickHint": "Klik een script om het in te vullen — het wordt '{{prefix}} <naam>'.",
       "howItRunsTitle": "Hoe dit draait",
-      "howItRunsBody": "Er draait één dev-commando per project, in de preview-container van het ticket zelf — dus niet een aparte terminal per commando. Zo wordt bepaald welk commando dat is:",
-      "orderService": "Het commando van de service",
-      "orderServiceDesc": "Alleen als het ticket aan een monorepo-onderdeel hangt.",
-      "orderProject": "Het commando van dit project",
-      "orderProjectDesc": "Wat je hieronder invult.",
+      "howItRunsBody": "Elk commando hieronder start in de eigen container van dat ticket, elk met een eigen terminal-tab. Alleen die met “preview-URL” wordt op zijn poort geprobed en gepubliceerd. Zo wordt de lijst bepaald:",
+      "orderService": "De eigen lijst van de service",
+      "orderServiceDesc": "Alleen als het ticket bij een monorepo-onderdeel hoort. Die vervangt de projectlijst, hij vult hem niet aan.",
+      "orderProject": "De lijst van dit project",
+      "orderProjectDesc": "Wat je hieronder instelt.",
       "orderStack": "De standaard van de stack",
-      "orderStackDesc": "Wordt gebruikt zodra de twee hierboven leeg zijn.",
+      "orderStackDesc": "Eén commando, zodra beide lijsten hierboven leeg zijn.",
       "stackHelp": "Bepaalt het basis-image en de standaardcommando's als je hieronder niets invult.",
-      "devCommandLabel": "Dev-commando",
-      "devCommandHelp": "Start de app in de preview-container van een ticket. Moet luisteren op 0.0.0.0.",
       "prodCommandLabel": "Productie-commando",
       "prodCommandHelp": "Gebruikt bij een deploy naar een omgeving, na de build.",
       "customBaseHelp": "Sta een eigen FROM in de Dockerfile toe. Agent- en editorfuncties kunnen dan minder goed werken.",
@@ -1412,7 +1410,6 @@
       "stack": "Stack",
       "prodCommandPlaceholder": "prod-serveercommando (optioneel; standaard per stack)",
       "allowCustomBase": "Expert: eigen Dockerfile-base toestaan (agent/editor-functies kunnen beperkt zijn)",
-      "devCommandPlaceholder": "npm run dev",
       "devCommandSave": "Commando opslaan",
       "devCommandSaving": "Opslaan…",
       "devCommandSaved": "Dev-commando opgeslagen",
@@ -3498,6 +3495,17 @@
       "moreOpen": "+{{n}} meer",
       "staleTooltip": "Meer dan 2 uur wachtend — de pipeline zit hierop vast.",
       "sameAsTicket": "Hier antwoorden doet precies hetzelfde als antwoorden op het ticket."
+    },
+    "runtime": {
+      "processesLabel": "Wat start deze app",
+      "processesHelp": "Eén regel per commando. Ze starten samen in de container van het ticket, elk met een eigen terminal-tab. Kies welke de preview-URL krijgt.",
+      "namePlaceholder": "naam (bijv. frontend)",
+      "commandPlaceholder": "npm run dev",
+      "cwdPlaceholder": "werkmap (leeg = hoofdmap van de repo)",
+      "isPreview": "preview-URL",
+      "addProcess": "Commando toevoegen",
+      "removeProcess": "Dit commando verwijderen",
+      "terminalHint": "Elke regel krijgt een eigen terminal op elk ticket."
     }
   }
 }

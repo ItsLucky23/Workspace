@@ -1,6 +1,6 @@
 {
-  "hash": "647a58d6a9be1c53",
-  "chunkCount": 251,
+  "hash": "225337a3eef8927c",
+  "chunkCount": 252,
   "chunks": [
     {
       "id": "cap-001",
@@ -1507,6 +1507,12 @@
       "kind": "decision",
       "title": "One first-run surface on the board, and it collapses rather than disappears",
       "text": "ADR 0316: One first-run surface on the board, and it collapses rather than disappears. The owner went to test something on `/develop/board` and instead found two separate onboarding surfaces stacked at the top of the page, then permanently lost one of them by clicking a control that looked like the other one. Everything they reported checks out in the code: - **`SetupChecklist`** (ADR 0314) renders above the tab bar on the two landing views, `board` and `content`. For a dev+content workspace it lists 6 rows (7 once a repo is linked). Its header carried **two** icon-only buttons side by side: a chevron that collapsed it, and an `xmark` whose tooltip read \"Hide\". The X wrote `ws:setup-dismissed:<workspaceId>` to localStorage — a key that is written in one place, read in one place, and **cleared nowhere in the product**. Clicking it removed the checklist for that workspace with no way back short of devtools. - **`OnboardingBanner`** (J1) renders inside the board page whenever the active project has zero tickets, as a 3-card grid in `border-primary-border bg-primary/8` — the only primary-outlined banner in that position, and visually much louder than the checklist's plain card. So the sequence the owner described is exactly what the code does: dismiss the checklist (gone for good), switch to a project with no tickets, and the second, louder banner appears in its place. Two smaller findings came out of the same read: - The banner's first step said \"Connect a git repo\" and its CTA "
+    },
+    {
+      "id": "adr-0317",
+      "kind": "decision",
+      "title": "0317-the-runtime-is-a-list-of-processes-not-one-command",
+      "text": "ADR 0317: 0317-the-runtime-is-a-list-of-processes-not-one-command. The owner's report: *\"for me, running the frontend needs 2 commands — one for the frontend and one for the backend — and who knows, maybe more, to open an ssh tunnel for instance.\"* That is exactly what the code did. `Project.devCommand` is one nullable string, with an optional `Service.devCommand` override for a monorepo unit and a per-stack default behind both (`resolveDevCommand`). `previewSession.ts` and `refPreview.ts` each ran a single `docker exec -d … sh -lc <devCmd>`; `deploy/environment.ts` resolves the same single string. The only way to express two servers was one shell line (`a & b & wait`), which starts, gives you one merged output stream where you cannot tell which half died, and no way to restart just that half. The interesting part is that **the model the owner described already existed, one layer over**: - `PipelineStage.processes` is a list of `{ id, name, cwd, env[], commands[] }`. - `startStageProcesses()` starts each of them detached in the ticket's container, teeing each to `/work/.claude/process-<name>.log`. - `TerminalPanel` renders one terminal tab per process of the ticket's current stage. - The stage runner, the preview and the editor all reach the same container — every one of them goes through `launchTicketContainer`, which is idempotent by name. So \"several commands, each with its own terminal, per ticket\" was built and working. It was attached to the **pipeline stage** rather th"
     }
   ]
 }

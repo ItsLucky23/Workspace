@@ -1272,16 +1272,14 @@
       "composeNote": "Compose-Dateien werden nicht automatisch gestartet. Erstelle in den Projekteinstellungen einen Service-Stack daraus.",
       "pickHint": "Klicke ein Skript an, um es einzusetzen — daraus wird '{{prefix}} <Name>'.",
       "howItRunsTitle": "Wie das läuft",
-      "howItRunsBody": "Pro Projekt läuft EIN Dev-Befehl, im Preview-Container des jeweiligen Tickets — kein eigenes Terminal pro Befehl. So wird der Befehl bestimmt:",
-      "orderService": "Der Befehl des Services",
-      "orderServiceDesc": "Nur wenn das Ticket zu einer Monorepo-Einheit gehört.",
-      "orderProject": "Der Befehl dieses Projekts",
-      "orderProjectDesc": "Was du unten einträgst.",
+      "howItRunsBody": "Jeder Befehl unten startet im eigenen Container dieses Tickets, jeweils mit eigenem Terminal-Tab. Nur der mit „Vorschau-URL“ wird auf seinem Port geprüft und veröffentlicht. So wird die Liste bestimmt:",
+      "orderService": "Die eigene Liste des Service",
+      "orderServiceDesc": "Nur wenn das Ticket zu einer Monorepo-Einheit gehört. Sie ersetzt die Projektliste, sie ergänzt sie nicht.",
+      "orderProject": "Die Liste dieses Projekts",
+      "orderProjectDesc": "Was du unten einstellst.",
       "orderStack": "Der Stack-Standard",
-      "orderStackDesc": "Wird verwendet, sobald beide oberen leer sind.",
+      "orderStackDesc": "Ein einzelner Befehl, sobald beide Listen oben leer sind.",
       "stackHelp": "Bestimmt das Basis-Image und die Standardbefehle, wenn du die Felder unten leer lässt.",
-      "devCommandLabel": "Dev-Befehl",
-      "devCommandHelp": "Startet die App im Preview-Container eines Tickets. Muss auf 0.0.0.0 lauschen.",
       "prodCommandLabel": "Produktionsbefehl",
       "prodCommandHelp": "Wird beim Deploy in eine Umgebung verwendet, nach dem Build.",
       "customBaseHelp": "Ein eigenes FROM im Dockerfile erlauben. Agenten- und Editor-Funktionen können dadurch schlechter funktionieren.",
@@ -1412,7 +1410,6 @@
       "stack": "Stack",
       "prodCommandPlaceholder": "Prod-Serve-Befehl (optional; Standard je Stack)",
       "allowCustomBase": "Experte: eigene Dockerfile-Basis erlauben (Agent/Editor-Funktionen evtl. eingeschränkt)",
-      "devCommandPlaceholder": "npm run dev",
       "devCommandSave": "Befehl speichern",
       "devCommandSaving": "Speichern…",
       "devCommandSaved": "Dev-Befehl gespeichert",
@@ -3498,6 +3495,17 @@
       "moreOpen": "+{{n}} weitere",
       "staleTooltip": "Wartet seit über 2 Std. — die Pipeline ist dadurch blockiert.",
       "sameAsTicket": "Hier zu antworten bewirkt genau dasselbe wie auf dem Ticket zu antworten."
+    },
+    "runtime": {
+      "processesLabel": "Was diese App startet",
+      "processesHelp": "Eine Zeile pro Befehl. Sie starten gemeinsam im Container des Tickets, jeder mit eigenem Terminal-Tab. Wähle, welcher die Vorschau-URL bekommt.",
+      "namePlaceholder": "Name (z. B. frontend)",
+      "commandPlaceholder": "npm run dev",
+      "cwdPlaceholder": "Arbeitsverzeichnis (leer = Repo-Wurzel)",
+      "isPreview": "Vorschau-URL",
+      "addProcess": "Befehl hinzufügen",
+      "removeProcess": "Diesen Befehl entfernen",
+      "terminalHint": "Jede Zeile bekommt ein eigenes Terminal an jedem Ticket."
     }
   }
 }

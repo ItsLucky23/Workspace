@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `647a58d6a9be1c53` · 17 capabilities · 234 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `225337a3eef8927c` · 17 capabilities · 235 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -260,3 +260,4 @@
 - `adr-0314` Onboarding is a standing checklist, not a tour
 - `adr-0315` A pipeline preset is a living choice, not a creation-time one
 - `adr-0316` One first-run surface on the board, and it collapses rather than disappears
+- `adr-0317` 0317-the-runtime-is-a-list-of-processes-not-one-command

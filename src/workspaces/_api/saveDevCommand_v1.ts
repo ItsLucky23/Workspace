@@ -13,7 +13,9 @@ export const auth: AuthProps = { login: true, additional: [] };
 
 export interface ApiParams {
   //? D1/E1/E2 — also set the prod serve command, the stack (any-stack base), and the expert custom-base opt-in.
-  data: { workspaceId: string; projectId: string; clientRequestId: string; devCommand: string; prodCommand?: string; stack?: string; allowCustomBase?: boolean };
+  //? ADR 0317 — `runProcesses` is the multi-command runtime (one terminal tab each); `devCommand`
+  //? remains the single-command fallback for an empty list, so this route stays backwards compatible.
+  data: { workspaceId: string; projectId: string; clientRequestId: string; devCommand: string; prodCommand?: string; stack?: string; allowCustomBase?: boolean; runProcesses?: { id: string; name: string; cwd: string; env: { key: string; value: string }[]; commands: string[] }[]; previewProcessId?: string };
   user: SessionLayout;
   functions: Functions;
 }
@@ -32,6 +34,7 @@ export async function saveDevCommand(data: ApiParams['data'], userId: string, pr
       ...(data.prodCommand === undefined ? {} : { prodCommand: data.prodCommand }),
       ...(stack ? { stack } : {}),
       ...(typeof data.allowCustomBase === 'boolean' ? { allowCustomBase: data.allowCustomBase } : {}),
+      ...(data.runProcesses === undefined ? {} : { runProcesses: data.runProcesses, previewProcessId: data.previewProcessId ?? '' }),
     },
   });
   if (!dispatched.ok) {

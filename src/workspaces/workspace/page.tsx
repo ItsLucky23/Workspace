@@ -27,13 +27,14 @@ import { AvatarBubble, IconButton, InfoTip, PopMenu, Tabs, Toggle, WsButton, typ
 import { EmptyPicker } from '../_components/SetupNotice';
 import { PageSections, useTrailSegment } from '../_components/sections';
 import { RepoInventoryPanel, RepoScriptPicker, useRepoIntrospection } from './repoIntrospection';
+import { RunProcessList, rowCommand, seedProcesses } from './runProcesses';
 import { FormSection, SavePill, SettingRow, useAutosave } from '../_components/settings';
 import { resolveAiLayers } from '../_functions/aiLayers';
 import { INTEGRATION_TYPES, RBAC_CAPABILITIES, ROLE_DISPLAY } from '../_data/seed';
 import { GATEABLE_SECTIONS, WORKSPACE_MODULES, WORKSPACE_SECTIONS, isModuleEnabled } from '../_data/modules';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import { AI_SKILL_APPLY_POINTS } from '../_data/types';
-import type { AiSkillEntry, BranchStrategyKind, EnvVar, GitConfig, IntegrationField, IntegrationTool, InviteEntry, Member, PushPolicy } from '../_data/types';
+import type { StageProcessCfg, AiSkillEntry, BranchStrategyKind, EnvVar, GitConfig, IntegrationField, IntegrationTool, InviteEntry, Member, PushPolicy } from '../_data/types';
 
 const fieldCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 
@@ -689,22 +690,30 @@ function RuntimeSection({ workspaceId }: { workspaceId: string }) {
 
   //? Seeded from the snapshot, and re-seeded when the project changes — `resetKey` stops that re-seed
   //? from being read as an edit and written straight back.
-  const [cmd, setCmd] = useState(activeProject?.devCommand ?? '');
+  //? ADR 0317 — the runtime is a LIST. Seeded from the project's own list, else from its legacy single
+  //? command, so an untouched project opens showing exactly what it has always run.
+  const [procs, setProcs] = useState<StageProcessCfg[]>(seedProcesses(activeProject?.runProcesses, activeProject?.devCommand ?? ''));
+  const [previewId, setPreviewId] = useState(activeProject?.previewProcessId ?? 'dev');
   const [prodCmd, setProdCmd] = useState(activeProject?.prodCommand ?? '');
   const [stack, setStack] = useState(activeProject?.stack ?? 'node');
   const [allowCustomBase, setAllowCustomBase] = useState(activeProject?.allowCustomBase ?? false);
   useEffect(() => {
-    setCmd(activeProject?.devCommand ?? '');
+    setProcs(seedProcesses(activeProject?.runProcesses, activeProject?.devCommand ?? ''));
+    setPreviewId(activeProject?.previewProcessId ?? 'dev');
     setProdCmd(activeProject?.prodCommand ?? '');
     setStack(activeProject?.stack ?? 'node');
     setAllowCustomBase(activeProject?.allowCustomBase ?? false);
-  }, [activeProject?.id, activeProject?.devCommand, activeProject?.prodCommand, activeProject?.stack, activeProject?.allowCustomBase]);
+  }, [activeProject?.id, activeProject?.devCommand, activeProject?.runProcesses, activeProject?.previewProcessId, activeProject?.prodCommand, activeProject?.stack, activeProject?.allowCustomBase]);
 
   const [saveError, setSaveError] = useState('');
-  const status = useAutosave([cmd, prodCmd, stack, allowCustomBase], async () => {
+  const status = useAutosave([procs, previewId, prodCmd, stack, allowCustomBase], async () => {
     if (!projectId) return;
     setSaveError('');
-    const [err, res] = await tryCatch(() => apiRequest({ name: 'workspaces/saveDevCommand', version: 'v1', data: { workspaceId, projectId, clientRequestId: globalThis.crypto.randomUUID(), devCommand: cmd, prodCommand: prodCmd, stack, allowCustomBase } }));
+    //? `devCommand` is kept in sync with the PREVIEW process's command. It is still the fallback for an
+    //? empty list and the source deploy reads for a dev-kind environment, so letting the two drift
+    //? would mean the preview and the deployment run different things without saying so.
+    const previewCmd = rowCommand(procs.find((p) => p.id === previewId) ?? procs[0] ?? { id: '', name: '', cwd: '', env: [], commands: [] });
+    const [err, res] = await tryCatch(() => apiRequest({ name: 'workspaces/saveDevCommand', version: 'v1', data: { workspaceId, projectId, clientRequestId: globalThis.crypto.randomUUID(), devCommand: previewCmd, runProcesses: procs, previewProcessId: previewId, prodCommand: prodCmd, stack, allowCustomBase } }));
     if (err || res?.status !== 'success') {
       setSaveError(translate({ key: 'workspaces.workspaceSettings.devCommandError' }));
       throw new Error('save.failed');
@@ -746,13 +755,14 @@ function RuntimeSection({ workspaceId }: { workspaceId: string }) {
         />
         <SettingRow
           stacked
-          label={translate({ key: 'workspaces.repoScan.devCommandLabel' })}
-          help={translate({ key: 'workspaces.repoScan.devCommandHelp' })}
+          label={translate({ key: 'workspaces.runtime.processesLabel' })}
+          help={translate({ key: 'workspaces.runtime.processesHelp' })}
           control={(
-            <div className={`flex flex-col gap-2.5`}>
-              <input value={cmd} onChange={(e) => { setCmd(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.devCommandPlaceholder' })} className={inputCls} />
-              <RepoScriptPicker scripts={repoScan.scripts} packageManager={repoScan.packageManager} activeCommand={cmd} onPick={setCmd} />
-            </div>
+            <RunProcessList
+              processes={procs} previewId={previewId}
+              onChange={(next, nextPreview) => { setProcs(next); setPreviewId(nextPreview); }}
+              scripts={repoScan.scripts} packageManager={repoScan.packageManager}
+            />
           )}
         />
         <SettingRow

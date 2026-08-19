@@ -172,6 +172,11 @@ export interface ProjectSummary {
   devCommand?: string;
   prodCommand?: string;
   allowCustomBase?: boolean;
+  //? ADR 0317 — running an app is rarely ONE command. Each entry starts in the ticket's container and
+  //? gets its own terminal tab; `previewProcessId` names the one that binds the preview port. Empty ⇒
+  //? the legacy single `devCommand` is used, which is what every pre-0317 project has.
+  runProcesses?: StageProcessCfg[];
+  previewProcessId?: string;
 }
 
 //? A persistent environment (ADR 0037): a dev/staging/prod deployment at a stable route.

@@ -9,7 +9,8 @@
 import { getPrismaClient } from '@luckystack/core';
 
 import { launchTicketContainer, docker } from './runtime';
-import { resolveProjectBaseImage, resolveDevCommand } from './baseImages';
+import { resolveProjectBaseImage } from './baseImages';
+import { resolveRuntime, startProcesses } from './runtimeProcesses';
 import { workspaceContainerContext } from './composeEngine';
 import { ensureWorkerProxyNetwork } from './egress';
 import { waitForContainerReady } from './health';
@@ -29,7 +30,7 @@ export async function openPreviewForTicket(workspaceId: string, ticketKey: strin
   if (!ticket?.branch) return { ok: false, error: 'preview.notActivated' };
   //? The ticket's OWN project (FIX-E) — not `findFirst` (which picks the workspace's oldest project and
   //? would run the wrong image/dev-command in a multi-project workspace, ADR 0035).
-  const project = await prisma.project.findFirst({ where: { workspaceId, id: ticket.projectId }, select: { baseImageRef: true, stack: true, devCommand: true } });
+  const project = await prisma.project.findFirst({ where: { workspaceId, id: ticket.projectId }, select: { baseImageRef: true, stack: true, devCommand: true, runProcesses: true, previewProcessId: true } });
   //? The ticket's monorepo UNIT, if it has one. `Service.path`, `devCommand` and `baseImageRef` were all
   //? ignored here: a preview of a service ticket booted the project root's dev server in the repo root and
   //? presented it as that service — so the user reviewed the wrong thing while the UI claimed otherwise.
@@ -46,12 +47,17 @@ export async function openPreviewForTicket(workspaceId: string, ticketKey: strin
   if (!(await ensureWorkerProxyNetwork(NET))) return { ok: false, error: 'egress.unsafeProxyNetwork' };
   await docker(['network', 'connect', NET, container.name]);
 
-  //? Start the dev server detached in /work. HOST/PORT env cover CRA/Next; Vite needs the flags
-  //? in devCommand. A previous run's server is left as-is (idempotent — same port).
-  //? S3 — the SERVICE's devCommand wins, then the project's, then its stack default.
-  const devCmd = resolveDevCommand({ devCommand: service?.devCommand ?? project?.devCommand ?? null, stack: project?.stack ?? null });
+  //? ADR 0317 — start EVERY runtime process, not one. A real app is a frontend AND a backend (and
+  //? sometimes a tunnel or a worker); each gets its own terminal tab on the ticket. HOST/PORT go only
+  //? to the process that binds the preview port — the others must not be told to listen on it.
+  //? An empty list resolves to the legacy single command, so an untouched project behaves as before.
   const previewDir = workdirOrRoot(service?.path);
-  await docker(['exec', '-d', '-w', previewDir, '-e', 'HOST=0.0.0.0', '-e', `PORT=${String(PREVIEW_PORT)}`, container.name, 'sh', '-lc', devCmd]);
+  const runtime = resolveRuntime(project, service);
+  await startProcesses(container.name, runtime.processes, {
+    baseDir: previewDir,
+    previewId: runtime.previewId,
+    previewEnv: { HOST: '0.0.0.0', PORT: String(PREVIEW_PORT) },
+  });
 
   //? C2: don't advertise the URL until the dev server actually binds the port — probe before flipping
   //? the route (no fire-and-forget). A dev server can take 10–30s; a typed timeout beats a 502.

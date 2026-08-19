@@ -1,0 +1,135 @@
+//? ADR 0317 — the runtime as a LIST of processes instead of one command string.
+//?
+//? "Starting the app" was a single text input, and a real app is rarely one command: a frontend AND a
+//? backend, often a worker, sometimes an ssh tunnel to a database. One field forces all of that onto
+//? one shell line, which starts fine and then gives you one merged output stream where you cannot see
+//? which half died — and no way to restart just the one that did.
+//?
+//? Each row starts in the ticket's container and gets its OWN terminal tab there. Exactly one row is
+//? the preview: its port is probed and it gets the preview URL. The others simply run, which is what
+//? a backend on its own port or a tunnel with no port needs.
+//?
+//? One command per row on purpose. The stored shape (`commands: string[]`, shared with a pipeline
+//? stage) can hold a chain, but a row that runs three commands is a row whose terminal tab cannot be
+//? named after what it does — and naming them is the entire point.
+//? @adr 0317
+
+/* eslint-disable react-refresh/only-export-components -- the two seed/read helpers belong to this editor's shape and are used by the one call site that renders it; splitting them into a third file to satisfy a dev-only fast-refresh rule buys nothing. Not a route component. */
+import { useState } from 'react';
+
+import { useTranslator } from '@luckystack/core/client';
+
+import Icon from '../_components/Icon';
+import { FOCUS_RING, IconButton, WsButton } from '../_components/primitives';
+import { RepoScriptPicker, type RepoIntrospection, type RepoScript } from './repoIntrospection';
+import type { StageProcessCfg } from '../_data/types';
+
+const inputCls = 'h-9 w-full px-3 rounded-lg border border-container1-border bg-container2/50 text-sm font-mono text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
+const nameCls = 'h-9 w-full px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
+
+/** The single command a row runs — the model allows a chain, the editor deliberately does not. */
+export function rowCommand(proc: StageProcessCfg): string {
+  return proc.commands.find((c) => c.trim().length > 0) ?? '';
+}
+
+/** Seed the editor from what the project actually has: its list, else its legacy single command. */
+export function seedProcesses(runProcesses: StageProcessCfg[] | undefined, devCommand: string): StageProcessCfg[] {
+  if (runProcesses !== undefined && runProcesses.length > 0) return runProcesses;
+  return [{ id: 'dev', name: 'dev', cwd: '', env: [], commands: [devCommand] }];
+}
+
+function newRow(index: number): StageProcessCfg {
+  return { id: `p${String(index)}-${String(Date.now())}`, name: '', cwd: '', env: [], commands: [''] };
+}
+
+export function RunProcessList({ processes, previewId, onChange, scripts, packageManager }: {
+  processes: StageProcessCfg[];
+  previewId: string;
+  onChange: (next: StageProcessCfg[], previewId: string) => void;
+  scripts: RepoScript[];
+  packageManager: RepoIntrospection['packageManager'];
+}) {
+  const translate = useTranslator();
+  //? The script picker belongs to ONE row at a time: rendering a chip row under every command turns a
+  //? three-process runtime into three stacked pickers, and the chips then read as unrelated to the
+  //? input above them.
+  const [openPicker, setOpenPicker] = useState('');
+
+  const patch = (id: string, next: Partial<StageProcessCfg>): void => {
+    onChange(processes.map((p) => (p.id === id ? { ...p, ...next } : p)), previewId);
+  };
+  const add = (): void => {
+    const row = newRow(processes.length);
+    //? A first row is automatically the preview — there is nothing else it could be.
+    onChange([...processes, row], processes.length === 0 ? row.id : previewId);
+  };
+  const remove = (id: string): void => {
+    const next = processes.filter((p) => p.id !== id);
+    //? Removing the preview row must hand the URL to something that exists, or the preview would
+    //? silently proxy nothing and read as a broken dev server.
+    onChange(next, previewId === id ? (next[0]?.id ?? '') : previewId);
+  };
+
+  return (
+    <div className={`flex flex-col gap-2.5`}>
+      {processes.map((proc) => {
+        const isPreview = proc.id === previewId;
+        return (
+          <div key={proc.id} className={`rounded-xl border px-3 py-2.5 flex flex-col gap-2 ${isPreview ? 'border-primary-border bg-primary/5' : 'border-container1-border bg-container2/30'}`}>
+            <div className={`flex items-center gap-2`}>
+              <input
+                value={proc.name} onChange={(e) => { patch(proc.id, { name: e.target.value }); }}
+                placeholder={translate({ key: 'workspaces.runtime.namePlaceholder' })}
+                className={`${nameCls} max-w-40`}
+              />
+              {/* Radio, not a toggle: exactly one process can own the preview URL, and a set of
+                  toggles would let a user express "none" or "both", neither of which is a thing. */}
+              <label className={`inline-flex items-center gap-1.5 text-xs cursor-pointer ${isPreview ? 'text-primary font-medium' : 'text-muted'}`}>
+                <input
+                  type="radio" name="ws-preview-process" checked={isPreview}
+                  onChange={() => { onChange(processes, proc.id); }}
+                  className={`accent-primary cursor-pointer ${FOCUS_RING}`}
+                />
+                {translate({ key: 'workspaces.runtime.isPreview' })}
+              </label>
+              <div className={`ml-auto`}>
+                <IconButton
+                  icon="trash" size="sm"
+                  title={translate({ key: 'workspaces.runtime.removeProcess' })}
+                  onClick={() => { remove(proc.id); }}
+                />
+              </div>
+            </div>
+
+            <input
+              value={rowCommand(proc)} onFocus={() => { setOpenPicker(proc.id); }}
+              onChange={(e) => { patch(proc.id, { commands: [e.target.value] }); }}
+              placeholder={translate({ key: 'workspaces.runtime.commandPlaceholder' })}
+              className={inputCls}
+            />
+            <input
+              value={proc.cwd} onChange={(e) => { patch(proc.id, { cwd: e.target.value }); }}
+              placeholder={translate({ key: 'workspaces.runtime.cwdPlaceholder' })}
+              className={`${inputCls} text-xs`}
+            />
+            {openPicker === proc.id && (
+              <RepoScriptPicker
+                scripts={scripts} packageManager={packageManager}
+                activeCommand={rowCommand(proc)}
+                onPick={(command) => { patch(proc.id, { commands: [command] }); }}
+              />
+            )}
+          </div>
+        );
+      })}
+
+      <div className={`flex items-center gap-3`}>
+        <WsButton variant="secondary" icon="plus" onClick={add}>{translate({ key: 'workspaces.runtime.addProcess' })}</WsButton>
+        <span className={`text-xs text-meta inline-flex items-center gap-1.5`}>
+          <Icon name="terminal" className={`text-[10px]`} />
+          {translate({ key: 'workspaces.runtime.terminalHint' })}
+        </span>
+      </div>
+    </div>
+  );
+}

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (234)
+## Decisions (235)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -247,6 +247,7 @@
 | 0314 | Onboarding is a standing checklist, not a tour | 🟢 accepted | onboarding, ux, ia | — | `docs/decisions/0314-onboarding-is-a-standing-checklist-not-a-tour.md` |
 | 0315 | A pipeline preset is a living choice, not a creation-time one | 🟢 accepted | pipeline, defaults, onboarding, control-api | — | `docs/decisions/0315-a-pipeline-preset-is-a-living-choice-not-a-creation-time-one.md` |
 | 0316 | One first-run surface on the board, and it collapses rather than disappears | 🟢 accepted | onboarding, ux, ia | — | `docs/decisions/0316-one-first-run-surface-on-the-board-and-it-collapses-rather-than-disappears.md` |
+| 0317 | The runtime is a list of processes, not one command | 🟢 accepted | runtime, preview, containers, terminals, ux | — | `docs/decisions/0317-the-runtime-is-a-list-of-processes-not-one-command.md` |
 
 ## Summaries
 
@@ -2146,6 +2147,16 @@ The preset becomes a per-project choice that stays available for the life of the
 
 → `docs/decisions/0316-one-first-run-surface-on-the-board-and-it-collapses-rather-than-disappears.md`
 
+### 0317 — The runtime is a list of processes, not one command
+
+**0317** · accepted · tags: runtime, preview, containers, terminals, ux · 2026-08-19
+
+The project owns a **list** of runtime processes. Each entry starts in the ticket's container and gets its own terminal tab there. Exactly one entry is the preview.
+
+**Governs** (`//? @adr 0317`): `server/container/runtimeProcesses.ts`, `src/workspaces/workspace/runProcesses.tsx`
+
+→ `docs/decisions/0317-the-runtime-is-a-list-of-processes-not-one-command.md`
+
 ## Code governed by decisions
 
 > Reverse links from a `//? @adr NNNN` tag in source back to the ADR that explains it.
@@ -2155,6 +2166,7 @@ The preset becomes a per-project choice that stays available for the life of the
 | --- | --- | --- |
 | `scripts/prismaWithSecrets.ts` | 0017 | RAG codebase intelligence — pluggable embeddings + a cosine-scan retrieval injected into the agent context |
 | `server/ai/skills.ts` | 0270 | universeel skill model met apply points |
+| `server/container/runtimeProcesses.ts` | 0317 | The runtime is a list of processes, not one command |
 | `server/content/commentInbox.ts` | 0273 | comment inbox read only youtube tiktok |
 | `server/content/ideatorRole.ts` | 0269 | channel autopilot consent vooraf |
 | `server/designer/applyTokens.ts` | 0276 | Design tokens apply only through managed Tailwind blocks with expected-HEAD CAS |
@@ -2167,3 +2179,4 @@ The preset becomes a per-project choice that stays available for the life of the
 | `src/workspaces/_data/nav.ts` | 0280 | Module-based nav categories (Develop / Content / Insights) that mirror folders and URLs |
 | `src/workspaces/_functions/aiLayers.ts` | 0311 | AI prompt layers are two channels, not one stack |
 | `src/workspaces/workspace/repoIntrospection.tsx` | 0313 | Repository introspection is shown to the user, not only to the AI |
+| `src/workspaces/workspace/runProcesses.tsx` | 0317 | The runtime is a list of processes, not one command |

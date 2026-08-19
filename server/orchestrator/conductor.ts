@@ -2173,6 +2173,17 @@ async function executeAction(action: WriterAction): Promise<unknown> {
         if (prodCommand === undefined) return { ok: false, error: 'project.invalidRuntime' };
         data.prodCommand = prodCommand.trim() || null;
       }
+      //? ADR 0317 — the runtime as a LIST. Only written when the client sends it, so an older client
+      //? (or a save that only touches the stack) never clears someone's processes. `devCommand` stays
+      //? the fallback for an empty list, which is what keeps every untouched project working.
+      if ('runProcesses' in payload) {
+        const processes = readProcesses(payload.runProcesses).filter((proc) => proc.commands.some((c) => c.trim().length > 0));
+        data.runProcesses = { set: processes };
+        //? The preview id must name a process that exists, or the preview would proxy nothing. An
+        //? unknown id is corrected to the first process here rather than tolerated at boot time.
+        const wanted = str(payload, 'previewProcessId') ?? '';
+        data.previewProcessId = processes.some((proc) => proc.id === wanted) ? wanted : (processes[0]?.id ?? null);
+      }
       const stack = str(payload, 'stack');
       if (stack && ['node', 'python', 'go', 'rust', 'java', 'php', 'dotnet', 'ruby', 'generic'].includes(stack)) data.stack = stack;
       if ('allowCustomBase' in payload) {

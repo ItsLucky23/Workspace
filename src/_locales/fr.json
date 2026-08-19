@@ -1272,16 +1272,14 @@
       "composeNote": "Les fichiers Compose ne démarrent pas tout seuls. Créez-en une pile de services dans les paramètres du projet.",
       "pickHint": "Cliquez sur un script pour le remplir — il devient '{{prefix}} <nom>'.",
       "howItRunsTitle": "Comment cela s’exécute",
-      "howItRunsBody": "Une seule commande de dev tourne par projet, dans le conteneur d’aperçu du ticket lui-même — pas un terminal par commande. Voici comment la commande est choisie :",
-      "orderService": "La commande du service",
-      "orderServiceDesc": "Uniquement si le ticket appartient à une unité du monorepo.",
-      "orderProject": "La commande de ce projet",
+      "howItRunsBody": "Chaque commande ci-dessous démarre dans le conteneur propre à ce ticket, chacune avec son onglet de terminal. Seule celle marquée « URL de prévisualisation » voit son port sondé et publié. Voici comment la liste est déterminée :",
+      "orderService": "La liste propre au service",
+      "orderServiceDesc": "Uniquement si le ticket appartient à une unité de monorepo. Elle remplace la liste du projet, elle ne s’y ajoute pas.",
+      "orderProject": "La liste de ce projet",
       "orderProjectDesc": "Ce que vous définissez ci-dessous.",
       "orderStack": "La valeur par défaut de la stack",
-      "orderStackDesc": "Utilisée dès que les deux précédentes sont vides.",
+      "orderStackDesc": "Une seule commande, dès que les deux listes ci-dessus sont vides.",
       "stackHelp": "Détermine l’image de base et les commandes par défaut si vous laissez les champs ci-dessous vides.",
-      "devCommandLabel": "Commande de dev",
-      "devCommandHelp": "Démarre l’application dans le conteneur d’aperçu d’un ticket. Elle doit écouter sur 0.0.0.0.",
       "prodCommandLabel": "Commande de production",
       "prodCommandHelp": "Utilisée lors d’un déploiement vers un environnement, après le build.",
       "customBaseHelp": "Autoriser votre propre FROM dans le Dockerfile. Les fonctions d’agent et d’éditeur peuvent moins bien marcher.",
@@ -1412,7 +1410,6 @@
       "stack": "Stack",
       "prodCommandPlaceholder": "commande de service prod (optionnel ; défaut par stack)",
       "allowCustomBase": "Expert : autoriser une base Dockerfile personnalisée (fonctions agent/éditeur possiblement dégradées)",
-      "devCommandPlaceholder": "npm run dev",
       "devCommandSave": "Enregistrer la commande",
       "devCommandSaving": "Enregistrement…",
       "devCommandSaved": "Commande dev enregistrée",
@@ -3498,6 +3495,17 @@
       "moreOpen": "+{{n}} autres",
       "staleTooltip": "En attente depuis plus de 2h — le pipeline est bloqué sur cette réponse.",
       "sameAsTicket": "Répondre ici fait exactement la même chose que répondre sur le ticket."
+    },
+    "runtime": {
+      "processesLabel": "Ce qui démarre cette application",
+      "processesHelp": "Une ligne par commande. Elles démarrent ensemble dans le conteneur du ticket, chacune avec son propre onglet de terminal. Choisissez celle que vise l’URL de prévisualisation.",
+      "namePlaceholder": "nom (ex. frontend)",
+      "commandPlaceholder": "npm run dev",
+      "cwdPlaceholder": "répertoire de travail (vide = racine du dépôt)",
+      "isPreview": "URL de prévisualisation",
+      "addProcess": "Ajouter une commande",
+      "removeProcess": "Supprimer cette commande",
+      "terminalHint": "Chaque ligne obtient son propre terminal sur chaque ticket."
     }
   }
 }
