@@ -1051,13 +1051,15 @@
         "escalationScoreTitle": "Where the score comes from",
         "noDocs": "No context documents in this project yet.",
         "noDocsCta": "Add a document",
-        "noSkills": "No skills exist in this workspace, and there is currently nowhere in the app to create one.",
+        "noSkills": "Skills and MCP tools are capabilities the AI calls on demand. Nothing in the app creates one yet, and indexing the repository will not fill this list either.",
         "promptTemplateBody": "This text is how the previous stage's summary, changed files, open questions and commit reach this AI's assignment. Only the four variables above are filled in; each value is inserted marked as untrusted text and cut off at 6,000 characters. Leave it empty and those four are dropped — but the stage is not blind: ticking stages under Visibility still brings summaries along, and the complexity score from the previous stage can still steer the model choice.",
         "promptTemplateTitle": "What this template carries",
         "toolTierBody": "Read does not give the stage limited access — it gives none at all. Only Write actually hands the tool to the stage; with Read the tool is not installed in the container, because an outside tool cannot be forced to stay read-only. Switching a tool on selects Read by default, so choose Write if the stage really needs it.",
         "toolTierTitle": "Read means the tool is left out entirely",
         "validateLocalBody": "Despite the name, no AI is involved and nothing leaves your browser. Workspaces checks the stages on screen against five fixed rules and lists what it finds. It judges what is on screen right now, including changes you have not saved yet.",
-        "validateLocalTitle": "This check runs in your browser"
+        "validateLocalTitle": "This check runs in your browser",
+        "noSkillsAlt": "Written instructions the AI should follow are a different thing, confusingly also called Skills — and those you can create:",
+        "noSkillsAltCta": "open AI settings"
       },
       "settings": {
         "dbEnvBody": "This single choice steers two things: the connection you save here, and the environment a new migration is written for.",
@@ -2473,7 +2475,7 @@
       "ragNotIndexedHint": "Link a repo and run 'Reindex code' from the Maintenance menu to make your codebase searchable for the AI.",
       "emptyDocsSub": "Sources are what your workspace AI reads before it works. Upload a spec or notes (.md/.txt), or link a repo and scan it to generate docs automatically.",
       "emptySkillsTitle": "No skills yet",
-      "emptySkillsSub": "Skills and MCP tools are capabilities the AI can call on demand. They appear here once the workspace is indexed.",
+      "emptySkillsSub": "Skills and MCP tools are capabilities the AI can call on demand. Nothing in the app creates one yet, so this list stays empty — reindexing does not fill it. Written instruction skills are a separate thing and live in workspace settings → AI.",
       "noStages": "No stages",
       "summary": "Summary",
       "source": "Source",

@@ -60,7 +60,7 @@ const collapsedKey = (workspaceId: string): string => `ws:setup-collapsed:${work
 
 export default function SetupChecklist() {
   const translate = useTranslator();
-  const { activeWorkspace, activeProject, readiness, tickets, can, focusSetup, quickAdd, toggleAi } = useWorkspaces();
+  const { activeWorkspace, activeProject, readiness, tickets, docs, can, focusSetup, quickAdd, toggleAi } = useWorkspaces();
   const [open, setOpen] = useState(true);
 
   //? Read on mount + whenever the workspace changes, so each workspace keeps its own collapsed state.
@@ -74,6 +74,11 @@ export default function SetupChecklist() {
       return !wasOpen;
     });
   };
+
+  //? A context document the user added themselves: uploaded, generated from the repo, pulled from git
+  //? or a design system — anything except the starter conventions the project was seeded with. An
+  //? archived document does not count; it is no longer fed to any AI.
+  const ownDocs = docs.some((d) => d.source !== 'starter' && d.archived !== true);
 
   //? "Configured" is a process with a command, or the legacy single command a pre-0317 project still
   //? uses. A row with a name and no command is not configuration — it starts nothing.
@@ -100,7 +105,11 @@ export default function SetupChecklist() {
       //? up two dev commands and a prod one, which is a checklist telling someone to do what they have
       //? already done. ADR 0317 gave it a real signal, so it is measurable now and no longer guidance.
       ...(readiness.repoLinked ? [{ id: 'runtime', icon: 'play', done: runtimeConfigured, cap: 'workspaceSettings' as CapKey, target: { view: 'workspace' as WsView, tab: 'repository', section: 'runtime' } }] : []),
-      { id: 'context', icon: 'book-open', done: false, cap: 'editPipeline' as CapKey, target: { view: 'sources' as WsView }, guidance: true as const },
+      //? Same hardcoded-`done: false` shape as the runtime row, and the same complaint: the owner
+      //? uploaded a context document and the row stayed outstanding. "Done" is a document of THEIR
+      //? own — a fresh dev project is seeded with starter conventions, so counting those would tick
+      //? the row before anyone had done anything, which is the opposite failure.
+      { id: 'context', icon: 'book-open', done: ownDocs, cap: 'editPipeline' as CapKey, target: { view: 'sources' as WsView } },
     ] : []),
     ...(contentEnabled ? [
       { id: 'media', icon: 'image', done: readiness.media.fal, cap: 'workspaceSettings' as CapKey, target: { view: 'content/settings', tab: 'admin' } },

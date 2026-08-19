@@ -147,7 +147,7 @@ export function GeneralTab({ s, update, bp }: TabProps) {
 /* ----------------------------------------------------------------- Context & Skills */
 export function ContextTab({ s, update }: TabProps) {
   const translate = useTranslator();
-  const { docs, skills } = useWorkspaces();
+  const { docs, skills, focusSetup } = useWorkspaces();
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       <div>
@@ -179,9 +179,34 @@ export function ContextTab({ s, update }: TabProps) {
       <div>
         <FieldLabel title={translate({ key: 'workspaces.pipeline.skillsMcp' })} hint={translate({ key: 'workspaces.pipeline.skillsMcpHint' })} />
         <div className="flex flex-col gap-1.5">
-          {/* no `fix`: a capability skill has no creation surface anywhere in the app today, so a
-              deep-link would be a dead end — the row states the absence instead of inventing one. */}
-          {skills.length === 0 && <EmptyPicker icon="robot" label={translate({ key: 'workspaces.tips.pipeline.noSkills' })} />}
+          {/* Verified before touching this copy, because the obvious "rewrite" was wrong: a capability
+              skill (`Skill.skillType === 'capability'`) is created in exactly two places in the whole
+              repo — the DEMO seed and a legacy-data migration. `ai-skill-save` only ever writes
+              `'instruction'`, and `scan-index` writes RagEntry rows, not skills. So "nothing in the app
+              creates one, and reindexing will not fill this list" is TRUE and stays.
+              What was missing is the other half: the OTHER thing called Skills — written instruction
+              blocks — has a full create/edit surface in workspace settings, and a user reading the word
+              "skills" here has no way to know that. The name collision is the actual confusion, so both
+              are named. Deliberately NO index-scan button: it would not add a single row. */}
+          {skills.length === 0 && (
+            <EmptyPicker
+              icon="robot"
+              label={(
+                <span className={`flex flex-col gap-1`}>
+                  <span>{translate({ key: 'workspaces.tips.pipeline.noSkills' })}</span>
+                  <span className={`text-xs text-meta`}>
+                    {translate({ key: 'workspaces.tips.pipeline.noSkillsAlt' })}{' '}
+                    <button
+                      type="button" onClick={() => { focusSetup({ view: 'workspace', tab: 'aibehavior' }); }}
+                      className={`text-primary hover:underline cursor-pointer`}
+                    >
+                      {translate({ key: 'workspaces.tips.pipeline.noSkillsAltCta' })}
+                    </button>
+                  </span>
+                </span>
+              )}
+            />
+          )}
           {skills.map((sk) => {
             const on = s.skillKeys.includes(sk.id);
             return (

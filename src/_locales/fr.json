@@ -1051,13 +1051,15 @@
         "escalationScoreTitle": "D'où vient ce score",
         "noDocs": "Aucun document de contexte dans ce projet pour l'instant.",
         "noDocsCta": "Ajouter un document",
-        "noSkills": "Aucune compétence n'existe dans cet espace de travail, et il n'y a pour l'instant nulle part dans l'application où en créer une.",
+        "noSkills": "Les compétences et outils MCP sont des capacités que l'IA appelle à la demande. Rien dans l'application n'en crée pour l'instant, et indexer le dépôt ne remplira pas cette liste non plus.",
         "promptTemplateBody": "C'est ainsi que le résumé, les fichiers modifiés, les questions ouvertes et le commit de l'étape précédente arrivent dans la consigne de cette IA. Seules les quatre variables ci-dessus sont remplacées ; chaque valeur est insérée en étant signalée comme texte non fiable et tronquée à 6 000 caractères. Si vous le laissez vide, ces quatre éléments disparaissent — mais l'étape n'est pas aveugle : cocher des étapes sous Visibilité apporte toujours des résumés, et le score de complexité de l'étape précédente peut encore orienter le choix du modèle.",
         "promptTemplateTitle": "Ce que ce modèle transmet",
         "toolTierBody": "Lecture ne donne pas un accès limité à l'étape, mais aucun accès. Seul Écriture confie réellement l'outil à l'étape ; avec Lecture, l'outil n'est pas installé dans le conteneur, car un outil externe ne peut pas être contraint de rester en lecture seule. Activer un outil le règle par défaut sur Lecture : choisissez Écriture si l'étape en a vraiment besoin.",
         "toolTierTitle": "Lecture signifie : pas fourni du tout",
         "validateLocalBody": "Malgré son nom, aucune IA n'intervient et rien ne quitte votre navigateur. Workspaces confronte les étapes affichées à cinq règles fixes et liste ce qu'il trouve. Il juge ce qui est à l'écran en ce moment, y compris les modifications que vous n'avez pas encore enregistrées.",
-        "validateLocalTitle": "Cette vérification s'exécute dans votre navigateur"
+        "validateLocalTitle": "Cette vérification s'exécute dans votre navigateur",
+        "noSkillsAlt": "Les instructions écrites que l'IA doit suivre sont autre chose — appelées elles aussi Compétences, ce qui prête à confusion — et celles-là, vous pouvez les créer :",
+        "noSkillsAltCta": "ouvrir les paramètres IA"
       },
       "settings": {
         "dbEnvBody": "Ce seul choix pilote deux choses : la connexion que vous enregistrez ici, et l'environnement pour lequel une nouvelle migration est écrite.",
@@ -2473,7 +2475,7 @@
       "ragNotIndexedHint": "Liez un dépôt et lancez « Réindexer le code » depuis le menu Maintenance pour rendre votre code consultable par l'IA.",
       "emptyDocsSub": "Les sources sont ce que l'IA de votre workspace lit avant de travailler. Téléversez une spec ou des notes (.md/.txt), ou liez un dépôt et scannez-le pour générer des documents automatiquement.",
       "emptySkillsTitle": "Pas encore de skills",
-      "emptySkillsSub": "Les skills et outils MCP sont des capacités que l'IA peut appeler à la demande. Ils apparaissent ici une fois le workspace indexé.",
+      "emptySkillsSub": "Les compétences et outils MCP sont des capacités que l'IA peut appeler à la demande. Rien dans l'application n'en crée pour l'instant, cette liste reste donc vide — réindexer ne la remplit pas. Les compétences d'instructions écrites sont autre chose et se trouvent dans les paramètres de l'espace → IA.",
       "noStages": "Aucune étape",
       "summary": "Résumé",
       "source": "Source",

@@ -1051,13 +1051,15 @@
         "escalationScoreTitle": "Waar de score vandaan komt",
         "noDocs": "Nog geen contextdocumenten in dit project.",
         "noDocsCta": "Document toevoegen",
-        "noSkills": "Er bestaan nog geen vaardigheden in deze werkruimte, en er is op dit moment nergens in de app een plek om er een aan te maken.",
+        "noSkills": "Vaardigheden en MCP-tools zijn capaciteiten die de AI op aanvraag aanroept. Er is nog niets in de app dat er een aanmaakt, en de repository indexeren vult deze lijst ook niet.",
         "promptTemplateBody": "Zo komen de samenvatting, gewijzigde bestanden, openstaande vragen en commit van de vorige stap in de opdracht van deze AI terecht. Alleen de vier variabelen hierboven worden ingevuld; elke waarde wordt als onbetrouwbare tekst gemarkeerd ingevoegd en afgekapt op 6.000 tekens. Laat je hem leeg, dan vervallen die vier — maar de stap is niet blind: stappen aanvinken onder Zichtbaarheid brengt nog steeds samenvattingen mee, en de complexiteitsscore van de vorige stap kan de modelkeuze nog steeds sturen.",
         "promptTemplateTitle": "Wat dit sjabloon meeneemt",
         "toolTierBody": "Lezen geeft de stap geen beperkte toegang, maar helemaal geen. Alleen Schrijven geeft de stap de tool echt; bij Lezen wordt de tool niet in de container geïnstalleerd, omdat een externe tool niet gedwongen kan worden alleen te lezen. Als je een tool aanzet, staat hij standaard op Lezen — kies dus Schrijven als de stap hem echt nodig heeft.",
         "toolTierTitle": "Lezen betekent: helemaal niet meegeleverd",
         "validateLocalBody": "Ondanks de naam komt er geen AI aan te pas en verlaat er niets je browser. Workspaces loopt de stappen op het scherm langs vijf vaste regels en toont wat het vindt. Het beoordeelt wat er nu op het scherm staat, inclusief wijzigingen die je nog niet hebt opgeslagen.",
-        "validateLocalTitle": "Deze controle draait in je browser"
+        "validateLocalTitle": "Deze controle draait in je browser",
+        "noSkillsAlt": "Geschreven instructies die de AI moet volgen zijn iets anders — verwarrend genoeg ook Vaardigheden genoemd — en die kun je wél zelf aanmaken:",
+        "noSkillsAltCta": "open AI-instellingen"
       },
       "settings": {
         "dbEnvBody": "Deze ene keuze stuurt twee dingen aan: de verbinding die je hier opslaat, en de omgeving waarvoor een nieuwe migratie wordt geschreven.",
@@ -2473,7 +2475,7 @@
       "ragNotIndexedHint": "Koppel een repository en draai 'Code herindexeren' via het Onderhoud-menu om je codebase doorzoekbaar te maken voor de AI.",
       "emptyDocsSub": "Bronnen zijn wat je workspace-AI leest voordat die aan het werk gaat. Upload een spec of notities (.md/.txt), of koppel een repository en scan die om automatisch documenten te genereren.",
       "emptySkillsTitle": "Nog geen skills",
-      "emptySkillsSub": "Skills en MCP-tools zijn vaardigheden die de AI op aanvraag kan aanroepen. Ze verschijnen hier zodra de workspace geïndexeerd is.",
+      "emptySkillsSub": "Vaardigheden en MCP-tools zijn capaciteiten die de AI op aanvraag kan aanroepen. Er is nog niets in de app dat er een aanmaakt, dus deze lijst blijft leeg — opnieuw indexeren vult hem niet. Geschreven instructie-vaardigheden zijn iets anders en staan in werkruimte-instellingen → AI.",
       "noStages": "Geen stages",
       "summary": "Samenvatting",
       "source": "Bron",

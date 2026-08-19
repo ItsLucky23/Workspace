@@ -5338,3 +5338,36 @@ kende (zie de vorige entry). Ze moeten opnieuw ingevuld worden — nu landen ze 
 
 **Verificatie.** `tsc` ✅ · `lint` ✅ · `ai:lint` ✅ · `build` ✅ · unit **123/123** · sweep
 **452/452** · Playwright **25/25**.
+
+## 2026-08-19 — Contextdoc-rij was óók hardcoded · "skills" zijn twee verschillende dingen
+
+**Prompt van de gebruiker.** "Context document uploaden update niet de todo-lijst op /board. Ook is er
+nergens een plek om skills of MCP's te uploaden, of dat staat er tenminste per pipeline stage: 'Er
+bestaan nog geen vaardigheden in deze werkruimte, en er is op dit moment nergens in de app een plek om
+er een aan te maken.'"
+
+**Punt 1 — dezelfde hardcoded-`done: false` als de runtime-rij.** De contextdoc-rij in de checklist
+had geen signaal en stond vast op onafgerond. Nu meetbaar: een document dat de gebruiker zélf heeft
+toegevoegd (`source !== 'starter'`, niet gearchiveerd). Bewust niet "docs.length > 0": een vers
+dev-project wordt geseed met starter-conventies, dus dat zou de rij afvinken vóórdat iemand iets had
+gedaan — de omgekeerde fout.
+
+**Punt 2 — de tekst klopte, en mijn eerste herschrijving was FOUT.** Ik wilde er een "draai een
+indexscan"-knop bij zetten en heb het eerst geverifieerd. Uitkomst: een capability-skill
+(`Skill.skillType === 'capability'`) wordt in de héle repo op precies twee plekken aangemaakt — de
+DEMO-seed en een migratie van legacy-data. `ai-skill-save` schrijft alleen `'instruction'`, en
+`scan-index` schrijft `RagEntry`-rijen, geen skills. Dus "niets in de app maakt er een aan, en opnieuw
+indexeren vult deze lijst niet" is WAAR en blijft staan. De knop die ik bijna had toegevoegd zou geen
+enkele rij hebben opgeleverd.
+
+Wat er wél miste: er zijn TWEE dingen die "Vaardigheden" heten. De andere — geschreven
+instructieblokken — heeft een volledige aanmaak/bewerk-UI in werkruimte-instellingen → AI
+(`SkillsSection`, naam + instructie + "Nieuwe toevoegen"). Wie het woord "skills" op de pipeline leest
+kan onmogelijk weten dat die bestaat. Beide worden nu benoemd, met een link naar de aanmaakbare.
+
+**En een bestaande onwaarheid gecorrigeerd.** `sources.emptySkillsSub` zei "They appear here once the
+workspace is indexed" — dat is precies wat zojuist weerlegd is, en het sprak `tips.sources.skillsNone`
+in hetzelfde scherm tegen. Nu zeggen beide hetzelfde ware ding.
+
+**Verificatie.** `tsc` ✅ · `lint` ✅ · `ai:lint` ✅ · `build` ✅ · unit **123/123** · e2e
+developRest + boardTicket **12/12**.

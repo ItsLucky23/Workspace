@@ -1051,13 +1051,15 @@
         "escalationScoreTitle": "Woher der Wert stammt",
         "noDocs": "Noch keine Kontextdokumente in diesem Projekt.",
         "noDocsCta": "Dokument hinzufügen",
-        "noSkills": "In diesem Arbeitsbereich gibt es keine Fähigkeiten, und derzeit lässt sich nirgends in der App eine anlegen.",
+        "noSkills": "Fähigkeiten und MCP-Tools sind Funktionen, die die KI bei Bedarf aufruft. Nichts in der App legt bisher eine an, und das Indexieren des Repositorys füllt diese Liste ebenfalls nicht.",
         "promptTemplateBody": "So gelangen Zusammenfassung, geänderte Dateien, offene Fragen und Commit der vorherigen Stufe in den Auftrag dieser KI. Nur die vier oben aufgeführten Variablen werden eingesetzt; jeder Wert wird als nicht vertrauenswürdiger Text gekennzeichnet eingefügt und bei 6.000 Zeichen abgeschnitten. Bleibt das Feld leer, entfallen diese vier – die Stufe ist aber nicht blind: Unter Sichtbarkeit angehakte Stufen bringen weiterhin Zusammenfassungen mit, und der Komplexitätswert der vorherigen Stufe kann die Modellwahl weiterhin steuern.",
         "promptTemplateTitle": "Was diese Vorlage mitnimmt",
         "toolTierBody": "Lesen gibt der Stufe keinen eingeschränkten Zugriff, sondern überhaupt keinen. Nur Schreiben übergibt der Stufe das Werkzeug wirklich; bei Lesen wird es gar nicht erst in den Container eingebunden, weil sich ein fremdes Werkzeug nicht zwingen lässt, nur zu lesen. Beim Einschalten steht ein Werkzeug standardmäßig auf Lesen – wählen Sie also Schreiben, wenn die Stufe es wirklich braucht.",
         "toolTierTitle": "Lesen bedeutet: gar nicht eingebunden",
         "validateLocalBody": "Trotz des Namens ist keine KI beteiligt und nichts verlässt Ihren Browser. Workspaces prüft die Stufen auf dem Bildschirm anhand von fünf festen Regeln und listet die Funde auf. Bewertet wird, was gerade auf dem Bildschirm steht – einschließlich noch nicht gespeicherter Änderungen.",
-        "validateLocalTitle": "Diese Prüfung läuft in Ihrem Browser"
+        "validateLocalTitle": "Diese Prüfung läuft in Ihrem Browser",
+        "noSkillsAlt": "Geschriebene Anweisungen, denen die KI folgen soll, sind etwas anderes — verwirrenderweise ebenfalls Fähigkeiten genannt — und die kannst du selbst anlegen:",
+        "noSkillsAltCta": "KI-Einstellungen öffnen"
       },
       "settings": {
         "dbEnvBody": "Diese eine Auswahl steuert zwei Dinge: die Verbindung, die du hier speicherst, und die Umgebung, für die eine neue Migration geschrieben wird.",
@@ -2473,7 +2475,7 @@
       "ragNotIndexedHint": "Verknüpfe ein Repository und führe 'Code neu indizieren' im Wartung-Menü aus, damit die AI deine Codebasis durchsuchen kann.",
       "emptyDocsSub": "Quellen sind das, was deine Workspace-AI liest, bevor sie arbeitet. Lade eine Spec oder Notizen hoch (.md/.txt) oder verknüpfe ein Repository und scanne es, um Dokumente automatisch zu erzeugen.",
       "emptySkillsTitle": "Noch keine Skills",
-      "emptySkillsSub": "Skills und MCP-Tools sind Fähigkeiten, die die AI bei Bedarf aufrufen kann. Sie erscheinen hier, sobald der Workspace indexiert ist.",
+      "emptySkillsSub": "Fähigkeiten und MCP-Tools sind Funktionen, die die KI bei Bedarf aufrufen kann. Nichts in der App legt bisher eine an, diese Liste bleibt also leer — erneutes Indexieren füllt sie nicht. Geschriebene Anweisungs-Fähigkeiten sind etwas anderes und stehen in den Workspace-Einstellungen → KI.",
       "noStages": "Keine Stages",
       "summary": "Zusammenfassung",
       "source": "Quelle",
