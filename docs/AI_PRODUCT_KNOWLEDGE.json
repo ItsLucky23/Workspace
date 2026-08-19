@@ -1,6 +1,6 @@
 {
-  "hash": "32cb7d540460b653",
-  "chunkCount": 250,
+  "hash": "647a58d6a9be1c53",
+  "chunkCount": 251,
   "chunks": [
     {
       "id": "cap-001",
@@ -1501,6 +1501,12 @@
       "kind": "decision",
       "title": "A pipeline preset is a living choice, not a creation-time one",
       "text": "ADR 0315: A pipeline preset is a living choice, not a creation-time one. Two complaints from the owner turned out to be the same defect seen from opposite ends. **\"When I create a new project I get a nice pipeline, but nothing is filled in per stage.\"** `createDefaultPipeline` does seed real persona/instructions/carry-over text for the five AI stages, so a workspace created *today* is not blank. But three paths around it are: - `stage-create` (the \"Add stage\" button, and the assistant's own op) wrote `systemPrompt: ''`, `customInstructions: ''`, `promptTemplate: '{{summary}}'`, `definitionOfDone: ''` and `statuses: []`. A hand-added stage arrived with no persona, no instructions and no board statuses. - `seedDemoWorkspace` writes `systemPrompt: ''` for every stage. - Any pipeline seeded before the defaults carried prompt text is still blank in the database, and nothing in the product could fill it. The result is the least legible failure this product has: the pipeline *looks* configured — seven named columns, model tiers, an AI toggle that says \"AI on\" — while the agent behind a stage receives an empty persona and an empty brief. Nothing errors. The run is simply worse than it should be, and the cause is invisible. **\"We used to be able to pick between several pipeline setups and now we can't.\"** That memory is accurate. `Workspace.presetKey` and the three tiers (`simple` / `advanced` / `professional`) are real, and `CreateWorkspaceForm` asks for one — but only there. `projec"
+    },
+    {
+      "id": "adr-0316",
+      "kind": "decision",
+      "title": "One first-run surface on the board, and it collapses rather than disappears",
+      "text": "ADR 0316: One first-run surface on the board, and it collapses rather than disappears. The owner went to test something on `/develop/board` and instead found two separate onboarding surfaces stacked at the top of the page, then permanently lost one of them by clicking a control that looked like the other one. Everything they reported checks out in the code: - **`SetupChecklist`** (ADR 0314) renders above the tab bar on the two landing views, `board` and `content`. For a dev+content workspace it lists 6 rows (7 once a repo is linked). Its header carried **two** icon-only buttons side by side: a chevron that collapsed it, and an `xmark` whose tooltip read \"Hide\". The X wrote `ws:setup-dismissed:<workspaceId>` to localStorage — a key that is written in one place, read in one place, and **cleared nowhere in the product**. Clicking it removed the checklist for that workspace with no way back short of devtools. - **`OnboardingBanner`** (J1) renders inside the board page whenever the active project has zero tickets, as a 3-card grid in `border-primary-border bg-primary/8` — the only primary-outlined banner in that position, and visually much louder than the checklist's plain card. So the sequence the owner described is exactly what the code does: dismiss the checklist (gone for good), switch to a project with no tickets, and the second, louder banner appears in its place. Two smaller findings came out of the same read: - The banner's first step said \"Connect a git repo\" and its CTA "
     }
   ]
 }

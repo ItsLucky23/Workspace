@@ -1236,7 +1236,6 @@
       "title": "Diesen Workspace fertig einrichten",
       "progress": "{{done}} von {{total}} erledigt",
       "fix": "Jetzt einrichten",
-      "dismiss": "Ausblenden",
       "collapse": "Einklappen",
       "expand": "Ausklappen",
       "aiKeyLabel": "KI-Schlüssel hinterlegen",
@@ -1252,7 +1251,14 @@
       "channelLabel": "Einen Kanal verbinden",
       "channelDesc": "Nötig, bevor Inhalte irgendwo veröffentlicht werden können.",
       "pushLabel": "Benachrichtigungen einschalten",
-      "pushDesc": "So erfährst du es, wenn die KI eine Frage an dich hat."
+      "pushDesc": "So erfährst du es, wenn die KI eine Frage an dich hat.",
+      "firstTicketLabel": "Erstelle dein erstes Ticket",
+      "firstTicketDesc": "Ein KI-Agent nimmt es vom Board auf.",
+      "firstTicketCta": "Eins erstellen",
+      "firstTicketTitle": "Meine erste Aufgabe",
+      "askAiLabel": "Stelle der Workspace-KI eine Frage",
+      "askAiDesc": "Beschreibe einfach, was du willst — sie schlägt vor, du genehmigst.",
+      "askAiCta": "KI öffnen"
     },
     "repoScan": {
       "sectionLink": "Verbindung",
@@ -1747,17 +1753,6 @@
       "pieceDef": "Ein Medienprojekt — Skript, Voiceover, Bilder und das gerenderte Video, im Content-Modul.",
       "shortlink": "Trackbarer Link",
       "shortlinkDef": "Ein /l/slug-Link, der Klicks zählt — das Conversion-Signal für eine Anzeige oder Kampagne."
-    },
-    "firstSteps": {
-      "title": "Loslegen — erste Schritte",
-      "dismiss": "Schließen",
-      "firstTicket": "Meine erste Aufgabe",
-      "step1": "Verbinde ein Git-Repo, damit Agenten an deinem Code arbeiten können.",
-      "step1Cta": "Einstellungen öffnen",
-      "step2": "Erstelle dein erstes Ticket — ein KI-Agent übernimmt es.",
-      "step2Cta": "Ticket erstellen",
-      "step3": "Bitte die Workspace-KI um alles, in einfacher Sprache.",
-      "step3Cta": "KI öffnen"
     },
     "shell": {
       "brand": "Workspaces",

@@ -1236,7 +1236,6 @@
       "title": "Terminer la configuration de cet espace",
       "progress": "{{done}} sur {{total}} terminé",
       "fix": "Configurer",
-      "dismiss": "Masquer",
       "collapse": "Replier",
       "expand": "Déplier",
       "aiKeyLabel": "Définir une clé IA",
@@ -1252,7 +1251,14 @@
       "channelLabel": "Connecter un canal",
       "channelDesc": "Nécessaire avant de pouvoir publier du contenu quelque part.",
       "pushLabel": "Activer les notifications",
-      "pushDesc": "Pour être prévenu lorsque l’IA a une question pour vous."
+      "pushDesc": "Pour être prévenu lorsque l’IA a une question pour vous.",
+      "firstTicketLabel": "Créez votre premier ticket",
+      "firstTicketDesc": "Un agent IA le prend en charge depuis le tableau.",
+      "firstTicketCta": "En créer un",
+      "firstTicketTitle": "Ma première tâche",
+      "askAiLabel": "Posez une question à l'IA de l'espace",
+      "askAiDesc": "Décrivez ce que vous voulez en clair — elle propose, vous approuvez.",
+      "askAiCta": "Ouvrir l'IA"
     },
     "repoScan": {
       "sectionLink": "Connexion",
@@ -1747,17 +1753,6 @@
       "pieceDef": "Un projet média — script, voix off, images et la vidéo rendue, dans le module Contenu.",
       "shortlink": "Lien traçable",
       "shortlinkDef": "Un lien /l/slug qui compte les clics — le signal de conversion d'une annonce ou campagne."
-    },
-    "firstSteps": {
-      "title": "Commencer — premières étapes",
-      "dismiss": "Fermer",
-      "firstTicket": "Ma première tâche",
-      "step1": "Connectez un dépôt git pour que les agents travaillent sur votre code.",
-      "step1Cta": "Ouvrir les réglages",
-      "step2": "Créez votre premier ticket — un agent IA le prendra.",
-      "step2Cta": "Créer un ticket",
-      "step3": "Demandez à l'IA de l'espace n'importe quoi, en langage clair.",
-      "step3Cta": "Ouvrir l'IA"
     },
     "shell": {
       "brand": "Workspaces",

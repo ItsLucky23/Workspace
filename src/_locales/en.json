@@ -1236,7 +1236,6 @@
       "title": "Finish setting up this workspace",
       "progress": "{{done}} of {{total}} done",
       "fix": "Set this up",
-      "dismiss": "Hide",
       "collapse": "Collapse",
       "expand": "Expand",
       "aiKeyLabel": "Set an AI key",
@@ -1252,7 +1251,14 @@
       "channelLabel": "Connect a channel",
       "channelDesc": "Needed before content can be published anywhere.",
       "pushLabel": "Turn on notifications",
-      "pushDesc": "So you hear about it when the AI has a question for you."
+      "pushDesc": "So you hear about it when the AI has a question for you.",
+      "firstTicketLabel": "Create your first ticket",
+      "firstTicketDesc": "An AI agent picks it up from the board.",
+      "firstTicketCta": "Create one",
+      "firstTicketTitle": "My first task",
+      "askAiLabel": "Ask the Workspace-AI something",
+      "askAiDesc": "Describe what you want in plain language — it proposes, you approve.",
+      "askAiCta": "Open the AI"
     },
     "repoScan": {
       "sectionLink": "Connection",
@@ -1747,17 +1753,6 @@
       "pieceDef": "One media project — a script, voiceover, images and the rendered video, in the Content module.",
       "shortlink": "Trackable link",
       "shortlinkDef": "A /l/slug link that counts clicks — the conversion signal for an ad or campaign."
-    },
-    "firstSteps": {
-      "title": "Get started — first steps",
-      "dismiss": "Dismiss",
-      "firstTicket": "My first task",
-      "step1": "Connect a git repo so agents can work on your code.",
-      "step1Cta": "Open settings",
-      "step2": "Create your first ticket — an AI agent will pick it up.",
-      "step2Cta": "Create a ticket",
-      "step3": "Ask the Workspace-AI to do anything, in plain language.",
-      "step3Cta": "Open the AI"
     },
     "shell": {
       "brand": "Workspaces",

@@ -9,6 +9,9 @@
 //?   - `ws-board-new-ticket` (src/workspaces/develop/board/BoardHeader.tsx) — disambiguates the
 //?     header's "+ Ticket" primary action from the Unrefined column's inline quick-add button,
 //?     which renders the exact same accessible name ("Ticket").
+//?   - `ws-setup-checklist` (src/workspaces/_components/SetupChecklist.tsx) — its collapse control is
+//?     an icon-only button whose accessible name ("Expand") is also computed for the nav rail's own
+//?     collapse pill, so the locator needs a scope rather than a page-wide role query.
 //?   - `ws-backlog-row` (src/workspaces/develop/backlog/page.tsx) — the backlog Row has no
 //?     role/label of its own and nests inside ancestor elements that also carry a font-mono id
 //?     span, so the board's structural has()-locator trick would over-match here.
@@ -28,6 +31,45 @@ async function createTicket(page: import('@playwright/test').Page, title: string
   await titleInput.fill(title);
   await page.getByRole('button', { name: 'Create', exact: true }).click();
 }
+
+test.describe('board onboarding', () => {
+  //? ADR 0316 — there is exactly ONE first-run surface on the board, and its only control collapses.
+  //? Before this the checklist and a separate primary-outlined "Get started" banner stacked on the same
+  //? spot, and the checklist's second control (an X next to the chevron, both icon-only) hid it forever
+  //? with no way back anywhere in the product. Both halves are asserted here because both were found by
+  //? using the page, not by any check that existed.
+  test('one setup checklist, no second banner, and collapsing it survives a reload', async ({ authedPage }) => {
+    const page = authedPage;
+    await createWorkspace(page, `E2E PW Onboarding ${String(Date.now())}`);
+    await expect(page.getByText('Welcome to Workspaces')).toBeHidden({ timeout: 30_000 });
+
+    // A fresh workspace has no repo, no AI key and no push, so the checklist is showing.
+    const checklist = page.getByTestId('ws-setup-checklist');
+    const header = checklist.getByRole('button', { name: /Finish setting up this workspace/ });
+    await expect(header).toBeVisible();
+    // The retired banner's own heading must be gone — not merely hidden behind the checklist.
+    await expect(page.getByText('Get started', { exact: false })).toHaveCount(0);
+    // Its two useful actions live in the checklist now.
+    await expect(page.getByText('Create your first ticket')).toBeVisible();
+    await expect(page.getByText('Ask the Workspace-AI something')).toBeVisible();
+
+    // Exactly one control, and it collapses rather than dismisses.
+    const collapse = checklist.getByRole('button', { name: 'Collapse' });
+    await expect(collapse).toBeVisible();
+    await collapse.click();
+    await expect(page.getByText('Create your first ticket')).toBeHidden();
+    // …and the title bar stays, which is what makes it recoverable at all.
+    await expect(header).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByText('Welcome to Workspaces')).toBeHidden({ timeout: 30_000 });
+    await expect(header).toBeVisible();
+    await expect(page.getByText('Create your first ticket')).toBeHidden();
+    //? Scoped to the checklist: the nav rail's own collapse pill also computes to "Expand".
+    await checklist.getByRole('button', { name: 'Expand' }).click();
+    await expect(page.getByText('Create your first ticket')).toBeVisible();
+  });
+});
 
 test.describe('board', () => {
   test('+ Ticket creates a card that lands in Unrefined', async ({ authedPage }) => {

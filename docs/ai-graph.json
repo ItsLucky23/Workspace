@@ -2,8 +2,8 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 446,
-    "edges": 657,
+    "nodes": 445,
+    "edges": 653,
     "symbols": 840,
     "callEdges": 275
   },
@@ -2069,11 +2069,6 @@
       "route": null
     },
     {
-      "id": "workspaces/develop/board/OnboardingBanner.tsx",
-      "kind": "other",
-      "route": null
-    },
-    {
       "id": "workspaces/develop/board/page.tsx",
       "kind": "page",
       "route": null
@@ -4049,18 +4044,6 @@
       "to": "workspaces/develop/board/ArtifactLinkPicker.tsx"
     },
     {
-      "from": "workspaces/develop/board/OnboardingBanner.tsx",
-      "to": "workspaces/_components/Icon.tsx"
-    },
-    {
-      "from": "workspaces/develop/board/OnboardingBanner.tsx",
-      "to": "workspaces/_components/primitives.tsx"
-    },
-    {
-      "from": "workspaces/develop/board/OnboardingBanner.tsx",
-      "to": "workspaces/_shell/WorkspacesContext.tsx"
-    },
-    {
       "from": "workspaces/develop/board/page.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
@@ -4087,10 +4070,6 @@
     {
       "from": "workspaces/develop/board/page.tsx",
       "to": "workspaces/develop/board/KanbanCard.tsx"
-    },
-    {
-      "from": "workspaces/develop/board/page.tsx",
-      "to": "workspaces/develop/board/OnboardingBanner.tsx"
     },
     {
       "from": "workspaces/develop/code/page.tsx",
@@ -4927,7 +4906,6 @@
       "workspaces/develop/board/ArtifactLinkPicker.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
       "workspaces/develop/board/KanbanCard.tsx",
-      "workspaces/develop/board/OnboardingBanner.tsx",
       "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
@@ -5227,7 +5205,6 @@
       "workspaces/develop/board/ArtifactLinkPicker.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
       "workspaces/develop/board/KanbanCard.tsx",
-      "workspaces/develop/board/OnboardingBanner.tsx",
       "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
@@ -5316,7 +5293,6 @@
       "workspaces/develop/board/ArtifactLinkPicker.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
       "workspaces/develop/board/KanbanCard.tsx",
-      "workspaces/develop/board/OnboardingBanner.tsx",
       "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
@@ -5405,7 +5381,6 @@
       "workspaces/develop/board/ArtifactLinkPicker.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
       "workspaces/develop/board/KanbanCard.tsx",
-      "workspaces/develop/board/OnboardingBanner.tsx",
       "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
@@ -5645,7 +5620,6 @@
       "workspaces/develop/board/ArtifactLinkPicker.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
       "workspaces/develop/board/KanbanCard.tsx",
-      "workspaces/develop/board/OnboardingBanner.tsx",
       "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/FileDiffViewer.tsx",
@@ -5762,7 +5736,6 @@
       "workspaces/develop/board/ArtifactLinkPicker.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
       "workspaces/develop/board/KanbanCard.tsx",
-      "workspaces/develop/board/OnboardingBanner.tsx",
       "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
@@ -5847,7 +5820,6 @@
       "workspaces/develop/board/ArtifactLinkPicker.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
       "workspaces/develop/board/KanbanCard.tsx",
-      "workspaces/develop/board/OnboardingBanner.tsx",
       "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
@@ -6107,7 +6079,6 @@
       "workspaces/develop/board/ArtifactLinkPicker.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
       "workspaces/develop/board/KanbanCard.tsx",
-      "workspaces/develop/board/OnboardingBanner.tsx",
       "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/DiffView.tsx",
@@ -6234,7 +6205,6 @@
       "workspaces/develop/board/ArtifactLinkPicker.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
       "workspaces/develop/board/KanbanCard.tsx",
-      "workspaces/develop/board/OnboardingBanner.tsx",
       "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/DiffView.tsx",
@@ -6384,7 +6354,6 @@
       "workspaces/develop/board/ArtifactLinkPicker.tsx",
       "workspaces/develop/board/BoardHeader.tsx",
       "workspaces/develop/board/KanbanCard.tsx",
-      "workspaces/develop/board/OnboardingBanner.tsx",
       "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
@@ -6551,9 +6520,6 @@
     "workspaces/develop/board/KanbanCard.tsx": [
       "workspaces/develop/board/page.tsx"
     ],
-    "workspaces/develop/board/OnboardingBanner.tsx": [
-      "workspaces/develop/board/page.tsx"
-    ],
     "workspaces/develop/designer/animations.ts": [
       "workspaces/develop/components/page.tsx",
       "workspaces/develop/designer/page.tsx",
@@ -6671,62 +6637,62 @@
     {
       "id": "workspaces/_functions/controlApi.ts",
       "kind": "other",
-      "dependents": 108,
+      "dependents": 107,
       "directDependents": 9
     },
     {
       "id": "workspaces/_data/types.ts",
       "kind": "other",
-      "dependents": 100,
+      "dependents": 99,
       "directDependents": 52
     },
     {
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
-      "dependents": 90,
-      "directDependents": 79
+      "dependents": 89,
+      "directDependents": 78
     },
     {
       "id": "workspaces/_components/motion.tsx",
       "kind": "other",
-      "dependents": 86,
+      "dependents": 85,
       "directDependents": 26
     },
     {
       "id": "_components/inputs/fieldShell.tsx",
       "kind": "component",
-      "dependents": 84,
+      "dependents": 83,
       "directDependents": 2
     },
     {
       "id": "_components/inputs/Popover.tsx",
       "kind": "component",
-      "dependents": 82,
+      "dependents": 81,
       "directDependents": 2
     },
     {
       "id": "_components/inputs/Toggle.tsx",
       "kind": "component",
-      "dependents": 82,
+      "dependents": 81,
       "directDependents": 2
     },
     {
       "id": "_components/Avatar.tsx",
       "kind": "component",
-      "dependents": 81,
+      "dependents": 80,
       "directDependents": 2
     },
     {
       "id": "workspaces/_components/primitives.tsx",
       "kind": "other",
-      "dependents": 80,
-      "directDependents": 76
+      "dependents": 79,
+      "directDependents": 75
     },
     {
       "id": "workspaces/_shell/WorkspacesContext.tsx",
       "kind": "other",
-      "dependents": 70,
-      "directDependents": 62
+      "dependents": 69,
+      "directDependents": 61
     },
     {
       "id": "_components/ConfirmMenu.tsx",

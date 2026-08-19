@@ -5138,3 +5138,51 @@ nieuwe routes) · Playwright **24/24**. De pipeline-spec is uitgebreid met de ni
 aangemaakt) en met de doorverwijzingen in de lagen-preview: de Carry-over-link en de
 workspace-AI-link moeten er staan, en de twee lagen waarvan de editor op ditzelfde scherm staat
 mogen er juist géén hebben.
+
+## 2026-08-19 — Eén onboarding-blok op het bord, en het klapt in in plaats van te verdwijnen
+
+**Prompt van de gebruiker.** Op `/develop/board` eerst een rustig menu met 6-7 stappen met rechtsboven
+een X ("verbergen") — erop geklikt, menu helemaal weg en niet meer terug te krijgen; verwacht was
+inklappen. Daarna van project gewisseld en op dezelfde plek een veel druk 3-stappen-blok met een
+primary-outline. Vraag: klopt dit, en zijn er UI-elementen dubbel blijven staan na de UI-verbouwing?
+
+**Wat ik heb gevonden — alles klopte.** Twee losse onboarding-UI's op dezelfde plek:
+
+- `SetupChecklist` (ADR 0314) rendert boven de tab-bar op `board` + `content`. In de header stonden
+  TWEE icon-only knoppen naast elkaar: een chevron die inklapt, en een `xmark` met tooltip
+  "Verbergen". Die X schreef `ws:setup-dismissed:<workspaceId>` naar localStorage — een sleutel die
+  op één plek geschreven wordt, op één plek gelezen, en NERGENS in het product gewist. Dat is een
+  doodlopend pad in mijn eigen werk van vorige week.
+- `OnboardingBanner` (J1) rendert in de board-pagina zodra het actieve project 0 tickets heeft, als
+  3-kaarts grid in `border-primary-border bg-primary/8`. Vandaar de volgorde die de gebruiker zag:
+  checklist weggeklikt → project gewisseld → nieuw project heeft 0 tickets → het luidere blok.
+
+Twee bijvangsten uit dezelfde leesbeurt: stap 1 van de banner zei "Connect a git repo" maar navigeerde
+naar `settings` = de ACCOUNT-instellingen, niet naar de Repository-tab waar de checklist voor dezelfde
+taak heen linkt. En de twee UI's overlapten maar op één rij (repo koppelen); de andere twee stappen
+van de banner bestonden nergens anders.
+
+**Wat ik heb gedaan** (keuze van de gebruiker: primary-outline-blok weg, info erin verwerken, stijl
+consistent houden). Zie ADR 0316.
+
+- `OnboardingBanner.tsx` verwijderd, plus beide render-plekken (mobiel + desktop) in de board-pagina.
+- De X is weg. De chevron is de enige knop en onthoudt zijn stand per workspace onder een NIEUWE
+  sleutel `ws:setup-collapsed:`. De oude dismiss-sleutel wordt door niets meer gelezen, dus wie hem
+  had gezet krijgt zijn checklist gewoon terug — geen devtools nodig.
+- `ChecklistStep` kan nu een `action` hebben in plaats van een `target`: "maak je eerste ticket"
+  (`quickAdd`, meetbaar via `tickets.length > 0`) en "stel de Workspace-AI een vraag" (`toggleAi`,
+  guidance) zijn handelingen, geen instellingenpagina's.
+- Het "telt niet mee voor afronden"-signaal staat nu ALS VLAG OP DE STAP (`guidance: true`) in plaats
+  van in een id-lijst ernaast, zodat een nieuwe rij de checklist niet stilzwijgend onsterfelijk maakt.
+- Locales: `workspaces.firstSteps.*` (8 keys) en `checklist.dismiss` verwijderd, `checklist.firstTicket*`
+  + `checklist.askAi*` toegevoegd, 4 talen.
+- Nieuwe e2e-spec `board onboarding`: één blok, de oude banner-kop bestaat niet meer, de twee
+  overgenomen acties staan erin, en inklappen overleeft een reload (uitklappen erna weer getest).
+  Nieuwe testid `ws-setup-checklist` — de in/uitklap-knop heeft dezelfde toegankelijke naam
+  ("Expand") als de collapse-pil van de nav-rail, dus de locator heeft een scope nodig.
+
+**Gemeld, niet aangepast.** `content/settings/page.tsx` heeft een derde primary-outlined setup-blok.
+Dat staat op zijn eigen pagina en stapelt niet met iets anders, dus buiten de scope van deze fix.
+
+**Verificatie.** `tsc` ✅ · `lint` ✅ · `ai:lint` ✅ · `build` ✅ · unit **122/122** · Playwright
+**25/25** (was 24 — de nieuwe onboarding-spec erbij).

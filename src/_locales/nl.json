@@ -1236,7 +1236,6 @@
       "title": "Deze workspace afmaken",
       "progress": "{{done}} van {{total}} klaar",
       "fix": "Regel dit",
-      "dismiss": "Verbergen",
       "collapse": "Inklappen",
       "expand": "Uitklappen",
       "aiKeyLabel": "AI-sleutel instellen",
@@ -1252,7 +1251,14 @@
       "channelLabel": "Een kanaal koppelen",
       "channelDesc": "Nodig om content ergens te kunnen publiceren.",
       "pushLabel": "Meldingen aanzetten",
-      "pushDesc": "Zo krijg je een seintje wanneer de AI je iets vraagt."
+      "pushDesc": "Zo krijg je een seintje wanneer de AI je iets vraagt.",
+      "firstTicketLabel": "Maak je eerste ticket",
+      "firstTicketDesc": "Een AI-agent pakt hem op vanaf het bord.",
+      "firstTicketCta": "Maak er een",
+      "firstTicketTitle": "Mijn eerste taak",
+      "askAiLabel": "Stel de Workspace-AI een vraag",
+      "askAiDesc": "Beschrijf gewoon wat je wilt — hij stelt voor, jij keurt goed.",
+      "askAiCta": "Open de AI"
     },
     "repoScan": {
       "sectionLink": "Koppeling",
@@ -1747,17 +1753,6 @@
       "pieceDef": "Eén mediaproject — script, voice-over, beelden en de gerenderde video, in de Content-module.",
       "shortlink": "Trackbare link",
       "shortlinkDef": "Een /l/slug-link die kliks telt — het conversiesignaal voor een advertentie of campagne."
-    },
-    "firstSteps": {
-      "title": "Aan de slag — eerste stappen",
-      "dismiss": "Sluiten",
-      "firstTicket": "Mijn eerste taak",
-      "step1": "Verbind een git-repo zodat agents aan je code kunnen werken.",
-      "step1Cta": "Open instellingen",
-      "step2": "Maak je eerste ticket — een AI-agent pakt 'm op.",
-      "step2Cta": "Maak een ticket",
-      "step3": "Vraag de Workspace-AI om alles, in gewone taal.",
-      "step3Cta": "Open de AI"
     },
     "shell": {
       "brand": "Workspaces",

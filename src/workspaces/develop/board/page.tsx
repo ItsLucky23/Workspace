@@ -11,7 +11,7 @@
 //? Columns are derived from the live workspace snapshot (real ticket rows per
 //? stage); mobile shows the stage-pill segment bar + the active stage's list.
 //? Sub-components live in sibling files: BoardHeader (header + Filter popover +
-//? overflow ⋯), KanbanCard (card + its menus/pickers), OnboardingBanner.
+//? overflow ⋯), KanbanCard (card + its menus/pickers).
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -25,7 +25,6 @@ import type { PipelineStage, Ticket } from '../../_data/types';
 import { BoardHeader } from './BoardHeader';
 import { ALL_FILTERS, type BoardFilters } from './boardFilters';
 import { KanbanCard } from './KanbanCard';
-import { OnboardingBanner } from './OnboardingBanner';
 
 //? Columns are keyed by the stage's free-string id (04b §12), not a fixed enum.
 type Columns = Record<string, Ticket[]>;
@@ -176,8 +175,6 @@ export default function Board() {
     return (
       <div className={`flex flex-col h-full min-h-0`}>
         <BoardHeader isMobile filters={filters} onFiltersChange={setFilters} />
-        {/* J1 — a fresh workspace (no tickets): the first-steps banner teaches where to start. */}
-        {tickets.length === 0 && <OnboardingBanner />}
         <BoardMobile columns={columns} />
       </div>
     );
@@ -186,8 +183,6 @@ export default function Board() {
   return (
     <div className={`flex flex-col h-full min-h-0`}>
       <BoardHeader isMobile={false} filters={filters} onFiltersChange={setFilters} />
-      {/* J1 — a fresh workspace (no tickets): the first-steps banner teaches where to start. */}
-      {tickets.length === 0 && <OnboardingBanner />}
       {/* the horizontal scroll IS the board metaphor — confined to this column strip, never the page chrome */}
       <div className={`flex-1 min-h-0 overflow-x-auto ws-no-scrollbar px-4 md:px-6 pb-6`}>
         <div className={`flex gap-3 h-full`}>
