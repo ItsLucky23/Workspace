@@ -214,10 +214,12 @@ function TicketControls({ ticket, primary, onOpenTerminal }: { ticket: Ticket; p
             id: 'devcmd',
             label: translate({ key: 'workspaces.tips.ticket.previewCmdLabel' }),
             desc: translate({ key: 'workspaces.tips.ticket.previewCmdDesc' }),
-            //? The dev command lives in the project's settings. Target the page itself, not a tab/section
-            //? trail: the router registers exact page paths only, so the deeper address renders the error
-            //? page — an affordance that lands nowhere is worse than one that lands one click away.
-            onGo: () => { ctx.focusSetup({ view: 'workspace' }); },
+            //? Straight to Repository → Runtime, which is the only place the start command is edited.
+            //? This used to target the bare page, justified by "the router registers exact page paths
+            //? only" — false since ADR 0312: `workspace` is a TRAIL_ROOT and src/main.tsx registers
+            //? `/workspaces/workspace/*`. The bare address resolves the empty trail to the MEMBERS tab,
+            //? so a button labelled "Set start command" showed the member list.
+            onGo: () => { ctx.focusSetup({ view: 'workspace', tab: 'repository', section: 'runtime' }); },
             goLabel: translate({ key: 'workspaces.tips.ticket.previewCmdGo' }),
           },
         ]}

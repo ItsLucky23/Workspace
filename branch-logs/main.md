@@ -5371,3 +5371,57 @@ in hetzelfde scherm tegen. Nu zeggen beide hetzelfde ware ding.
 
 **Verificatie.** `tsc` ✅ · `lint` ✅ · `ai:lint` ✅ · `build` ✅ · unit **123/123** · e2e
 developRest + boardTicket **12/12**.
+
+## 2026-08-19 — Gedragsaudit: 19 bevestigde defecten · ?-popover · golf 1 gefikst
+
+**Prompt van de gebruiker.** "De recent toegevoegde UI is allemaal niet echt goed. Ik vroeg om kleine
+?-icons met hover; op /pipeline zie ik in plaats daarvan een hele extra container, en op
+/workspace/aibehavior is die info nergens te vinden. De onboarding is voor iedere stap die ik getest
+heb niet functioneel. En iedere kleine fix kost 20 minuten omdat je 100 tests draait." Daarna: beide
+punten fixen, parallelle agents/ultracode toegestaan, alles e2e testen.
+
+**De ?-popover (punt 1).** `useLayerTip` in `EffectivePromptPreview.tsx` levert de onderdelen van de
+tip (titel/body/points), omdat de twee aanroepplekken hem anders monteren: `SettingRow` bouwt zijn
+eigen InfoTip uit `infoTitle`/`info`/`infoPoints`, `FieldLabel` wil een node. Nu staat er een `?`
+náást het persona-veld, náást de stage-instructies, náást het carry-over-sjabloon én náást de
+workspace-instructie op /workspace/aibehavior. Het grote blok is van BOVEN de velden naar ONDER
+verplaatst en blijft ingeklapt — het beantwoordt een andere vraag (wat krijgt de agent letterlijk).
+
+Bijvangst: de `?`-trigger had als toegankelijke naam letterlijk "?" — de `ariaLabel` benoemt het
+popover-PANEEL, niet de knop. 95 stuks, allemaal "button, vraagteken" voor een screenreader. Nu een
+`sr-only`-naam. Dat brak één spec-selector (`name: 'Save'` matchte substring op "Exports use the saved
+version"); die selector was altijd al dubbelzinnig en is nu `exact: true`.
+
+**De audit (punt 2).** 31-agent workflow: 6 parallelle finders op gedrag (niet op tekst), daarna één
+adversariële weerlegger per bevinding met als opdracht de claim ONDERUIT te halen. 24 ruw → 22
+overleefden → **19 uniek**. Vastgelegd in `src/workspaces/_docs/UI_BEHAVIOUR_AUDIT_2026-08-19.md`.
+Drie ervan zaten in code die ik vandaag schreef.
+
+**Golf 1 gefikst (7 van de 19), elk met een klik-test:**
+
+1. `WorkspacesProvider.setTrail` bouwde zijn URL uit de afgeleide VIEW. Op
+   `/workspaces/content/settings` is die view `content`, wiens pad geen trail-root is — dus élke
+   tabklik op de Content-instellingen navigeerde je van de pagina AF naar het Content-overzicht. De
+   deep-links erheen werkten wel (die geven de letterlijke string mee), en dat is precies waarom het
+   nooit opviel. Een trail hoort bij het PAD waar je op staat, niet bij de view.
+2. `addStage` deed twee navigaties; de tweede werd gebouwd uit de `selectedId` van de vórige render en
+   won. De nieuwe stage stond in de strip terwijl de editor de oude toonde — en die overschreef bij
+   Save. Nu één navigatie met beide segmenten.
+3. Stage-chips op Sources gaven stage-NAMEN mee aan een segment dat op stage-KEYS valideert, dus elke
+   chip viel stil terug op de eerste stage. Nu naam→key opgelost.
+4. Mijn eigen verse bug: de carry-over-link in de tip berekende `carryover` en gooide hem weg als er
+   geen stage was (de workspace-pagina). Nu valt hij terug op de eerste stage.
+5. Idem voor `LayerLink` in het blok.
+6. Ticket-tip "Startcommando instellen" ging naar de bare workspace-pagina → de MEMBERS-tab. Het
+   comment dat dit rechtvaardigde ("de router registreert alleen exacte paden") is sinds ADR 0312
+   onwaar. Nu → `repository/runtime`.
+7. "Services beheren" wees naar de `workspace`-tab; services staan in de `developer`-tab.
+
+**Verificatie.** `tsc` ✅ · `lint` ✅ · `build` ✅ · unit **123/123** · Playwright **33/33** (3 nieuwe
+specs: `layerTip`, `deepLinks`, `onboardingSteps`).
+
+**Nog open: 12 van de 19.** Zie het auditdocument. Kort: de push-rij van de checklist leest een
+host-env in plaats van jouw abonnement; vier fix-knoppen stuiteren terug op de module-guard; de
+permissiematrix is klikbaar maar wordt server-side geweigerd; de Modules-tab houdt de toggles van de
+vórige workspace vast; "Validate with AI" meldt iets dat geen enkele UI kan oplossen; twee teksten
+beloven iets dat het systeem niet doet.

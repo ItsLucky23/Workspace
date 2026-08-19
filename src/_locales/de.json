@@ -744,7 +744,10 @@
       "goto_skills": "In den Workspace-KI-Einstellungen bearbeiten",
       "goto_stageSystemPrompt": "Im Reiter Allgemein bearbeiten",
       "goto_stageInstructions": "Im Reiter Allgemein bearbeiten",
-      "goto_carryOver": "Im Reiter Übergabe bearbeiten"
+      "goto_carryOver": "Im Reiter Übergabe bearbeiten",
+      "tipTitle": "Wie dieser Prompt aufgebaut ist",
+      "tipPosition": "Dieses Feld ist {{channel}} {{n}} von {{total}}.",
+      "tipThisField": " — dieses Feld"
     },
     "tips": {
       "automations": {

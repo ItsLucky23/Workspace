@@ -21,7 +21,7 @@ import Dropdown from 'src/_components/dropdown/Dropdown';
 import Icon from '../_components/Icon';
 import SetupWizard from '../_components/SetupWizard';
 import { Table, type TableColumn } from '../_components/dataDisplay';
-import { EffectivePromptPreview, LayerNote } from '../_components/EffectivePromptPreview';
+import { EffectivePromptPreview, LayerNote, useLayerTip } from '../_components/EffectivePromptPreview';
 import { Collapse } from '../_components/motion';
 import { AvatarBubble, IconButton, InfoTip, PopMenu, Tabs, Toggle, WsButton, type PopMenuItem, type TabDef } from '../_components/primitives';
 import { EmptyPicker } from '../_components/SetupNotice';
@@ -820,7 +820,11 @@ function RuntimeSection({ workspaceId }: { workspaceId: string }) {
         <EmptyPicker
           icon="diagram-project"
           label={translate({ key: 'workspaces.repoScan.monorepoHint', params: [{ key: 'n', value: String(repoScan.units.length) }] })}
-          fix={{ cap: 'workspaceSettings', view: 'settings', tab: 'workspace', cta: translate({ key: 'workspaces.repoScan.manageServices' }) }}
+          //? The `developer` tab, not `workspace`: per-service rows render under
+          //? `showDevOps && tab === 'developer'` (settings/page.tsx). The `workspace` tab holds API
+          //? tokens, experiments, storage and the data export — a button called "Manage services"
+          //? landed on a page with no service anywhere on it.
+          fix={{ cap: 'workspaceSettings', view: 'settings', tab: 'developer', cta: translate({ key: 'workspaces.repoScan.manageServices' }) }}
         />
       )}
       <button type="button" onClick={() => { navigate('code'); }} className={`self-start text-xs text-primary hover:text-primary-hover cursor-pointer`}>
@@ -1318,6 +1322,7 @@ function AiBehaviorTab() {
   //? ADR 0308 — layers 1-2 resolve here (the stage-scoped 3-5 stay empty on this page, which is
   //? itself the point: the preview shows the user that stages add three more).
   const layers = resolveAiLayers({ workspace: activeWorkspace, skills: aiSkills });
+  const workspaceTip = useLayerTip(layers, 'workspace');
   const languageOptions = OUTPUT_LANGUAGES.map((l) => ({ id: l.id, value: l.id, item: l.label }));
   const providerItems = PROVIDER_OPTIONS.map((p) => ({ id: p.id, value: p.id, item: p.item }));
   const providerFor = (feature: string): string => aiOverrides.find((o) => o.feature === feature)?.providerId ?? 'default';
@@ -1331,8 +1336,9 @@ function AiBehaviorTab() {
   }, [activeWorkspace.id]);
   return (
     <div className="flex flex-col gap-4 max-w-2xl">
-      {/* ADR 0308 — the composition is stated where it is edited, not documented elsewhere. This is
-          layer 1 of 5; the preview shows what the agent ends up with. */}
+      {/* The composition is stated where it is edited — behind the "?" ON the field (ADR 0311 for the
+          two-channel model; 0308's "layer 1 of 5" was the wrong story and the wrong container). The
+          full composed text stays at the bottom of the section as an opt-in debugging view. */}
       <FormSection
         title={translate({ key: 'workspaces.workspaceSettings.aiInstructionTitle' })}
         desc={translate({ key: 'workspaces.workspaceSettings.aiInstructionDesc' })}
@@ -1341,6 +1347,12 @@ function AiBehaviorTab() {
           stacked
           label={translate({ key: 'workspaces.aiLayers.workspace' })}
           inherits={<LayerNote layers={layers} id="workspace" />}
+          //? The same "?" the pipeline's persona field has. This field is the FIRST layer of the system
+          //? channel and steers every stage, and until now the only explanation on this page sat four
+          //? settings rows further down, where nobody looks for it.
+          infoTitle={workspaceTip.title}
+          info={workspaceTip.body}
+          infoPoints={workspaceTip.points}
           status={aiStatus}
           control={(
             <textarea

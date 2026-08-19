@@ -113,8 +113,11 @@ export default function Pipeline() {
     const taken = stages.filter((st) => st.name === base || st.name.startsWith(`${base} `)).length;
     const name = taken === 0 ? base : `${base} ${String(taken + 1)}`;
     setStages((p) => [...p, blankStage(activeProjectId, key, name, p.length, kind, presetData.byKind[kind])]);
-    setSelectedId(key);
-    setTab('general');
+    //? ONE navigation, both segments. `setSelectedId` then `setTab` was two: the second rebuilt the URL
+    //? from the PREVIOUS render's `selectedId` (it is passed to useTrailSegment as the prefix) and
+    //? overwrote the first, so the new stage appeared in the strip while the editor still showed — and
+    //? then saved over — the stage that was selected before.
+    navigate('pipeline', [key, 'general']);
     //? R1 — persist the new stage immediately (was React-state-only → lost on refresh).
     createStage({ projectId: activeProjectId, key, name, kind });
   };

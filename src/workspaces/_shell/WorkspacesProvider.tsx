@@ -167,6 +167,20 @@ function pathForTrail(view: WsView, trail: readonly string[] = []): string {
   const clean = trail.filter((s) => s.length > 0).map((s) => encodeURIComponent(s));
   return clean.length > 0 ? `${base}/${clean.join('/')}` : base;
 }
+//? The trail root the CURRENT path sits under, or undefined when it has none.
+//?
+//? `setTrail` used to rebuild its URL from the derived VIEW, and that is wrong wherever a page's path
+//? is not its view's path. /workspaces/content/settings derives the view `content` (viewFromPath sends
+//? every unrecognised content sub-path to the overview), so `pathForView('content')` returned
+//? /workspaces/content — not a trail root — and every tab click on the Content settings page silently
+//? navigated the user OFF the page to the Content overview. The deep links into it worked, because
+//? focusSetup passes the literal 'content/settings', which is why nothing ever caught this.
+//? A trail belongs to the PATH you are on, not to the view that path resolves to.
+function trailRootOf(pathname: string): string | undefined {
+  const rest = relativePath(pathname);
+  return TRAIL_ROOTS.find((root) => rest === root || rest.startsWith(`${root}/`));
+}
+
 function trailFromPath(pathname: string): string[] {
   const rest = relativePath(pathname);
   for (const root of TRAIL_ROOTS) {
@@ -1450,7 +1464,14 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       navigate: (v, t) => { void navigate(pathForTrail(v, t)); },
       //? Replaces the trail on the CURRENT view — a tab/section change. It pushes rather than
       //? replaces, so "back" walks out of a sub-section the way a user expects it to.
-      setTrail: (t) => { void navigate(pathForTrail(view, t)); },
+      setTrail: (t) => {
+        //? Anchored on the current PATH's trail root, falling back to the view only when the path has
+        //? none (the very first navigation onto a rooted page).
+        const root = trailRootOf(location.pathname);
+        if (root === undefined) { void navigate(pathForTrail(view, t)); return; }
+        const clean = t.filter((seg) => seg.length > 0).map((seg) => encodeURIComponent(seg));
+        void navigate(clean.length > 0 ? `${BASE}/${root}/${clean.join('/')}` : `${BASE}/${root}`);
+      },
       pushTo: (v) => { push(v); void navigate(pathForView(v)); },
       goBack: () => {
         const prev = navStack.at(-1);
@@ -1982,7 +2003,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, navStack, recent, openTabs, isMobile, theme, setTheme, offline, queuedWrites, retryQueuedWrites, parkWrite, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, wantWorkspaceId, currentProjectScope, afterWrite, quickAddApi, sprintCreateApi, editSprintApi, createProjectApi, createFromTemplateApi, applyDesignTokensApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, disconnectForgeApi, deployEnvApi, teardownEnvApi, rollbackEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, viewCounts, agentTerm, copilotPrefill, trail, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut, pendingAnswers]);
+  }, [view, location.pathname, navStack, recent, openTabs, isMobile, theme, setTheme, offline, queuedWrites, retryQueuedWrites, parkWrite, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, wantWorkspaceId, currentProjectScope, afterWrite, quickAddApi, sprintCreateApi, editSprintApi, createProjectApi, createFromTemplateApi, applyDesignTokensApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, disconnectForgeApi, deployEnvApi, teardownEnvApi, rollbackEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, viewCounts, agentTerm, copilotPrefill, trail, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut, pendingAnswers]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

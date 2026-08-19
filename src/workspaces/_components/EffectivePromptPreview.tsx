@@ -12,10 +12,11 @@
 //? written twice, or two layers contradicting.
 //? @adr 0311
 
+/* eslint-disable react-refresh/only-export-components -- `useLayerTip` returns the tip's PARTS because SettingRow builds its own InfoTip while FieldLabel takes a node; it belongs with the component it mirrors, not in a third file, for a dev-only fast-refresh rule. Not a route component. */
 import { useTranslator } from '@luckystack/core/client';
 
 import Icon from './Icon';
-import { Disclosure, FOCUS_RING } from './primitives';
+import { Disclosure, FOCUS_RING, InfoTip, type InfoTipPoint } from './primitives';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import {
   AI_LAYER_CHANNEL_HELP_KEY, AI_LAYER_CHANNEL_LABEL_KEY, AI_LAYER_CHANNEL_ORDER, AI_LAYER_COUNT,
@@ -32,14 +33,17 @@ const NO_INLINE: readonly ResolvedAiLayer['id'][] = [];
 //? the carry-over template lives behind an admin-only Advanced tab, which is exactly the one nobody finds.
 function LayerLink({ id, stageId, inline }: { id: ResolvedAiLayer['id']; stageId?: string; inline: boolean }) {
   const translate = useTranslator();
-  const { navigate, focusSetup } = useWorkspaces();
+  const { navigate, focusSetup, stageConfigs } = useWorkspaces();
+  const anchor = stageId ?? stageConfigs[0]?.id;
   //? The editor for this layer is already on screen — a jump would land the user where they are.
   if (inline) return null;
 
   const go = (): void => {
     if (id === 'workspace' || id === 'skills') { focusSetup({ view: 'workspace', tab: 'aibehavior' }); return; }
     const tab = id === 'carryOver' ? 'carryover' : 'general';
-    navigate('pipeline', stageId === undefined ? [] : [stageId, tab]);
+    //? Same rule as useLayerTip: never navigate to the pipeline without the stage, or the tab segment
+    //? is dropped and the link lands on the first stage's General tab whatever the label promised.
+    navigate('pipeline', anchor === undefined ? [] : [anchor, tab]);
   };
 
   return (
@@ -50,6 +54,74 @@ function LayerLink({ id, stageId, inline }: { id: ResolvedAiLayer['id']; stageId
       {translate({ key: `workspaces.aiLayers.goto_${id}` })} <Icon name="arrow-right-long" className={`text-[10px]`} />
     </button>
   );
+}
+
+//? The "?" next to a layered FIELD — the shape the owner actually asked for: a small icon, hover or
+//? click, and the explanation appears over the page instead of as a block above it.
+//?
+//? What shipped instead was `EffectivePromptPreview`, a full-width disclosure sitting on top of the
+//? very field it describes, and on the workspace AI page it landed four settings rows below the field
+//? — present, and unfindable. The information was right; the container was wrong on both pages.
+//?
+//? Returns the PARTS rather than an element because the two call sites mount a tip differently:
+//? `SettingRow` builds its own InfoTip from `infoTitle`/`info`/`infoPoints`, while the pipeline's
+//? `FieldLabel` takes a rendered node. One definition, two mounts.
+export function useLayerTip(layers: ResolvedAiLayer[], id: ResolvedAiLayer['id'], stageId?: string): {
+  title: string;
+  body: string;
+  points: InfoTipPoint[];
+} {
+  const translate = useTranslator();
+  const { navigate, focusSetup, stageConfigs } = useWorkspaces();
+  //? The workspace AI page has no stage of its own, so its tip's stage links had nowhere precise to
+  //? go: `navigate('pipeline', [])` dropped the tab it had just computed and landed on the first
+  //? stage's General tab while the button said "Edit on the Carry-over tab". Falling back to the first
+  //? stage keeps the promise — that tab, on a real stage — instead of quietly landing elsewhere.
+  const anchorStage = stageId ?? stageConfigs[0]?.id;
+  const layer = layers.find((l) => l.id === id);
+  const channel = layer?.channel ?? 'system';
+  const siblings = layersInChannel(layers, channel);
+
+  const go = (target: ResolvedAiLayer): (() => void) | undefined => {
+    //? No link for the field the tip is attached to — it is the thing you are looking at.
+    if (target.id === id) return undefined;
+    if (target.id === 'workspace' || target.id === 'skills') return () => { focusSetup({ view: 'workspace', tab: 'aibehavior' }); };
+    const tab = target.id === 'carryOver' ? 'carryover' : 'general';
+    //? No stage anywhere means no pipeline to point at — offer no link rather than a link that lies.
+    if (anchorStage === undefined) return undefined;
+    return () => { navigate('pipeline', [anchorStage, tab]); };
+  };
+
+  return {
+    title: translate({ key: 'workspaces.aiLayers.tipTitle' }),
+    //? Names the CHANNEL and this field's place in it, because "after X" only means anything within
+    //? one channel — a field in the other channel neither precedes nor follows it.
+    body: `${translate({ key: AI_LAYER_CHANNEL_HELP_KEY[channel] })} ${translate({
+      key: 'workspaces.aiLayers.tipPosition',
+      params: [
+        { key: 'channel', value: translate({ key: AI_LAYER_CHANNEL_LABEL_KEY[channel] }) },
+        { key: 'n', value: String(layer?.position ?? 1) },
+        { key: 'total', value: String(layer?.channelTotal ?? siblings.length) },
+      ],
+    })}`,
+    points: siblings.map((l): InfoTipPoint => {
+      const onGo = go(l);
+      return {
+        id: l.id,
+        label: `${String(l.position)}. ${translate({ key: AI_LAYER_LABEL_KEY[l.id] })}${l.id === id ? translate({ key: 'workspaces.aiLayers.tipThisField' }) : ''}`,
+        //? Set vs empty is the answer to "why is my instruction being ignored" — an empty layer
+        //? contributes nothing, and that absence is invisible everywhere else.
+        desc: l.text.length > 0 ? l.text.slice(0, 140) : translate({ key: 'workspaces.aiLayers.layerEmpty' }),
+        ...(onGo === undefined ? {} : { onGo, goLabel: translate({ key: `workspaces.aiLayers.goto_${l.id}` }) }),
+      };
+    }),
+  };
+}
+
+/** The rendered "?" for a call site that wants a node (the pipeline's FieldLabel). */
+export function LayerTip({ layers, id, stageId }: { layers: ResolvedAiLayer[]; id: ResolvedAiLayer['id']; stageId?: string }) {
+  const tip = useLayerTip(layers, id, stageId);
+  return <InfoTip align="start" title={tip.title} body={tip.body} points={tip.points} />;
 }
 
 /** One channel: its name, what it steers, its layers in order, and the text it composes to. */

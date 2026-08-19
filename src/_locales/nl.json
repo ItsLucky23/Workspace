@@ -744,7 +744,10 @@
       "goto_skills": "Bewerk in workspace-AI-instellingen",
       "goto_stageSystemPrompt": "Bewerk op het tabblad Algemeen",
       "goto_stageInstructions": "Bewerk op het tabblad Algemeen",
-      "goto_carryOver": "Bewerk op het tabblad Overdracht"
+      "goto_carryOver": "Bewerk op het tabblad Overdracht",
+      "tipTitle": "Hoe deze prompt is opgebouwd",
+      "tipPosition": "Dit veld is {{channel}} {{n}} van {{total}}.",
+      "tipThisField": " — dit veld"
     },
     "tips": {
       "automations": {

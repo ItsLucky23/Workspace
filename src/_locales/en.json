@@ -744,7 +744,10 @@
       "goto_skills": "Edit in workspace AI settings",
       "goto_stageSystemPrompt": "Edit on the General tab",
       "goto_stageInstructions": "Edit on the General tab",
-      "goto_carryOver": "Edit on the Carry-over tab"
+      "goto_carryOver": "Edit on the Carry-over tab",
+      "tipTitle": "How this prompt is composed",
+      "tipPosition": "This field is {{channel}} {{n}} of {{total}}.",
+      "tipThisField": " — this field"
     },
     "tips": {
       "automations": {

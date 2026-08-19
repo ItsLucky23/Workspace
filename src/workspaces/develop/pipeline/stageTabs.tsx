@@ -11,7 +11,7 @@ import { useTranslator } from '@luckystack/core/client';
 import Dropdown from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../../_components/Icon';
-import { EffectivePromptPreview, LayerNote } from '../../_components/EffectivePromptPreview';
+import { EffectivePromptPreview, LayerNote, LayerTip } from '../../_components/EffectivePromptPreview';
 import { Collapse } from '../../_components/motion';
 import { Disclosure, IconButton, InfoDot, InfoTip, Segmented, Toggle, WsButton } from '../../_components/primitives';
 import { EmptyPicker } from '../../_components/SetupNotice';
@@ -91,13 +91,12 @@ export function GeneralTab({ s, update, bp }: TabProps) {
   const layers = resolveAiLayers({ workspace: activeWorkspace, skills: aiSkills, stage: s });
   return (
     <div className="flex flex-col gap-5 max-w-3xl">
-      <EffectivePromptPreview layers={layers} stageId={s.id} inlineIds={['stageSystemPrompt', 'stageInstructions']} />
       <div>
         <FieldLabel
           title={translate({ key: 'workspaces.pipeline.systemPrompt' })}
           hint={translate({ key: 'workspaces.pipeline.systemPromptHint' })}
           note={<LayerNote layers={layers} id="stageSystemPrompt" />}
-          info={<UseDefault value={s.systemPrompt ?? ''} fallback={bp?.systemPrompt} onUse={(text) => { update({ systemPrompt: text }); }} />}
+          info={<><LayerTip layers={layers} id="stageSystemPrompt" stageId={s.id} /><UseDefault value={s.systemPrompt ?? ''} fallback={bp?.systemPrompt} onUse={(text) => { update({ systemPrompt: text }); }} /></>}
         />
         <textarea rows={3} value={s.systemPrompt ?? ''} onChange={(e) => { update({ systemPrompt: e.target.value }); }} className={areaCls} placeholder={translate({ key: 'workspaces.pipeline.systemPromptPlaceholder' })} />
       </div>
@@ -106,7 +105,7 @@ export function GeneralTab({ s, update, bp }: TabProps) {
           title={translate({ key: 'workspaces.pipeline.customInstructions' })}
           hint={translate({ key: 'workspaces.pipeline.customInstructionsHint' })}
           note={<LayerNote layers={layers} id="stageInstructions" />}
-          info={<UseDefault value={s.customInstructions} fallback={bp?.customInstructions} onUse={(text) => { update({ customInstructions: text }); }} />}
+          info={<><LayerTip layers={layers} id="stageInstructions" stageId={s.id} /><UseDefault value={s.customInstructions} fallback={bp?.customInstructions} onUse={(text) => { update({ customInstructions: text }); }} /></>}
         />
         <textarea rows={4} value={s.customInstructions} onChange={(e) => { update({ customInstructions: e.target.value }); }} className={areaCls} placeholder={translate({ key: 'workspaces.pipeline.customInstructionsPlaceholder' })} />
       </div>
@@ -140,6 +139,12 @@ export function GeneralTab({ s, update, bp }: TabProps) {
           </div>
         </Collapse>
       </div>
+
+      {/* The full composed text, at the BOTTOM and collapsed. It used to sit on top of the very fields
+          it describes, which is what made the page feel crowded — and it answers a different question
+          than the "?" beside each field: not "where does this come from" but "what does the agent
+          literally receive". A debugging view, opened when you want it. */}
+      <EffectivePromptPreview layers={layers} stageId={s.id} inlineIds={['stageSystemPrompt', 'stageInstructions']} />
     </div>
   );
 }
@@ -503,7 +508,7 @@ export function CarryoverTab({ s, update, bp }: TabProps) {
           title={translate({ key: 'workspaces.pipeline.promptTemplate' })}
           hint={translate({ key: 'workspaces.pipeline.promptTemplateHint' })}
           note={<LayerNote layers={carryLayers} id="carryOver" />}
-          info={<><UseDefault value={s.promptTemplate} fallback={bp?.promptTemplate} onUse={(text) => { update({ promptTemplate: text }); }} /><InfoTip align="start" title={translate({ key: 'workspaces.tips.pipeline.promptTemplateTitle' })} body={translate({ key: 'workspaces.tips.pipeline.promptTemplateBody' })} /></>}
+          info={<><LayerTip layers={carryLayers} id="carryOver" stageId={s.id} /><UseDefault value={s.promptTemplate} fallback={bp?.promptTemplate} onUse={(text) => { update({ promptTemplate: text }); }} /><InfoTip align="start" title={translate({ key: 'workspaces.tips.pipeline.promptTemplateTitle' })} body={translate({ key: 'workspaces.tips.pipeline.promptTemplateBody' })} /></>}
         />
         <textarea rows={5} value={s.promptTemplate} onChange={(e) => { update({ promptTemplate: e.target.value }); }} className={areaCls} placeholder="Implement the plan.\nPlan: {{summary}}" />
       </div>

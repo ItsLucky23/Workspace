@@ -74,7 +74,11 @@ test('documents: create via UI, editor opens, archive it again', async ({ authed
 
   const editorTitle = page.getByLabel('Document title');
   await expect(editorTitle).toHaveValue(docTitle, { timeout: 20_000 });
-  await expect(page.getByRole('button', { name: 'Save' })).toBeVisible();
+  //? `exact: true`: the accessible name of an info "?" trigger now includes its own label (it used to
+  //? be the bare glyph, which told a screen-reader user nothing), and one of them on this page reads
+  //? "Exports use the saved version". A substring match on "Save" caught it — the selector was always
+  //? ambiguous, the a11y fix just made it visible.
+  await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
 
   // Archive it again from the list: back to Documents, open the per-doc overflow menu, Archive.
   // (The Agency pack seeds starter documents, so the workspace is NOT empty — scope everything to

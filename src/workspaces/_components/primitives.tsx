@@ -384,6 +384,11 @@ export function InfoTip({ title, body, points, align = 'center', label, icon, cl
       >
         <span className={`w-4 h-4 rounded-full bg-container2 text-muted text-[10px] font-bold flex items-center justify-center transition-colors hover:bg-primary/15 hover:text-primary ${open ? 'bg-primary/15 text-primary' : ''}`}>
           {icon === undefined ? '?' : <Icon name={icon} />}
+          {/* The `ariaLabel` above names the popover PANEL, which is correct and deliberate — but it
+              leaves the TRIGGER named "?" (or nothing at all when an icon is used). 95 of these ship,
+              and "button, question mark" is what a screen reader announced for every one. This gives
+              the trigger a real name without changing what anyone sees. */}
+          <span className={`sr-only`}>{label ?? translate({ key: 'workspaces.common.moreInfo' })}</span>
         </span>
       </FloatingPopover>
     </span>

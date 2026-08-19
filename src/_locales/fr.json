@@ -744,7 +744,10 @@
       "goto_skills": "Modifier dans les paramètres IA de l'espace",
       "goto_stageSystemPrompt": "Modifier dans l'onglet Général",
       "goto_stageInstructions": "Modifier dans l'onglet Général",
-      "goto_carryOver": "Modifier dans l'onglet Transmission"
+      "goto_carryOver": "Modifier dans l'onglet Transmission",
+      "tipTitle": "Comment ce prompt est composé",
+      "tipPosition": "Ce champ est {{channel}} {{n}} sur {{total}}.",
+      "tipThisField": " — ce champ"
     },
     "tips": {
       "automations": {

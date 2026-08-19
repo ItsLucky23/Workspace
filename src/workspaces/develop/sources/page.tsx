@@ -251,7 +251,7 @@ export const template = 'workspaces';
 
 export default function Sources() {
   const translate = useTranslator();
-  const { docs, skills, toggleSkill, scanDocs, scanIndex, ragIndex, repo, addInfoDoc, indexMemory, focusSetup } = useWorkspaces();
+  const { docs, skills, stages, toggleSkill, scanDocs, scanIndex, ragIndex, repo, addInfoDoc, indexMemory, focusSetup } = useWorkspaces();
   const [tab, setTab] = useState('docs');
   const [preview, setPreview] = useState<InfoDoc | null>(null);
   //? ADR 0310 — the archived split is a VIEW concern; the server already stopped feeding archived docs
@@ -271,7 +271,18 @@ export default function Sources() {
   const startReindex = () => { setReindexing(true); scanIndex(); };
   //? Jump from a stage chip to that stage's Pipeline config; closing the dialog first so the
   //? navigation doesn't leave it stranded open behind the new page.
-  const onOpenStage = (stage: string) => { menuHandler.close(); focusSetup({ view: 'pipeline', tab: stage }); };
+  //?
+  //? `usedByStages` holds stage NAMES ("Refined", "Implementatie") while the pipeline's URL segment is
+  //? validated against stage KEYS ("refined", "impl") — so every chip silently fell back to the FIRST
+  //? stage and showed the wrong config, which is the precise opposite of what this affordance promises.
+  //? Resolved by name here; a chip naming a stage that no longer exists opens the pipeline unscoped
+  //? rather than pretending it landed somewhere.
+  const onOpenStage = (stage: string) => {
+    menuHandler.close();
+    const match = stages.find((st) => st.name === stage || st.id === stage);
+    if (match) focusSetup({ view: 'pipeline', tab: match.id });
+    else focusSetup({ view: 'pipeline' });
+  };
   //? Clear the pending state once the reindex delta lands (the RAG status updates).
   useEffect(() => { setReindexing(false); }, [ragIndex]);
 
