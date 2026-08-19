@@ -167,7 +167,9 @@ export default function SetupChecklist() {
             {steps.map((step) => {
               const allowed = can(CAP[step.cap]);
               return (
-                <div key={step.id} className={`flex items-center gap-3 rounded-xl px-2.5 py-2 ${step.done ? '' : 'hover:bg-container2/60'}`}>
+                //? testid per row: the row has no role of its own and its action button shares a
+                //? generic label ("Set this up") with the other rows, so an e2e locator needs the row.
+                <div key={step.id} data-testid={`ws-setup-step-${step.id}`} className={`flex items-center gap-3 rounded-xl px-2.5 py-2 ${step.done ? '' : 'hover:bg-container2/60'}`}>
                   <Icon
                     name={step.done ? 'circle-check' : step.icon}
                     className={step.done ? `text-correct shrink-0` : `text-muted shrink-0`}
