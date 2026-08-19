@@ -5276,3 +5276,31 @@ GESERIALISEERDE lijst, dus per waarde.
 **Verificatie.** `tsc` ✅ · `lint` ✅ · `ai:lint` ✅ · `build` ✅ · unit 123/123 · sweep **450 passed ·
 2 failed** (de twee nieuwe cases hierboven — wachten op de herstart) · Playwright niet opnieuw gedraaid
 (geen wijziging in gedekte schermen).
+
+## 2026-08-19 — Runtime-tab terug op debounce + notify · runtimes zelf starten
+
+**Prompt van de gebruiker.** "Ik heb de runtimes gestopt, vanaf nu mag jij zelf altijd de runtimes
+starten en stoppen voor wat nodig is. Ook zie ik nu een save button op de runtime page, maar ik heb
+liever dat de meeste dingen op een debounce gesaved worden met notify in plaats van een verstopte save
+button."
+
+**Runtimes.** Backend + frontend zelf gestart (permissie staat nu ook in mijn eigen geheugen; het
+overrulet de "server start is altijd een developer-actie"-regel uit `CLAUDE.md`). Meteen daarmee de
+openstaande vraag beslecht: **sweep 452 passed · 0 failed**. De twee cases die gisteren faalden en
+bewezen dat `runProcesses` niet werd opgeslagen, zijn na de herstart groen — de diagnose "stale server"
+klopte dus, en de write werkt echt.
+
+**Save-knop weer weg.** De sectie gebruikt weer `useAutosave`, maar met `delay: 1200` in plaats van de
+paginabrede 700ms: dit formulier wordt getypt in plaats van aangeklikt, en bij 700ms vuurt een pauze
+midden in een commando al een save (plus toast) voor een half commando. Bij succes een
+`notify.success`, bij falen `notify.error` naast de bestaande inline `SavePill`.
+
+**De echte reden dat het formulier onbruikbaar was, blijft gefikst — en werd met debounce belangrijker.**
+Het re-seed-effect hangt nu alleen aan `activeProject.id`. Zolang dit formulier open staat is het
+formulier de waarheid; de server wint alleen bij een projectwissel. Met een debounced save zonder die
+regel gebeurt dit: je typt een naam maar nog geen commando → de Conductor gooit die rij terecht weg
+(een proces zonder commando is geen proces) → de snapshot-echo verwijdert je rij terwijl je nog aan het
+typen bent.
+
+**Verificatie.** `tsc` ✅ · `lint` ✅ · `ai:lint` ✅ · `build` ✅ · unit **123/123** · sweep
+**452/452** · Playwright **25/25**.

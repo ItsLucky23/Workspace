@@ -3506,9 +3506,10 @@
       "addProcess": "Ajouter une commande",
       "removeProcess": "Supprimer cette commande",
       "terminalHint": "Chaque ligne obtient son propre terminal sur chaque ticket.",
-      "save": "Enregistrer le runtime",
       "makePreview": "définir comme URL de prévisualisation",
-      "isPreviewTitle": "Ce processus reçoit l’URL de prévisualisation"
+      "isPreviewTitle": "Ce processus reçoit l’URL de prévisualisation",
+      "saved": "Runtime enregistré",
+      "saveFailed": "Impossible d'enregistrer le runtime"
     }
   }
 }

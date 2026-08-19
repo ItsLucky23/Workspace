@@ -3506,9 +3506,10 @@
       "addProcess": "Befehl hinzufügen",
       "removeProcess": "Diesen Befehl entfernen",
       "terminalHint": "Jede Zeile bekommt ein eigenes Terminal an jedem Ticket.",
-      "save": "Runtime speichern",
       "makePreview": "als Vorschau-URL setzen",
-      "isPreviewTitle": "Dieser Prozess bekommt die Vorschau-URL"
+      "isPreviewTitle": "Dieser Prozess bekommt die Vorschau-URL",
+      "saved": "Runtime gespeichert",
+      "saveFailed": "Runtime konnte nicht gespeichert werden"
     }
   }
 }

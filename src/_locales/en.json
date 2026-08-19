@@ -3506,9 +3506,10 @@
       "addProcess": "Add a command",
       "removeProcess": "Remove this command",
       "terminalHint": "Each row gets its own terminal on every ticket.",
-      "save": "Save runtime",
       "makePreview": "make preview URL",
-      "isPreviewTitle": "This process gets the preview URL"
+      "isPreviewTitle": "This process gets the preview URL",
+      "saved": "Runtime saved",
+      "saveFailed": "Could not save the runtime"
     }
   }
 }
