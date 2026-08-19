@@ -28,6 +28,7 @@ import { EmptyPicker } from '../_components/SetupNotice';
 import { PageSections, useTrailSegment } from '../_components/sections';
 import { RepoInventoryPanel, RepoScriptPicker, useRepoIntrospection } from './repoIntrospection';
 import { RunProcessList, anyRowIncomplete, rowCommand, seedProcesses } from './runProcesses';
+import { AiProvidersSection } from './aiProviders';
 import { FormSection, SavePill, SettingRow, useAutosave } from '../_components/settings';
 import { resolveAiLayers } from '../_functions/aiLayers';
 import { INTEGRATION_TYPES, RBAC_CAPABILITIES, ROLE_DISPLAY } from '../_data/seed';
@@ -1308,16 +1309,19 @@ function SkillsSection() {
 
 function AiBehaviorTab() {
   const translate = useTranslator();
-  const { activeWorkspace, saveAiInstruction, aiOverrides, saveAiProvider, saveAutonomy, customTasks, saveCustomTask, runCustomTask, deleteCustomTask, aiSkills, navigate, focusSetup } = useWorkspaces();
+  const { activeWorkspace, saveAiInstruction, aiOverrides, saveAiProvider, saveAutonomy, customTasks, saveCustomTask, runCustomTask, deleteCustomTask, aiSkills, navigate } = useWorkspaces();
   const [newTaskName, setNewTaskName] = useState('');
   const [newTaskTemplate, setNewTaskTemplate] = useState('');
   const autonomyItems = (['gate-every', 'gate-key-stages', 'full-auto'] as const).map((id) => ({ id, value: id, item: translate({ key: `workspaces.workspaceSettings.autonomy.${id}` }) }));
   const autonomyLevel = activeWorkspace.autonomyLevel ?? 'gate-key-stages';
   const [value, setValue] = useState(activeWorkspace.aiInstruction ?? '');
   const [language, setLanguage] = useState(activeWorkspace.outputLanguage ?? '');
-  const [geminiModel, setGeminiModel] = useState(activeWorkspace.geminiModel ?? '');
-  const [geminiTemp, setGeminiTemp] = useState(activeWorkspace.geminiTemperature ?? '');
-  const [geminiBaseUrl, setGeminiBaseUrl] = useState(activeWorkspace.geminiBaseUrl ?? '');
+  //? ADR 0007 — the Gemini model/temperature/base-URL columns are LEGACY: the provider section above
+  //? owns those settings now, per backend, in the generic store. They are still passed through here
+  //? unchanged so this op never clears what an older workspace has stored — read, never edited.
+  const geminiModel = activeWorkspace.geminiModel ?? '';
+  const geminiTemp = activeWorkspace.geminiTemperature ?? '';
+  const geminiBaseUrl = activeWorkspace.geminiBaseUrl ?? '';
   //? ADR 0309 — autosave with a per-row pill instead of a Save button. The five fields persist
   //? through one op, so they share one status; switching workspace re-seeds without writing.
   const aiStatus = useAutosave(
@@ -1376,26 +1380,6 @@ function AiBehaviorTab() {
           status={aiStatus}
           control={<Dropdown width="full" value={languageOptions.find((o) => o.id === language)} items={languageOptions} onChange={(it) => { setLanguage(String(it.id)); }} />}
         />
-        {/* P2 — Gemini-ONLY knobs. Claude is PTY/subscription-billed and has no model or temperature
-            concept, so these three rows apply to exactly one of the two backends. That was invisible,
-            which is why the page read as "the AI setup is Gemini". */}
-        <div className="px-5 pt-4 -mb-2 text-xs font-semibold uppercase tracking-wide text-meta">{translate({ key: 'workspaces.workspaceSettings.geminiGroup' })}</div>
-        <SettingRow
-          label={translate({ key: 'workspaces.workspaceSettings.geminiModel' })}
-          status={aiStatus}
-          control={<input value={geminiModel} onChange={(e) => { setGeminiModel(e.target.value); }} placeholder="gemini-2.5-flash" className={fieldCls} />}
-        />
-        <SettingRow
-          label={translate({ key: 'workspaces.workspaceSettings.geminiTemperature' })}
-          status={aiStatus}
-          control={<input type="number" min="0" max="2" step="0.1" value={geminiTemp} onChange={(e) => { setGeminiTemp(e.target.value); }} placeholder="0.0 – 2.0" className={fieldCls} />}
-        />
-        <SettingRow
-          stacked
-          label={translate({ key: 'workspaces.workspaceSettings.geminiBaseUrl' })}
-          status={aiStatus}
-          control={<input value={geminiBaseUrl} onChange={(e) => { setGeminiBaseUrl(e.target.value); }} placeholder="https://generativelanguage.googleapis.com/v1beta" className={`${fieldCls} font-mono`} />}
-        />
         <div className="px-5 py-4">
           <EffectivePromptPreview layers={layers} inlineIds={['workspace', 'skills']} />
         </div>
@@ -1428,45 +1412,12 @@ function AiBehaviorTab() {
         />
       </FormSection>
 
-      {/* A green or red dot and nothing else answered "is it working" and left "how do I make it work"
-          entirely unanswered — the owner could see Claude was linked and not where that came from, and
-          the only settings on this page were Gemini's model and temperature, with its KEY on another
-          page altogether. Each backend now states how it is configured and links there when it can. */}
-      <FormSection
-        title={translate({ key: 'workspaces.workspaceSettings.providerHealthTitle' })}
-        desc={translate({ key: 'workspaces.workspaceSettings.providerHealthDesc' })}
-      >
-        {providerHealth === null && <div className="px-5 pb-5 text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.providerHealthLoading' })}</div>}
-        {providerHealth?.map((p) => (
-          <SettingRow
-            key={p.id}
-            label={(
-              <span className="inline-flex items-center gap-2">
-                <span className={`w-1.5 h-1.5 rounded-full ${p.available ? 'bg-correct' : 'bg-wrong'}`} />
-                {p.label}
-              </span>
-            )}
-            help={translate({ key: `workspaces.workspaceSettings.providerHow_${p.id}` })}
-            control={(
-              <div className="flex items-center gap-2 justify-end">
-                <span className={`text-xs font-semibold ${p.available ? 'text-correct' : 'text-wrong'}`}>
-                  {translate({ key: p.available ? 'workspaces.workspaceSettings.providerReady' : 'workspaces.workspaceSettings.providerNotReady' })}
-                </span>
-                {/* Only Gemini has an in-app setting to reach. The Claude CLI is installed and signed in
-                    ON THE HOST, so a button here would be a dead end — it says so instead. */}
-                {p.id === 'gemini-api' && (
-                  <WsButton variant="secondary" icon="key" onClick={() => { focusSetup({ view: 'content/settings', tab: 'admin' }); }}>
-                    {translate({ key: 'workspaces.workspaceSettings.providerKeyCta' })}
-                  </WsButton>
-                )}
-              </div>
-            )}
-          />
-        ))}
-        {/* Stated rather than left to be discovered by hunting: there is no OpenAI/GPT backend in the
-            product today. `server/ai/registry.ts` has exactly these two entries. */}
-        <div className="px-5 pb-5 text-xs text-meta leading-relaxed">{translate({ key: 'workspaces.workspaceSettings.providerOnlyTwo' })}</div>
-      </FormSection>
+      {/* ADR 0007 — the general AI setup, rendered from the server's provider catalog: status, key,
+          a PREDEFINED model list, endpoint and temperature, per backend. It used to be a status dot
+          plus three free-text Gemini fields, with the key itself on the Content settings page next to
+          ElevenLabs and Suno — so this page read as "Gemini's settings" and the one thing you had to
+          do was somewhere else entirely. Media providers stay with media; this one runs the product. */}
+      <AiProvidersSection health={providerHealth} />
 
       {/* SK1 — the universal AI-skills layer (humanizer, tone-of-voice, …). */}
       <SkillsSection />

@@ -297,6 +297,8 @@ Encrypt these secrets in the app with **AES-256-GCM**, in `server/crypto/secretB
 
 Introduce a generic AI-provider layer under `server/ai/`: **`types.ts`** — the shared contract: `AiProviderId`, `AiFeature`, `AiProvider` (`available()` + `complete()`), and the request/result shapes. **`providers/*`** — one standalone handler per backend: `claude-cli` (drives the interactive PTY in a scrubbed env → Max subscription, reading the final message off the Stop hook via `--settings`, never `-p/--print`) and `gemini-api` (headless Generative Language API call, gated on `GEMINI_API_KEY`). **`assignments.ts`** — the single feature→provider map, with a `resolveAssignment` seam that a per-workspace/user override (a future picker UI backed by a DB setting) plugs into without touching feature code. **`registry.ts`** — `runAiCompletion(feature, req, overrides?)`: resolves the assigned provider, gates on `available()`, and dispatches. This is the ONLY entry point features import; no feature names a provider.
 
+**Governs** (`//? @adr 0007`): `server/ai/providerConfig.ts`, `server/ai/providers/catalog.ts`, `server/ai/providers/openaiApi.ts`, `src/workspaces/workspace/aiProviders.tsx`
+
 → `docs/decisions/0007-pluggable-ai-provider-layer.md`
 
 ### 0008 — Container runtime model — clone-into-volume, name-based idempotency, off-chain provisioning
@@ -2165,6 +2167,9 @@ The project owns a **list** of runtime processes. Each entry starts in the ticke
 | File | ADR | Decision |
 | --- | --- | --- |
 | `scripts/prismaWithSecrets.ts` | 0017 | RAG codebase intelligence — pluggable embeddings + a cosine-scan retrieval injected into the agent context |
+| `server/ai/providerConfig.ts` | 0007 | Pluggable AI-provider layer — features resolve a backend at dispatch, never hardcode one |
+| `server/ai/providers/catalog.ts` | 0007 | Pluggable AI-provider layer — features resolve a backend at dispatch, never hardcode one |
+| `server/ai/providers/openaiApi.ts` | 0007 | Pluggable AI-provider layer — features resolve a backend at dispatch, never hardcode one |
 | `server/ai/skills.ts` | 0270 | universeel skill model met apply points |
 | `server/container/runtimeProcesses.ts` | 0317 | The runtime is a list of processes, not one command |
 | `server/content/commentInbox.ts` | 0273 | comment inbox read only youtube tiktok |
@@ -2178,5 +2183,6 @@ The project owns a **list** of runtime processes. Each entry starts in the ticke
 | `src/workspaces/_components/SetupChecklist.tsx` | 0316 | One first-run surface on the board, and it collapses rather than disappears |
 | `src/workspaces/_data/nav.ts` | 0280 | Module-based nav categories (Develop / Content / Insights) that mirror folders and URLs |
 | `src/workspaces/_functions/aiLayers.ts` | 0311 | AI prompt layers are two channels, not one stack |
+| `src/workspaces/workspace/aiProviders.tsx` | 0007 | Pluggable AI-provider layer — features resolve a backend at dispatch, never hardcode one |
 | `src/workspaces/workspace/repoIntrospection.tsx` | 0313 | Repository introspection is shown to the user, not only to the AI |
 | `src/workspaces/workspace/runProcesses.tsx` | 0317 | The runtime is a list of processes, not one command |

@@ -78,7 +78,7 @@
 | `api/workspaces/workspaceExport/v1` | POST | login | 6 | — | yes | — | Workspaces — [workspace-export] (H4) a tenant-scoped JSON export of the workspace's own data (portability / |
 | `api/workspaces/workspaceImport/v1` | POST | login | 3 | ItsLucky23 | yes | — | Workspaces — [workspace-import] (gap-fix) the missing counterpart of workspace-export: bring a |
 
-## Sync routes (68)
+## Sync routes (69)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -126,6 +126,7 @@
 | `sync/workspaces/rotateWebhookSecret/v1` | yes | — | login | ItsLucky23 | yes | — | Workspaces — [forge-webhook-rotate] REALTIME write via `_sync` (#27). Mints a fresh per-workspace |
 | `sync/workspaces/saveAiInstruction/v1` | yes | — | login | — | yes | — | Workspaces — [save-ai-instruction] REALTIME write via `_sync` (FREEDOM_PROGRAM Q4). Persists the |
 | `sync/workspaces/saveAiProvider/v1` | yes | — | login | — | yes | — | Workspaces — [save-ai-provider] REALTIME write via `_sync` (FREEDOM_PROGRAM P1). Persists a per-workspace |
+| `sync/workspaces/saveAiProviderConfig/v1` | yes | — | login | ItsLucky23 | yes | — | Workspaces — [save-ai-provider-config] the credentials + settings for ONE text backend (ADR 0007). |
 | `sync/workspaces/saveAutonomy/v1` | yes | — | login | — | yes | — | Workspaces — [save-autonomy] REALTIME write via `_sync` (FREEDOM_PROGRAM A4). Persists the workspace's |
 | `sync/workspaces/saveEnv/v1` | yes | — | login | — | yes | — | Workspaces — [save-env] REALTIME write via `_sync`. Upserts an env var, then |
 | `sync/workspaces/saveGitConfig/v1` | yes | — | login | — | yes | — | Workspaces — [save-git-config] REALTIME write via `_sync`. Persists the workspace's git |
@@ -157,10 +158,10 @@
 
 | Owner | Routes |
 | --- | --- |
-| `ItsLucky23` | 26 |
+| `ItsLucky23` | 27 |
 | _(unowned)_ | 108 |
 
-**Test coverage**: 132/134 routes have a per-route `.tests.ts`.
+**Test coverage**: 133/135 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 

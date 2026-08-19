@@ -13,7 +13,7 @@ import type {
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink, UiReviewSummary,
   ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, ContentSnapshot,
-  WorkspaceReadiness, PatSummary,
+  WorkspaceReadiness, PatSummary, AiProviderConfig,
 } from '../_data/types';
 
 export type WsView =
@@ -316,6 +316,11 @@ export interface WorkspacesCtx {
   saveAiInstruction: (aiInstruction: string, outputLanguage: string, geminiModel: string, geminiTemperature: string, geminiBaseUrl: string) => void;
   //? P1 — per-feature AI provider overrides + a setter ('default' clears).
   aiOverrides: { feature: string; providerId: string }[];
+  //? ADR 0007 — every text backend: its catalog entry + what this workspace stored. `hasKey` is
+  //? presence only; the credential never reaches the client.
+  aiProviderConfigs: AiProviderConfig[];
+  /** Save one backend's credentials/settings. Omit a field to leave it untouched (the key is write-only). */
+  saveAiProviderConfig: (input: { providerId: string; apiKey?: string; model?: string; baseUrl?: string; temperature?: string }) => void;
   saveAiProvider: (feature: string, providerId: string) => void;
   //? Preload gap-fix (X3) — the caller's own Personal Access Tokens (metadata only; never the raw token).
   pats: PatSummary[];

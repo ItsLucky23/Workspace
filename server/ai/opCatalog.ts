@@ -416,6 +416,10 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: "edit ONE pipeline stage's config: rename it, set its prompt/system-prompt/custom instructions/definition-of-done, toggle AI on it, or toggle its human approval gate. params: stageId (from the stage list) + only the fields to change (name?, promptTemplate?, systemPrompt?, customInstructions?, definitionOfDone?, aiEnabled?, gateForApproval?)",
     params: { stageId: { kind: 'stageId', required: true }, name: { kind: 'string' }, promptTemplate: { kind: 'string' }, systemPrompt: { kind: 'string' }, customInstructions: { kind: 'string' }, definitionOfDone: { kind: 'string' }, aiEnabled: { kind: 'boolean' }, gateForApproval: { kind: 'boolean' } },
   },
+  //? Excluded on purpose: it writes an API KEY. An assistant that can propose "save this credential"
+  //? is an assistant that can be talked into exfiltrating or replacing one, and the human is already
+  //? on the settings page when they set it. Nothing is gained by making it proposable.
+  'save-ai-provider-config': EXCLUDED,
   'stage-create': {
     mode: 'enabled',
     hint: 'add a pipeline stage. params: key (short slug), name (display name), kind? (code|test|review|…)',

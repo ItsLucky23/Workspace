@@ -6,7 +6,10 @@
 //? ./registry.
 
 //? A concrete AI backend. Add one = a new handler in ./providers + a case in the registry.
-export type AiProviderId = 'claude-cli' | 'gemini-api';
+//? Adding a backend is: an id here, an entry in `providers/catalog.ts` (what it needs + which models
+//? it offers), an implementation, and a line in `registry.ts`'s PROVIDERS. Nothing in the settings UI —
+//? that page renders itself from the catalog.
+export type AiProviderId = 'claude-cli' | 'gemini-api' | 'openai-api';
 
 //? The distinct AI-integration points. Each resolves to a provider independently; adding
 //? a feature = one key here + a default in ./assignments. `pipeline-agent` is the

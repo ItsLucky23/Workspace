@@ -1352,9 +1352,6 @@
         "gate-key-stages": "Demander aux étapes clés (défaut)",
         "full-auto": "Entièrement auto — ne pas demander"
       },
-      "geminiModel": "Modèle Gemini",
-      "geminiBaseUrl": "URL de base Gemini (point de terminaison personnalisé)",
-      "geminiTemperature": "Température Gemini",
       "tabGitlab": "Git",
       "tabWorkflow": "Workflow",
       "workflowTitle": "Workflow Git",
@@ -1546,13 +1543,8 @@
       "auditWhen": "Quand",
       "starterDescriptionLocked": "Conventions organisées que l'IA suit à chaque étape — gérez-les et activez-les sur la page Sources.",
       "manageInSources": "Gérer les documents de contexte dans Sources",
-      "providerHow_claude-cli": "S'exécute sur le serveur, pas via une clé collée ici : la CLI Claude doit être installée et connectée sur l'hôte. Rien à configurer dans l'application.",
-      "providerHow_gemini-api": "Nécessite une clé API Google. Stockée chiffrée par espace, avec la clé d'environnement du serveur en repli.",
       "providerReady": "Prêt",
-      "providerNotReady": "Non configuré",
-      "providerKeyCta": "Définir la clé",
-      "providerOnlyTwo": "Ce sont les deux seuls backends texte du produit. Il n'y a pas encore d'option OpenAI/GPT — en ajouter une signifie un nouveau fournisseur dans le registre serveur, pas un réglage sur cette page.",
-      "geminiGroup": "Gemini uniquement"
+      "providerNotReady": "Non configuré"
     },
     "services": {
       "title": "Services",
@@ -3524,6 +3516,28 @@
       "needsCommand": "Saisissez la commande à exécuter.",
       "needsBoth": "Un nom et une commande sont tous deux requis avant l’enregistrement.",
       "blockedByDraft": "Complétez les lignes signalées pour enregistrer"
+    },
+    "aiProviders": {
+      "title": "Backends IA",
+      "desc": "Quelle IA fait tourner cet espace : agents de pipeline, assistant, documents et revues.",
+      "how_claude-cli": "S'exécute sur le serveur : la CLI Claude doit être installée et connectée sur l'hôte. Rien à configurer ici.",
+      "how_gemini-api": "Google Gemini. Nécessite une clé API, stockée chiffrée pour cet espace.",
+      "how_openai-api": "OpenAI, ou tout ce qui parle la même API — Azure OpenAI, OpenRouter, Groq, un Ollama local. Pointez-y le point de terminaison.",
+      "apiKey": "Clé API",
+      "keyStored": "Une clé est enregistrée. Laissez vide pour la conserver ; saisissez-en une nouvelle pour la remplacer.",
+      "keyMissing": "Aucune clé enregistrée, ce backend est donc indisponible.",
+      "keyPlaceholder": "Collez la clé",
+      "getKey": "Où obtenir une clé",
+      "model": "Modèle",
+      "modelHelp": "Choisissez-en un, ou Autre pour nommer un modèle pas encore listé.",
+      "customModel": "Autre…",
+      "baseUrl": "Point de terminaison",
+      "baseUrlHelp": "Laissez vide pour la valeur par défaut. Modifiez-le pour un proxy, une passerelle ou un serveur auto-hébergé.",
+      "temperature": "Température",
+      "temperatureHelp": "Plus haut = plus varié. Vide laisse le modèle décider.",
+      "save": "Enregistrer le backend",
+      "saved": "Enregistré",
+      "mediaElsewhere": "Les fournisseurs d'image, vidéo, voix et musique (fal, ElevenLabs, Suno) se configurent dans les paramètres Content — ils génèrent des médias, pas le texte qui fait tourner cet espace."
     }
   }
 }

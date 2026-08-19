@@ -101,29 +101,34 @@ test.describe('layer tip', () => {
   });
 
 
-  test('the AI tab says how each backend is configured, and where', async ({ authedPage }) => {
+  test('the AI tab configures every backend in place, with predefined models', async ({ authedPage }) => {
     const page = authedPage;
     await createWorkspace(page, `E2E PW AiSetup ${String(Date.now())}`);
     await expect(page.getByText('Welcome to Workspaces')).toBeHidden({ timeout: 30_000 });
 
     await page.goto('/workspaces/workspace/aibehavior');
 
-    //? Both backends listed with how they are set up. The page used to show a bare green/red dot, so
-    //? "Claude is linked" was visible and where that came from was not — while the only settings on
-    //? the page were Gemini's model and temperature, its KEY living on another page entirely.
+    //? All three backends listed. The page used to be Gemini-shaped — a status dot, three free-text
+    //? Gemini fields, and its KEY on the Content settings page next to ElevenLabs and Suno.
     await expect(page.getByText(/the Claude CLI must be installed and signed in on the host/)).toBeVisible();
-    await expect(page.getByText(/Needs a Google API key/)).toBeVisible();
+    await expect(page.getByText(/Google Gemini\. Needs an API key/)).toBeVisible();
+    await expect(page.getByText(/Azure OpenAI, OpenRouter, Groq, a local Ollama/)).toBeVisible();
 
-    //? The Gemini rows are labelled as applying to one backend only — Claude has no model concept.
-    await expect(page.getByText('Gemini only', { exact: true })).toBeVisible();
+    //? The key is entered HERE. Two api-key backends → two key fields; the host-CLI one gets none,
+    //? because there is nothing in the app to type for it.
+    const keyFields = page.getByPlaceholder('Paste the key');
+    await expect(keyFields).toHaveCount(2);
 
-    //? And the absence is stated rather than left to be discovered by hunting for it.
-    await expect(page.getByText(/no OpenAI\/GPT option yet/)).toBeVisible();
+    //? Models are PICKED, not typed. The owner asked for predefined values; a free-text model box is
+    //? a field that is wrong more often than right.
+    //? The dropdown shows the LABEL, which is the point — you recognise "GPT-4o mini", you do not
+    //? recall "gpt-4o-mini" exactly.
+    await expect(page.getByText('GPT-4o mini', { exact: true }).first()).toBeVisible();
 
-    //? Gemini's key IS reachable from here; Claude deliberately has no button, because there is
-    //? nothing in the app to press — a button there would be the dead end this page already had.
-    await page.getByRole('button', { name: 'Set the key' }).click();
-    await expect(page).toHaveURL(/\/workspaces\/content\/settings\/admin$/);
+    //? And media providers are named as living elsewhere, so nobody hunts for ElevenLabs here.
+    await expect(page.getByText(/fal, ElevenLabs, Suno/)).toBeVisible();
+    //? …with no redirect out of this page for the AI's own setup: the save button is right here.
+    await expect(page.getByRole('button', { name: 'Save backend' }).first()).toBeVisible();
   });
 
   test('the full composed-text block no longer sits on top of the fields it describes', async ({ authedPage }) => {

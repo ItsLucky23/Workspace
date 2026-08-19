@@ -34,7 +34,7 @@ import type {
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink, UiReviewSummary,
   ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, ContentSnapshot,
-  WorkspaceReadiness, PatSummary,
+  WorkspaceReadiness, PatSummary, AiProviderConfig,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
 import { shouldApplySnapshotResponse, snapshotTargetsMatch, type SnapshotTarget } from './snapshotRequest';
@@ -77,6 +77,8 @@ interface Snap {
   notifications: NotificationItem[];
   stageConfigs: PipelineStageCfg[];
   aiOverrides: { feature: string; providerId: string }[];
+  //? ADR 0007 — per-text-backend catalog + settings; `hasKey` is presence only, the credential never ships.
+  aiProviderConfigs: AiProviderConfig[];
   customTasks: { id: string; name: string; promptTemplate: string; lastOutput: string | null; lastRunAt: number | null }[];
   outputTemplates: { id: string; name: string; format: string; watermarkPosition: string }[];
   //? SK1 — the universal AI-skills layer.
@@ -122,7 +124,7 @@ const EMPTY_SNAP: Snap = {
   templates: [],
   members: [], tickets: [], stages: [], sprints: [],
   suggestions: [], budget: null, budgets: [], docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [],
-  notifications: [], stageConfigs: [], aiOverrides: [], customTasks: [], outputTemplates: [], aiSkills: [], documents: [], documentTemplates: [], myInvites: [], notes: [], repo: { linked: false },
+  notifications: [], stageConfigs: [], aiOverrides: [], aiProviderConfigs: [], customTasks: [], outputTemplates: [], aiSkills: [], documents: [], documentTemplates: [], myInvites: [], notes: [], repo: { linked: false },
   gitConfig: { branchStrategy: 'ticket-prefix', defaultBranchType: 'feature', branchTemplate: '{{type}}/{{key}}-{{slug}}', pushPolicy: 'local-only', targetBranch: 'main', protectedBranches: ['main', 'master'], commitSigning: false },
   workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0, byAi: [], byUser: [] },
@@ -1983,6 +1985,11 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       createContentPiece: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-from-brief', title: input.title, brief: input.brief, format: input.format ?? 'faceless', clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? Media €-budget settings (U3) — cap/alert/enabled via edit-media-budget (B-23).
       editMediaBudget: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'edit-media-budget', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      aiProviderConfigs: snap.aiProviderConfigs,
+      //? ADR 0007 — a text backend's own credentials/settings. Undefined fields are NOT sent, so saving
+      //? a model can never clear the stored key. Refetches: `hasKey` and the settings come back on the
+      //? snapshot (the key itself never does).
+      saveAiProviderConfig: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveAiProviderConfig', version: 'v1', data: { providerId: input.providerId, ...(input.apiKey === undefined ? {} : { apiKey: input.apiKey }), ...(input.model === undefined ? {} : { model: input.model }), ...(input.baseUrl === undefined ? {} : { baseUrl: input.baseUrl }), ...(input.temperature === undefined ? {} : { temperature: input.temperature }), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? Save an ENCRYPTED media provider API key / per-feature override (U3) via save-media-provider (B-23).
       saveMediaProvider: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'save-media-provider', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? GAP_SCAN G7 — start/update a prompt A/B experiment, or stop measuring one.

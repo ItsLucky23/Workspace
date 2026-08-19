@@ -1352,9 +1352,6 @@
         "gate-key-stages": "Ask at key stages (default)",
         "full-auto": "Full auto — don't ask"
       },
-      "geminiModel": "Gemini model",
-      "geminiBaseUrl": "Gemini base URL (custom endpoint)",
-      "geminiTemperature": "Gemini temperature",
       "tabGitlab": "Git",
       "tabWorkflow": "Workflow",
       "workflowTitle": "Git workflow",
@@ -1546,13 +1543,8 @@
       "auditWhen": "When",
       "starterDescriptionLocked": "Curated conventions the AI follows in every stage — manage and toggle them on the Sources page.",
       "manageInSources": "Manage context docs in Sources",
-      "providerHow_claude-cli": "Runs on the server, not from a key you paste here: the Claude CLI must be installed and signed in on the host. Nothing to configure in the app.",
-      "providerHow_gemini-api": "Needs a Google API key. Stored encrypted per workspace, with the server env key as a fallback.",
       "providerReady": "Ready",
-      "providerNotReady": "Not set up",
-      "providerKeyCta": "Set the key",
-      "providerOnlyTwo": "These two are the only text backends the product has. There is no OpenAI/GPT option yet — adding one means a new provider in the server registry, not a setting on this page.",
-      "geminiGroup": "Gemini only"
+      "providerNotReady": "Not set up"
     },
     "services": {
       "title": "Services",
@@ -3524,6 +3516,28 @@
       "needsCommand": "Enter the command to run.",
       "needsBoth": "A name and a command are both needed before this is saved.",
       "blockedByDraft": "Finish the marked rows to save"
+    },
+    "aiProviders": {
+      "title": "AI backends",
+      "desc": "Which AI runs everything in this workspace: pipeline agents, the assistant, documents and reviews.",
+      "how_claude-cli": "Runs on the server: the Claude CLI must be installed and signed in on the host. Nothing to configure here.",
+      "how_gemini-api": "Google Gemini. Needs an API key, stored encrypted for this workspace.",
+      "how_openai-api": "OpenAI, or anything that speaks the same API — Azure OpenAI, OpenRouter, Groq, a local Ollama. Point the endpoint at it.",
+      "apiKey": "API key",
+      "keyStored": "A key is stored. Leave empty to keep it; type a new one to replace it.",
+      "keyMissing": "No key stored yet, so this backend is unavailable.",
+      "keyPlaceholder": "Paste the key",
+      "getKey": "Where to get a key",
+      "model": "Model",
+      "modelHelp": "Pick one, or choose Other to name a model that is not listed yet.",
+      "customModel": "Other…",
+      "baseUrl": "Endpoint",
+      "baseUrlHelp": "Leave empty for the default. Change it to reach a proxy, a gateway or a self-hosted server.",
+      "temperature": "Temperature",
+      "temperatureHelp": "Higher is more varied. Empty leaves it to the model.",
+      "save": "Save backend",
+      "saved": "Saved",
+      "mediaElsewhere": "Image, video, voice and music providers (fal, ElevenLabs, Suno) are set up under Content settings — they generate media, not the text that runs this workspace."
     }
   }
 }

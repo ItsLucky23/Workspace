@@ -1352,9 +1352,6 @@
         "gate-key-stages": "Bei wichtigen Phasen fragen (Standard)",
         "full-auto": "Voll automatisch — nicht fragen"
       },
-      "geminiModel": "Gemini-Modell",
-      "geminiBaseUrl": "Gemini-Basis-URL (eigener Endpunkt)",
-      "geminiTemperature": "Gemini-Temperatur",
       "tabGitlab": "Git",
       "tabWorkflow": "Workflow",
       "workflowTitle": "Git-Workflow",
@@ -1546,13 +1543,8 @@
       "auditWhen": "Wann",
       "starterDescriptionLocked": "Kuratierte Konventionen, denen die KI in jeder Phase folgt — verwalte und schalte sie auf der Sources-Seite.",
       "manageInSources": "Kontextdokumente in Sources verwalten",
-      "providerHow_claude-cli": "Läuft auf dem Server, nicht über einen Schlüssel, den du hier einfügst: die Claude CLI muss auf dem Host installiert und angemeldet sein. In der App gibt es dafür nichts einzustellen.",
-      "providerHow_gemini-api": "Benötigt einen Google-API-Schlüssel. Pro Workspace verschlüsselt gespeichert, mit dem Server-Env-Schlüssel als Rückfall.",
       "providerReady": "Bereit",
-      "providerNotReady": "Nicht eingerichtet",
-      "providerKeyCta": "Schlüssel setzen",
-      "providerOnlyTwo": "Diese beiden sind die einzigen Text-Backends im Produkt. Eine OpenAI/GPT-Option gibt es noch nicht — die hinzuzufügen heißt: ein neuer Provider im Server-Registry, keine Einstellung auf dieser Seite.",
-      "geminiGroup": "Nur Gemini"
+      "providerNotReady": "Nicht eingerichtet"
     },
     "services": {
       "title": "Services",
@@ -3524,6 +3516,28 @@
       "needsCommand": "Gib den auszuführenden Befehl ein.",
       "needsBoth": "Name und Befehl sind beide nötig, bevor gespeichert wird.",
       "blockedByDraft": "Markierte Zeilen vervollständigen, um zu speichern"
+    },
+    "aiProviders": {
+      "title": "KI-Backends",
+      "desc": "Welche KI alles in diesem Workspace betreibt: Pipeline-Agenten, den Assistenten, Dokumente und Reviews.",
+      "how_claude-cli": "Läuft auf dem Server: die Claude CLI muss auf dem Host installiert und angemeldet sein. Hier gibt es nichts einzustellen.",
+      "how_gemini-api": "Google Gemini. Benötigt einen API-Schlüssel, verschlüsselt für diesen Workspace gespeichert.",
+      "how_openai-api": "OpenAI oder alles, was dieselbe API spricht — Azure OpenAI, OpenRouter, Groq, ein lokales Ollama. Richte den Endpunkt darauf.",
+      "apiKey": "API-Schlüssel",
+      "keyStored": "Ein Schlüssel ist gespeichert. Leer lassen, um ihn zu behalten; einen neuen tippen, um ihn zu ersetzen.",
+      "keyMissing": "Noch kein Schlüssel gespeichert, dieses Backend ist also nicht verfügbar.",
+      "keyPlaceholder": "Schlüssel einfügen",
+      "getKey": "Wo es einen Schlüssel gibt",
+      "model": "Modell",
+      "modelHelp": "Wähle eins, oder wähle Andere, um ein noch nicht gelistetes Modell zu nennen.",
+      "customModel": "Andere…",
+      "baseUrl": "Endpunkt",
+      "baseUrlHelp": "Leer lassen für den Standard. Ändere ihn für einen Proxy, ein Gateway oder einen selbst gehosteten Server.",
+      "temperature": "Temperatur",
+      "temperatureHelp": "Höher ist variabler. Leer überlässt es dem Modell.",
+      "save": "Backend speichern",
+      "saved": "Gespeichert",
+      "mediaElsewhere": "Anbieter für Bild, Video, Stimme und Musik (fal, ElevenLabs, Suno) werden unter Content-Einstellungen eingerichtet — sie erzeugen Medien, nicht den Text, der diesen Workspace betreibt."
     }
   }
 }

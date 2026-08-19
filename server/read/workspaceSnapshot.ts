@@ -19,6 +19,8 @@ import { tenantDb } from '../tenant/tenantDb';
 import { listAgentRoles } from '../automation/agentRoles';
 import { listAiRuns } from '../ai/activity';
 import { formatTime, toContentAssetSummary, toContentPieceSummary, toVideoSceneSummary, toEnvVar, toInfoDoc, toTicket } from './mappers';
+import { AI_PROVIDER_LIST } from '../ai/providers/catalog';
+import { providerConfigKeys } from '../ai/providerConfig';
 import { repoStatus } from '../git/repoStore';
 import { baseDomain } from '../proxy';
 import { listTemplates } from '../scaffold/templates';
@@ -166,6 +168,15 @@ export interface WorkspaceSnapshot {
   stageConfigs: PipelineStageCfg[];
   //? P1 — per-workspace AI provider overrides per feature (empty = the global defaults).
   aiOverrides: { feature: string; providerId: string }[];
+  //? ADR 0007 — each text backend's catalog entry PLUS its stored settings, so the AI page renders
+  //? itself from data rather than a hand-built panel per backend. `hasKey` is presence ONLY; the
+  //? credential is encrypted at rest and never leaves the server.
+  aiProviderConfigs: {
+    id: string; label: string; auth: 'host-cli' | 'api-key';
+    models: { id: string; label: string }[];
+    defaultModel: string; defaultBaseUrl: string; supportsTemperature: boolean; keyUrl: string;
+    hasKey: boolean; model: string; baseUrl: string; temperature: string;
+  }[];
   //? E5 — user-defined custom AI tasks (name + template + last output).
   customTasks: { id: string; name: string; promptTemplate: string; lastOutput: string | null; lastRunAt: number | null }[];
   //? O5 — reusable output specs (name + render format + watermark position).
@@ -251,7 +262,7 @@ export interface WorkspaceSnapshot {
 
 const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activeProjectId' | 'myInvites'> = {
   projects: [], services: [], serviceStacks: [], dbConnections: [], migrations: [], environments: [], buildArtifacts: [], templates: listTemplates(),
-  members: [], tickets: [], stages: [], stageConfigs: [], aiOverrides: [], customTasks: [], outputTemplates: [], aiSkills: [], documents: [], documentTemplates: [], sprints: [], suggestions: [], budget: null, budgets: [],
+  members: [], tickets: [], stages: [], stageConfigs: [], aiOverrides: [], aiProviderConfigs: [], customTasks: [], outputTemplates: [], aiSkills: [], documents: [], documentTemplates: [], sprints: [], suggestions: [], budget: null, budgets: [],
   docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [],
   readiness: { repoLinked: false, aiText: false, media: { fal: false, elevenlabs: false, suno: false }, publishing: false, docker: false, push: false, secretManager: false },
   myPerms: [], myRoleKey: 'member',
@@ -612,6 +623,30 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     //? repo status, connected publish accounts, and the stored provider-key EnvVar KEYS (presence only, never
     //? decrypted). Host-level probes (docker/CLI) are folded in cached inside buildReadiness.
     const providerKeys = new Set(envRows.filter((e) => e.key.startsWith('__provider_key_')).map((e) => e.key));
+    //? ADR 0007 — each text backend's stored settings, so the AI page can render its own state instead
+    //? of blank boxes. The KEY is reported as a boolean and never as a value: `secret: true` rows are
+    //? encrypted at rest and must not travel to every client in the room just to tick a checkbox.
+    const envByKey = new Map(envRows.map((e) => [e.key, e.value]));
+    const aiProviderConfigs = AI_PROVIDER_LIST.map((meta) => {
+      const cfgKeys = providerConfigKeys(meta.id);
+      return {
+        id: meta.id,
+        //? The CATALOG travels with the settings, so the page renders itself from data instead of a
+        //? hand-built panel per backend. That is what makes adding a provider a server-only change —
+        //? and it is why the model list can be predefined at all rather than typed from memory.
+        label: meta.label,
+        auth: meta.auth,
+        models: meta.models,
+        defaultModel: meta.defaultModel,
+        defaultBaseUrl: meta.defaultBaseUrl,
+        supportsTemperature: meta.supportsTemperature,
+        keyUrl: meta.keyUrl,
+        hasKey: providerKeys.has(cfgKeys.key),
+        model: envByKey.get(cfgKeys.model) ?? '',
+        baseUrl: envByKey.get(cfgKeys.baseUrl) ?? '',
+        temperature: envByKey.get(cfgKeys.temp) ?? '',
+      };
+    });
     const readiness = await buildReadiness(Date.now(), {
       repoLinked: repo.linked,
       publishingConnected: publishTargets.some((t) => t.connected),
@@ -671,7 +706,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         ...(b.deployHookStatus === null ? {} : { deployHookStatus: b.deployHookStatus }),
       })),
       templates: listTemplates(),
-      members, budget, budgets, capacity, docs, skills,
+      members, budget, budgets, capacity, docs, skills, aiProviderConfigs,
       //? `locked` must mirror what the Conductor will actually accept. It only marked `owner`, while
       //? `role-update` rejects EVERY built-in role (`if (existingRole.builtIn) return { ok: false,
       //? error: 'role.builtInImmutable' }`) — so the Admin and Member cells rendered clickable, with

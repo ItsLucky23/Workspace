@@ -16,6 +16,7 @@ import { recordAiRun } from './activity';
 import { recordTurnSpend } from '../spend/record';
 import { claudeCliProvider } from './providers/claudeCli';
 import { geminiApiProvider } from './providers/geminiApi';
+import { openAiProvider } from './providers/openaiApi';
 import type { AiCompletionRequest, AiCompletionResult, AiFeature, AiProvider, AiProviderId } from './types';
 import { runQueued } from './jobQueue';
 import { applyAiPromptBudget } from './promptBudget';
@@ -57,6 +58,7 @@ function productCapabilityIndex(): string {
 const PROVIDERS: Record<AiProviderId, AiProvider> = {
   'claude-cli': claudeCliProvider,
   'gemini-api': geminiApiProvider,
+  'openai-api': openAiProvider,
 };
 
 //? Run one AI completion for a feature. `overrides` carries the per-workspace/user

@@ -5569,3 +5569,44 @@ serverregister, niet een instelling op deze pagina.
 **Verificatie.** `tsc` ✅ · `lint` ✅ · `build` ✅ · Playwright **36/36** (nieuwe spec controleert dat
 beide backends hun setup uitleggen, dat de Gemini-groep als zodanig gelabeld is, dat de afwezigheid van
 OpenAI benoemd wordt, en dat de sleutelknop echt op de admin-tab landt).
+
+## 2026-08-19 — AI-setup hoort op /workspace/aibehavior · derde provider · vooraf ingevulde waarden
+
+**Prompt van de gebruiker.** "De aibehavior-pagina is nog steeds alleen op Gemini gericht, en de
+redirect om de key in te stellen gaat naar de content-pagina waar ook ElevenLabs en Suno staan. Die
+horen daar wel thuis, maar een algemene AI-setup moet in workspace/aibehaviour blijven en niet
+redirecten. Plus support voor meer AI-providers, en waarden zoals base-url en models vooraf definiëren
+zodat we die niet zelf hoeven in te vullen."
+
+**Wat er is gebouwd.**
+
+- `server/ai/providers/catalog.ts` — per backend: hoe hij authenticeert (`host-cli` of `api-key`),
+  welke modellen hij aanbiedt, zijn standaard-model en -endpoint, of hij temperatuur kent, en waar je
+  een sleutel haalt. De instellingenpagina rendert zichzelf hieruit, dus een backend toevoegen is
+  voortaan een server-only wijziging.
+- `server/ai/providers/openaiApi.ts` — de derde provider. Bewust OpenAI-COMPATIBEL: dezelfde
+  `/chat/completions`-vorm bereikt Azure OpenAI, OpenRouter, Groq, Together en een lokale
+  Ollama/llama.cpp. Daarom is het endpoint een eersteklas instelling en geen env-var. Tekst-only —
+  Gemini draagt beeld/audio inline, en dat hier claimen zonder het per model te kunnen verifiëren zou
+  een stil weggegooide bijlage opleveren.
+- `server/ai/providerConfig.ts` — generieke opslag per provider (`__provider_key_<id>`,
+  `__ai_model_<id>`, `__ai_baseurl_<id>`, `__ai_temp_<id>`), zelfde vorm als de media-kant al had.
+  Gemini's drie eigen `Workspace`-kolommen worden nog GELEZEN als terugval zodat niemand verliest wat
+  hij had, maar er wordt niets meer naartoe geschreven.
+- Nieuwe op `save-ai-provider-config` + `_sync`-route. De sleutel is write-only: hij komt nooit terug,
+  en een formulier dat hem niet opnieuw intypt stuurt geen `apiKey`, dus een model wijzigen kan een
+  credential niet wissen. Bewust `EXCLUDED` in de propose-catalogus — een assistent die "sla deze
+  sleutel op" mag voorstellen is een assistent die je kunt overhalen er een te vervangen.
+- De pagina zelf: één blok per backend met status, sleutelveld, model-DROPDOWN (met "Anders…" als
+  ontsnapping), endpoint en temperatuur. De Gemini-only velden in de instructiesectie zijn weg. Geen
+  redirect meer naar de content-pagina; wel één regel die zegt dat fal/ElevenLabs/Suno daar horen,
+  zodat niemand hier naar ze zoekt.
+
+**Verificatie.** `tsc` ✅ · `lint` ✅ · `ai:lint` ✅ · `build` ✅ · unit **124/124** (nieuw:
+`openaiProvider.test.mts`, 23 asserties op endpoint/body/catalogus) · sweep **456/456** (nieuw: 4
+per-route-cases die bewijzen dat de sleutel versleuteld ligt, dat een model-only save hem niet wist,
+dat een lege waarde de override wist i.p.v. "" op te slaan, en dat een niet-lid geweigerd wordt) ·
+Playwright **36/36**.
+
+**Developer-actie.** Backend is herstart (nieuwe sync-route + snapshotveld). Voor OpenAI: plak de
+sleutel op de AI-pagina, of zet `WS_OPENAI_API_KEY` als host-brede terugval.

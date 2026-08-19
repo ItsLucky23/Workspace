@@ -6,9 +6,9 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { getPrismaClient, tryCatch } from '@luckystack/core';
-import { decryptSecret } from '../../crypto/secretBox';
+import { tryCatch } from '@luckystack/core';
 import { MEDIA_DIR } from '../../media/store';
+import { resolveProviderConfig } from '../providerConfig';
 import type { AiCompletionRequest, AiCompletionResult, AiProvider } from '../types';
 
 //? F5 — resolve an image URL to a base64 `inline_data` part for a multimodal turn. Local `/media/<file>`
@@ -78,19 +78,13 @@ interface GeminiConfig { apiKey: string; model: string; temperature: number | nu
 //? temperature (P2) + base URL (X4) win over the env/defaults. Claude has no such concept (PTY-billed) — this
 //? is Gemini-only. Best-effort — any read failure ⇒ env defaults.
 async function resolveGeminiConfig(workspaceId?: string): Promise<GeminiConfig> {
-  if (!workspaceId) return { apiKey: envKey(), model: envModel(), temperature: null, baseUrl: envBase() };
-  const prisma = getPrismaClient();
-  const [, keyRow] = await tryCatch(() => prisma.envVar.findFirst({ where: { workspaceId, key: '__provider_key_gemini' }, select: { value: true } }));
-  const plainKey = keyRow ? decryptSecret(keyRow.value) : null;
-  const apiKey = plainKey !== null && plainKey.trim().length > 0 ? plainKey.trim() : envKey();
-  const [, ws] = await tryCatch(() => prisma.workspace.findUnique({ where: { id: workspaceId }, select: { geminiModel: true, geminiTemperature: true, geminiBaseUrl: true } }));
-  const model = (ws?.geminiModel ?? '').trim() || envModel();
-  const tempRaw = (ws?.geminiTemperature ?? '').trim();
-  const tempNum = Number(tempRaw);
-  const temperature = tempRaw.length > 0 && Number.isFinite(tempNum) ? Math.min(2, Math.max(0, tempNum)) : null;
-  const baseUrl = (ws?.geminiBaseUrl ?? '').trim() || envBase();
-  return { apiKey, model, temperature, baseUrl };
+  //? Delegates to the generic per-provider store (ADR 0007) so Gemini stops being the one backend with
+  //? bespoke columns. Its three legacy `Workspace` columns are still read there as a fallback, so a
+  //? workspace configured before that existed keeps exactly what it had.
+  const cfg = await resolveProviderConfig('gemini-api', workspaceId, { apiKey: envKey(), model: envModel(), baseUrl: envBase() });
+  return { apiKey: cfg.apiKey, model: cfg.model, temperature: cfg.temperature, baseUrl: cfg.baseUrl };
 }
+
 //? Build the generateContent URL from a base (default or custom), trimming a trailing slash. Pure + exported.
 export const geminiEndpoint = (baseUrl: string, model: string): string => `${baseUrl.replace(/\/+$/, '')}/models/${model}:generateContent`;
 

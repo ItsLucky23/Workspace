@@ -711,6 +711,26 @@ export interface InfoDoc {
   archived?: boolean;        // ADR 0310 — soft-archived: no longer fed to any AI, hidden behind the Archived view, restorable
 }
 
+//? ADR 0007 — one TEXT backend as the settings page sees it: its catalog entry (how it authenticates,
+//? which models it offers, what its defaults are) plus what this workspace has stored. `hasKey` is
+//? presence only — the credential is encrypted at rest and never reaches the client.
+export interface AiProviderConfig {
+  id: string;
+  label: string;
+  /** `host-cli` = installed and signed in on the SERVER; there is nothing to type in the app. */
+  auth: 'host-cli' | 'api-key';
+  models: { id: string; label: string }[];
+  defaultModel: string;
+  defaultBaseUrl: string;
+  supportsTemperature: boolean;
+  keyUrl: string;
+  hasKey: boolean;
+  /** Empty = not overridden; the resolver falls back to `defaultModel`. */
+  model: string;
+  baseUrl: string;
+  temperature: string;
+}
+
 export interface SkillEntry {
   id: string;
   name: string;

@@ -201,6 +201,8 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'comments-refresh': CAP.workTickets,
   'comments-mark-read': CAP.workTickets,
   'save-stage-config': CAP.editPipeline,
+  //? A credential for the backend that runs every AI in the workspace — settings-level, not pipeline.
+  'save-ai-provider-config': CAP.workspaceSettings,
   'stage-create': CAP.editPipeline,
   'pipeline-apply-preset': CAP.editPipeline,
   'stage-delete': CAP.editPipeline,

@@ -22,6 +22,8 @@ import { credentialKey, getValidConnection } from '../content/publishOAuth';
 import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { ensureWorkspaceBuiltins, scheduleWorkspaceBuiltinIndexing } from '../bootstrap/workspaceBuiltins';
+import { providerConfigKeys } from '../ai/providerConfig';
+import type { AiProviderId } from '../ai/types';
 import { isPipelinePreset, createDefaultPipeline, stageBlueprint, baseStageStatuses, stagesForPreset, stageCreateData, blueprintForStage, fallbackStageKey, defaultStageKeys, isStageKind } from '../bootstrap/defaultPipeline';
 import { cloneWorkspace } from '../bootstrap/cloneWorkspace';
 import { publishArtifactSite, unpublishArtifactSite, publicBaseUrl } from '../deploy/staticSite';
@@ -2692,6 +2694,37 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const voiceId = str(payload, 'voiceId');
       if (voiceId !== undefined) await setPref('__media_voice_id', voiceId.trim().length > 0, voiceId.trim());
       return;
+    }
+    //? ADR 0007 — per-workspace credentials + settings for ONE text backend. Distinct from
+    //? `save-ai-provider`, which routes a FEATURE to a backend; this configures the backend itself.
+    //?
+    //? It lives here rather than beside the media keys on the Content settings page because the text
+    //? backend runs the whole product — pipeline agents, the assistant, docs, reviews — and sending
+    //? someone to a content page to set it up (next to ElevenLabs and Suno) is what made the AI page
+    //? read as "Gemini's settings". Media providers stay where media is.
+    case 'save-ai-provider-config': {
+      const providerId = str(payload, 'providerId');
+      if (!providerId) return { ok: false, error: 'ai.invalidProvider' };
+      const keys = providerConfigKeys(providerId as AiProviderId);
+      const upsert = async (key: string, value: string, secret: boolean): Promise<void> => {
+        //? An empty value CLEARS the override rather than storing "", so a cleared field falls back to
+        //? the catalog default instead of pinning the model to the empty string.
+        if (value.trim().length === 0) { await prisma.envVar.deleteMany({ where: { workspaceId: action.workspaceId, key } }); return; }
+        const stored = secret ? encryptSecret(value.trim()) : value.trim();
+        await prisma.envVar.upsert({ where: { workspaceId_key: { workspaceId: action.workspaceId, key } }, create: { workspaceId: action.workspaceId, key, value: stored, secret }, update: { value: stored } });
+      };
+      //? The key is only touched when the client SENDS one: the settings form shows a masked
+      //? placeholder for a stored key and submits nothing unless you type a new one, so an unrelated
+      //? save (picking a model) must never wipe the credential.
+      const apiKey = str(payload, 'apiKey');
+      if (apiKey !== undefined) await upsert(keys.key, apiKey, true);
+      const model = str(payload, 'model');
+      if (model !== undefined) await upsert(keys.model, model, false);
+      const baseUrl = str(payload, 'baseUrl');
+      if (baseUrl !== undefined) await upsert(keys.baseUrl, baseUrl, false);
+      const temperature = str(payload, 'temperature');
+      if (temperature !== undefined) await upsert(keys.temp, temperature, false);
+      return { ok: true, providerId };
     }
     case 'save-ai-provider': {
       //? P1 — a per-workspace AI provider override per feature (EnvVar `__ai_provider_<feature>`). 'default'
