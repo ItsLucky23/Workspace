@@ -5501,3 +5501,30 @@ hij sluit alsnog zodra de muis echt weg is. De klik-assertie is "blijft zichtbaa
 nooit", omdat je niets kunt aanklikken zonder er eerst overheen te bewegen.
 
 **Verificatie.** `tsc` ✅ · `lint` ✅ · `build` ✅ · Playwright **35/35**.
+
+## 2026-08-19 — Tooltip: 500ms grace + outside-click sluit
+
+**Prompt van de gebruiker.** "Timer halveren en outside click force close."
+
+- `hoverDelay` 1000 → **500ms**.
+- `closeOnOutsideClick` in `src/_components/inputs/Popover.tsx` staat nu altijd aan in plaats van
+  alleen in klik-modus. Een klik ergens anders is een ondubbelzinnig "klaar hiermee", ongeacht wat het
+  paneel opende; de handler van de layer negeert klikken op de trigger én in het paneel, dus dit kan de
+  klik-sluit-toggle niet terugbrengen.
+
+**Dat werkte eerst niet, en de oorzaak zat een laag dieper.** `useFloatingLayer.close()` riep `onClose`
+pas ná de sluitanimatie aan. Een controlled parent (Popovers `open`-prop) synchroniseert met een effect
+"als open && !isOpen → open opnieuw", dus een door de layer zelf gestarte sluiting — precies een
+outside-click — zette `isOpen` op false terwijl de parent nog true zei, en dat effect heropende het
+paneel in dezelfde tick. Een controlled popover kon zichzelf dus helemaal niet sluiten; hij flikkerde
+alleen. `onClose` vuurt nu bij het BEGIN van de sluiting; de focus-restore blijft in de timeout.
+`onClose` heeft precies één consument (Popover → `onOpenChange`), dus het bereik is bekend.
+
+**Test.** De outside-click-assertie gebruikt `dispatchEvent('mousedown')` in plaats van een echte klik:
+een echte klik verplaatst eerst de muis van de trigger af, wat de 500ms-timer start — dan zou de tip
+sowieso verdwijnen en zou de assertie slagen of outside-click nu werkt of niet. Met een gedispatcht
+event blijft de muis staan, dus alleen de outside-click-handler kan hem nog sluiten. Die assertie faalde
+vóór de fix en slaagt erna; dat is het bewijs.
+
+**Verificatie.** `tsc` ✅ · `lint` ✅ · `build` ✅ · Playwright **35/35** (inclusief alle dropdowns en
+andere floating layers, want `floatingLayer.tsx` is basiskit).

@@ -84,9 +84,20 @@ test.describe('layer tip', () => {
     await expect(tip).toBeVisible();
 
     //? …and it does close once the pointer is genuinely away — a tip that never leaves is its own bug.
-    //? The grace period is 1000ms, so this waits past it rather than racing it.
+    //? The grace period is 500ms, so this waits past it rather than racing it.
     await page.mouse.move(0, 0);
     await expect(tip).toBeHidden({ timeout: 5000 });
+
+    //? An outside CLICK dismisses it without out-waiting the grace period.
+    //?
+    //? Dispatched, not clicked: a real click first MOVES the pointer off the trigger, which starts the
+    //? 500ms close timer, so the tip would disappear on its own and the assertion would pass whether
+    //? or not outside-click works at all. Dispatching mousedown leaves the pointer where it is, so the
+    //? only thing that can close the panel here is the layer's outside-click handler.
+    await trigger.hover();
+    await expect(tip).toBeVisible();
+    await page.getByRole('heading', { level: 1 }).first().dispatchEvent('mousedown');
+    await expect(tip).toBeHidden({ timeout: 2000 });
   });
 
   test('the full composed-text block no longer sits on top of the fields it describes', async ({ authedPage }) => {

@@ -390,9 +390,9 @@ export function InfoTip({ title, body, points, align = 'center', label, icon, cl
     <span className={`inline-flex shrink-0 ${className ?? ''}`} onKeyDown={keyToggle}>
       <FloatingPopover
         trigger={hoverCapable ? 'hover' : 'click'}
-        //? A full second to travel from the icon to the panel. Short delays are what make a hover menu
-        //? feel like it is running away from the pointer.
-        hoverDelay={1000}
+        //? Half a second to travel from the icon to the panel — long enough not to feel like the menu
+        //? is running away from the pointer, short enough that it does not linger over the page.
+        hoverDelay={500}
         placement="bottom"
         align={align}
         open={open}

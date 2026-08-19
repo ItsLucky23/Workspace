@@ -66,7 +66,11 @@ export default function Popover({
   const controller = useFloatingLayer({
     placement,
     align,
-    closeOnOutsideClick: trigger === "click",
+    //? Always, not only in click mode. A click elsewhere is an unambiguous "I am done with this",
+    //? whatever opened the panel — and a hover popover that can only be dismissed by out-waiting its
+    //? grace period is the one you end up chasing off the screen. The layer's own handler ignores
+    //? clicks on the trigger and inside the panel, so this cannot re-introduce a toggle-shut.
+    closeOnOutsideClick: true,
     closeOnEscape: true,
     onClose: () => { onOpenChange?.(false); },
   });

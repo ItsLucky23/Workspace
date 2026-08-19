@@ -132,6 +132,15 @@ export function useFloatingLayer(args: UseFloatingLayerArgs = {}): FloatingLayer
     setIsOpen(false);
     setIsVisible(false);
 
+    //? Announced when the close STARTS, not when its animation ends.
+    //?
+    //? A controlled parent (Popover's `open` prop) syncs its state into this layer with an effect:
+    //? "if open && !isOpen, open again". Firing `onClose` after ANIMATION_MS meant a layer-initiated
+    //? close — an outside click — flipped `isOpen` to false while the parent still said true, and that
+    //? effect re-opened the panel in the same tick. The panel could not close itself at all while
+    //? controlled; it just flickered. Telling the parent first lets the two agree.
+    onClose?.();
+
     if (showFrameRef.current !== null) {
       cancelAnimationFrame(showFrameRef.current);
       showFrameRef.current = null;
@@ -146,7 +155,6 @@ export function useFloatingLayer(args: UseFloatingLayerArgs = {}): FloatingLayer
         const opener = triggerRef.current?.querySelector<HTMLElement>('button, [tabindex]') ?? triggerRef.current;
         opener?.focus();
       }
-      onClose?.();
     }, ANIMATION_MS);
   }, [onClose]);
 
