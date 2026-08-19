@@ -26,10 +26,24 @@ import type { StageProcessCfg } from '../_data/types';
 
 const inputCls = 'h-9 w-full px-3 rounded-lg border border-container1-border bg-container2/50 text-sm font-mono text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 const nameCls = 'h-9 w-full px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
+//? Overrides the base border/ring rather than sitting next to it, so the field reads as wrong even
+//? while it has focus — which is exactly when someone is looking at it.
+const errorRing = '!border-wrong focus:!border-wrong focus:!ring-wrong/30';
 
 /** The single command a row runs — the model allows a chain, the editor deliberately does not. */
 export function rowCommand(proc: StageProcessCfg): string {
   return proc.commands.find((c) => c.trim().length > 0) ?? '';
+}
+
+/** A row only becomes real once it has BOTH halves: a command to run and a name to call its terminal
+ *  tab. Half a row is a draft, and a draft must not be saved — the Conductor would drop it, the
+ *  snapshot echo would then delete it out from under the person still typing it. */
+export function rowIncomplete(proc: StageProcessCfg): { name: boolean; command: boolean } {
+  return { name: proc.name.trim().length === 0, command: rowCommand(proc).trim().length === 0 };
+}
+
+export function anyRowIncomplete(processes: StageProcessCfg[]): boolean {
+  return processes.some((p) => { const m = rowIncomplete(p); return m.name || m.command; });
 }
 
 /** Seed the editor from what the project actually has: its list, else its legacy single command. */
@@ -76,6 +90,10 @@ export function RunProcessList({ processes, previewId, onChange, scripts, packag
     <div className={`flex flex-col gap-2.5`} role="radiogroup" aria-label={translate({ key: 'workspaces.runtime.isPreview' })}>
       {processes.map((proc) => {
         const isPreview = proc.id === previewId;
+        //? Marked the moment a half is missing, including on a freshly added row — the red IS the
+        //? instruction ("these two are required"), and hiding it until some notion of "touched" would
+        //? mean the row silently refuses to save while looking finished.
+        const missing = rowIncomplete(proc);
         return (
           //? Every row keeps the SAME neutral frame. Tinting the preview row read as "this is the row
           //? you have selected" — the owner said so — when what it means is "this one publishes a URL".
@@ -85,7 +103,8 @@ export function RunProcessList({ processes, previewId, onChange, scripts, packag
               <input
                 value={proc.name} onChange={(e) => { patch(proc.id, { name: e.target.value }); }}
                 placeholder={translate({ key: 'workspaces.runtime.namePlaceholder' })}
-                className={`${nameCls} max-w-40`}
+                aria-invalid={missing.name}
+                className={`${nameCls} max-w-40 ${missing.name ? errorRing : ''}`}
               />
               {/* Reads as a LABEL when set ("preview URL", filled chip) and as an ACTION when not
                   ("make this the preview URL", quiet). Same control either way — role=radio keeps the
@@ -116,13 +135,22 @@ export function RunProcessList({ processes, previewId, onChange, scripts, packag
               value={rowCommand(proc)} onFocus={() => { setOpenPicker(proc.id); }}
               onChange={(e) => { patch(proc.id, { commands: [e.target.value] }); }}
               placeholder={translate({ key: 'workspaces.runtime.commandPlaceholder' })}
-              className={inputCls}
+              aria-invalid={missing.command}
+              className={`${inputCls} ${missing.command ? errorRing : ''}`}
             />
             <input
               value={proc.cwd} onChange={(e) => { patch(proc.id, { cwd: e.target.value }); }}
               placeholder={translate({ key: 'workspaces.runtime.cwdPlaceholder' })}
               className={`${inputCls} text-xs`}
             />
+            {(missing.name || missing.command) && (
+              <div className={`flex items-center gap-1.5 text-xs text-wrong`}>
+                <Icon name="triangle-exclamation" className={`text-[10px]`} />
+                {translate({ key: missing.name && missing.command
+                  ? 'workspaces.runtime.needsBoth'
+                  : (missing.name ? 'workspaces.runtime.needsName' : 'workspaces.runtime.needsCommand') })}
+              </div>
+            )}
             {openPicker === proc.id && (
               <RepoScriptPicker
                 scripts={scripts} packageManager={packageManager}

@@ -6,7 +6,7 @@
 
 import { Suspense, lazy, useEffect, useState } from 'react';
 
-import { apiRequest, i18nNotify as notify, tryCatch, useTranslator } from '@luckystack/core/client';
+import { apiRequest, tryCatch, useTranslator } from '@luckystack/core/client';
 
 import { loadThemeId } from 'src/_components/editor/editorThemes';
 
@@ -27,7 +27,7 @@ import { AvatarBubble, IconButton, InfoTip, PopMenu, Tabs, Toggle, WsButton, typ
 import { EmptyPicker } from '../_components/SetupNotice';
 import { PageSections, useTrailSegment } from '../_components/sections';
 import { RepoInventoryPanel, RepoScriptPicker, useRepoIntrospection } from './repoIntrospection';
-import { RunProcessList, rowCommand, seedProcesses } from './runProcesses';
+import { RunProcessList, anyRowIncomplete, rowCommand, seedProcesses } from './runProcesses';
 import { FormSection, SavePill, SettingRow, useAutosave } from '../_components/settings';
 import { resolveAiLayers } from '../_functions/aiLayers';
 import { INTEGRATION_TYPES, RBAC_CAPABILITIES, ROLE_DISPLAY } from '../_data/seed';
@@ -713,11 +713,14 @@ function RuntimeSection({ workspaceId }: { workspaceId: string }) {
   }, [activeProject?.id]);
 
   const [saveError, setSaveError] = useState('');
-  //? Owner decision 2026-08-19: debounce + notify, never a save button. The delay is longer than the
-  //? page default because this form is typed into rather than clicked — at 700ms a pause halfway
-  //? through a command fires a save and a toast for a half-written command.
+  //? A draft row blocks the save outright rather than being silently dropped: the Conductor discards a
+  //? process with no command, so saving here would delete the row the user is still typing. The form
+  //? says which half is missing instead — see the red fields in RunProcessList.
+  const incomplete = anyRowIncomplete(procs);
+  //? Owner decision 2026-08-19: debounce, no save button and no toast per keystroke. The delay is
+  //? longer than the page default because this form is typed into rather than clicked.
   const status = useAutosave([procs, previewId, prodCmd, stack, allowCustomBase], async () => {
-    if (!projectId) return;
+    if (!projectId || incomplete) return;
     setSaveError('');
     //? `devCommand` is kept in sync with the PREVIEW process's command. It is still the fallback for an
     //? empty list and the source deploy reads for a dev-kind environment, so letting the two drift
@@ -726,10 +729,8 @@ function RuntimeSection({ workspaceId }: { workspaceId: string }) {
     const [err, res] = await tryCatch(() => apiRequest({ name: 'workspaces/saveDevCommand', version: 'v1', data: { workspaceId, projectId, clientRequestId: globalThis.crypto.randomUUID(), devCommand: previewCmd, runProcesses: procs, previewProcessId: previewId, prodCommand: prodCmd, stack, allowCustomBase } }));
     if (err || res?.status !== 'success') {
       setSaveError(translate({ key: 'workspaces.workspaceSettings.devCommandError' }));
-      notify.error({ key: 'workspaces.runtime.saveFailed' });
       throw new Error('save.failed');
     }
-    notify.success({ key: 'workspaces.runtime.saved' });
   }, { delay: 1200, resetKey: projectId ?? '' });
 
   const STACK_ITEMS = (['node', 'python', 'go', 'rust', 'java', 'php', 'dotnet', 'ruby', 'generic'] as const).map((s) => ({ id: s, value: s, item: s }));
@@ -758,7 +759,16 @@ function RuntimeSection({ workspaceId }: { workspaceId: string }) {
         desc={translate({ key: 'workspaces.workspaceSettings.devCommandDescription' })}
         right={(
           <div className={`flex items-center gap-2`}>
-            <SavePill status={status} errorText={saveError} />
+            {/* Never a "saved" pill while a row is a draft: nothing was written, and a success chip
+                next to two red fields is the most confusing thing this form could say. */}
+            {incomplete
+              ? (
+                <span className={`inline-flex items-center gap-1.5 text-xs text-wrong`}>
+                  <Icon name="triangle-exclamation" className={`text-[10px]`} />
+                  {translate({ key: 'workspaces.runtime.blockedByDraft' })}
+                </span>
+              )
+              : <SavePill status={status} errorText={saveError} />}
             {runInfo}
           </div>
         )}

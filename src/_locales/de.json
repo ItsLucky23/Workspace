@@ -3508,8 +3508,10 @@
       "terminalHint": "Jede Zeile bekommt ein eigenes Terminal an jedem Ticket.",
       "makePreview": "als Vorschau-URL setzen",
       "isPreviewTitle": "Dieser Prozess bekommt die Vorschau-URL",
-      "saved": "Runtime gespeichert",
-      "saveFailed": "Runtime konnte nicht gespeichert werden"
+      "needsName": "Gib diesem Befehl einen Namen — das wird sein Terminal-Tab.",
+      "needsCommand": "Gib den auszuführenden Befehl ein.",
+      "needsBoth": "Name und Befehl sind beide nötig, bevor gespeichert wird.",
+      "blockedByDraft": "Markierte Zeilen vervollständigen, um zu speichern"
     }
   }
 }

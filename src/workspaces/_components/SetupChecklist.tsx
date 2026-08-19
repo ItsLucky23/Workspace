@@ -60,7 +60,7 @@ const collapsedKey = (workspaceId: string): string => `ws:setup-collapsed:${work
 
 export default function SetupChecklist() {
   const translate = useTranslator();
-  const { activeWorkspace, readiness, tickets, can, focusSetup, quickAdd, toggleAi } = useWorkspaces();
+  const { activeWorkspace, activeProject, readiness, tickets, can, focusSetup, quickAdd, toggleAi } = useWorkspaces();
   const [open, setOpen] = useState(true);
 
   //? Read on mount + whenever the workspace changes, so each workspace keeps its own collapsed state.
@@ -74,6 +74,11 @@ export default function SetupChecklist() {
       return !wasOpen;
     });
   };
+
+  //? "Configured" is a process with a command, or the legacy single command a pre-0317 project still
+  //? uses. A row with a name and no command is not configuration — it starts nothing.
+  const runtimeConfigured = (activeProject?.runProcesses ?? []).some((p) => p.commands.some((c) => c.trim().length > 0))
+    || (activeProject?.devCommand ?? '').trim().length > 0;
 
   const devEnabled = isModuleEnabled(activeWorkspace.enabledSections, 'development');
   const contentEnabled = isModuleEnabled(activeWorkspace.enabledSections, 'content')
@@ -89,7 +94,12 @@ export default function SetupChecklist() {
       { id: 'firstTicket', icon: 'plus', done: tickets.length > 0, cap: 'workTickets' as CapKey, action: () => { quickAdd({ title: translate({ key: 'workspaces.checklist.firstTicketTitle' }) }); } },
       //? The runtime command only becomes answerable once a repo is linked, so it is gated on that
       //? rather than shown as a second failure of the same missing step.
-      ...(readiness.repoLinked ? [{ id: 'runtime', icon: 'play', done: false, cap: 'workspaceSettings' as CapKey, target: { view: 'workspace' as WsView, tab: 'repository', section: 'runtime' }, guidance: true as const }] : []),
+      //?
+      //? It used to be hardcoded `done: false` — there was no signal to read, because the runtime was a
+      //? single string with no notion of "configured". So it stayed on the list after the owner had set
+      //? up two dev commands and a prod one, which is a checklist telling someone to do what they have
+      //? already done. ADR 0317 gave it a real signal, so it is measurable now and no longer guidance.
+      ...(readiness.repoLinked ? [{ id: 'runtime', icon: 'play', done: runtimeConfigured, cap: 'workspaceSettings' as CapKey, target: { view: 'workspace' as WsView, tab: 'repository', section: 'runtime' } }] : []),
       { id: 'context', icon: 'book-open', done: false, cap: 'editPipeline' as CapKey, target: { view: 'sources' as WsView }, guidance: true as const },
     ] : []),
     ...(contentEnabled ? [

@@ -5304,3 +5304,37 @@ typen bent.
 
 **Verificatie.** `tsc` ✅ · `lint` ✅ · `ai:lint` ✅ · `build` ✅ · unit **123/123** · sweep
 **452/452** · Playwright **25/25**.
+
+## 2026-08-19 — Checklist-rij "startcommando" was hardcoded · draft-rijen blokkeren de save · toasts weg
+
+**Prompt van de gebruiker.** "Op /board staat dat ik nog het startcommando moet kiezen maar ik heb er 2
+voor develop en 1 voor prod opgezet. Ook graag de notify van iedere update weghalen, maar wel in de UI
+zelf een indicator dat die saved is; en niet saven als ik een leeg commando toevoeg, alleen als er echt
+een naam én commando in zit — dus ook in de UI met rode markeringen aangeven wat er mist."
+
+**Punt 1 — de checklist-rij was `done: false`, letterlijk.** Er was geen signaal om te lezen: de
+runtime was één string zonder enig begrip van "ingesteld", dus de rij stond hardcoded op onafgerond en
+bleef daar staan wat je ook invulde. Een checklist die je vraagt te doen wat je al gedaan hebt. ADR 0317
+gaf het een echt signaal, dus de rij is nu meetbaar (`runProcesses` met een commando, of het legacy
+`devCommand`) en geen `guidance` meer. Prod telt bewust niet mee: die rij gaat expliciet over de
+preview van een ticket, wat ook in zijn omschrijving staat.
+
+**Punt 2 — draft-rijen blokkeren de save nu, met rode markering per veld.** Een rij is pas echt met
+BEIDE helften: een commando om te draaien en een naam voor zijn terminal-tab. Zonder die regel gebeurt
+dit: je typt een naam, de debounce vuurt, de Conductor gooit de rij terecht weg (een proces zonder
+commando is geen proces) en de snapshot-echo verwijdert je regel terwijl je nog typt. Nu markeert het
+formulier per veld (`aria-invalid` + rode rand die de focus-stijl overrulet, want juist bij focus kijk
+je ernaar) met een regel eronder die zegt welke helft mist, en de save wordt overgeslagen.
+
+**Punt 3 — toasts weg.** `notify.success`/`notify.error` verwijderd; de inline `SavePill` blijft de
+indicator. Bij een onvolledige rij wordt die pill VERVANGEN door een rode regel ("maak de gemarkeerde
+regels af om op te slaan") — een "opgeslagen"-chip naast twee rode velden is het meest verwarrende wat
+dit formulier kan zeggen. Neutraal geformuleerd, want een project waarvan `devCommand` nooit gezet is
+komt binnen met een rode rij zonder dat de gebruiker iets gewijzigd heeft.
+
+**Let op voor de gebruiker.** De 2 dev-commando's + 1 prod-commando die je had ingevuld zijn
+waarschijnlijk nooit opgeslagen: dat was vóór de herstart, toen de backend `runProcesses` nog niet
+kende (zie de vorige entry). Ze moeten opnieuw ingevuld worden — nu landen ze wel.
+
+**Verificatie.** `tsc` ✅ · `lint` ✅ · `ai:lint` ✅ · `build` ✅ · unit **123/123** · sweep
+**452/452** · Playwright **25/25**.

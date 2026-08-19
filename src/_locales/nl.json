@@ -3508,8 +3508,10 @@
       "terminalHint": "Elke regel krijgt een eigen terminal op elk ticket.",
       "makePreview": "maak preview-URL",
       "isPreviewTitle": "Dit proces krijgt de preview-URL",
-      "saved": "Runtime opgeslagen",
-      "saveFailed": "Runtime opslaan is mislukt"
+      "needsName": "Geef dit commando een naam — dat wordt zijn terminal-tab.",
+      "needsCommand": "Vul het commando in dat moet draaien.",
+      "needsBoth": "Een naam én een commando zijn nodig voordat dit wordt opgeslagen.",
+      "blockedByDraft": "Maak de gemarkeerde regels af om op te slaan"
     }
   }
 }

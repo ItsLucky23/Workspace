@@ -3508,8 +3508,10 @@
       "terminalHint": "Chaque ligne obtient son propre terminal sur chaque ticket.",
       "makePreview": "définir comme URL de prévisualisation",
       "isPreviewTitle": "Ce processus reçoit l’URL de prévisualisation",
-      "saved": "Runtime enregistré",
-      "saveFailed": "Impossible d'enregistrer le runtime"
+      "needsName": "Donnez un nom à cette commande — ce sera son onglet de terminal.",
+      "needsCommand": "Saisissez la commande à exécuter.",
+      "needsBoth": "Un nom et une commande sont tous deux requis avant l’enregistrement.",
+      "blockedByDraft": "Complétez les lignes signalées pour enregistrer"
     }
   }
 }

@@ -3508,8 +3508,10 @@
       "terminalHint": "Each row gets its own terminal on every ticket.",
       "makePreview": "make preview URL",
       "isPreviewTitle": "This process gets the preview URL",
-      "saved": "Runtime saved",
-      "saveFailed": "Could not save the runtime"
+      "needsName": "Give this command a name — it becomes its terminal tab.",
+      "needsCommand": "Enter the command to run.",
+      "needsBoth": "A name and a command are both needed before this is saved.",
+      "blockedByDraft": "Finish the marked rows to save"
     }
   }
 }
