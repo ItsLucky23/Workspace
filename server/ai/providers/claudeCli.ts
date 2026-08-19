@@ -163,5 +163,9 @@ export const claudeCliProvider: AiProvider = {
   //? The coding agent is subscription-billed (PTY) — no per-workspace key concept (the workspaceId arg the
   //? provider contract now passes is simply not consumed here).
   available: () => Promise.resolve(claudeCliAvailable()),
+  //? Nothing to authenticate: "connected" for the host CLI means the binary is installed and signed
+  //? in on the server. The probe is the same one `available` uses, so Test answers the only question
+  //? this backend can be asked.
+  ping: () => Promise.resolve(claudeCliAvailable() ? { ok: true } : { ok: false, error: 'ai.cliNotInstalled' }),
   complete: (req: AiCompletionRequest) => driveClaudeCliTurn(req),
 };

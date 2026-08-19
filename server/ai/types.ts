@@ -102,4 +102,8 @@ export interface AiProvider {
   label: string;
   available: (workspaceId?: string) => Promise<boolean>;   //? Q5 — a per-workspace key (EnvVar store) can make a provider available even without an env key
   complete: (req: AiCompletionRequest) => Promise<AiCompletionResult>;
+  //? ADR 0007 — probe ONE set of credentials without going through the workspace's stored config, so
+  //? the settings page can answer "is this key valid" for a connection that is not the active one.
+  //? Must be the cheapest call the backend offers: a user may press Test on every row.
+  ping?: (cfg: { apiKey: string; model: string }) => Promise<{ ok: boolean; error?: string }>;
 }

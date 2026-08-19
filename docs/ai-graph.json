@@ -3,9 +3,9 @@
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
     "nodes": 449,
-    "edges": 667,
-    "symbols": 847,
-    "callEdges": 278
+    "edges": 670,
+    "symbols": 848,
+    "callEdges": 279
   },
   "nodes": [
     {
@@ -1219,6 +1219,16 @@
       "route": "sync/workspaces/agentTerm/v1"
     },
     {
+      "id": "workspaces/_sync/aiConnection_server_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_sync/aiConnection_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/aiConnection/v1"
+    },
+    {
       "id": "workspaces/_sync/answerInput_server_v1.tests.ts",
       "kind": "other",
       "route": null
@@ -1602,16 +1612,6 @@
       "id": "workspaces/_sync/saveAiProvider_server_v1.ts",
       "kind": "sync",
       "route": "sync/workspaces/saveAiProvider/v1"
-    },
-    {
-      "id": "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts",
-      "kind": "other",
-      "route": null
-    },
-    {
-      "id": "workspaces/_sync/saveAiProviderConfig_server_v1.ts",
-      "kind": "sync",
-      "route": "sync/workspaces/saveAiProviderConfig/v1"
     },
     {
       "id": "workspaces/_sync/saveAutonomy_server_v1.tests.ts",
@@ -3034,6 +3034,10 @@
     {
       "from": "workspaces/_shell/WorkspacesTemplate.tsx",
       "to": "workspaces/_shell/WorkspacesShell.tsx"
+    },
+    {
+      "from": "workspaces/_sync/aiConnection_server_v1.ts",
+      "to": "workspaces/_functions/controlApi.ts"
     },
     {
       "from": "workspaces/_sync/commentInbox_server_v1.ts",
@@ -4793,6 +4797,10 @@
     },
     {
       "from": "workspaces/workspace/aiProviders.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/workspace/aiProviders.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
     {
@@ -4802,6 +4810,10 @@
     {
       "from": "workspaces/workspace/aiProviders.tsx",
       "to": "workspaces/_components/settings.tsx"
+    },
+    {
+      "from": "workspaces/workspace/aiProviders.tsx",
+      "to": "workspaces/_components/SetupNotice.tsx"
     },
     {
       "from": "workspaces/workspace/aiProviders.tsx",
@@ -5065,6 +5077,7 @@
       "workspaces/develop/terminals/page.tsx",
       "workspaces/insights/usage/page.tsx",
       "workspaces/settings/page.tsx",
+      "workspaces/workspace/aiProviders.tsx",
       "workspaces/workspace/page.tsx"
     ],
     "_components/dropdown/Dropdown.tsx": [
@@ -5567,6 +5580,7 @@
       "workspaces/develop/terminals/page.tsx",
       "workspaces/insights/usage/page.tsx",
       "workspaces/settings/page.tsx",
+      "workspaces/workspace/aiProviders.tsx",
       "workspaces/workspace/page.tsx"
     ],
     "_providers/SessionProvider.tsx": [
@@ -6001,6 +6015,7 @@
       "workspaces/develop/sources/page.tsx",
       "workspaces/develop/terminals/page.tsx",
       "workspaces/settings/page.tsx",
+      "workspaces/workspace/aiProviders.tsx",
       "workspaces/workspace/page.tsx"
     ],
     "workspaces/_components/SetupWizard.tsx": [
@@ -6049,6 +6064,7 @@
       "workspaces/develop/sources/page.tsx",
       "workspaces/develop/terminals/page.tsx",
       "workspaces/settings/page.tsx",
+      "workspaces/workspace/aiProviders.tsx",
       "workspaces/workspace/page.tsx"
     ],
     "workspaces/_data/chatOps.ts": [
@@ -6256,6 +6272,7 @@
       "workspaces/_shell/WorkspacesProvider.tsx",
       "workspaces/_shell/WorkspacesShell.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx",
+      "workspaces/_sync/aiConnection_server_v1.ts",
       "workspaces/_sync/commentInbox_server_v1.ts",
       "workspaces/_sync/contentAssetDelta_server_v1.ts",
       "workspaces/_sync/contentControl_server_v1.ts",
@@ -6749,8 +6766,8 @@
     {
       "id": "workspaces/_functions/controlApi.ts",
       "kind": "other",
-      "dependents": 109,
-      "directDependents": 9
+      "dependents": 110,
+      "directDependents": 10
     },
     {
       "id": "workspaces/_data/types.ts",
@@ -6809,14 +6826,14 @@
     {
       "id": "_components/ConfirmMenu.tsx",
       "kind": "component",
-      "dependents": 50,
+      "dependents": 51,
       "directDependents": 1
     },
     {
       "id": "_functions/menuHandler.ts",
       "kind": "helper",
-      "dependents": 50,
-      "directDependents": 38
+      "dependents": 51,
+      "directDependents": 39
     },
     {
       "id": "_components/dropdown/dropdownInternals.tsx",
@@ -6833,14 +6850,14 @@
     {
       "id": "workspaces/_data/capabilities.ts",
       "kind": "other",
-      "dependents": 34,
+      "dependents": 35,
       "directDependents": 2
     },
     {
       "id": "workspaces/_components/SetupNotice.tsx",
       "kind": "other",
-      "dependents": 32,
-      "directDependents": 21
+      "dependents": 33,
+      "directDependents": 22
     },
     {
       "id": "workspaces/_data/modules.ts",
@@ -9197,6 +9214,54 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_sync/aiConnection_server_v1.tests.ts::<module>",
+      "file": "workspaces/_sync/aiConnection_server_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/aiConnection_server_v1.tests.ts::fn",
+      "file": "workspaces/_sync/aiConnection_server_v1.tests.ts",
+      "name": "fn",
+      "kind": "fn"
+    },
+    {
+      "id": "workspaces/_sync/aiConnection_server_v1.tests.ts::poll",
+      "file": "workspaces/_sync/aiConnection_server_v1.tests.ts",
+      "name": "poll",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/aiConnection_server_v1.tests.ts::run",
+      "file": "workspaces/_sync/aiConnection_server_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "workspaces/_sync/aiConnection_server_v1.tests.ts::wait",
+      "file": "workspaces/_sync/aiConnection_server_v1.tests.ts",
+      "name": "wait",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/aiConnection_server_v1.ts::<module>",
+      "file": "workspaces/_sync/aiConnection_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/aiConnection_server_v1.ts::isConnectionOp",
+      "file": "workspaces/_sync/aiConnection_server_v1.ts",
+      "name": "isConnectionOp",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/aiConnection_server_v1.ts::main",
+      "file": "workspaces/_sync/aiConnection_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_sync/answerInput_server_v1.tests.ts::<module>",
       "file": "workspaces/_sync/answerInput_server_v1.tests.ts",
       "name": "<module>",
@@ -10967,48 +11032,6 @@
       "kind": "function"
     },
     {
-      "id": "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts::<module>",
-      "file": "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts",
-      "name": "<module>",
-      "kind": "module"
-    },
-    {
-      "id": "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts::fn",
-      "file": "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts",
-      "name": "fn",
-      "kind": "fn"
-    },
-    {
-      "id": "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts::poll",
-      "file": "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts",
-      "name": "poll",
-      "kind": "function"
-    },
-    {
-      "id": "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts::run",
-      "file": "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts",
-      "name": "run",
-      "kind": "method"
-    },
-    {
-      "id": "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts::wait",
-      "file": "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts",
-      "name": "wait",
-      "kind": "function"
-    },
-    {
-      "id": "workspaces/_sync/saveAiProviderConfig_server_v1.ts::<module>",
-      "file": "workspaces/_sync/saveAiProviderConfig_server_v1.ts",
-      "name": "<module>",
-      "kind": "module"
-    },
-    {
-      "id": "workspaces/_sync/saveAiProviderConfig_server_v1.ts::main",
-      "file": "workspaces/_sync/saveAiProviderConfig_server_v1.ts",
-      "name": "main",
-      "kind": "function"
-    },
-    {
       "id": "workspaces/_sync/saveAutonomy_server_v1.tests.ts::<module>",
       "file": "workspaces/_sync/saveAutonomy_server_v1.tests.ts",
       "name": "<module>",
@@ -12231,6 +12254,22 @@
       "to": "workspaces/_sync/agentControl_server_v1.tests.ts::poll"
     },
     {
+      "from": "workspaces/_sync/aiConnection_server_v1.tests.ts::poll",
+      "to": "workspaces/_sync/aiConnection_server_v1.tests.ts::fn"
+    },
+    {
+      "from": "workspaces/_sync/aiConnection_server_v1.tests.ts::poll",
+      "to": "workspaces/_sync/aiConnection_server_v1.tests.ts::wait"
+    },
+    {
+      "from": "workspaces/_sync/aiConnection_server_v1.tests.ts::run",
+      "to": "workspaces/_sync/aiConnection_server_v1.tests.ts::poll"
+    },
+    {
+      "from": "workspaces/_sync/aiConnection_server_v1.ts::main",
+      "to": "workspaces/_sync/aiConnection_server_v1.ts::isConnectionOp"
+    },
+    {
       "from": "workspaces/_sync/answerInput_server_v1.tests.ts::poll",
       "to": "workspaces/_sync/answerInput_server_v1.tests.ts::fn"
     },
@@ -12807,18 +12846,6 @@
       "to": "workspaces/_sync/saveAiProvider_server_v1.tests.ts::poll"
     },
     {
-      "from": "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts::poll",
-      "to": "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts::fn"
-    },
-    {
-      "from": "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts::poll",
-      "to": "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts::wait"
-    },
-    {
-      "from": "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts::run",
-      "to": "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts::poll"
-    },
-    {
       "from": "workspaces/_sync/saveAutonomy_server_v1.tests.ts::poll",
       "to": "workspaces/_sync/saveAutonomy_server_v1.tests.ts::fn"
     },
@@ -13287,6 +13314,20 @@
     "workspaces/_sync/agentControl_server_v1.tests.ts::wait": [
       "workspaces/_sync/agentControl_server_v1.tests.ts::poll",
       "workspaces/_sync/agentControl_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/aiConnection_server_v1.tests.ts::fn": [
+      "workspaces/_sync/aiConnection_server_v1.tests.ts::poll",
+      "workspaces/_sync/aiConnection_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/aiConnection_server_v1.tests.ts::poll": [
+      "workspaces/_sync/aiConnection_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/aiConnection_server_v1.tests.ts::wait": [
+      "workspaces/_sync/aiConnection_server_v1.tests.ts::poll",
+      "workspaces/_sync/aiConnection_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/aiConnection_server_v1.ts::isConnectionOp": [
+      "workspaces/_sync/aiConnection_server_v1.ts::main"
     ],
     "workspaces/_sync/answerInput_server_v1.tests.ts::fn": [
       "workspaces/_sync/answerInput_server_v1.tests.ts::poll",
@@ -13821,17 +13862,6 @@
     "workspaces/_sync/saveAiProvider_server_v1.tests.ts::wait": [
       "workspaces/_sync/saveAiProvider_server_v1.tests.ts::poll",
       "workspaces/_sync/saveAiProvider_server_v1.tests.ts::run"
-    ],
-    "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts::fn": [
-      "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts::poll",
-      "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts::run"
-    ],
-    "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts::poll": [
-      "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts::run"
-    ],
-    "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts::wait": [
-      "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts::poll",
-      "workspaces/_sync/saveAiProviderConfig_server_v1.tests.ts::run"
     ],
     "workspaces/_sync/saveAutonomy_server_v1.tests.ts::fn": [
       "workspaces/_sync/saveAutonomy_server_v1.tests.ts::poll",

@@ -5,18 +5,13 @@
 //? AI-behaviour page was Gemini-shaped: there was nowhere to put a second backend's model. The media
 //? side already solved this generically — `__media_model_<feature>` — so this uses the same shape:
 //?
-//?   __provider_key_<id>   the API key, ENCRYPTED (already the convention, shared with media)
-//?   __ai_model_<id>       the chosen model
-//?   __ai_baseurl_<id>     the endpoint, for a proxy / self-host / OpenAI-compatible gateway
-//?   __ai_temp_<id>        temperature
-//?
-//? The legacy Gemini columns are still READ as a fallback so no workspace loses what it configured
-//? before this existed; nothing writes them any more.
+//? Settings now live on an `AiConnection` row (see ./connections.ts) rather than in EnvVars or in
+//? Gemini's three bespoke `Workspace` columns: the owner wanted a LIST of connected AIs, which a
+//? per-provider record cannot express. This module is the read side — "what should provider X run
+//? with right now" — and is the only thing the providers themselves call.
 //? @adr 0007
 
-import { getPrismaClient, tryCatch } from '@luckystack/core';
-
-import { decryptSecret } from '../crypto/secretBox';
+import { connectionFor } from './connections';
 import { AI_PROVIDER_CATALOG } from './providers/catalog';
 import type { AiProviderId } from './types';
 
@@ -30,7 +25,10 @@ export interface ResolvedProviderConfig {
 
 const cfgKey = (prefix: string, id: AiProviderId): string => `__ai_${prefix}_${id}`;
 
-/** Read every stored setting for one backend, in one query, falling back through the layers. */
+/** Read the config a backend should run with: its CONNECTION first, then env defaults.
+ *
+ *  The endpoint is deliberately NOT part of what a user can set — it comes from the provider catalog,
+ *  with an operator env override for a proxy or a self-hosted gateway. It is infrastructure. */
 export async function resolveProviderConfig(
   id: AiProviderId,
   workspaceId: string | undefined,
@@ -40,43 +38,21 @@ export async function resolveProviderConfig(
   const defaults: ResolvedProviderConfig = {
     apiKey: envFallback.apiKey,
     model: envFallback.model || meta.defaultModel,
+    //? Env first here, not last: only an operator sets this, and when they do it is because the
+    //? default host is unreachable from their network.
     baseUrl: envFallback.baseUrl || meta.defaultBaseUrl,
     temperature: null,
   };
   if (workspaceId === undefined) return defaults;
 
-  const prisma = getPrismaClient();
-  const [, rows] = await tryCatch(() => prisma.envVar.findMany({
-    where: { workspaceId, key: { in: [`__provider_key_${id}`, cfgKey('model', id), cfgKey('baseurl', id), cfgKey('temp', id)] } },
-    select: { key: true, value: true },
-  }));
-  const stored = new Map((rows ?? []).map((r) => [r.key, r.value]));
-
-  //? A stored key WINS over the env key — the per-workspace key is the one a user just typed, and an
-  //? env key silently overriding it was a real bug once (Q5).
-  const rawKey = stored.get(`__provider_key_${id}`);
-  const plainKey = (rawKey === undefined ? '' : decryptSecret(rawKey)) ?? '';
-  const model = (stored.get(cfgKey('model', id)) ?? '').trim();
-  const baseUrl = (stored.get(cfgKey('baseurl', id)) ?? '').trim();
-  const tempRaw = (stored.get(cfgKey('temp', id)) ?? '').trim();
-  const tempNum = Number(tempRaw);
-
-  //? Legacy: the three Gemini columns predate this store. Read, never written — a workspace configured
-  //? before this file existed keeps working, and stops being special the moment it is saved again.
-  let legacy = { model: '', baseUrl: '', temp: '' };
-  if (id === 'gemini-api') {
-    const [, ws] = await tryCatch(() => prisma.workspace.findUnique({ where: { id: workspaceId }, select: { geminiModel: true, geminiTemperature: true, geminiBaseUrl: true } }));
-    legacy = { model: (ws?.geminiModel ?? '').trim(), baseUrl: (ws?.geminiBaseUrl ?? '').trim(), temp: (ws?.geminiTemperature ?? '').trim() };
-  }
-
-  const legacyTempNum = Number(legacy.temp);
+  const connection = await connectionFor(workspaceId, id);
   return {
-    apiKey: plainKey.trim().length > 0 ? plainKey.trim() : defaults.apiKey,
-    model: model || legacy.model || defaults.model,
-    baseUrl: baseUrl || legacy.baseUrl || defaults.baseUrl,
-    temperature: tempRaw.length > 0 && Number.isFinite(tempNum)
-      ? Math.min(2, Math.max(0, tempNum))
-      : (legacy.temp.length > 0 && Number.isFinite(legacyTempNum) ? Math.min(2, Math.max(0, legacyTempNum)) : null),
+    //? A connection's key WINS over the env key — it is the one a user just entered, and an env key
+    //? silently overriding it was a real bug once (Q5).
+    apiKey: (connection?.apiKey ?? '').length > 0 ? (connection?.apiKey ?? '') : defaults.apiKey,
+    model: (connection?.model ?? '').length > 0 ? (connection?.model ?? '') : defaults.model,
+    baseUrl: defaults.baseUrl,
+    temperature: null,
   };
 }
 

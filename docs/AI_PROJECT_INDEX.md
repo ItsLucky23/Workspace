@@ -87,6 +87,7 @@
 | `sync/workspaces/addInfoDoc/v1` | yes | — | login | — | yes | — | Workspaces — [create-info-source] REALTIME write via `_sync` (FREEDOM_PROGRAM K2). Registers a |
 | `sync/workspaces/agentControl/v1` | yes | — | login | — | yes | — | Workspaces — [agent controls] REALTIME control-op via `_sync` (C2). One route for the five |
 | `sync/workspaces/agentTerm/v1` | yes | — | login | ItsLucky23 | yes | — | Workspaces — [agent-term] BROADCAST-ONLY realtime carrier (#20). The stage-runner tees the CODE agent's |
+| `sync/workspaces/aiConnection/v1` | yes | — | login | ItsLucky23 | yes | — | Workspaces — [ai-connection-*] the connected AIs: add one, test its credentials, disconnect it. |
 | `sync/workspaces/answerInput/v1` | yes | — | login | — | yes | — | Workspaces — [answer-input] REALTIME write via `_sync` (#17). A human answers the ticket's open |
 | `sync/workspaces/archive/v1` | yes | — | login | — | yes | — | Workspaces — [archive] REALTIME write via `_sync`. Validate + RBAC + enqueue on |
 | `sync/workspaces/bulkArchive/v1` | yes | — | login | — | yes | — | Workspaces — [bulk-archive] REALTIME write via `_sync`. Archives ticket(s), then |
@@ -126,7 +127,6 @@
 | `sync/workspaces/rotateWebhookSecret/v1` | yes | — | login | ItsLucky23 | yes | — | Workspaces — [forge-webhook-rotate] REALTIME write via `_sync` (#27). Mints a fresh per-workspace |
 | `sync/workspaces/saveAiInstruction/v1` | yes | — | login | — | yes | — | Workspaces — [save-ai-instruction] REALTIME write via `_sync` (FREEDOM_PROGRAM Q4). Persists the |
 | `sync/workspaces/saveAiProvider/v1` | yes | — | login | — | yes | — | Workspaces — [save-ai-provider] REALTIME write via `_sync` (FREEDOM_PROGRAM P1). Persists a per-workspace |
-| `sync/workspaces/saveAiProviderConfig/v1` | yes | — | login | ItsLucky23 | yes | — | Workspaces — [save-ai-provider-config] the credentials + settings for ONE text backend (ADR 0007). |
 | `sync/workspaces/saveAutonomy/v1` | yes | — | login | — | yes | — | Workspaces — [save-autonomy] REALTIME write via `_sync` (FREEDOM_PROGRAM A4). Persists the workspace's |
 | `sync/workspaces/saveEnv/v1` | yes | — | login | — | yes | — | Workspaces — [save-env] REALTIME write via `_sync`. Upserts an env var, then |
 | `sync/workspaces/saveGitConfig/v1` | yes | — | login | — | yes | — | Workspaces — [save-git-config] REALTIME write via `_sync`. Persists the workspace's git |

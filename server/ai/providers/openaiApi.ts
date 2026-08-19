@@ -4,8 +4,10 @@
 //? The product shipped with exactly two text backends: the subscription Claude CLI on the host, and
 //? Gemini. The owner asked for more, and "more" here does not mean "OpenAI" specifically: the
 //? /chat/completions shape is what Azure OpenAI, OpenRouter, Groq, Together, vLLM and a local
-//? Ollama/llama.cpp all speak. Pointing `baseUrl` somewhere else is the whole configuration, which is
-//? why the base URL is a first-class setting rather than an env var.
+//? Ollama/llama.cpp all speak. Pointing the endpoint somewhere else is the whole configuration — and
+//? that endpoint is an OPERATOR setting (`WS_OPENAI_BASE_URL`), never a field in the UI: which host
+//? answers is infrastructure, and putting it in front of a user turns a working default into a box
+//? they can break.
 //?
 //? Deliberately text-only. Gemini carries images and audio inline for the multimodal features; adding
 //? that here would mean claiming a capability per model that this file cannot verify, and a silently
@@ -50,6 +52,25 @@ export function openAiBody(req: Pick<AiCompletionRequest, 'prompt' | 'system'>, 
 export const openAiProvider: AiProvider = {
   id: 'openai-api',
   label: META.label,
+  //? The cheapest turn this API offers: one token out. It proves the key, the model name AND the
+  //? endpoint in one call — a key check that only validated the key would still let someone save a
+  //? model the host does not have.
+  ping: async (cfg) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => { controller.abort(); }, 15_000);
+    const [error] = await tryCatch(async () => {
+      const res = await fetch(openAiEndpoint(envConfig().baseUrl), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.apiKey}` },
+        body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: 'ping' }], max_completion_tokens: 1 }),
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error(`openai ${String(res.status)}`);
+      return true;
+    });
+    clearTimeout(timer);
+    return error ? { ok: false, error: error.message } : { ok: true };
+  },
   available: async (workspaceId?: string) => {
     const cfg = await resolveProviderConfig('openai-api', workspaceId, envConfig());
     return cfg.apiKey.length > 0;

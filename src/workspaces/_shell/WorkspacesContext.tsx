@@ -13,7 +13,7 @@ import type {
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink, UiReviewSummary,
   ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, ContentSnapshot,
-  WorkspaceReadiness, PatSummary, AiProviderConfig,
+  WorkspaceReadiness, PatSummary, AiConnection, AiProviderOption,
 } from '../_data/types';
 
 export type WsView =
@@ -316,11 +316,11 @@ export interface WorkspacesCtx {
   saveAiInstruction: (aiInstruction: string, outputLanguage: string, geminiModel: string, geminiTemperature: string, geminiBaseUrl: string) => void;
   //? P1 — per-feature AI provider overrides + a setter ('default' clears).
   aiOverrides: { feature: string; providerId: string }[];
-  //? ADR 0007 — every text backend: its catalog entry + what this workspace stored. `hasKey` is
-  //? presence only; the credential never reaches the client.
-  aiProviderConfigs: AiProviderConfig[];
-  /** Save one backend's credentials/settings. Omit a field to leave it untouched (the key is write-only). */
-  saveAiProviderConfig: (input: { providerId: string; apiKey?: string; model?: string; baseUrl?: string; temperature?: string }) => void;
+  //? ADR 0007 — the connected AIs, and what CAN be connected. `hasKey` is presence only.
+  aiConnections: AiConnection[];
+  aiProviderCatalog: AiProviderOption[];
+  /** Add / test / remove one connection. Resolves with the Conductor's own result. */
+  aiConnectionAction: (input: { op: 'ai-connection-add' | 'ai-connection-test' | 'ai-connection-remove'; providerId?: string; model?: string; apiKey?: string; connectionId?: string }) => Promise<{ ok: boolean; error?: string; result?: unknown }>;
   saveAiProvider: (feature: string, providerId: string) => void;
   //? Preload gap-fix (X3) — the caller's own Personal Access Tokens (metadata only; never the raw token).
   pats: PatSummary[];

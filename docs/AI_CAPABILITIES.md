@@ -117,6 +117,7 @@ Every typed sync route in this project. Sourced from `_ProjectSyncTypeMap` in `s
 | `workspaces/addInfoDoc/v1` | — | — | ✓ |
 | `workspaces/agentControl/v1` | — | — | ✓ |
 | `workspaces/agentTerm/v1` | — | — | ✓ |
+| `workspaces/aiConnection/v1` | — | — | ✓ |
 | `workspaces/answerInput/v1` | — | — | ✓ |
 | `workspaces/archive/v1` | — | — | ✓ |
 | `workspaces/bulkArchive/v1` | — | — | ✓ |
@@ -156,7 +157,6 @@ Every typed sync route in this project. Sourced from `_ProjectSyncTypeMap` in `s
 | `workspaces/rotateWebhookSecret/v1` | — | — | ✓ |
 | `workspaces/saveAiInstruction/v1` | — | — | ✓ |
 | `workspaces/saveAiProvider/v1` | — | — | ✓ |
-| `workspaces/saveAiProviderConfig/v1` | — | — | ✓ |
 | `workspaces/saveAutonomy/v1` | — | — | ✓ |
 | `workspaces/saveEnv/v1` | — | — | ✓ |
 | `workspaces/saveGitConfig/v1` | — | — | ✓ |

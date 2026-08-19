@@ -55,6 +55,11 @@ function productCapabilityIndex(): string {
   return capIndexCache;
 }
 
+/** One backend by id, for the settings page's credential probe. `undefined` for an unknown id. */
+export function aiProviderById(id: string): AiProvider | undefined {
+  return Object.hasOwn(PROVIDERS, id) ? PROVIDERS[id as AiProviderId] : undefined;
+}
+
 const PROVIDERS: Record<AiProviderId, AiProvider> = {
   'claude-cli': claudeCliProvider,
   'gemini-api': geminiApiProvider,

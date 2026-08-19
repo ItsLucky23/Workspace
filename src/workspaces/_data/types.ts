@@ -711,24 +711,30 @@ export interface InfoDoc {
   archived?: boolean;        // ADR 0310 — soft-archived: no longer fed to any AI, hidden behind the Archived view, restorable
 }
 
-//? ADR 0007 — one TEXT backend as the settings page sees it: its catalog entry (how it authenticates,
-//? which models it offers, what its defaults are) plus what this workspace has stored. `hasKey` is
-//? presence only — the credential is encrypted at rest and never reaches the client.
-export interface AiProviderConfig {
+//? ADR 0007 — one CONNECTED AI as the settings page sees it. `hasKey` is presence only; the
+//? credential never reaches the client, and the endpoint is not a client concept at all.
+export interface AiConnection {
+  id: string;
+  providerId: string;
+  /** The backend's display name, from the server catalog. */
+  label: string;
+  /** Empty for a host-CLI backend, which has no model concept. */
+  model: string;
+  auth: 'host-cli' | 'api-key';
+  hasKey: boolean;
+  /** ISO timestamp of the last SUCCESSFUL credential probe — very different from "a key is present". */
+  verifiedAt: string | null;
+  lastError: string | null;
+}
+
+//? What can be connected, for the add form. No endpoint: which host answers is infrastructure.
+export interface AiProviderOption {
   id: string;
   label: string;
-  /** `host-cli` = installed and signed in on the SERVER; there is nothing to type in the app. */
   auth: 'host-cli' | 'api-key';
   models: { id: string; label: string }[];
   defaultModel: string;
-  defaultBaseUrl: string;
-  supportsTemperature: boolean;
   keyUrl: string;
-  hasKey: boolean;
-  /** Empty = not overridden; the resolver falls back to `defaultModel`. */
-  model: string;
-  baseUrl: string;
-  temperature: string;
 }
 
 export interface SkillEntry {

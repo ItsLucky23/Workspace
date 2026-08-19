@@ -1,9 +1,9 @@
-//? ADR 0007 — the OpenAI-compatible backend's wire shape, pinned.
+//? ADR 0007 — the OpenAI-compatible backend's wire shape, and the catalog the settings page renders
+//? itself from.
 //?
-//? A unit test because the failure mode is a 400 or a 404 that reads as "the AI is broken" and gives
+//? Unit-tested because the failure mode is a 400 or a 404 that reads as "the AI is broken" and gives
 //? the user nothing to act on. The endpoint and the body are the entire contract with every host that
-//? speaks this API — OpenAI, Azure OpenAI, OpenRouter, Groq, a local Ollama — so getting either subtly
-//? wrong breaks a backend nobody can debug from the UI.
+//? speaks this API — OpenAI, Azure OpenAI, OpenRouter, Groq, a local Ollama.
 
 import { openAiBody, openAiEndpoint } from '../../server/ai/providers/openaiApi.ts';
 import { AI_PROVIDER_CATALOG } from '../../server/ai/providers/catalog.ts';
@@ -14,8 +14,8 @@ import { assert, eq, report } from '../_helpers.mts';
 eq(openAiEndpoint('https://api.openai.com/v1'), 'https://api.openai.com/v1/chat/completions', 'the default host resolves to /chat/completions');
 //? A pasted base URL almost always has a trailing slash; doubling it 404s on several hosts.
 eq(openAiEndpoint('https://api.openai.com/v1/'), 'https://api.openai.com/v1/chat/completions', 'a trailing slash is trimmed rather than doubled');
-//? The whole point of the base URL being a first-class setting: this is how you reach anything else.
-eq(openAiEndpoint('http://localhost:11434/v1'), 'http://localhost:11434/v1/chat/completions', 'a local OpenAI-compatible server is reachable by changing one field');
+//? The endpoint is an OPERATOR setting, never a UI field — this is what that setting buys.
+eq(openAiEndpoint('http://localhost:11434/v1'), 'http://localhost:11434/v1/chat/completions', 'a local OpenAI-compatible server is reachable by changing one env var');
 eq(openAiEndpoint('  '), `${AI_PROVIDER_CATALOG['openai-api'].defaultBaseUrl}/chat/completions`, 'a blank endpoint falls back to the catalog default, never to an empty URL');
 
 /* ------------------------------------------------------------ the body */
@@ -42,10 +42,10 @@ eq(openAiEndpoint('  '), `${AI_PROVIDER_CATALOG['openai-api'].defaultBaseUrl}/ch
   eq(body.temperature, 0.4, 'a set temperature is sent');
 }
 
-/* ------------------------------------------------------------ the catalog it renders from */
+/* ------------------------------------------------------------ the catalog the UI renders from */
 
-//? The settings page renders itself from this, so an entry that promises a key field without a place
-//? to get one, or a model dropdown with nothing in it, is a broken settings page.
+//? The add-form is generated from this. An entry that offers a key field with nowhere to get a key,
+//? or a model dropdown with nothing in it, is a broken settings page that typechecks fine.
 for (const meta of Object.values(AI_PROVIDER_CATALOG)) {
   if (meta.auth !== 'api-key') continue;
   assert(meta.models.length > 0, `${meta.id} offers at least one predefined model`);
@@ -53,8 +53,8 @@ for (const meta of Object.values(AI_PROVIDER_CATALOG)) {
   assert(meta.defaultBaseUrl.startsWith('http'), `${meta.id} has a real default endpoint`);
   assert(meta.keyUrl.startsWith('http'), `${meta.id} says where to get a key`);
 }
-//? …and the host-CLI backend must NOT claim a key field, or the page would render an input that
-//? cannot do anything — the exact dead end this work removed.
+//? …and the host-CLI backend must NOT claim a key or a model, or the add-form would render two boxes
+//? that cannot do anything — the exact dead end this work removed.
 eq(AI_PROVIDER_CATALOG['claude-cli'].auth, 'host-cli', 'the subscription CLI is not an api-key backend');
 eq(AI_PROVIDER_CATALOG['claude-cli'].models.length, 0, '…and offers no model choice, because it has none');
 

@@ -101,6 +101,22 @@ function firstText(body: unknown): string {
 export const geminiApiProvider: AiProvider = {
   id: 'gemini-api',
   label: 'Gemini API',
+  //? A one-token generation: proves the key AND that this host knows this model name.
+  ping: async (cfg) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => { controller.abort(); }, 15_000);
+    const [error] = await tryCatch(async () => {
+      const res = await fetch(`${geminiEndpoint(envBase(), cfg.model)}?key=${cfg.apiKey}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'ping' }] }], generationConfig: { maxOutputTokens: 1 } }),
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error(`gemini ${String(res.status)}`);
+      return true;
+    });
+    clearTimeout(timer);
+    return error ? { ok: false, error: error.message } : { ok: true };
+  },
   available: async (workspaceId?: string) => { const cfg = await resolveGeminiConfig(workspaceId); return cfg.apiKey.length > 0; },
   complete: async (req: AiCompletionRequest): Promise<AiCompletionResult> => {
     const { apiKey, model, temperature, baseUrl } = await resolveGeminiConfig(req.workspaceId);

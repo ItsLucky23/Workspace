@@ -101,34 +101,37 @@ test.describe('layer tip', () => {
   });
 
 
-  test('the AI tab configures every backend in place, with predefined models', async ({ authedPage }) => {
+  test('connected AIs are a list you manage: connect, test, disconnect — no endpoint field', async ({ authedPage }) => {
     const page = authedPage;
-    await createWorkspace(page, `E2E PW AiSetup ${String(Date.now())}`);
+    await createWorkspace(page, `E2E PW AiConn ${String(Date.now())}`);
     await expect(page.getByText('Welcome to Workspaces')).toBeHidden({ timeout: 30_000 });
 
     await page.goto('/workspaces/workspace/aibehavior');
 
-    //? All three backends listed. The page used to be Gemini-shaped — a status dot, three free-text
-    //? Gemini fields, and its KEY on the Content settings page next to ElevenLabs and Suno.
-    await expect(page.getByText(/the Claude CLI must be installed and signed in on the host/)).toBeVisible();
-    await expect(page.getByText(/Google Gemini\. Needs an API key/)).toBeVisible();
-    await expect(page.getByText(/Azure OpenAI, OpenRouter, Groq, a local Ollama/)).toBeVisible();
+    //? A fresh workspace has connected nothing — and says so, rather than showing panels that imply
+    //? a backend is set up. The page used to hardcode a Gemini panel and an OpenAI panel.
+    await expect(page.getByText(/No AI connected yet/)).toBeVisible();
 
-    //? The key is entered HERE. Two api-key backends → two key fields; the host-CLI one gets none,
-    //? because there is nothing in the app to type for it.
-    const keyFields = page.getByPlaceholder('Paste the key');
-    await expect(keyFields).toHaveCount(2);
+    //? The add form is generated from the server catalog, so every backend is offered — including the
+    //? host-CLI one, which the owner could previously read about but never connect.
+    await expect(page.getByRole('button', { name: 'Connect' })).toBeVisible();
 
-    //? Models are PICKED, not typed. The owner asked for predefined values; a free-text model box is
-    //? a field that is wrong more often than right.
-    //? The dropdown shows the LABEL, which is the point — you recognise "GPT-4o mini", you do not
-    //? recall "gpt-4o-mini" exactly.
-    await expect(page.getByText('GPT-4o mini', { exact: true }).first()).toBeVisible();
+    //? The endpoint is NOT a field anywhere on this page: which host answers is infrastructure.
+    await expect(page.getByText('Endpoint', { exact: true })).toHaveCount(0);
+    await expect(page.getByPlaceholder(/https:\/\//)).toHaveCount(0);
 
-    //? And media providers are named as living elsewhere, so nobody hunts for ElevenLabs here.
-    await expect(page.getByText(/fal, ElevenLabs, Suno/)).toBeVisible();
-    //? …with no redirect out of this page for the AI's own setup: the save button is right here.
-    await expect(page.getByRole('button', { name: 'Save backend' }).first()).toBeVisible();
+    // Connect the host-CLI backend: no key, no model — the form must not demand either.
+    await page.getByRole('button', { name: 'Connect' }).click();
+    const row = page.getByText(/Runs on the server\. Test asks whether the CLI/);
+    await expect(row).toBeVisible({ timeout: 15_000 });
+
+    //? Test and Disconnect are the two verbs the owner asked for, on the row itself.
+    await expect(page.getByRole('button', { name: 'Test', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Disconnect' })).toBeVisible();
+
+    //? Disconnecting confirms first, and the dialog states what happens to the configuration.
+    await page.getByRole('button', { name: 'Disconnect' }).click();
+    await expect(page.getByText(/will no longer be used by this workspace/)).toBeVisible();
   });
 
   test('the full composed-text block no longer sits on top of the fields it describes', async ({ authedPage }) => {

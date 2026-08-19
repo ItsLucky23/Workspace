@@ -1,195 +1,220 @@
-//? The general AI setup, on the page it belongs to (ADR 0007).
+//? ADR 0007 — the connected AIs, as a list you manage rather than a form per provider.
 //?
-//? What this replaces: a status dot per backend, three free-text Gemini fields, and — for the one thing
-//? you actually have to do, entering a key — a redirect to the CONTENT settings page, next to
-//? ElevenLabs and Suno. Two problems with that. Media providers belong with media; the text backend
-//? runs the whole product (pipeline agents, the assistant, docs, reviews) and configuring it is not a
-//? content task. And a model name you type from memory is a field that is wrong more often than right.
+//? What this replaces, in order of how much it mattered:
+//?   • Gemini and OpenAI were HARDCODED as two panels. The list is now rows, so two OpenAI models can
+//?     sit side by side and a backend added on the server appears here with no UI change.
+//?   • "Is this key valid?" was answered by "a key is present". Test sends one token through the real
+//?     backend, which proves the key, the model name and the endpoint together.
+//?   • Claude Code could be read but not connected or disconnected. It is a row like any other now;
+//?     for a host-CLI backend "connect" means "use it", and Test asks the only question it can answer.
+//?   • The base URL was a field. It is gone: which host answers is infrastructure, resolved on the
+//?     server (with an operator env override for a proxy or a self-hosted gateway).
 //?
-//? Every row here is rendered from the server's provider catalog, so adding a backend is a server-only
-//? change: an entry in `server/ai/providers/catalog.ts` plus an implementation. Nothing to add here.
-//?
-//? The key is WRITE-ONLY. A stored key shows as "set" and the input stays empty; typing nothing sends
-//? no `apiKey` at all, so saving a model can never wipe a credential.
+//? Removing a connection can leave a feature routed to a backend that can no longer run, so the
+//? confirm states exactly which features move and where — and the server performs that same move.
 //? @adr 0007
 
-/* eslint-disable react-refresh/only-export-components -- the row and its small helpers are one feature; a separate file for a two-line predicate only satisfies a dev-only fast-refresh rule. Not a route component. */
-import { useEffect, useState } from 'react';
+/* eslint-disable react-refresh/only-export-components -- the section, its row and the add-form are one feature; splitting them to satisfy a dev-only fast-refresh rule buys nothing. Not route components. */
+import { useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
 import Dropdown from 'src/_components/dropdown/Dropdown';
+import { menuHandler } from 'src/_functions/menuHandler';
 
 import Icon from '../_components/Icon';
 import { FormSection, SettingRow } from '../_components/settings';
+import { EmptyPicker } from '../_components/SetupNotice';
 import { WsButton } from '../_components/primitives';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
-import type { AiProviderConfig } from '../_data/types';
+import type { AiConnection, AiProviderOption } from '../_data/types';
 
 const inputCls = 'h-9 w-full px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 
-//? The escape hatch on every model dropdown: the catalog is a starting point, not a whitelist, and a
-//? model released after it was written must not make the backend unusable.
+//? The escape hatch on the model picker: the catalog is a starting point, not a whitelist. A model
+//? released after that file was written must not make the backend unreachable.
 const CUSTOM = '__custom__';
 
-export function AiProvidersSection({ health }: { health: { id: string; label: string; available: boolean }[] | null }) {
+export function AiProvidersSection() {
   const translate = useTranslator();
-  const { aiProviderConfigs } = useWorkspaces();
-
-  return (
-    <FormSection
-      title={translate({ key: 'workspaces.aiProviders.title' })}
-      desc={translate({ key: 'workspaces.aiProviders.desc' })}
-    >
-      {aiProviderConfigs.map((p) => (
-        <ProviderRow key={p.id} provider={p} available={health?.find((h) => h.id === p.id)?.available ?? null} />
-      ))}
-      {/* Where the OTHER kind of provider lives. Not a redirect for this page's job — a pointer, so
-          someone looking for ElevenLabs or Suno stops looking here. */}
-      <div className={`px-5 pb-5 text-xs text-meta leading-relaxed`}>
-        {translate({ key: 'workspaces.aiProviders.mediaElsewhere' })}
-      </div>
-    </FormSection>
-  );
-}
-
-function ProviderRow({ provider, available }: { provider: AiProviderConfig; available: boolean | null }) {
-  const translate = useTranslator();
-  const { saveAiProviderConfig } = useWorkspaces();
-
-  //? Seeded from the snapshot and re-seeded when THIS provider's stored values change — keyed on the
-  //? values themselves rather than on the array, which the snapshot rebuilds on every refresh.
-  const seededModel = provider.model || provider.defaultModel;
-  const known = provider.models.some((m) => m.id === seededModel);
-  const [modelChoice, setModelChoice] = useState(known || seededModel.length === 0 ? seededModel : CUSTOM);
-  const [customModel, setCustomModel] = useState(known ? '' : seededModel);
-  const [baseUrl, setBaseUrl] = useState(provider.baseUrl);
-  const [temperature, setTemperature] = useState(provider.temperature);
-  const [apiKey, setApiKey] = useState('');
-  const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    const next = provider.model || provider.defaultModel;
-    const isKnown = provider.models.some((m) => m.id === next);
-    setModelChoice(isKnown || next.length === 0 ? next : CUSTOM);
-    setCustomModel(isKnown ? '' : next);
-    setBaseUrl(provider.baseUrl);
-    setTemperature(provider.temperature);
-    setApiKey('');
-  }, [provider.model, provider.baseUrl, provider.temperature, provider.defaultModel, provider.models]);
-
-  //? Nothing to configure for a host-installed CLI — say what makes it available instead of rendering
-  //? an empty key box that cannot do anything.
-  if (provider.auth === 'host-cli') {
-    return (
-      <SettingRow
-        label={<ProviderLabel label={provider.label} available={available} />}
-        help={translate({ key: `workspaces.aiProviders.how_${provider.id}` })}
-        control={<StatusText available={available} />}
-      />
-    );
-  }
-
-  const resolvedModel = modelChoice === CUSTOM ? customModel.trim() : modelChoice;
-  const modelItems = [
-    ...provider.models.map((m) => ({ id: m.id, value: m.id, item: m.label })),
-    { id: CUSTOM, value: CUSTOM, item: translate({ key: 'workspaces.aiProviders.customModel' }) },
-  ];
-
-  const save = (): void => {
-    saveAiProviderConfig({
-      providerId: provider.id,
-      //? Only sent when the user typed one — an untouched field must not clear the stored credential.
-      ...(apiKey.trim().length > 0 ? { apiKey: apiKey.trim() } : {}),
-      model: resolvedModel,
-      baseUrl: baseUrl.trim(),
-      temperature: temperature.trim(),
-    });
-    setApiKey('');
-    setSaved(true);
-  };
+  const { aiConnections } = useWorkspaces();
 
   return (
     <>
-      <SettingRow
-        label={<ProviderLabel label={provider.label} available={available} />}
-        help={translate({ key: `workspaces.aiProviders.how_${provider.id}` })}
-        control={<StatusText available={available} />}
-      />
-      <SettingRow
-        stacked
-        label={translate({ key: 'workspaces.aiProviders.apiKey' })}
-        help={provider.hasKey ? translate({ key: 'workspaces.aiProviders.keyStored' }) : translate({ key: 'workspaces.aiProviders.keyMissing' })}
-        control={(
-          <div className={`flex flex-col gap-2`}>
-            <input
-              type="password" value={apiKey} onChange={(e) => { setApiKey(e.target.value); setSaved(false); }}
-              placeholder={provider.hasKey ? '••••••••••••' : translate({ key: 'workspaces.aiProviders.keyPlaceholder' })}
-              autoComplete="off" className={inputCls}
-            />
-            {provider.keyUrl.length > 0 && (
-              <a href={provider.keyUrl} target="_blank" rel="noreferrer" className={`text-xs text-primary hover:underline inline-flex items-center gap-1 self-start`}>
-                {translate({ key: 'workspaces.aiProviders.getKey' })} <Icon name="up-right-from-square" className={`text-[10px]`} />
-              </a>
-            )}
+      <FormSection title={translate({ key: 'workspaces.aiProviders.title' })} desc={translate({ key: 'workspaces.aiProviders.desc' })}>
+        {aiConnections.length === 0 && (
+          <div className={`px-5 pb-5`}>
+            <EmptyPicker icon="robot" label={translate({ key: 'workspaces.aiProviders.noneConnected' })} />
           </div>
         )}
-      />
-      <SettingRow
-        label={translate({ key: 'workspaces.aiProviders.model' })}
-        help={translate({ key: 'workspaces.aiProviders.modelHelp' })}
-        control={(
-          <div className={`flex flex-col gap-2`}>
-            <Dropdown width="full" items={modelItems} value={modelItems.find((m) => m.id === modelChoice)} onChange={(it) => { setModelChoice(String(it.value)); setSaved(false); }} />
-            {modelChoice === CUSTOM && (
-              <input value={customModel} onChange={(e) => { setCustomModel(e.target.value); setSaved(false); }} placeholder={provider.defaultModel} className={`${inputCls} font-mono`} />
-            )}
-          </div>
-        )}
-      />
-      <SettingRow
-        stacked
-        label={translate({ key: 'workspaces.aiProviders.baseUrl' })}
-        help={translate({ key: 'workspaces.aiProviders.baseUrlHelp' })}
-        control={(
-          <input
-            value={baseUrl} onChange={(e) => { setBaseUrl(e.target.value); setSaved(false); }}
-            placeholder={provider.defaultBaseUrl} className={`${inputCls} font-mono`}
-          />
-        )}
-      />
-      {provider.supportsTemperature && (
-        <SettingRow
-          label={translate({ key: 'workspaces.aiProviders.temperature' })}
-          help={translate({ key: 'workspaces.aiProviders.temperatureHelp' })}
-          control={<input type="number" min="0" max="2" step="0.1" value={temperature} onChange={(e) => { setTemperature(e.target.value); setSaved(false); }} placeholder="0.0 – 2.0" className={inputCls} />}
-        />
-      )}
-      {/* Explicit save, not autosave: a half-typed API key debounced to the server is a credential
-          written wrong, and the row that reports "set" would then be lying. */}
-      <div className={`px-5 pb-5 flex items-center gap-3`}>
-        <WsButton icon="check" onClick={save}>{translate({ key: 'workspaces.aiProviders.save' })}</WsButton>
-        {saved && <span className={`text-xs text-correct`}>{translate({ key: 'workspaces.aiProviders.saved' })}</span>}
-      </div>
+        {aiConnections.map((c) => <ConnectionRow key={c.id} connection={c} />)}
+        {/* Where the OTHER kind of provider lives — a pointer, not a redirect, so nobody hunts for
+            ElevenLabs on this page and nobody is sent away to configure what belongs here. */}
+        <div className={`px-5 pb-5 text-xs text-meta leading-relaxed`}>{translate({ key: 'workspaces.aiProviders.mediaElsewhere' })}</div>
+      </FormSection>
+
+      <AddConnection />
     </>
   );
 }
 
-function ProviderLabel({ label, available }: { label: string; available: boolean | null }) {
+function ConnectionRow({ connection }: { connection: AiConnection }) {
+  const translate = useTranslator();
+  const { aiConnectionAction, aiOverrides } = useWorkspaces();
+  const [busy, setBusy] = useState<'test' | 'remove' | null>(null);
+  const [result, setResult] = useState<{ ok: boolean; error?: string } | null>(null);
+
+  const test = async (): Promise<void> => {
+    setBusy('test');
+    setResult(null);
+    const res = await aiConnectionAction({ op: 'ai-connection-test', connectionId: connection.id });
+    setBusy(null);
+    setResult({ ok: res.ok, ...(res.error === undefined ? {} : { error: res.error }) });
+  };
+
+  const remove = (): void => {
+    //? Computed here for the DIALOG; the server recomputes and performs it. Both read the same rule:
+    //? a feature pinned to this backend has to go somewhere once its last connection is gone.
+    const affected = aiOverrides.filter((o) => o.providerId === connection.providerId).map((o) => o.feature);
+    const lines = [
+      translate({ key: 'workspaces.aiProviders.removeBody', params: [{ key: 'name', value: `${connection.label}${connection.model ? ` · ${connection.model}` : ''}` }] }),
+      affected.length > 0
+        ? translate({ key: 'workspaces.aiProviders.removeMoves', params: [{ key: 'features', value: affected.join(', ') }] })
+        : translate({ key: 'workspaces.aiProviders.removeNoMoves' }),
+    ];
+    void menuHandler.confirm({
+      title: translate({ key: 'workspaces.aiProviders.removeTitle' }),
+      content: lines.join('\n\n'),
+    }).then(async (ok) => {
+      if (!ok) return;
+      setBusy('remove');
+      await aiConnectionAction({ op: 'ai-connection-remove', connectionId: connection.id });
+      setBusy(null);
+    });
+  };
+
   return (
-    <span className={`inline-flex items-center gap-2`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${available === null ? 'bg-muted' : (available ? 'bg-correct' : 'bg-wrong')}`} />
-      {label}
-    </span>
+    <SettingRow
+      label={(
+        <span className={`inline-flex items-center gap-2`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${connection.lastError === null && connection.verifiedAt !== null ? 'bg-correct' : (connection.lastError === null ? 'bg-muted' : 'bg-wrong')}`} />
+          {connection.label}
+          {connection.model.length > 0 && <span className={`font-mono text-xs text-meta`}>{connection.model}</span>}
+        </span>
+      )}
+      help={statusLine(connection, translate)}
+      control={(
+        <div className={`flex items-center gap-2 justify-end flex-wrap`}>
+          {result !== null && (
+            <span className={`text-xs font-semibold ${result.ok ? 'text-correct' : 'text-wrong'}`}>
+              {result.ok ? translate({ key: 'workspaces.aiProviders.testOk' }) : (result.error ?? translate({ key: 'workspaces.aiProviders.testFailed' }))}
+            </span>
+          )}
+          <WsButton variant="secondary" icon="bolt" onClick={() => { void test(); }} disabled={busy !== null}>
+            {translate({ key: busy === 'test' ? 'workspaces.aiProviders.testing' : 'workspaces.aiProviders.test' })}
+          </WsButton>
+          <WsButton variant="ghost" icon="trash" onClick={remove} disabled={busy !== null}>
+            {translate({ key: 'workspaces.aiProviders.disconnect' })}
+          </WsButton>
+        </div>
+      )}
+    />
   );
 }
 
-function StatusText({ available }: { available: boolean | null }) {
+/** What the row says under the name: verified, never tested, or the last failure. */
+function statusLine(c: AiConnection, translate: ReturnType<typeof useTranslator>): string {
+  if (c.lastError !== null) return translate({ key: 'workspaces.aiProviders.lastFailed', params: [{ key: 'error', value: c.lastError }] });
+  if (c.verifiedAt !== null) return translate({ key: 'workspaces.aiProviders.verifiedAt', params: [{ key: 'when', value: new Date(c.verifiedAt).toLocaleString() }] });
+  //? "A key is present" is NOT "it works" — say which one this is rather than implying the stronger one.
+  return translate({ key: c.auth === 'host-cli' ? 'workspaces.aiProviders.untestedCli' : 'workspaces.aiProviders.untested' });
+}
+
+function AddConnection() {
   const translate = useTranslator();
-  if (available === null) return <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.workspaceSettings.providerHealthLoading' })}</span>;
+  const { aiProviderCatalog, aiConnectionAction } = useWorkspaces();
+  const [providerId, setProviderId] = useState(aiProviderCatalog[0]?.id ?? '');
+  const [modelChoice, setModelChoice] = useState('');
+  const [customModel, setCustomModel] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const provider: AiProviderOption | undefined = aiProviderCatalog.find((p) => p.id === providerId);
+  const providerItems = aiProviderCatalog.map((p) => ({ id: p.id, value: p.id, item: p.label }));
+  const modelItems = [
+    ...(provider?.models ?? []).map((m) => ({ id: m.id, value: m.id, item: m.label })),
+    { id: CUSTOM, value: CUSTOM, item: translate({ key: 'workspaces.aiProviders.customModel' }) },
+  ];
+    //? Falls through the picker → the provider's default → nothing, and each step can legitimately be
+  //? the EMPTY STRING (no choice made yet), so `||` is the right operator here, not `??`.
+  const model = modelChoice === CUSTOM ? customModel.trim() : (modelChoice.length > 0 ? modelChoice : (provider?.defaultModel ?? ''));
+  const needsKey = provider?.auth === 'api-key';
+
+  const add = async (): Promise<void> => {
+    if (!provider) return;
+    setError('');
+    setBusy(true);
+    const res = await aiConnectionAction({
+      op: 'ai-connection-add', providerId: provider.id,
+      model: needsKey ? model : '',
+      apiKey: needsKey ? apiKey.trim() : '',
+    });
+    setBusy(false);
+    if (!res.ok) { setError(translate({ key: `workspaces.aiProviders.err_${res.error ?? 'unknown'}` })); return; }
+    setApiKey('');
+    setCustomModel('');
+    setModelChoice('');
+  };
+
+  if (provider === undefined) return null;
+
   return (
-    <span className={`text-xs font-semibold ${available ? 'text-correct' : 'text-wrong'}`}>
-      {translate({ key: available ? 'workspaces.workspaceSettings.providerReady' : 'workspaces.workspaceSettings.providerNotReady' })}
-    </span>
+    <FormSection title={translate({ key: 'workspaces.aiProviders.addTitle' })} desc={translate({ key: 'workspaces.aiProviders.addDesc' })}>
+      <SettingRow
+        label={translate({ key: 'workspaces.aiProviders.provider' })}
+        control={<Dropdown width="full" items={providerItems} value={providerItems.find((p) => p.id === providerId)} onChange={(it) => { setProviderId(String(it.value)); setModelChoice(''); setError(''); }} />}
+      />
+      {/* A host-CLI backend has no model and no key — showing either would be two boxes that cannot
+          do anything, which is the dead end this page was full of. */}
+      {needsKey && (
+        <>
+          <SettingRow
+            label={translate({ key: 'workspaces.aiProviders.model' })}
+            help={translate({ key: 'workspaces.aiProviders.modelHelp' })}
+            control={(
+              <div className={`flex flex-col gap-2`}>
+                <Dropdown width="full" items={modelItems} value={modelItems.find((m) => m.id === (modelChoice || provider.defaultModel))} onChange={(it) => { setModelChoice(String(it.value)); setError(''); }} />
+                {modelChoice === CUSTOM && (
+                  <input value={customModel} onChange={(e) => { setCustomModel(e.target.value); setError(''); }} placeholder={provider.defaultModel} className={`${inputCls} font-mono`} />
+                )}
+              </div>
+            )}
+          />
+          <SettingRow
+            stacked
+            label={translate({ key: 'workspaces.aiProviders.apiKey' })}
+            help={translate({ key: 'workspaces.aiProviders.keyHelp' })}
+            control={(
+              <div className={`flex flex-col gap-2`}>
+                <input type="password" autoComplete="off" value={apiKey} onChange={(e) => { setApiKey(e.target.value); setError(''); }} placeholder={translate({ key: 'workspaces.aiProviders.keyPlaceholder' })} className={inputCls} />
+                {provider.keyUrl.length > 0 && (
+                  <a href={provider.keyUrl} target="_blank" rel="noreferrer" className={`text-xs text-primary hover:underline inline-flex items-center gap-1 self-start`}>
+                    {translate({ key: 'workspaces.aiProviders.getKey' })} <Icon name="up-right-from-square" className={`text-[10px]`} />
+                  </a>
+                )}
+              </div>
+            )}
+          />
+        </>
+      )}
+      {!needsKey && (
+        <div className={`px-5 pt-1 text-xs text-meta leading-relaxed`}>{translate({ key: `workspaces.aiProviders.how_${provider.id}` })}</div>
+      )}
+      <div className={`px-5 py-4 flex items-center gap-3`}>
+        <WsButton icon="plus" onClick={() => { void add(); }} disabled={busy}>{translate({ key: 'workspaces.aiProviders.connect' })}</WsButton>
+        {error.length > 0 && <span className={`text-xs text-wrong`}>{error}</span>}
+      </div>
+    </FormSection>
   );
 }

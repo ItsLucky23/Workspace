@@ -17,13 +17,13 @@ import { Prisma, type PrismaClient, type Ticket as DbTicket } from '@prisma/clie
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import { currentWorkspaceId, hasTenantScope, runInTenant } from '../tenant/tenantContext';
-import { encryptSecret } from '../crypto/secretBox';
+import { decryptSecret, encryptSecret } from '../crypto/secretBox';
 import { credentialKey, getValidConnection } from '../content/publishOAuth';
 import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { ensureWorkspaceBuiltins, scheduleWorkspaceBuiltinIndexing } from '../bootstrap/workspaceBuiltins';
-import { providerConfigKeys } from '../ai/providerConfig';
-import type { AiProviderId } from '../ai/types';
+import { addConnection, recordTest, removeConnection } from '../ai/connections';
+import { aiProviderById } from '../ai/registry';
 import { isPipelinePreset, createDefaultPipeline, stageBlueprint, baseStageStatuses, stagesForPreset, stageCreateData, blueprintForStage, fallbackStageKey, defaultStageKeys, isStageKind } from '../bootstrap/defaultPipeline';
 import { cloneWorkspace } from '../bootstrap/cloneWorkspace';
 import { publishArtifactSite, unpublishArtifactSite, publicBaseUrl } from '../deploy/staticSite';
@@ -2695,36 +2695,36 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       if (voiceId !== undefined) await setPref('__media_voice_id', voiceId.trim().length > 0, voiceId.trim());
       return;
     }
-    //? ADR 0007 — per-workspace credentials + settings for ONE text backend. Distinct from
-    //? `save-ai-provider`, which routes a FEATURE to a backend; this configures the backend itself.
-    //?
-    //? It lives here rather than beside the media keys on the Content settings page because the text
-    //? backend runs the whole product — pipeline agents, the assistant, docs, reviews — and sending
-    //? someone to a content page to set it up (next to ElevenLabs and Suno) is what made the AI page
-    //? read as "Gemini's settings". Media providers stay where media is.
-    case 'save-ai-provider-config': {
-      const providerId = str(payload, 'providerId');
-      if (!providerId) return { ok: false, error: 'ai.invalidProvider' };
-      const keys = providerConfigKeys(providerId as AiProviderId);
-      const upsert = async (key: string, value: string, secret: boolean): Promise<void> => {
-        //? An empty value CLEARS the override rather than storing "", so a cleared field falls back to
-        //? the catalog default instead of pinning the model to the empty string.
-        if (value.trim().length === 0) { await prisma.envVar.deleteMany({ where: { workspaceId: action.workspaceId, key } }); return; }
-        const stored = secret ? encryptSecret(value.trim()) : value.trim();
-        await prisma.envVar.upsert({ where: { workspaceId_key: { workspaceId: action.workspaceId, key } }, create: { workspaceId: action.workspaceId, key, value: stored, secret }, update: { value: stored } });
-      };
-      //? The key is only touched when the client SENDS one: the settings form shows a masked
-      //? placeholder for a stored key and submits nothing unless you type a new one, so an unrelated
-      //? save (picking a model) must never wipe the credential.
-      const apiKey = str(payload, 'apiKey');
-      if (apiKey !== undefined) await upsert(keys.key, apiKey, true);
-      const model = str(payload, 'model');
-      if (model !== undefined) await upsert(keys.model, model, false);
-      const baseUrl = str(payload, 'baseUrl');
-      if (baseUrl !== undefined) await upsert(keys.baseUrl, baseUrl, false);
-      const temperature = str(payload, 'temperature');
-      if (temperature !== undefined) await upsert(keys.temp, temperature, false);
-      return { ok: true, providerId };
+    //? ADR 0007 — the connected AIs as a LIST. Three ops, because the owner asked for three verbs:
+    //? connect one, test its credentials, disconnect it.
+    case 'ai-connection-add': {
+      const providerId = str(payload, 'providerId') ?? '';
+      const res = await addConnection({
+        workspaceId: action.workspaceId, providerId,
+        model: str(payload, 'model') ?? '', apiKey: str(payload, 'apiKey') ?? '',
+      });
+      if (!res.ok) return { ok: false, error: res.error ?? 'ai.invalidConnection' };
+      return { ok: true, id: res.id };
+    }
+    //? A REAL probe, not a shape check: one token through the backend proves the key, the model name
+    //? and the endpoint together. "The key looks right" is what this page has to stop saying.
+    case 'ai-connection-test': {
+      const connectionId = str(payload, 'connectionId') ?? '';
+      const row = await prisma.aiConnection.findFirst({ where: { workspaceId: action.workspaceId, id: connectionId } });
+      if (!row) return { ok: false, error: 'ai.connectionNotFound' };
+      const provider = aiProviderById(row.providerId);
+      if (!provider?.ping) return { ok: false, error: 'ai.testUnsupported' };
+      const apiKey = row.apiKey === null ? '' : (decryptSecret(row.apiKey) ?? '');
+      const result = await provider.ping({ apiKey: apiKey.trim(), model: row.model });
+      await recordTest(action.workspaceId, connectionId, result.ok, result.error ?? null);
+      return { ok: result.ok, ...(result.error === undefined ? {} : { error: result.error }) };
+    }
+    case 'ai-connection-remove': {
+      const connectionId = str(payload, 'connectionId') ?? '';
+      const res = await removeConnection(action.workspaceId, connectionId);
+      if (!res.ok) return { ok: false, error: 'ai.connectionNotFound' };
+      //? The moved features come back so the UI can report what the confirm dialog promised.
+      return { ok: true, moved: res.moved };
     }
     case 'save-ai-provider': {
       //? P1 — a per-workspace AI provider override per feature (EnvVar `__ai_provider_<feature>`). 'default'

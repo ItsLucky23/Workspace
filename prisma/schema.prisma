@@ -1578,6 +1578,31 @@ type McpCfg {
 //? A workspace env var (holds the real secret/config; integration tools point at
 //? it). Prototype mirror: `EnvVar` (types.ts:272). Secrets stored encrypted
 //? server-side (the `value` here is the app-owned encrypted payload when secret).
+//? ADR 0007 — one CONNECTED AI: a backend, the model it runs, and (for a metered API) its key.
+//?
+//? Replaces "one config per provider". The owner wanted a LIST — two OpenAI models side by side, a
+//? Gemini one, and Claude Code as a thing you connect and disconnect rather than a status dot you can
+//? only read. A per-provider config could not express that; a row can.
+//?
+//? `model` is empty for a host-CLI backend (it has no model concept). `apiKey` is encrypted and is
+//? NEVER returned to a client — the settings page gets a boolean. `baseUrl` is deliberately absent:
+//? the endpoint is resolved server-side from the provider catalog (with an env override for an
+//? operator running a proxy), because it is infrastructure, not a user setting.
+model AiConnection {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String   @db.ObjectId
+  providerId  String                                 // 'claude-cli' | 'gemini-api' | 'openai-api'
+  model       String   @default("")                  // '' for a host-CLI backend
+  apiKey      String?                                // encrypted (secretBox); null for a host-CLI backend
+  //? Last successful credential probe, so the list can say "verified 2 minutes ago" rather than only
+  //? "a key is present" — the two are very different when a key has been revoked upstream.
+  verifiedAt  DateTime?
+  lastError   String?                                // the failure from the most recent test, if any
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId])
+}
+
 model EnvVar {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   workspaceId String   @db.ObjectId

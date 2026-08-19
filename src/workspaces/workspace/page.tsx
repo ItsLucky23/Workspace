@@ -1336,14 +1336,9 @@ function AiBehaviorTab() {
   const languageOptions = OUTPUT_LANGUAGES.map((l) => ({ id: l.id, value: l.id, item: l.label }));
   const providerItems = PROVIDER_OPTIONS.map((p) => ({ id: p.id, value: p.id, item: p.item }));
   const providerFor = (feature: string): string => aiOverrides.find((o) => o.feature === feature)?.providerId ?? 'default';
-  //? Gap-fix: live provider health (which AI backends are usable right now).
-  const [providerHealth, setProviderHealth] = useState<{ id: string; label: string; available: boolean }[] | null>(null);
-  useEffect(() => {
-    void (async () => {
-      const [, res] = await tryCatch(() => apiRequest({ name: 'workspaces/aiProviderHealth', version: 'v1', data: { workspaceId: activeWorkspace.id } }));
-      if (res?.status === 'success') setProviderHealth(res.result.providers);
-    })();
-  }, [activeWorkspace.id]);
+  //? Provider health used to be fetched here for a row of green/red chips. A connection now carries
+  //? its OWN verified/failed state, tested on demand against the real backend — which answers the
+  //? question the chips only gestured at ("a key is present" vs "this key works").
   return (
     //? `mx-auto w-full` like every sibling tab, and one step wider: this is the densest tab on the page
     //? (a six-row instruction textarea, provider settings, skills, custom tasks). It used to hug the
@@ -1417,7 +1412,7 @@ function AiBehaviorTab() {
           plus three free-text Gemini fields, with the key itself on the Content settings page next to
           ElevenLabs and Suno — so this page read as "Gemini's settings" and the one thing you had to
           do was somewhere else entirely. Media providers stay with media; this one runs the product. */}
-      <AiProvidersSection health={providerHealth} />
+      <AiProvidersSection />
 
       {/* SK1 — the universal AI-skills layer (humanizer, tone-of-voice, …). */}
       <SkillsSection />

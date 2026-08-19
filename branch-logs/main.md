@@ -5610,3 +5610,44 @@ Playwright **36/36**.
 
 **Developer-actie.** Backend is herstart (nieuwe sync-route + snapshotveld). Voor OpenAI: plak de
 sleutel op de AI-pagina, of zet `WS_OPENAI_API_KEY` als host-brede terugval.
+
+## 2026-08-20 — Gekoppelde AI's als lijst: koppelen, testen, ontkoppelen
+
+**Prompt van de gebruiker.** Gemini en OpenAI staan hardgecodeerd in de UI. Liever een kopje met welke
+AI's gekoppeld zijn (naam, model), een testknop die pingt of de credentials geldig zijn, en ze kunnen
+verwijderen — met een confirm dat alle configuratie die op dat model loopt automatisch naar een ander
+model wordt overgezet. Daaronder een sectie om een nieuw model toe te voegen: provider kiezen, dan een
+model daarvan of zelf een custom waarde, plus een token-veld. Base-url nooit aan de gebruiker tonen,
+die hoort achterin. En tooling zoals Claude Code of gpt via de UI kunnen koppelen/ontkoppelen.
+
+**De kern: van "config per provider" naar een LIJST.** Nieuw Prisma-model `AiConnection`
+(workspaceId, providerId, model, versleutelde apiKey, verifiedAt, lastError). Dat is wat een
+per-provider-record niet kon: twee OpenAI-modellen naast elkaar, en Claude Code als iets dat je
+koppelt en ontkoppelt in plaats van een statusbolletje dat je alleen kunt lezen.
+
+- `server/ai/connections.ts` — lijst/toevoegen/verwijderen/testen, plus `reassignmentFor`: wat het
+  verwijderen zou DOEN met de rest van de configuratie. Berekend vóór de delete zodat de confirm het
+  kan noemen, en opnieuw berekend ín de delete zodat wat er staat ook gebeurt. Een dialoog die een
+  migratie belooft die niets uitvoert is erger dan geen dialoog.
+- `ping` toegevoegd aan het providercontract: één token door de échte backend. Dat bewijst de sleutel,
+  de modelnaam én het endpoint tegelijk — "er is een sleutel aanwezig" is precies wat deze pagina moest
+  stoppen te zeggen. Voor de host-CLI is het dezelfde probe als `available`.
+- Drie ops (`ai-connection-add` / `-test` / `-remove`) op één `_sync`-route, alle drie `EXCLUDED` voor
+  de assistent: ze dragen een API-sleutel, en verwijderen herbedraadt welke backend een feature draait.
+- **Base-url is uit de UI verdwenen.** Het endpoint komt uit de providercatalogus, met een
+  operator-env-override voor een proxy of self-host. Infrastructuur, geen voorkeur.
+- De pagina: één rij per koppeling met naam, model, status (geverifieerd / nooit getest / laatste
+  fout), Testen en Ontkoppelen. Daaronder de toevoeg-sectie: backend → model uit een dropdown of
+  "Anders…" → token. Een host-CLI-backend toont géén model- en géén sleutelveld, want die twee zouden
+  niets kunnen doen.
+
+**Verificatie.** `tsc` ✅ · `lint` ✅ · `ai:lint` ✅ · `build` ✅ · unit **124/124** · sweep **456/456**
+(4 nieuwe per-route-cases in plaats van de 4 vervangen: sleutel versleuteld opgeslagen, twee modellen
+van dezelfde provider naast elkaar, een metered backend zonder sleutel of model geweigerd zonder een
+half-aangemaakte rij, en het verplaatsen van gerouteerde features bij ontkoppelen) · Playwright
+**36/36** (nieuwe spec: lege staat, koppelen van de host-CLI zonder sleutel/model, Testen en
+Ontkoppelen op de rij, confirm-tekst, en dat er nérgens een endpoint-veld staat).
+
+**Developer-actie.** `prisma generate` is gedraaid en de runtimes zijn herstart. Bestaande
+Gemini-instellingen uit de oude opslag worden NIET automatisch een koppeling — koppel Gemini opnieuw
+via de nieuwe sectie.
