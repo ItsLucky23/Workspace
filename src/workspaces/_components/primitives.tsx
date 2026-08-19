@@ -326,7 +326,7 @@ export function InfoTip({ title, body, points, align = 'center', label, icon, cl
   const translate = useTranslator();
   const [open, setOpen] = useState(false);
   //? Hover is an ENHANCEMENT, never the only way in: a coarse pointer has no hover state, and a
-  //? keyboard user never fires one. Click/Enter/Space is the baseline, handled by the Popover itself.
+  //? keyboard user never fires one. Click/Enter/Space is the baseline.
   const [hoverCapable, setHoverCapable] = useState(false);
   useEffect(() => {
     if (typeof globalThis.matchMedia !== 'function') return;
@@ -367,14 +367,32 @@ export function InfoTip({ title, body, points, align = 'center', label, icon, cl
     </div>
   );
 
+  //? Hover is delegated to the Popover rather than hand-rolled here, and that IS the fix.
+  //?
+  //? This used to open on the wrapper's `mouseenter` and close on its `mouseleave`. The panel renders
+  //? in a floating layer OUTSIDE that wrapper, so moving the pointer toward the panel left the wrapper
+  //? and shut it — you could only reach the contents by racing the cursor there. And because the panel
+  //? was ALSO `trigger="click"`, a click on an already-hover-opened tip toggled it CLOSED, so the way
+  //? in was: click to close, click again to open, and only then interact.
+  //?
+  //? `trigger="hover"` gives the whole thing to the component that owns both halves: it opens on the
+  //? trigger, cancels the pending close when the pointer enters the PANEL, and closes `hoverDelay` ms
+  //? after you leave either. It also makes `handleClick` a no-op, which is what the owner asked for.
+  const keyToggle = (event: React.KeyboardEvent): void => {
+    //? In click mode the Popover handles Enter/Space itself; doubling it would toggle twice.
+    if (!hoverCapable) return;
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    setOpen((wasOpen) => !wasOpen);
+  };
+
   return (
-    <span
-      className={`inline-flex shrink-0 ${className ?? ''}`}
-      onMouseEnter={() => { if (hoverCapable) setOpen(true); }}
-      onMouseLeave={() => { if (hoverCapable) setOpen(false); }}
-    >
+    <span className={`inline-flex shrink-0 ${className ?? ''}`} onKeyDown={keyToggle}>
       <FloatingPopover
-        trigger="click"
+        trigger={hoverCapable ? 'hover' : 'click'}
+        //? A full second to travel from the icon to the panel. Short delays are what make a hover menu
+        //? feel like it is running away from the pointer.
+        hoverDelay={1000}
         placement="bottom"
         align={align}
         open={open}

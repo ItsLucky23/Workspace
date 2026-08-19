@@ -20,11 +20,15 @@ test.describe('layer tip', () => {
     // The explanation is BEHIND the icon, not on the page: nothing is showing before the click.
     await expect(page.getByText('How this prompt is composed')).toBeHidden();
 
+    //? HOVER, not click: on a fine-pointer device the tip opens on hover and its click is a no-op by
+    //? design — clicking an already-open tip used to toggle it shut, so the only way to reach the
+    //? contents was click-to-close then click-to-open. Asserting a click here would assert that bug.
+    //?
     //? Scoped to the persona label's own row: the page header carries its own "?" (validate), and
     //? every trigger shares the accessible name by design, so a page-wide .first() picks the wrong one.
     //? FieldLabel renders `<div class="flex items-center gap-1.5"><span>title</span>{info}</div>`.
     const personaRow = page.getByText('AI persona (system prompt)', { exact: true }).locator('xpath=..');
-    await personaRow.getByRole('button', { name: /More information/ }).first().click();
+    await personaRow.getByRole('button', { name: /More information/ }).first().hover();
     await expect(page.getByText('How this prompt is composed')).toBeVisible();
 
     //? Scoped to the popover: the inline note under the field also says "after Workspace instruction",
@@ -47,10 +51,42 @@ test.describe('layer tip', () => {
     await expect(page.getByText('Workspace instruction').first()).toBeVisible();
     await expect(page.getByText('How this prompt is composed')).toBeHidden();
 
-    await page.getByRole('button', { name: /More information/ }).first().click();
+    await page.getByRole('button', { name: /More information/ }).first().hover();
     await expect(page.getByText('How this prompt is composed')).toBeVisible();
     // The stage layers live on the pipeline, and the tip says so with a way to get there.
     await expect(page.getByRole('button', { name: /Edit on the General tab/ }).first()).toBeVisible();
+  });
+
+
+  test('hover opens it, the pointer can travel into it, clicking the icon does nothing', async ({ authedPage }) => {
+    const page = authedPage;
+    await createWorkspace(page, `E2E PW TipHover ${String(Date.now())}`);
+    await expect(page.getByText('Welcome to Workspaces')).toBeHidden({ timeout: 30_000 });
+
+    await page.goto('/workspaces/workspace/aibehavior');
+    const trigger = page.getByRole('button', { name: /More information/ }).first();
+    const tip = page.getByRole('dialog', { name: 'More information' });
+
+    await expect(tip).toBeHidden();
+    await trigger.hover();
+    await expect(tip).toBeVisible();
+
+    //? Clicking the icon must NOT close it. It used to toggle, and since a click is necessarily
+    //? preceded by a hover that already opened the tip, the click shut it again — so reaching the
+    //? contents took click-to-close then click-to-open. (This is why the assertion is "still visible"
+    //? rather than "never opens": you cannot click something without hovering it first.)
+    await trigger.click();
+    await expect(tip).toBeVisible();
+
+    //? The panel renders in a floating layer OUTSIDE the trigger's wrapper. Hovering something inside
+    //? it is the exact move that used to dismiss it mid-travel; it must survive and stay reachable.
+    await tip.getByRole('button', { name: /Edit on the General tab/ }).first().hover();
+    await expect(tip).toBeVisible();
+
+    //? …and it does close once the pointer is genuinely away — a tip that never leaves is its own bug.
+    //? The grace period is 1000ms, so this waits past it rather than racing it.
+    await page.mouse.move(0, 0);
+    await expect(tip).toBeHidden({ timeout: 5000 });
   });
 
   test('the full composed-text block no longer sits on top of the fields it describes', async ({ authedPage }) => {

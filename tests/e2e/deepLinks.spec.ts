@@ -66,7 +66,7 @@ test.describe('deep links', () => {
     await expect(page.getByText('Welcome to Workspaces')).toBeHidden({ timeout: 30_000 });
 
     await page.goto('/workspaces/workspace/aibehavior');
-    await page.getByRole('button', { name: /More information/ }).first().click();
+    await page.getByRole('button', { name: /More information/ }).first().hover();
     const tip = page.getByRole('dialog', { name: 'More information' });
 
     //? This page has no stage of its own, so the link used to compute "carryover" and then throw it

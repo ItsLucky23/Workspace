@@ -5470,3 +5470,34 @@ beperkte modules kan bouwen — precies de vorm waarin de meeste dode einden zat
 
 **Verificatie.** `tsc` ✅ · `lint` ✅ · `build` ✅ · unit **123/123** · sweep **452/452** · Playwright
 **34/34**. Alle 19 auditdefecten zijn nu gefikst; het auditdocument is bijgewerkt met de status.
+
+## 2026-08-19 — InfoTip: hover overgedragen aan de Popover, klik doet niets meer
+
+**Prompt van de gebruiker.** "Met de popover is het nu dat die op hover opent maar je niet in het menu
+kan gaan, en alleen als je klikt (sluit het menu) en dan weer klikt kan je ermee interacten. Ik heb
+liever dat het click-event eigenlijk niks doet maar dat we 1000ms hebben om in het menu te gaan op
+hover, en anders sluit die."
+
+**Oorzaak.** `InfoTip` bouwde zijn eigen hover bovenop een Popover die al een hover-modus heeft. Het
+opende op `mouseenter` van de wrapper-span en sloot op `mouseleave` daarvan — maar het paneel rendert
+in een floating layer BUITEN die span, dus de muis naar het paneel bewegen verliet de wrapper en sloot
+hem. Alleen als je er snel genoeg heen ging pakte het paneel zijn eigen hover-handler op tijd op; dat
+is precies de racende cursor die de gebruiker beschrijft. En omdat de Popover daarnaast op
+`trigger="click"` stond, sloot een klik op een al-geopende tip hem: klik-dicht, klik-open, en pas
+daarna kon je erin. Drie interacties voor één tooltip.
+
+**Fix.** `trigger={hoverCapable ? 'hover' : 'click'}` met `hoverDelay={1000}`. De Popover bezit beide
+helften: hij opent op de trigger, annuleert de geplande sluiting zodra de muis het PANEEL binnenkomt,
+en sluit 1000ms nadat je er echt vanaf bent. In hover-modus is `handleClick` bij het component zelf al
+een no-op, dus de klik doet precies niets meer. Coarse pointer (touch) houdt gewoon klik.
+
+Wel zelf toegevoegd: keyboard. In hover-modus slaat de Popover ook `Enter`/`Space` over, dus die
+handelt `InfoTip` nu af op zijn wrapper — anders was de tip op een desktop met toetsenbord onbereikbaar
+geworden.
+
+**Tests.** De specs klikten op de `?`; klikken doet nu niets, dus ze hoveren. Nieuwe spec dekt exact
+de drie klachten: klikken sluit hem NIET meer, de muis kan het paneel in zonder dat hij verdwijnt, en
+hij sluit alsnog zodra de muis echt weg is. De klik-assertie is "blijft zichtbaar" en niet "opent
+nooit", omdat je niets kunt aanklikken zonder er eerst overheen te bewegen.
+
+**Verificatie.** `tsc` ✅ · `lint` ✅ · `build` ✅ · Playwright **35/35**.
