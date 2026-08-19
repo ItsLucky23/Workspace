@@ -3505,7 +3505,10 @@
       "isPreview": "URL de prévisualisation",
       "addProcess": "Ajouter une commande",
       "removeProcess": "Supprimer cette commande",
-      "terminalHint": "Chaque ligne obtient son propre terminal sur chaque ticket."
+      "terminalHint": "Chaque ligne obtient son propre terminal sur chaque ticket.",
+      "save": "Enregistrer le runtime",
+      "makePreview": "définir comme URL de prévisualisation",
+      "isPreviewTitle": "Ce processus reçoit l’URL de prévisualisation"
     }
   }
 }

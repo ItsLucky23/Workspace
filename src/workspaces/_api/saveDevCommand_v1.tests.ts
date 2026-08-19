@@ -44,6 +44,60 @@ export const customTests: CustomTestCase[] = [
     },
   },
   {
+    //? ADR 0317 — the runtime is a LIST, and this is the case the owner hit: edits that appeared not to
+    //? save. The route/Conductor half is proven here against the real Project row, so a future "it does
+    //? not save" report can be answered with evidence rather than a guess about which layer dropped it.
+    name: 'runProcesses persists as a list, and previewProcessId is corrected to a process that exists',
+    run: async (ctx: TestContext) => {
+      const { userId, workspaceId } = await loginSeededUser(ctx, 'saveDevCommand_c4');
+      try {
+        const project = await ctx.prisma.project.findFirst({ where: { workspaceId }, select: { id: true } });
+        if (!project) throw new Error('seeded workspace has no project');
+        const processes = [
+          { id: 'fe', name: 'frontend', cwd: '', env: [], commands: ['npm run client'] },
+          { id: 'be', name: 'backend', cwd: 'server', env: [{ key: 'PORT', value: '4787' }], commands: ['npm run server'] },
+          //? An unfinished editor row. It must not become a stored process, or the ticket grows a
+          //? terminal tab attached to a log nothing ever writes.
+          { id: 'blank', name: 'wip', cwd: '', env: [], commands: ['   '] },
+        ];
+        const res = await ctx.callApi<{ workspaceId: string; projectId: string; clientRequestId: string; devCommand: string; runProcesses: typeof processes; previewProcessId: string }, SaveDevCommandResponse>({
+          workspaceId, projectId: project.id, clientRequestId: `savedevcmd-c4-${String(Date.now())}`,
+          devCommand: 'npm run client', runProcesses: processes, previewProcessId: 'be',
+        });
+        ctx.expect.eq(res.status, 'success', 'saveDevCommand accepts a process list');
+
+        const row = await ctx.prisma.project.findUnique({ where: { id: project.id }, select: { runProcesses: true, previewProcessId: true } });
+        ctx.expect.eq(row?.runProcesses.length, 2, 'both real processes persisted — and the empty row did not');
+        ctx.expect.eq(row?.runProcesses[1]?.name, 'backend', 'order is preserved (it is the order they start in)');
+        ctx.expect.eq(row?.runProcesses[1]?.env[0]?.value, '4787', 'per-process env survives the round trip');
+        ctx.expect.eq(row?.previewProcessId, 'be', 'the chosen preview process is stored');
+      } finally {
+        await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
+      }
+    },
+  },
+  {
+    //? The id the client sent names a row it had already deleted — the state a UI bug leaves behind.
+    //? Storing it verbatim would leave the preview proxying nothing while the container looks healthy.
+    name: 'a previewProcessId naming no process is corrected to the first one, not stored as-is',
+    run: async (ctx: TestContext) => {
+      const { userId, workspaceId } = await loginSeededUser(ctx, 'saveDevCommand_c5');
+      try {
+        const project = await ctx.prisma.project.findFirst({ where: { workspaceId }, select: { id: true } });
+        if (!project) throw new Error('seeded workspace has no project');
+        const processes = [{ id: 'only', name: 'app', cwd: '', env: [], commands: ['npm run dev'] }];
+        await ctx.callApi<{ workspaceId: string; projectId: string; clientRequestId: string; devCommand: string; runProcesses: typeof processes; previewProcessId: string }, SaveDevCommandResponse>({
+          workspaceId, projectId: project.id, clientRequestId: `savedevcmd-c5-${String(Date.now())}`,
+          devCommand: 'npm run dev', runProcesses: processes, previewProcessId: 'deleted-row',
+        });
+        const row = await ctx.prisma.project.findUnique({ where: { id: project.id }, select: { previewProcessId: true } });
+        ctx.expect.eq(row?.previewProcessId, 'only', 'an unknown preview id is corrected on write');
+      } finally {
+        await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
+      }
+    },
+  },
+  {
     name: 'an empty devCommand clears the override to null (falls back to package.json scripts)',
     run: async (ctx: TestContext) => {
       const { userId, workspaceId } = await loginSeededUser(ctx, 'saveDevCommand_c2');

@@ -5236,3 +5236,43 @@ maken (`excluded:infra`, staat in de ADR).
 
 **Actie voor de developer.** `prisma generate` is al gedraaid, maar de engine-DLL kon niet vervangen
 worden omdat de backend draaide. Herstart de backend voordat je dit test.
+
+## 2026-08-19 — Runtime-tab: opslaan werkte niet, preview-markering las als "actieve regel"
+
+**Prompt van de gebruiker.** "Bij de runtime tab worden de changes niet opgeslagen en er is geen save
+button. Ook de highlight voor welke command de preview-URL bevat wil ik anders, want nu lijkt het de
+command die actief is en niet dat die de preview bevat."
+
+**Bevinding 1 — de write komt niet aan, en dat is een STALE SERVER.** Ik heb er twee testcases voor
+geschreven in plaats van het te gokken (`saveDevCommand_v1.tests.ts`: een lijst persisteren inclusief
+per-proces env, en een `previewProcessId` die naar een verwijderde rij wijst wordt gecorrigeerd). Die
+falen nu allebei — 450 passed · **2 failed**. De draaiende backend is gestart op 2026-08-18 21:41,
+vóór al het ADR-0317-werk: hij kent `runProcesses` niet in de `_api`-payload, niet in de Conductor en
+niet in de snapshot. De drie oudere cases op dezelfde route (devCommand/prodCommand/stack) slagen wél,
+wat precies bevestigt dat het pad zelf werkt en alleen de nieuwe velden ontbreken. De gegenereerde
+Zod-input bevat `runProcesses` al, dus validatie strippen is het niet. **Herstart de backend en deze
+twee worden groen** — dat is meteen het bewijs, geen belofte.
+
+**Bevinding 2 — een echte regressie van mij.** Het re-seed-effect had `activeProject.runProcesses` als
+dependency: een ARRAY die de snapshot bij elke refresh opnieuw opbouwt, en deze workspace broadcast een
+refresh bij élke write. Het formulier zaaide zichzelf dus meerdere keren per seconde opnieuw en gooide
+weg wat je aan het typen was, nog vóór de autosave-debounce afliep. Nu is de dependency de
+GESERIALISEERDE lijst, dus per waarde.
+
+**Wat ik heb aangepast.**
+
+- Runtime-sectie is expliciet opslaan geworden in plaats van autosave: één "Runtime opslaan"-knop in de
+  sectiekop, uitgeschakeld zolang er niets gewijzigd is, met de bestaande `SavePill` ernaast. Een
+  lijst-editor autosaven schrijft half-getypte rijen weg (naam ingevuld, commando nog niet). Stack /
+  prod-commando / custom-base delen die knop, want ze zitten in hetzelfde formulier — twee saveregimes
+  in één form is precies het soort verwarring waar deze sessie al twee keer over ging.
+- De preview-markering kleurt niet langer de hele rij. Alle rijen houden hetzelfde neutrale kader; de
+  status zit nu in een chip ín de rij: gevuld met een globe-icoon en "preview-URL" als hij het is, en
+  stil "maak preview-URL" als hij het niet is. Zelfde control (`role="radio"` + `aria-checked`, in een
+  `radiogroup`), maar hij leest als een label plus een actie in plaats van als een selectie.
+- Geen icoon op de niet-gezette staat: `IconName` accepteert elke string en valt stil terug op
+  circle-question, dus een verzonnen naam zou een willekeurige glyph opleveren.
+
+**Verificatie.** `tsc` ✅ · `lint` ✅ · `ai:lint` ✅ · `build` ✅ · unit 123/123 · sweep **450 passed ·
+2 failed** (de twee nieuwe cases hierboven — wachten op de herstart) · Playwright niet opnieuw gedraaid
+(geen wijziging in gedekte schermen).

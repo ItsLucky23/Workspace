@@ -71,27 +71,38 @@ export function RunProcessList({ processes, previewId, onChange, scripts, packag
   };
 
   return (
-    <div className={`flex flex-col gap-2.5`}>
+    //? A radiogroup, because exactly one process owns the preview URL: a set of toggles would let a
+    //? user express "none" or "both", neither of which is a thing the preview can be.
+    <div className={`flex flex-col gap-2.5`} role="radiogroup" aria-label={translate({ key: 'workspaces.runtime.isPreview' })}>
       {processes.map((proc) => {
         const isPreview = proc.id === previewId;
         return (
-          <div key={proc.id} className={`rounded-xl border px-3 py-2.5 flex flex-col gap-2 ${isPreview ? 'border-primary-border bg-primary/5' : 'border-container1-border bg-container2/30'}`}>
+          //? Every row keeps the SAME neutral frame. Tinting the preview row read as "this is the row
+          //? you have selected" — the owner said so — when what it means is "this one publishes a URL".
+          //? A state that is about one attribute of the row belongs on a chip inside it, not on its border.
+          <div key={proc.id} className={`rounded-xl border border-container1-border bg-container2/30 px-3 py-2.5 flex flex-col gap-2`}>
             <div className={`flex items-center gap-2`}>
               <input
                 value={proc.name} onChange={(e) => { patch(proc.id, { name: e.target.value }); }}
                 placeholder={translate({ key: 'workspaces.runtime.namePlaceholder' })}
                 className={`${nameCls} max-w-40`}
               />
-              {/* Radio, not a toggle: exactly one process can own the preview URL, and a set of
-                  toggles would let a user express "none" or "both", neither of which is a thing. */}
-              <label className={`inline-flex items-center gap-1.5 text-xs cursor-pointer ${isPreview ? 'text-primary font-medium' : 'text-muted'}`}>
-                <input
-                  type="radio" name="ws-preview-process" checked={isPreview}
-                  onChange={() => { onChange(processes, proc.id); }}
-                  className={`accent-primary cursor-pointer ${FOCUS_RING}`}
-                />
-                {translate({ key: 'workspaces.runtime.isPreview' })}
-              </label>
+              {/* Reads as a LABEL when set ("preview URL", filled chip) and as an ACTION when not
+                  ("make this the preview URL", quiet). Same control either way — role=radio keeps the
+                  one-of-N semantics a screen reader needs. */}
+              <button
+                type="button" role="radio" aria-checked={isPreview}
+                onClick={() => { onChange(processes, proc.id); }}
+                title={translate({ key: isPreview ? 'workspaces.runtime.isPreviewTitle' : 'workspaces.runtime.makePreview' })}
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs cursor-pointer transition-colors ${FOCUS_RING} ${isPreview
+                  ? 'bg-primary/12 text-primary font-semibold ring-1 ring-inset ring-primary-border'
+                  : 'text-meta hover:text-common hover:bg-container2'}`}
+              >
+                {/* Icon only on the SET state: `IconName` accepts any string and silently falls back to
+                    circle-question, so inventing a name for the unset state would ship a stray glyph. */}
+                {isPreview && <Icon name="globe" className={`text-[10px]`} />}
+                {translate({ key: isPreview ? 'workspaces.runtime.isPreview' : 'workspaces.runtime.makePreview' })}
+              </button>
               <div className={`ml-auto`}>
                 <IconButton
                   icon="trash" size="sm"

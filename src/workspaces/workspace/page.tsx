@@ -28,7 +28,7 @@ import { EmptyPicker } from '../_components/SetupNotice';
 import { PageSections, useTrailSegment } from '../_components/sections';
 import { RepoInventoryPanel, RepoScriptPicker, useRepoIntrospection } from './repoIntrospection';
 import { RunProcessList, rowCommand, seedProcesses } from './runProcesses';
-import { FormSection, SavePill, SettingRow, useAutosave } from '../_components/settings';
+import { FormSection, SavePill, SettingRow, useAutosave, type SaveStatus } from '../_components/settings';
 import { resolveAiLayers } from '../_functions/aiLayers';
 import { INTEGRATION_TYPES, RBAC_CAPABILITIES, ROLE_DISPLAY } from '../_data/seed';
 import { GATEABLE_SECTIONS, WORKSPACE_MODULES, WORKSPACE_SECTIONS, isModuleEnabled } from '../_data/modules';
@@ -688,10 +688,14 @@ function RuntimeSection({ workspaceId }: { workspaceId: string }) {
   const projectId = activeProject?.id;
   const { data: repoScan, loading: scanning } = useRepoIntrospection(workspaceId, projectId);
 
-  //? Seeded from the snapshot, and re-seeded when the project changes — `resetKey` stops that re-seed
-  //? from being read as an edit and written straight back.
-  //? ADR 0317 — the runtime is a LIST. Seeded from the project's own list, else from its legacy single
-  //? command, so an untouched project opens showing exactly what it has always run.
+  //? Seeded from the snapshot, and re-seeded when the project's SERVER-SIDE values change.
+  //?
+  //? The dependency is the serialised list, not the array itself. The snapshot rebuilds its arrays on
+  //? every refresh — and this workspace broadcasts a refresh on every write — so depending on
+  //? `activeProject.runProcesses` by reference re-seeded this form a few times a second and threw away
+  //? whatever the user was typing. That is what "the runtime tab does not save" was: it saved, and then
+  //? the next snapshot overwrote the edit with the stored value before the debounce ever elapsed.
+  const serverProcs = JSON.stringify(activeProject?.runProcesses ?? []);
   const [procs, setProcs] = useState<StageProcessCfg[]>(seedProcesses(activeProject?.runProcesses, activeProject?.devCommand ?? ''));
   const [previewId, setPreviewId] = useState(activeProject?.previewProcessId ?? 'dev');
   const [prodCmd, setProdCmd] = useState(activeProject?.prodCommand ?? '');
@@ -703,22 +707,48 @@ function RuntimeSection({ workspaceId }: { workspaceId: string }) {
     setProdCmd(activeProject?.prodCommand ?? '');
     setStack(activeProject?.stack ?? 'node');
     setAllowCustomBase(activeProject?.allowCustomBase ?? false);
-  }, [activeProject?.id, activeProject?.devCommand, activeProject?.runProcesses, activeProject?.previewProcessId, activeProject?.prodCommand, activeProject?.stack, activeProject?.allowCustomBase]);
+    //? eslint's exhaustive-deps cannot see that `serverProcs` IS `activeProject.runProcesses`, by value.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeProject?.id, activeProject?.devCommand, serverProcs, activeProject?.previewProcessId, activeProject?.prodCommand, activeProject?.stack, activeProject?.allowCustomBase]);
 
   const [saveError, setSaveError] = useState('');
-  const status = useAutosave([procs, previewId, prodCmd, stack, allowCustomBase], async () => {
-    if (!projectId) return;
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState(0);
+
+  //? Explicit save, not autosave, for THIS section only. A list editor autosaves half-typed rows — you
+  //? add a row, and the name you have typed so far is written as a process with no command — and the
+  //? owner asked for a button after watching edits disappear. The stack/prod/base fields below are part
+  //? of the same form, so they share the button rather than keeping a second, silent save path.
+  const dirty = JSON.stringify({ procs, previewId, prodCmd, stack, allowCustomBase })
+    !== JSON.stringify({
+      procs: seedProcesses(activeProject?.runProcesses, activeProject?.devCommand ?? ''),
+      previewId: activeProject?.previewProcessId ?? 'dev',
+      prodCmd: activeProject?.prodCommand ?? '',
+      stack: activeProject?.stack ?? 'node',
+      allowCustomBase: activeProject?.allowCustomBase ?? false,
+    });
+
+  const save = async (): Promise<void> => {
+    if (!projectId || saving) return;
+    setSaving(true);
     setSaveError('');
     //? `devCommand` is kept in sync with the PREVIEW process's command. It is still the fallback for an
     //? empty list and the source deploy reads for a dev-kind environment, so letting the two drift
     //? would mean the preview and the deployment run different things without saying so.
     const previewCmd = rowCommand(procs.find((p) => p.id === previewId) ?? procs[0] ?? { id: '', name: '', cwd: '', env: [], commands: [] });
     const [err, res] = await tryCatch(() => apiRequest({ name: 'workspaces/saveDevCommand', version: 'v1', data: { workspaceId, projectId, clientRequestId: globalThis.crypto.randomUUID(), devCommand: previewCmd, runProcesses: procs, previewProcessId: previewId, prodCommand: prodCmd, stack, allowCustomBase } }));
-    if (err || res?.status !== 'success') {
-      setSaveError(translate({ key: 'workspaces.workspaceSettings.devCommandError' }));
-      throw new Error('save.failed');
-    }
-  }, { resetKey: projectId ?? '' });
+    setSaving(false);
+    if (err || res?.status !== 'success') { setSaveError(translate({ key: 'workspaces.workspaceSettings.devCommandError' })); return; }
+    setSavedAt(Date.now());
+  };
+  //? "saved" only survives while the form still matches what was sent — the moment you type again it
+  //? is stale, and a stale success pill next to an unsaved edit is worse than no pill.
+  const saveStatus = (): SaveStatus => {
+    if (saving) return 'saving';
+    if (saveError) return 'error';
+    return savedAt > 0 && !dirty ? 'saved' : 'idle';
+  };
+  const status: SaveStatus = saveStatus();
 
   const STACK_ITEMS = (['node', 'python', 'go', 'rust', 'java', 'php', 'dotnet', 'ruby', 'generic'] as const).map((s) => ({ id: s, value: s, item: s }));
   const inputCls = `h-9 w-full px-3 rounded-lg border border-container1-border bg-container2/50 text-sm font-mono text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30`;
@@ -744,14 +774,20 @@ function RuntimeSection({ workspaceId }: { workspaceId: string }) {
       <FormSection
         title={translate({ key: 'workspaces.workspaceSettings.devCommandTitle' })}
         desc={translate({ key: 'workspaces.workspaceSettings.devCommandDescription' })}
-        right={runInfo}
+        right={(
+          <div className={`flex items-center gap-2`}>
+            <SavePill status={status} errorText={saveError} />
+            {runInfo}
+            <WsButton icon="check" onClick={() => { void save(); }} disabled={!dirty || saving}>
+              {translate({ key: 'workspaces.runtime.save' })}
+            </WsButton>
+          </div>
+        )}
       >
         <SettingRow
           label={translate({ key: 'workspaces.workspaceSettings.stack' })}
           help={translate({ key: 'workspaces.repoScan.stackHelp' })}
           control={<Dropdown size="sm" width="full" items={STACK_ITEMS} value={STACK_ITEMS.find((it) => it.id === stack)} onChange={(it) => { setStack(String(it.value)); }} />}
-          status={status}
-          errorText={saveError}
         />
         <SettingRow
           stacked

@@ -3505,7 +3505,10 @@
       "isPreview": "preview-URL",
       "addProcess": "Commando toevoegen",
       "removeProcess": "Dit commando verwijderen",
-      "terminalHint": "Elke regel krijgt een eigen terminal op elk ticket."
+      "terminalHint": "Elke regel krijgt een eigen terminal op elk ticket.",
+      "save": "Runtime opslaan",
+      "makePreview": "maak preview-URL",
+      "isPreviewTitle": "Dit proces krijgt de preview-URL"
     }
   }
 }

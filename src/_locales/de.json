@@ -3505,7 +3505,10 @@
       "isPreview": "Vorschau-URL",
       "addProcess": "Befehl hinzufügen",
       "removeProcess": "Diesen Befehl entfernen",
-      "terminalHint": "Jede Zeile bekommt ein eigenes Terminal an jedem Ticket."
+      "terminalHint": "Jede Zeile bekommt ein eigenes Terminal an jedem Ticket.",
+      "save": "Runtime speichern",
+      "makePreview": "als Vorschau-URL setzen",
+      "isPreviewTitle": "Dieser Prozess bekommt die Vorschau-URL"
     }
   }
 }
