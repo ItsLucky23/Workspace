@@ -1545,7 +1545,14 @@
       "auditAction": "Aktion",
       "auditWhen": "Wann",
       "starterDescriptionLocked": "Kuratierte Konventionen, denen die KI in jeder Phase folgt — verwalte und schalte sie auf der Sources-Seite.",
-      "manageInSources": "Kontextdokumente in Sources verwalten"
+      "manageInSources": "Kontextdokumente in Sources verwalten",
+      "providerHow_claude-cli": "Läuft auf dem Server, nicht über einen Schlüssel, den du hier einfügst: die Claude CLI muss auf dem Host installiert und angemeldet sein. In der App gibt es dafür nichts einzustellen.",
+      "providerHow_gemini-api": "Benötigt einen Google-API-Schlüssel. Pro Workspace verschlüsselt gespeichert, mit dem Server-Env-Schlüssel als Rückfall.",
+      "providerReady": "Bereit",
+      "providerNotReady": "Nicht eingerichtet",
+      "providerKeyCta": "Schlüssel setzen",
+      "providerOnlyTwo": "Diese beiden sind die einzigen Text-Backends im Produkt. Eine OpenAI/GPT-Option gibt es noch nicht — die hinzuzufügen heißt: ein neuer Provider im Server-Registry, keine Einstellung auf dieser Seite.",
+      "geminiGroup": "Nur Gemini"
     },
     "services": {
       "title": "Services",

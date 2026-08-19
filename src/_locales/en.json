@@ -1545,7 +1545,14 @@
       "auditAction": "Action",
       "auditWhen": "When",
       "starterDescriptionLocked": "Curated conventions the AI follows in every stage — manage and toggle them on the Sources page.",
-      "manageInSources": "Manage context docs in Sources"
+      "manageInSources": "Manage context docs in Sources",
+      "providerHow_claude-cli": "Runs on the server, not from a key you paste here: the Claude CLI must be installed and signed in on the host. Nothing to configure in the app.",
+      "providerHow_gemini-api": "Needs a Google API key. Stored encrypted per workspace, with the server env key as a fallback.",
+      "providerReady": "Ready",
+      "providerNotReady": "Not set up",
+      "providerKeyCta": "Set the key",
+      "providerOnlyTwo": "These two are the only text backends the product has. There is no OpenAI/GPT option yet — adding one means a new provider in the server registry, not a setting on this page.",
+      "geminiGroup": "Gemini only"
     },
     "services": {
       "title": "Services",

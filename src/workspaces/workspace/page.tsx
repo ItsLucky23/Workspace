@@ -36,7 +36,10 @@ import { useWorkspaces } from '../_shell/WorkspacesContext';
 import { AI_SKILL_APPLY_POINTS } from '../_data/types';
 import type { StageProcessCfg, AiSkillEntry, BranchStrategyKind, EnvVar, GitConfig, IntegrationField, IntegrationTool, InviteEntry, Member, PushPolicy } from '../_data/types';
 
-const fieldCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
+//? `w-full` was missing, so every input built from this class rendered at the browser's intrinsic
+//? text-input width (~150px) inside a column sized for far more — a settings page of stubby boxes.
+//? SettingRow already caps the control column (`sm:max-w-sm`), so filling it is the intended size.
+const fieldCls = 'h-9 w-full px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 
 function removeMenu(member: Member, translate: ReturnType<typeof useTranslator>, onRemove: () => void): PopMenuItem[] {
   return [
@@ -1186,7 +1189,10 @@ const extractTaskVars = (tpl: string): string[] => [...new Set([...tpl.matchAll(
 function CustomTaskVarsForm({ vars, onRun }: { vars: string[]; onRun: (values: Record<string, string>) => void }) {
   const translate = useTranslator();
   const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(vars.map((v) => [v, ''])));
-  const fieldCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
+  //? `w-full` was missing, so every input built from this class rendered at the browser's intrinsic
+//? text-input width (~150px) inside a column sized for far more — a settings page of stubby boxes.
+//? SettingRow already caps the control column (`sm:max-w-sm`), so filling it is the intended size.
+const fieldCls = 'h-9 w-full px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
   return (
     <div className="w-full flex flex-col gap-3 p-5">
       <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.customTaskVarsTitle' })}</div>
@@ -1302,7 +1308,7 @@ function SkillsSection() {
 
 function AiBehaviorTab() {
   const translate = useTranslator();
-  const { activeWorkspace, saveAiInstruction, aiOverrides, saveAiProvider, saveAutonomy, customTasks, saveCustomTask, runCustomTask, deleteCustomTask, aiSkills, navigate } = useWorkspaces();
+  const { activeWorkspace, saveAiInstruction, aiOverrides, saveAiProvider, saveAutonomy, customTasks, saveCustomTask, runCustomTask, deleteCustomTask, aiSkills, navigate, focusSetup } = useWorkspaces();
   const [newTaskName, setNewTaskName] = useState('');
   const [newTaskTemplate, setNewTaskTemplate] = useState('');
   const autonomyItems = (['gate-every', 'gate-key-stages', 'full-auto'] as const).map((id) => ({ id, value: id, item: translate({ key: `workspaces.workspaceSettings.autonomy.${id}` }) }));
@@ -1335,7 +1341,10 @@ function AiBehaviorTab() {
     })();
   }, [activeWorkspace.id]);
   return (
-    <div className="flex flex-col gap-4 max-w-2xl">
+    //? `mx-auto w-full` like every sibling tab, and one step wider: this is the densest tab on the page
+    //? (a six-row instruction textarea, provider settings, skills, custom tasks). It used to hug the
+    //? left edge at half width, which is what made it read as a broken layout rather than a narrow one.
+    <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
       {/* The composition is stated where it is edited — behind the "?" ON the field (ADR 0311 for the
           two-channel model; 0308's "layer 1 of 5" was the wrong story and the wrong container). The
           full composed text stays at the bottom of the section as an opt-in debugging view. */}
@@ -1367,7 +1376,10 @@ function AiBehaviorTab() {
           status={aiStatus}
           control={<Dropdown width="full" value={languageOptions.find((o) => o.id === language)} items={languageOptions} onChange={(it) => { setLanguage(String(it.id)); }} />}
         />
-        {/* P2 — per-workspace Gemini model + temperature (Gemini-only; Claude is PTY-billed, no model concept). */}
+        {/* P2 — Gemini-ONLY knobs. Claude is PTY/subscription-billed and has no model or temperature
+            concept, so these three rows apply to exactly one of the two backends. That was invisible,
+            which is why the page read as "the AI setup is Gemini". */}
+        <div className="px-5 pt-4 -mb-2 text-xs font-semibold uppercase tracking-wide text-meta">{translate({ key: 'workspaces.workspaceSettings.geminiGroup' })}</div>
         <SettingRow
           label={translate({ key: 'workspaces.workspaceSettings.geminiModel' })}
           status={aiStatus}
@@ -1416,20 +1428,44 @@ function AiBehaviorTab() {
         />
       </FormSection>
 
-      {/* Gap-fix — provider health: availableProviders() was exported for a UI that never came. */}
+      {/* A green or red dot and nothing else answered "is it working" and left "how do I make it work"
+          entirely unanswered — the owner could see Claude was linked and not where that came from, and
+          the only settings on this page were Gemini's model and temperature, with its KEY on another
+          page altogether. Each backend now states how it is configured and links there when it can. */}
       <FormSection
         title={translate({ key: 'workspaces.workspaceSettings.providerHealthTitle' })}
         desc={translate({ key: 'workspaces.workspaceSettings.providerHealthDesc' })}
       >
-        <div className="px-5 pb-5 flex flex-wrap gap-2">
-          {providerHealth === null && <span className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.providerHealthLoading' })}</span>}
-          {providerHealth?.map((p) => (
-            <span key={p.id} className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ring-current/15 ${p.available ? 'bg-correct/10 text-correct' : 'bg-wrong/10 text-wrong'}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${p.available ? 'bg-correct' : 'bg-wrong'}`} />
-              {p.label}
-            </span>
-          ))}
-        </div>
+        {providerHealth === null && <div className="px-5 pb-5 text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.providerHealthLoading' })}</div>}
+        {providerHealth?.map((p) => (
+          <SettingRow
+            key={p.id}
+            label={(
+              <span className="inline-flex items-center gap-2">
+                <span className={`w-1.5 h-1.5 rounded-full ${p.available ? 'bg-correct' : 'bg-wrong'}`} />
+                {p.label}
+              </span>
+            )}
+            help={translate({ key: `workspaces.workspaceSettings.providerHow_${p.id}` })}
+            control={(
+              <div className="flex items-center gap-2 justify-end">
+                <span className={`text-xs font-semibold ${p.available ? 'text-correct' : 'text-wrong'}`}>
+                  {translate({ key: p.available ? 'workspaces.workspaceSettings.providerReady' : 'workspaces.workspaceSettings.providerNotReady' })}
+                </span>
+                {/* Only Gemini has an in-app setting to reach. The Claude CLI is installed and signed in
+                    ON THE HOST, so a button here would be a dead end — it says so instead. */}
+                {p.id === 'gemini-api' && (
+                  <WsButton variant="secondary" icon="key" onClick={() => { focusSetup({ view: 'content/settings', tab: 'admin' }); }}>
+                    {translate({ key: 'workspaces.workspaceSettings.providerKeyCta' })}
+                  </WsButton>
+                )}
+              </div>
+            )}
+          />
+        ))}
+        {/* Stated rather than left to be discovered by hunting: there is no OpenAI/GPT backend in the
+            product today. `server/ai/registry.ts` has exactly these two entries. */}
+        <div className="px-5 pb-5 text-xs text-meta leading-relaxed">{translate({ key: 'workspaces.workspaceSettings.providerOnlyTwo' })}</div>
       </FormSection>
 
       {/* SK1 — the universal AI-skills layer (humanizer, tone-of-voice, …). */}

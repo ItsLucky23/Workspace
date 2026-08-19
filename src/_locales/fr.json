@@ -1545,7 +1545,14 @@
       "auditAction": "Action",
       "auditWhen": "Quand",
       "starterDescriptionLocked": "Conventions organisées que l'IA suit à chaque étape — gérez-les et activez-les sur la page Sources.",
-      "manageInSources": "Gérer les documents de contexte dans Sources"
+      "manageInSources": "Gérer les documents de contexte dans Sources",
+      "providerHow_claude-cli": "S'exécute sur le serveur, pas via une clé collée ici : la CLI Claude doit être installée et connectée sur l'hôte. Rien à configurer dans l'application.",
+      "providerHow_gemini-api": "Nécessite une clé API Google. Stockée chiffrée par espace, avec la clé d'environnement du serveur en repli.",
+      "providerReady": "Prêt",
+      "providerNotReady": "Non configuré",
+      "providerKeyCta": "Définir la clé",
+      "providerOnlyTwo": "Ce sont les deux seuls backends texte du produit. Il n'y a pas encore d'option OpenAI/GPT — en ajouter une signifie un nouveau fournisseur dans le registre serveur, pas un réglage sur cette page.",
+      "geminiGroup": "Gemini uniquement"
     },
     "services": {
       "title": "Services",

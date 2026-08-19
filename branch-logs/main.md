@@ -5528,3 +5528,44 @@ vóór de fix en slaagt erna; dat is het bewijs.
 
 **Verificatie.** `tsc` ✅ · `lint` ✅ · `build` ✅ · Playwright **35/35** (inclusief alle dropdowns en
 andere floating layers, want `floatingLayer.tsx` is basiskit).
+
+## 2026-08-19 — /workspace/aibehavior: layout + "hoe zet ik de AI eigenlijk op"
+
+**Prompt van de gebruiker.** "De main container heeft maar de helft van de width, het inputveld is maar
+100 pixels ofzo, en om de AI echt op te zetten zie ik alleen Gemini-model en Gemini-temperatuur. Claude
+Code is gelinked maar je ziet niet hoe of waar dit kan, en geen support voor gpt of andere api keys."
+
+**Layout — allebei terecht en allebei één regel.**
+
+- De tab stond op `max-w-2xl` ZONDER `mx-auto`, terwijl elke andere tab op deze pagina `mx-auto w-full`
+  heeft. Hij plakte dus links op halve breedte; dat leest als kapot, niet als smal. Nu `max-w-3xl
+  mx-auto w-full` — een stap breder omdat dit de dichtstbevolkte tab is (instructie-textarea van zes
+  regels, providerinstellingen, skills, custom tasks).
+- `fieldCls` had helemaal géén breedte, dus élk input dat die klasse gebruikt viel terug op de
+  intrinsieke breedte van een tekstveld (~150px) binnen een kolom die veel breder is. `w-full`
+  toegevoegd; `SettingRow` begrenst de kolom al (`sm:max-w-sm`), dus vullen is de bedoelde maat.
+
+**"Hoe zet ik de AI op" — de pagina beantwoordde dat niet.** De providersectie was een groen of rood
+bolletje en verder niets: je zag dát Claude gelinkt was en nergens waaraan dat lag, terwijl de enige
+instellingen op de pagina Gemini's model en temperatuur waren en Gemini's SLEUTEL op een heel andere
+pagina staat. Nu per backend een rij die zegt hoe hij geconfigureerd wordt:
+
+- `claude-cli` — de CLI moet op de HOST geïnstalleerd en ingelogd zijn (`claudeCliAvailable()` doet
+  `existsSync` of een `--version`-probe). Bewust géén knop: er valt in de app niets in te stellen, en
+  een knop zou het zoveelste dode eind zijn.
+- `gemini-api` — heeft een API-sleutel nodig (`__provider_key_gemini`, met env als terugval), met een
+  knop die naar Content-instellingen → Admin gaat waar die sleutel woont.
+
+De drie Gemini-rijen staan nu onder een kopje "Alleen Gemini", want Claude is PTY/abonnement-gebillt en
+heeft geen model- of temperatuurbegrip — dat was onzichtbaar, en daardoor las de pagina als "de
+AI-opzet ís Gemini".
+
+**GPT/OpenAI: bestaat niet, en dat staat er nu.** `server/ai/registry.ts` heeft exact twee entries
+(`claude-cli`, `gemini-api`); `server/ai/providers/` bevat twee bestanden. Dit is dus een productgat,
+geen UI-omissie — er valt geen sleutelveld toe te voegen dat ergens heen gaat. De sectie zegt het
+expliciet, zodat er niet naar gezocht wordt: een derde backend betekent een nieuwe provider in het
+serverregister, niet een instelling op deze pagina.
+
+**Verificatie.** `tsc` ✅ · `lint` ✅ · `build` ✅ · Playwright **36/36** (nieuwe spec controleert dat
+beide backends hun setup uitleggen, dat de Gemini-groep als zodanig gelabeld is, dat de afwezigheid van
+OpenAI benoemd wordt, en dat de sleutelknop echt op de admin-tab landt).

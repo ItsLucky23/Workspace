@@ -100,6 +100,32 @@ test.describe('layer tip', () => {
     await expect(tip).toBeHidden({ timeout: 2000 });
   });
 
+
+  test('the AI tab says how each backend is configured, and where', async ({ authedPage }) => {
+    const page = authedPage;
+    await createWorkspace(page, `E2E PW AiSetup ${String(Date.now())}`);
+    await expect(page.getByText('Welcome to Workspaces')).toBeHidden({ timeout: 30_000 });
+
+    await page.goto('/workspaces/workspace/aibehavior');
+
+    //? Both backends listed with how they are set up. The page used to show a bare green/red dot, so
+    //? "Claude is linked" was visible and where that came from was not — while the only settings on
+    //? the page were Gemini's model and temperature, its KEY living on another page entirely.
+    await expect(page.getByText(/the Claude CLI must be installed and signed in on the host/)).toBeVisible();
+    await expect(page.getByText(/Needs a Google API key/)).toBeVisible();
+
+    //? The Gemini rows are labelled as applying to one backend only — Claude has no model concept.
+    await expect(page.getByText('Gemini only', { exact: true })).toBeVisible();
+
+    //? And the absence is stated rather than left to be discovered by hunting for it.
+    await expect(page.getByText(/no OpenAI\/GPT option yet/)).toBeVisible();
+
+    //? Gemini's key IS reachable from here; Claude deliberately has no button, because there is
+    //? nothing in the app to press — a button there would be the dead end this page already had.
+    await page.getByRole('button', { name: 'Set the key' }).click();
+    await expect(page).toHaveURL(/\/workspaces\/content\/settings\/admin$/);
+  });
+
   test('the full composed-text block no longer sits on top of the fields it describes', async ({ authedPage }) => {
     const page = authedPage;
     await createWorkspace(page, `E2E PW LayerOrder ${String(Date.now())}`);

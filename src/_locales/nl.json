@@ -1545,7 +1545,14 @@
       "auditAction": "Actie",
       "auditWhen": "Wanneer",
       "starterDescriptionLocked": "Doordachte richtlijnen die de AI in elke fase volgt — beheer en schakel ze op de Sources-pagina.",
-      "manageInSources": "Beheer contextdocumenten in Sources"
+      "manageInSources": "Beheer contextdocumenten in Sources",
+      "providerHow_claude-cli": "Draait op de server, niet via een sleutel die je hier plakt: de Claude CLI moet op de host geïnstalleerd en ingelogd zijn. In de app valt er niets in te stellen.",
+      "providerHow_gemini-api": "Heeft een Google API-sleutel nodig. Versleuteld opgeslagen per werkruimte, met de server-env-sleutel als terugval.",
+      "providerReady": "Klaar",
+      "providerNotReady": "Niet ingesteld",
+      "providerKeyCta": "Sleutel instellen",
+      "providerOnlyTwo": "Deze twee zijn de enige tekst-backends die het product heeft. Er is nog geen OpenAI/GPT-optie — die toevoegen betekent een nieuwe provider in het serverregister, niet een instelling op deze pagina.",
+      "geminiGroup": "Alleen Gemini"
     },
     "services": {
       "title": "Services",
