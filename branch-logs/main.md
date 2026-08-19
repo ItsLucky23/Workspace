@@ -5425,3 +5425,48 @@ host-env in plaats van jouw abonnement; vier fix-knoppen stuiteren terug op de m
 permissiematrix is klikbaar maar wordt server-side geweigerd; de Modules-tab houdt de toggles van de
 vórige workspace vast; "Validate with AI" meldt iets dat geen enkele UI kan oplossen; twee teksten
 beloven iets dat het systeem niet doet.
+
+## 2026-08-19 — Golf 2: de resterende 12 auditdefecten
+
+**Prompt van de gebruiker.** "Ga door."
+
+**Eén oorzaak achter vijf defecten.** `/workspaces/content/settings` leidt de view `content` af, en die
+is module-gated — dus `WorkspacesShell` stuurde iedereen zonder de Content-module direct weg. Op die
+pagina staan de workspace-BREDE providersleutels (AI, media) achter de Admin-tab. Gevolg: op een
+Development-only workspace was de belangrijkste instelling van het product onbereikbaar, inclusief via
+de éérste rij van de setup-checklist en vijf andere fix-knoppen die daar allemaal heen wijzen. Nu een
+expliciete `UNGATED_PATHS`-uitzondering: het is een instellingenpagina die toevallig onder een
+content-pad woont. De zesde bouncer ("Ga naar Content" in de documenten-afbeeldingkiezer) wijst wél
+echt naar een gated sectie — daar wordt de knop nu weggelaten in plaats van doorgestuurd.
+
+**De rest:**
+
+- Push-rij van de checklist las `readiness.push`, een HOST-vlag (VAPID-sleutels staan ingesteld), niet
+  jouw abonnement. Op elke normale deployment stond die rij dus doorgestreept en afgevinkt voor
+  iedereen — inclusief wie nooit geabonneerd was en dus niets ontvangt. En omdat hij "klaar" was werd
+  de fix-knop niet gerenderd, dus de checklist verborg de enige route naar de instelling die hij als
+  afgerond opgaf. Nu host-vlag ÉN `hasPushSubscription()`, dezelfde check als de accountpagina.
+- Het modulefilter gebruikte `isModuleEnabled`, dat true geeft zodra ÉÉN sectie van een module aan
+  staat — en `scheduled`/`automations` horen bij twee modules. Een content-only workspace kreeg dus de
+  repo-rij te zien, precies wat de header van dat bestand belooft dat nooit gebeurt. Nu gesleuteld op
+  secties die maar bij één module horen.
+- De permissiematrix markeerde alleen `owner` als locked, terwijl de Conductor élke ingebouwde rol
+  weigert. Admin- en Member-cellen waren dus klikbaar met hover-states, en elke klik werd server-side
+  geweigerd zonder enige feedback. `locked` volgt nu `r.builtIn`.
+- De Modules-tab had geen `key={activeWorkspace.id}` (zijn buren wel). Na een workspace-wissel toonde
+  hij de toggles van de vórige en schreef die bij Opslaan naar de nieuwe.
+- "Vul N lege velden" telde velden die géén standaard hebben (`unrefined` en `final` zijn bewust
+  blanco), dus de teller kwam nooit op 0, de knop werd nooit uitgeschakeld en bevestigen schreef niets.
+- "Validate with AI" meldde op elke AI-stage "geen skills — werkt blind", een conditie die geen enkele
+  UI kan oplossen. Vuurt nu alleen als er überhaupt skills te kiezen zijn.
+- Twee teksten die logen: de checklist beloofde dat een AI-agent je eerste ticket oppakt (hij staat
+  geparkeerd in Unrefined), en de Terminals-lege-staat beweerde dat je vanaf de Pipeline-pagina een
+  container kunt starten — daar staat geen enkele startknop. Beide herschreven, en de knop wijst nu
+  naar het bord.
+
+**Bijvangst.** `ModulePicker` kreeg `role="switch"` + `aria-checked` (het is een tweestanden-control die
+er alleen niet uitziet als de Toggle) en een testid, zodat de e2e-fixture nu een workspace met
+beperkte modules kan bouwen — precies de vorm waarin de meeste dode einden zaten.
+
+**Verificatie.** `tsc` ✅ · `lint` ✅ · `build` ✅ · unit **123/123** · sweep **452/452** · Playwright
+**34/34**. Alle 19 auditdefecten zijn nu gefikst; het auditdocument is bijgewerkt met de status.

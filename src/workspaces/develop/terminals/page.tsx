@@ -118,8 +118,12 @@ export default function Terminals() {
           icon="terminal"
           title={translate({ key: 'workspaces.terminals.emptyTitle' })}
           sub={translate({ key: 'workspaces.terminals.emptyBody' })}
+          //? Points at the BOARD, where a ticket's stage is actually started. It used to say you could
+          //? "start a container from the Pipeline page" and its only button went there — the pipeline
+          //? is a stage-config editor with no start control anywhere on it, so the one call-to-action
+          //? on this empty state was a dead end.
           action={
-            <button type="button" onClick={() => { navigate('pipeline'); }} className={`text-sm font-medium text-primary hover:underline cursor-pointer`}>
+            <button type="button" onClick={() => { navigate('board'); }} className={`text-sm font-medium text-primary hover:underline cursor-pointer`}>
               {translate({ key: 'workspaces.terminals.emptyHint' })}
             </button>
           }

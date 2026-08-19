@@ -63,7 +63,7 @@ const STAGE_TAB_IDS = ['general', 'context', 'model', 'commands', 'integrations'
 
 export default function Pipeline() {
   const translate = useTranslator();
-  const { activeWorkspace, activeProjectId, stageConfigs, tickets, saveStageConfig, createStage, deleteStage, reorderStages, navigate } = useWorkspaces();
+  const { activeWorkspace, activeProjectId, stageConfigs, tickets, skills, saveStageConfig, createStage, deleteStage, reorderStages, navigate } = useWorkspaces();
   const presetData = usePipelinePresets(activeWorkspace.id);
   const [stages, setStages] = useState<PipelineStageCfg[]>(stageConfigs);
   //? ADR 0312 — the selected stage and its tab are the URL
@@ -135,7 +135,12 @@ export default function Pipeline() {
   const validate = () => {
     const w: StageWarning[] = [];
     for (const st of stages) {
-      if (st.aiEnabled && st.skillKeys.length === 0 && st.order !== 0 && st.order !== stages.length - 1)
+      //? The "no skills enabled — it'll work blind" rule used to fire here unconditionally. Nothing in
+      //? the app can create a capability skill (they come from the demo seed and a legacy migration
+      //? only), so it reported one finding per AI stage, every time, for a condition no control in the
+      //? product can clear. A check whose findings cannot be acted on trains people to ignore the
+      //? check. It fires only where the picker actually has something to pick.
+      if (st.aiEnabled && skills.length > 0 && st.skillKeys.length === 0 && st.order !== 0 && st.order !== stages.length - 1)
         w.push({ stageId: st.id, severity: 'info', text: translate({ key: 'workspaces.pipeline.warnBlind', params: [{ key: 'name', value: st.name }] }) });
       if (st.aiEnabled && !st.customInstructions.trim())
         w.push({ stageId: st.id, severity: 'info', text: translate({ key: 'workspaces.pipeline.warnNoInstructions', params: [{ key: 'name', value: st.name }] }) });

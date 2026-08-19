@@ -60,11 +60,21 @@ export async function registerAndAuth(context: BrowserContext, email: string): P
 //? Drives the zero-workspace Onboarding screen (src/workspaces/_shell/Onboarding.tsx): picks the
 //? Agency pack (all four modules — development/content/design/documents) then submits the name
 //? via Enter, exactly like a real user. Assumes `page` is already showing Onboarding.
-export async function createWorkspace(page: Page, name: string): Promise<void> {
+export async function createWorkspace(page: Page, name: string, modules?: readonly string[]): Promise<void> {
   const nameInput = page.getByPlaceholder('Workspace name…');
   await expect(nameInput).toBeVisible();
   await page.getByRole('button', { name: /Agency \/ client work/i }).click();
   await nameInput.fill(name);
+  //? `modules` narrows the Agency pack down to the listed ones, so a spec can reproduce the workspace
+  //? shape a real user has — a Development-only or Documents-only workspace hits module-gating paths
+  //? that an all-modules workspace never reaches, which is exactly where several dead ends lived.
+  if (modules !== undefined) {
+    for (const id of ['development', 'content', 'design', 'documents']) {
+      if (modules.includes(id)) continue;
+      const toggle = page.getByTestId(`ws-module-${id}`);
+      if (await toggle.getAttribute('aria-checked') === 'true') await toggle.click();
+    }
+  }
   await nameInput.press('Enter');
 }
 

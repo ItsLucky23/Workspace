@@ -1602,7 +1602,10 @@ export default function WorkspaceSettings() {
       <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 py-5">
         {activeTab === 'members' && <MembersTab />}
         {activeTab === 'permissions' && <PermissionsTab />}
-        {activeTab === 'modules' && <SectionsTab />}
+        {/* keyed on the workspace: `setActiveWorkspace` swaps the snapshot without navigating, so an
+                unkeyed SectionsTab kept the PREVIOUS workspace's toggles in state and Save wrote them
+                onto the new one. Its siblings were already keyed; this one was missed. */}
+            {activeTab === 'modules' && <SectionsTab key={activeWorkspace.id} />}
         {activeTab === 'aibehavior' && <AiBehaviorTab />}
         {activeTab === 'env' && <EnvTab />}
         {activeTab === 'integrations' && <IntegrationsTab />}

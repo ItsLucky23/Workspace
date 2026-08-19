@@ -3,7 +3,7 @@
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
     "nodes": 446,
-    "edges": 658,
+    "edges": 660,
     "symbols": 840,
     "callEdges": 275
   },
@@ -2730,6 +2730,10 @@
     },
     {
       "from": "workspaces/_components/SetupChecklist.tsx",
+      "to": "workspaces/_functions/pushSubscribe.ts"
+    },
+    {
+      "from": "workspaces/_components/SetupChecklist.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
@@ -3175,6 +3179,10 @@
     {
       "from": "workspaces/content/documents/[docId]/page.tsx",
       "to": "workspaces/_components/SetupNotice.tsx"
+    },
+    {
+      "from": "workspaces/content/documents/[docId]/page.tsx",
+      "to": "workspaces/_data/modules.ts"
     },
     {
       "from": "workspaces/content/documents/[docId]/page.tsx",
@@ -6008,6 +6016,7 @@
       "workspaces/_shell/WorkspacesShell.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/_sync/saveSections_server_v1.ts",
+      "workspaces/content/documents/[docId]/page.tsx",
       "workspaces/content/marketing/page.tsx",
       "workspaces/content/studio/page.tsx",
       "workspaces/develop/board/ArtifactLinkPicker.tsx",
@@ -6290,6 +6299,11 @@
       "workspaces/develop/board/page.tsx"
     ],
     "workspaces/_functions/pushSubscribe.ts": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
+      "workspaces/_components/SetupChecklist.tsx",
+      "workspaces/_shell/WorkspacesShell.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/settings/page.tsx"
     ],
     "workspaces/_functions/structuredQuestion.ts": [
@@ -6772,8 +6786,8 @@
     {
       "id": "workspaces/_data/modules.ts",
       "kind": "other",
-      "dependents": 19,
-      "directDependents": 13
+      "dependents": 20,
+      "directDependents": 14
     },
     {
       "id": "workspaces/_functions/uploadMedia.ts",

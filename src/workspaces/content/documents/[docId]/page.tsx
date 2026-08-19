@@ -16,6 +16,7 @@ import { MediaUploadButton } from '../../../_components/MediaUploadButton';
 import { Collapse } from '../../../_components/motion';
 import { EmptyState, InfoDot, InfoTip, SectionCard, Segmented, WsButton } from '../../../_components/primitives';
 import { EmptyPicker } from '../../../_components/SetupNotice';
+import { isSectionEnabled } from '../../../_data/modules';
 import DiffView from '../../../develop/board/[ticketId]/DiffView';
 import { AssetPicker, type PickableAsset } from '../../../_components/AssetPicker';
 import { useWorkspaces } from '../../../_shell/WorkspacesContext';
@@ -261,10 +262,15 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
         {/* ADR 0312 — the reuse affordance is hidden while the library is empty: say so, and where images are made. */}
         {reusableAssets.length === 0 && (
           <div className={`mt-2`}>
+            {/* The "go to Content" button only when Content is actually a section of this workspace.
+                The Documents module unlocks `documents` alone, so on a documents-only workspace the
+                module guard bounced this button straight back to the page it was clicked on. */}
             <EmptyPicker
               icon="image"
               label={translate({ key: 'workspaces.tips.documents.reuseEmptyLabel' })}
-              fix={{ cap: 'workTickets', view: 'content', cta: translate({ key: 'workspaces.tips.documents.reuseEmptyCta' }) }}
+              {...(isSectionEnabled(activeWorkspace.enabledSections, 'content')
+                ? { fix: { cap: 'workTickets' as const, view: 'content' as const, cta: translate({ key: 'workspaces.tips.documents.reuseEmptyCta' }) } }
+                : {})}
             />
           </div>
         )}

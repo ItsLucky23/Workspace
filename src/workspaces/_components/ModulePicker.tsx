@@ -17,6 +17,11 @@ export function ModulePicker({ selected, onToggle }: { selected: WorkspaceModule
         return (
           <button
             key={m.id} type="button" onClick={() => { onToggle(m.id); }}
+            //? role=switch + aria-checked: it IS a two-state control, it just does not look like the
+            //? Toggle primitive. Without this a screen reader announces a plain button with no state,
+            //? and an e2e check cannot tell an enabled module from a disabled one either.
+            role="switch" aria-checked={on}
+            data-testid={`ws-module-${m.id}`}
             className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-colors cursor-pointer ${on ? 'border-primary bg-primary/5' : 'border-container1-border bg-container2/40 hover:bg-container2'}`}
           >
             <span className={`mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${on ? 'bg-primary text-title-primary' : 'bg-container2 text-muted'}`}><Icon name={m.icon} /></span>

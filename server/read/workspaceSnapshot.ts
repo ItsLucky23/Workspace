@@ -672,7 +672,11 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       })),
       templates: listTemplates(),
       members, budget, budgets, capacity, docs, skills,
-      roles: roleRows.map((r) => ({ key: r.key, name: r.label, locked: r.key === 'owner', perms: r.perms })),
+      //? `locked` must mirror what the Conductor will actually accept. It only marked `owner`, while
+      //? `role-update` rejects EVERY built-in role (`if (existingRole.builtIn) return { ok: false,
+      //? error: 'role.builtInImmutable' }`) — so the Admin and Member cells rendered clickable, with
+      //? hover states, and every click was discarded server-side with no cell change and no error.
+      roles: roleRows.map((r) => ({ key: r.key, name: r.label, locked: r.key === 'owner' || r.builtIn, perms: r.perms })),
       stages: stageRows.map((s): PipelineStage => ({ id: s.key, kind: asKind(s.kind), name: s.name, order: s.order, aiEnabled: s.aiEnabled, wipLimit: s.wipLimit ?? undefined })),
       stageConfigs: stageRows.map((s) => toStageConfig(s)),
       //? P1 — per-workspace AI provider overrides (from the __ai_provider_<feature> EnvVars).

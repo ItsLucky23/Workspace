@@ -21,6 +21,25 @@ test.describe('deep links', () => {
     await expect(page).toHaveURL(/\/workspaces\/content\/settings\/brand$/);
   });
 
+
+  test('the AI-key page is reachable on a workspace without the Content module', async ({ authedPage }) => {
+    const page = authedPage;
+    //? A Development-only workspace. `/workspaces/content/settings` derives the gateable view
+    //? `content`, so the module guard bounced every visitor whose workspace lacks that section —
+    //? including the setup checklist's FIRST row and five other "fix this" buttons, all of which point
+    //? here. The page holds the workspace-wide AI and media provider keys; it is a settings page that
+    //? happens to live under a content path.
+    await createWorkspace(page, `E2E PW DevOnly ${String(Date.now())}`, ['development']);
+    await expect(page.getByText('Welcome to Workspaces')).toBeHidden({ timeout: 30_000 });
+
+    //? Guard the guard: if the module deselection silently failed, the workspace would still have
+    //? Content and this test would pass while proving nothing.
+    await expect(page.getByRole('button', { name: 'Content', exact: true })).toHaveCount(0);
+
+    await page.goto('/workspaces/content/settings/admin');
+    await expect(page).toHaveURL(/\/workspaces\/content\/settings\/admin$/);
+  });
+
   test('adding a stage selects THAT stage, not the one that was already open', async ({ authedPage }) => {
     const page = authedPage;
     await createWorkspace(page, `E2E PW AddStage ${String(Date.now())}`);

@@ -29,10 +29,12 @@
 
 import { useEffect, useState } from 'react';
 
+import { hasPushSubscription } from '../_functions/pushSubscribe';
+
 import { useTranslator } from '@luckystack/core/client';
 
 import { CAP, capLabelKey, type CapKey } from '../_data/capabilities';
-import { isModuleEnabled } from '../_data/modules';
+import { isSectionEnabled } from '../_data/modules';
 import { useWorkspaces, type WsView } from '../_shell/WorkspacesContext';
 import Icon, { type IconName } from './Icon';
 import { Collapse } from './motion';
@@ -75,6 +77,11 @@ export default function SetupChecklist() {
     });
   };
 
+  //? The per-user half of the push signal — the same check the account settings page reconciles its
+  //? own toggle against, so the two screens cannot disagree about whether YOU get notifications.
+  const [subscribed, setSubscribed] = useState(false);
+  useEffect(() => { void hasPushSubscription().then(setSubscribed); }, []);
+
   //? A context document the user added themselves: uploaded, generated from the repo, pulled from git
   //? or a design system — anything except the starter conventions the project was seeded with. An
   //? archived document does not count; it is no longer fed to any AI.
@@ -85,9 +92,14 @@ export default function SetupChecklist() {
   const runtimeConfigured = (activeProject?.runProcesses ?? []).some((p) => p.commands.some((c) => c.trim().length > 0))
     || (activeProject?.devCommand ?? '').trim().length > 0;
 
-  const devEnabled = isModuleEnabled(activeWorkspace.enabledSections, 'development');
-  const contentEnabled = isModuleEnabled(activeWorkspace.enabledSections, 'content')
-    || isModuleEnabled(activeWorkspace.enabledSections, 'design');
+  //? `isModuleEnabled` is a LOOSE test — it returns true when ANY of a module's sections is on, and
+  //? several sections belong to two modules ('scheduled' and 'automations' are both development AND
+  //? content). A content-only workspace therefore matched 'development' and was told to link a git
+  //? repository, which is the exact thing this checklist's own header promises never happens.
+  //? Keying on a section that belongs to ONE module only is what makes the filter mean what it says.
+  const sections = activeWorkspace.enabledSections;
+  const devEnabled = isSectionEnabled(sections, 'board') || isSectionEnabled(sections, 'pipeline');
+  const contentEnabled = isSectionEnabled(sections, 'content') || isSectionEnabled(sections, 'designer');
 
   const steps: ChecklistStep[] = [
     //? The AI key comes first for every workspace: without it nothing generates, whatever the module.
@@ -115,7 +127,12 @@ export default function SetupChecklist() {
       { id: 'media', icon: 'image', done: readiness.media.fal, cap: 'workspaceSettings' as CapKey, target: { view: 'content/settings', tab: 'admin' } },
       { id: 'channel', icon: 'paper-plane', done: readiness.publishing, cap: 'workspaceSettings' as CapKey, target: { view: 'content/settings', tab: 'channels' } },
     ] : []),
-    { id: 'push', icon: 'bell', done: readiness.push, cap: 'workTickets', target: { view: 'settings', tab: 'account' } },
+    //? `readiness.push` is a HOST flag (VAPID keys are configured on the server), not a per-user one.
+    //? On any normal deployment it is true for everyone, so this row rendered struck-through and done
+    //? for a user who had never subscribed and would receive nothing — and because it was "done" its
+    //? fix button was not rendered, so the checklist hid the only route to the setting it claimed was
+    //? finished. Both halves are needed: the host must support push AND this browser must be subscribed.
+    { id: 'push', icon: 'bell', done: readiness.push && subscribed, cap: 'workTickets', target: { view: 'settings', tab: 'account' } },
     //? Also from the banner. Nothing records "has talked to the AI", so it is guidance: it never keeps
     //? the checklist alive on its own, it just tells a new user the panel exists.
     { id: 'askAi', icon: 'comments', done: false, cap: 'workTickets', action: toggleAi, guidance: true },

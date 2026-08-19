@@ -89,10 +89,22 @@ export function currentPreset(data: PipelinePresetData, stages: PipelineStageCfg
   return data.presets.find((p) => p.stages.length === mine.size && p.stages.every((s) => mine.has(s.key)))?.preset;
 }
 
-/** How many of this stage's four prompt fields are still empty — drives the "nothing is filled in" hint. */
-export function emptyPromptFields(stage: PipelineStageCfg): number {
-  return [stage.systemPrompt ?? '', stage.customInstructions, stage.promptTemplate, stage.definitionOfDone ?? '']
-    .filter((t) => t.trim().length === 0).length;
+/** How many of this stage's prompt fields are empty AND have a default to fill them with.
+ *
+ *  Counting every empty field was wrong in the way that matters: `unrefined` and `final` ship blank BY
+ *  DESIGN (AI off), so a fully configured pipeline still read "Fill 8 empty fields from the defaults",
+ *  the count could never reach 0, `disabled: blanks === 0` was unreachable, and confirming the action
+ *  round-tripped a control-op that wrote nothing. A field with no default is not a gap. */
+export function emptyPromptFields(stage: PipelineStageCfg, data: PipelinePresetData): number {
+  const bp = blueprintFor(data, stage);
+  if (bp === undefined) return 0;
+  const pairs: [string, string][] = [
+    [stage.systemPrompt ?? '', bp.systemPrompt],
+    [stage.customInstructions, bp.customInstructions],
+    [stage.promptTemplate, bp.promptTemplate],
+    [stage.definitionOfDone ?? '', bp.definitionOfDone],
+  ];
+  return pairs.filter(([value, fallback]) => value.trim().length === 0 && fallback.trim().length > 0).length;
 }
 
 /** The pipeline menu: fill the blanks, or switch tier. Renders nothing until the defaults have loaded. */
@@ -102,7 +114,7 @@ export function PresetMenu({ data, stages, tickets }: { data: PipelinePresetData
   if (data.presets.length === 0 || !activeProjectId) return null;
 
   const current = currentPreset(data, stages);
-  const blanks = stages.reduce((n, s) => n + emptyPromptFields(s), 0);
+  const blanks = stages.reduce((n, s) => n + emptyPromptFields(s, data), 0);
 
   const fill = (): void => {
     void menuHandler.confirm({

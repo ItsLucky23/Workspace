@@ -10,6 +10,19 @@ is the whole reason this list exists and why it is this long.
 **`broken`** = does nothing, or goes somewhere that cannot do what was promised.
 **`misleading`** = works, but tells the user something untrue about what it did.
 
+## Status — all 19 fixed (2026-08-19)
+
+Wave 1 (commit `85bd374`) took the seven navigation defects; wave 2 took the remaining twelve. Each
+wave shipped with a click-test rather than a copy check, because copy checks are what let all of this
+through. New specs: `tests/e2e/layerTip.spec.ts`, `tests/e2e/deepLinks.spec.ts`,
+`tests/e2e/onboardingSteps.spec.ts` — together under 60 seconds.
+
+The single highest-impact one was not on any screen the report started from: `/workspaces/content/settings`
+derives the gateable view `content`, so the module guard bounced every visitor whose workspace lacks
+that section — and that page holds the workspace-wide AI and media provider keys. On a Development-only
+workspace the setup checklist's FIRST row, plus five other "fix this" buttons, all pointed at a page
+the user was immediately redirected away from.
+
 | # | Severity | Where | What breaks |
 |---|---|---|---|
 | 1 | broken | `src/_locales/en.json:1261` | Setup-checklist row promises an AI agent picks up the ticket it creates; the ticket it creates is parked and never picked up |

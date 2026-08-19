@@ -4,6 +4,7 @@
 //? state via `useWorkspaces()`; owns only its own local UI (nav-rail expand,
 //? search-palette open). One instance stays mounted across the ws routes.
 
+import { useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 
 import { AnimatePresence, motion, MotionConfig } from 'motion/react';
@@ -24,6 +25,11 @@ import { useTranslator } from '@luckystack/core/client';
 //? above every view would make it a nag; showing it on only one would hide it from a content-only
 //? workspace, whose board is gated away.
 const LANDING_VIEWS = new Set(['board', 'content']);
+
+//? Paths the module gate must never bounce, because what they hold is not what their path suggests.
+//? `content/settings` is the only one today: its Admin tab carries the workspace-wide AI and media
+//? provider keys, which every module needs and only this page can set.
+const UNGATED_PATHS: readonly string[] = ['content/settings'];
 
 //? The views where the FAB's context-dependent "new" means a CONTENT piece; every other view
 //? creates a ticket (falling back to a piece when the dev module is off for this workspace).
@@ -85,12 +91,20 @@ export function WorkspacesShell({ children }: { children: React.ReactNode }) {
   //? redirect to the first still-visible nav section so the user never lands on a
   //? section their modules don't include. Ticket views + non-gateable views pass through.
   const { loading, workspaces, activeWorkspace, view, navigate } = ctx;
+  const location = useLocation();
   useEffect(() => {
     if (loading || workspaces.length === 0) return;
+    //? `/workspaces/content/settings` derives the view `content`, which is gateable — so this guard
+    //? bounced every visitor whose workspace has no Content module. That page holds the workspace-WIDE
+    //? provider keys (the AI key, the media keys) behind its Admin tab, so the bounce made the single
+    //? most important setting in the product unreachable on a Development-only workspace — including
+    //? from the setup checklist's very first row, and from five other "fix this" buttons that all
+    //? point at it. It is a settings page that happens to live under a content path, not content.
+    if (UNGATED_PATHS.some((path) => location.pathname.startsWith(`/workspaces/${path}`))) return;
     if (!GATEABLE_SECTIONS.includes(view) || isSectionEnabled(activeWorkspace.enabledSections, view)) return;
     const firstEnabled = NAV_ITEMS.find((it) => isSectionEnabled(activeWorkspace.enabledSections, it.id));
     if (firstEnabled) navigate(firstEnabled.id);
-  }, [loading, workspaces.length, activeWorkspace, view, navigate]);
+  }, [loading, workspaces.length, activeWorkspace, view, navigate, location.pathname]);
 
   const openSearch = () => { setSearchOpen(true); };
 
