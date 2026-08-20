@@ -792,7 +792,7 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     const stageId = str(p, 'stageId'); if (!stageId || !x.activeProjectId) return;
     const current = x.stageConfigs.find((c) => c.id === stageId && c.projectId === x.activeProjectId);
     if (!current) return;
-    const stageName = str(p, 'name'); const promptTemplate = str(p, 'promptTemplate'); const systemPrompt = str(p, 'systemPrompt');
+    const stageName = str(p, 'name'); const handoverPrompt = str(p, 'handoverPrompt'); const systemPrompt = str(p, 'systemPrompt');
     const customInstructions = str(p, 'customInstructions'); const definitionOfDone = str(p, 'definitionOfDone');
     const aiEnabled = bool(p, 'aiEnabled'); const gateForApproval = bool(p, 'gateForApproval');
     //? MERGE the proposed fields over the CURRENT full cfg — the route wants a complete PipelineStageCfg
@@ -800,7 +800,7 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     const cfg: PipelineStageCfg = {
       ...current,
       ...(stageName ? { name: stageName } : {}),
-      ...(promptTemplate ? { promptTemplate } : {}),
+      ...(handoverPrompt ? { handoverPrompt } : {}),
       ...(systemPrompt ? { systemPrompt } : {}),
       ...(customInstructions ? { customInstructions } : {}),
       ...(definitionOfDone ? { definitionOfDone } : {}),

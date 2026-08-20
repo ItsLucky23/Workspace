@@ -556,13 +556,7 @@ export const NETWORK_CATEGORIES: { key: string; label: string; desc: string }[] 
   { key: 'trackers', label: 'Ads & trackers', desc: 'analytics + ad networks' },
 ];
 
-//? Carry-over variables (B-O2) — what the previous stage hands to this one.
-export const CARRY_VARS: { token: string; desc: string }[] = [
-  { token: '{{summary}}', desc: 'One-paragraph summary of what the previous stage produced.' },
-  { token: '{{changedFiles}}', desc: 'List of files the previous stage touched (with +/− counts).' },
-  { token: '{{openQuestions}}', desc: 'Unresolved questions the previous stage flagged.' },
-  { token: '{{commitHash}}', desc: 'The frozen commit the ticket’s context is pinned to.' },
-];
+
 
 const baseStatuses = (): StageStatusCfg[] => [
   { key: 'needs-input', label: 'Needs input', kind: 'base' },
@@ -583,7 +577,7 @@ function cfg(id: string, kind: StageKind, name: string, order: number, over: Par
   return {
     projectId: PRJ,
     id, kind, name, order, aiEnabled: true,
-    customInstructions: '', promptTemplate: '',
+    customInstructions: '', handoverPrompt: '',
     skillKeys: [], aiSkillIds: [], sourceIds: ['summary'], commands: [],
     tools: [{ toolId: 'tool-mongodb', tier: 'ro' }],
     statuses: baseStatuses(),
@@ -606,13 +600,13 @@ export const STAGE_CONFIGS: PipelineStageCfg[] = [
   cfg('refined', 'refine', 'Refined', 1, {
     modelCfg: modelCfg({ model: 'haiku', effort: 'low', maxTurns: 12 }, false),
     skillKeys: ['rag', 'cross'], sourceIds: ['summary', 'glossary'],
-    promptTemplate: 'Refine the ticket into clear acceptance criteria.\nPrior summary: {{summary}}\nOpen questions: {{openQuestions}}',
+    handoverPrompt: 'Name the agreed scope, the acceptance criteria, and anything you could NOT resolve.',
     customInstructions: 'Clarify scope only. Do NOT write code. Produce acceptance criteria + edge cases.',
   }),
   cfg('plan', 'plan', 'Plan', 2, {
     modelCfg: modelCfg({ model: 'opus', effort: 'high', maxTurns: 20 }, true),
     skillKeys: ['rag', 'graphify', 'symbol'], sourceIds: ['summary', 'dbschema', 'authspec'], visibleStageIds: ['refined'],
-    promptTemplate: 'Produce a step-by-step implementation plan.\nFrom Refined: {{summary}}\nKnown files: {{changedFiles}}',
+    handoverPrompt: 'Give the ordered plan: which files change, in what order, and where the risk sits.',
     customInstructions: 'Output a numbered plan + risks + a rollback note. No edits. Reference the db-schema where relevant.',
   }),
   cfg('impl', 'code', 'Implementatie', 3, {
@@ -629,7 +623,7 @@ export const STAGE_CONFIGS: PipelineStageCfg[] = [
       { id: 'c2', pattern: 'Bash(npm run build)', mode: 'allow' },
       { id: 'c3', pattern: 'Bash(npm publish)', mode: 'deny' },
     ],
-    promptTemplate: 'Implement the plan.\nPlan: {{summary}}\nFiles in scope: {{changedFiles}}\nCommit base: {{commitHash}}',
+    handoverPrompt: 'Say what you changed and why, which files, and anything you assumed or left half-done.',
     customInstructions: 'Follow the Plan stage exactly. Keep changes surgical. Run the test suite before finishing.',
     statuses: [...baseStatuses(), { key: 'review-ready', label: 'Review-ready', kind: 'custom' }],
   }),
@@ -644,21 +638,21 @@ export const STAGE_CONFIGS: PipelineStageCfg[] = [
       { id: 't1', pattern: 'Bash(npm run test:*)', mode: 'allow' },
       { id: 't2', pattern: 'Bash(npm run coverage)', mode: 'allow' },
     ],
-    promptTemplate: 'Write & run tests for the changes.\nChanged files: {{changedFiles}}',
+    handoverPrompt: 'Report what you covered, what passes and what fails - name the failing case, not just a count.',
     customInstructions: 'Add a regression test for every changed file. Fail loudly on uncovered branches.',
   }),
   cfg('review', 'review', 'Review', 5, {
     modelCfg: modelCfg({ model: 'opus', effort: 'high', maxTurns: 18 }, true),
     skillKeys: ['cross', 'deps', 'git'], sourceIds: ['summary', 'conventions'], visibleStageIds: ['plan', 'impl', 'test'],
     commands: [{ id: 'r1', pattern: 'Bash(git push:*)', mode: 'ask' }],
-    promptTemplate: 'Adversarially review the diff.\nSummary: {{summary}}\nOpen questions: {{openQuestions}}',
+    handoverPrompt: 'List your findings concretely enough to act on without re-reading the diff.',
     customInstructions: 'Be a skeptical reviewer. Flag security + correctness first. Default to requesting changes.',
     statuses: [...baseStatuses(), { key: 'approved', label: 'Approved', kind: 'custom' }],
   }),
   cfg('final', 'final', 'Final', 6, {
     modelCfg: modelCfg({ model: 'haiku', effort: 'low', maxTurns: 10 }, false),
     skillKeys: [], sourceIds: ['summary'], processes: [], tools: [{ toolId: 'tool-mongodb', tier: 'ro' }],
-    promptTemplate: 'Summarise the merged change for the changelog.\n{{summary}}',
+    handoverPrompt: 'Summarise the merged change the way it should read in the changelog.',
     customInstructions: 'Produce the MR description + changelog entry. No code.',
   }),
 ];

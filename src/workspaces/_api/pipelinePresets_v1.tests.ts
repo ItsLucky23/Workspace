@@ -19,7 +19,7 @@ interface PresetsInput { workspaceId: string }
 interface Blueprint {
   systemPrompt: string;
   customInstructions: string;
-  promptTemplate: string;
+  handoverPrompt: string;
   definitionOfDone: string;
   model: string;
   effort: string;
@@ -76,7 +76,10 @@ export const customTests: CustomTestCase[] = [
         if (code === undefined) return;
         ctx.expect.ok(code.systemPrompt.trim().length > 0, 'a code stage starts with a persona');
         ctx.expect.ok(code.customInstructions.trim().length > 0, '…and with task instructions');
-        ctx.expect.ok(code.promptTemplate.includes('{{'), '…and a carry-over template that actually references a carry-over variable');
+        //? Owner decision 2026-08-20 — the blueprint no longer carries an INCOMING template with
+        //? `{{chips}}`; it carries what the stage hands to the next one, in plain language.
+        ctx.expect.ok(code.handoverPrompt.trim().length > 0, '…and a handover instruction for the next stage');
+        ctx.expect.ok(!code.handoverPrompt.includes('{{'), '…which is prose, not a slot template');
         ctx.expect.ok(['haiku', 'sonnet', 'opus'].includes(code.model), 'the model tier is one the stage runner understands');
 
         //? `final` is deliberately blank (AI off), so it must NOT be asserted as filled — that is the

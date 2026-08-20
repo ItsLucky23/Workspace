@@ -7,7 +7,7 @@
 
 import type { PipelineStageCfg, StageModelChoice } from '../../src/workspaces/_data/types';
 import type { CarryOverEnvelope } from './turnResult';
-import { renderPromptTemplate } from './turnResult';
+import { renderIncomingHandover } from './turnResult';
 import { effortThinkingTokens } from './modelSelect';
 import { renderUntrustedContext, UNTRUSTED_CONTEXT_POLICY } from '../ai/untrustedContext';
 
@@ -113,7 +113,7 @@ export function renderStage(cfg: PipelineStageCfg, ctx: StageRenderCtx): StageAr
     : '';
   const claudeMd = `# ${cfg.name} stage — ${ctx.ticketId}\n\n${reloadSection}${cfg.customInstructions}\n${docsSection}${retrievedSection}\n\n${UNTRUSTED_CONTEXT_POLICY}`;
 
-  //? --append-system-prompt = the system layer + the carry-over-filled task, + the teaching
+  //? --append-system-prompt = the system layer + the incoming handover, + the teaching
   //? that a stage ENDS by emitting a \`\`\`ws-carryover block (how the runner detects done).
   //? Per-stage "definition of done": if the stage sets one, the AI works toward it; if not,
 //? the AI judges completion itself (the product owner's choice). Either way the stage ENDS
@@ -126,9 +126,16 @@ export function renderStage(cfg: PipelineStageCfg, ctx: StageRenderCtx): StageAr
     //? rather than competing with it. Same position it holds on the one-shot path (ai/registry.ts).
     ctx.workspaceInstruction ?? '',
     cfg.systemPrompt ?? '',
-    renderPromptTemplate(cfg.promptTemplate, ctx.carryOver),
+    //? Composed, not configured (owner decision 2026-08-20): the previous stage decided what to hand
+    //? over, so there is no per-stage template with slots to fill in here any more.
+    renderIncomingHandover(ctx.carryOver),
     doneGuidance,
     '```ws-carryover\\n{ "summary": "...", "changedFiles": [], "openQuestions": [] }\\n```',
+    //? The stage's OWN handover instruction — the one editable half of the carry-over, and it sits at
+    //? the END where it belongs: it shapes what THIS stage writes into `summary` for the next one.
+    cfg.handoverPrompt.trim().length > 0
+      ? `When you write that block, shape its \`summary\` for the next stage as follows: ${cfg.handoverPrompt.trim()}`
+      : '',
     //? Auto-escalation: teach the agent to self-score the REMAINING work so the NEXT stage can
     //? resolve its model tier from the rules (modelSelect.resolveModelChoice).
     ...(cfg.modelCfg.autoEscalate

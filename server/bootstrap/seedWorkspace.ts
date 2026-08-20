@@ -191,7 +191,7 @@ export async function seedDemoWorkspace(prisma: PrismaClient, ownerId: string): 
         workspaceId, projectId: project.id, key: s.id, kind: s.kind, name: s.name, order: s.order,
         aiEnabled: s.aiEnabled, wipLimit: s.wipLimit ?? null,
         roleKey: s.kind === 'code' ? 'code' : s.kind, systemPrompt: '',
-        customInstructions: s.customInstructions, promptTemplate: s.promptTemplate,
+        customInstructions: s.customInstructions, handoverPrompt: s.handoverPrompt,
         skillKeys: s.skillKeys, sourceIds: s.sourceIds,
         commands: s.commands, tools, statuses: s.statuses, processes: s.processes,
         visibleStageIds: s.visibleStageIds, modelCfg: s.modelCfg, network: s.network, hooks: s.hooks,

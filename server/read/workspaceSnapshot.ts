@@ -105,7 +105,7 @@ export function toStageConfig(s: DbPipelineStage): PipelineStageCfg {
   return {
     projectId: s.projectId,
     id: s.key, kind: asKind(s.kind), name: s.name, order: s.order, aiEnabled: s.aiEnabled,
-    customInstructions: s.customInstructions, promptTemplate: s.promptTemplate, definitionOfDone: s.definitionOfDone,
+    customInstructions: s.customInstructions, handoverPrompt: s.handoverPrompt, definitionOfDone: s.definitionOfDone,
     systemPrompt: s.systemPrompt, roleKey: s.roleKey, userEditable: s.userEditable, gateForApproval: s.gateForApproval,
     skillKeys: s.skillKeys, aiSkillIds: s.aiSkillIds, sourceIds: s.sourceIds,
     commands: s.commands.map((c): StageCommandCfg => ({

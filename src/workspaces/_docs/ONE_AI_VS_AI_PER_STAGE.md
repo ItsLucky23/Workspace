@@ -50,9 +50,10 @@ its window. Merging every stage into one session makes it fire **more** often, n
 mechanism that *implements* "anders kunnen we altijd compacten". So the configuration the owner wants
 to remove is the configuration that the one-AI model depends on most.
 
-> Net effect on config surface: one-AI removes the carry-over template per stage (1 field), and makes
-> the handoff instruction — currently a single global default with a TODO for per-stage override —
-> more load-bearing. That is close to a wash, not a simplification.
+> Net effect on config surface: one-AI removes the per-stage handover instruction (1 optional field,
+> which may already be left empty since ADR 0319), and makes the handoff instruction — currently a
+> single global default with a TODO for per-stage override — more load-bearing. That is a wash at best,
+> not a simplification.
 
 ---
 
@@ -110,8 +111,10 @@ not merging the sessions. Concretely, and in rough order of payoff:
    inherited value greyed in the input, rather than an empty box that silently means "nothing". The
    `UseDefault` affordance already does half of this for prompts — the missing half is that an unset
    field should *stay* linked to the default instead of being copied once.
-2. **Carry-over template should almost never be per stage.** It is the same envelope shape every time.
-   Make it a pipeline-level field with a per-stage override that is hidden until used.
+2. ~~**Carry-over template should almost never be per stage.**~~ **Done — differently, and better.** The
+   template is gone entirely (ADR 0319). The receiving end is composed automatically; the one editable
+   field moved to the emitting end, where the AI that just did the work shapes its own handover. Per
+   stage, but one plain field that may be left empty, instead of a slot template that had to be built.
 3. **One handoff instruction, workspace-level.** The per-stage override in `handoff.ts` is a TODO;
    deleting the TODO is cheaper than building it.
 4. **Group the stage tabs by "who ever touches this".** General/Context/Model are the everyone-tabs

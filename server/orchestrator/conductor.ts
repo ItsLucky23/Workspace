@@ -3924,7 +3924,7 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const kind = str(payload, 'kind'); if (kind) data.kind = kind;
       if ('aiEnabled' in payload) data.aiEnabled = bool(payload, 'aiEnabled');
       const ci = str(payload, 'customInstructions'); if (ci !== undefined) data.customInstructions = ci;
-      const promptTemplate = str(payload, 'promptTemplate'); if (promptTemplate !== undefined) data.promptTemplate = promptTemplate;
+      const handoverPrompt = str(payload, 'handoverPrompt'); if (handoverPrompt !== undefined) data.handoverPrompt = handoverPrompt;
       const systemPrompt = str(payload, 'systemPrompt'); if (systemPrompt !== undefined) data.systemPrompt = systemPrompt;
       const definitionOfDone = str(payload, 'definitionOfDone'); if (definitionOfDone !== undefined) data.definitionOfDone = definitionOfDone;
       const roleKey = str(payload, 'roleKey'); if (roleKey !== undefined) data.roleKey = roleKey;
@@ -3969,7 +3969,10 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       return prisma.pipelineStage.create({ data: {
         workspaceId: action.workspaceId, projectId, key, kind, name, order, aiEnabled: true, wipLimit: null,
         roleKey: kind === 'code' ? 'code' : kind, systemPrompt: bp.systemPrompt, customInstructions: bp.customInstructions,
-        promptTemplate: bp.promptTemplate.length > 0 ? bp.promptTemplate : '{{summary}}', definitionOfDone: bp.definitionOfDone,
+        //? No fallback needed any more: an empty handover instruction just means "say what you did in
+        //? your own words". The old `'{{summary}}'` fallback existed because an empty TEMPLATE meant the
+        //? next stage received nothing at all — the incoming handover is composed automatically now.
+        handoverPrompt: bp.handoverPrompt, definitionOfDone: bp.definitionOfDone,
         skillKeys: [], aiSkillIds: [], sourceIds: ['summary'], commands: [], tools: [], statuses: baseStageStatuses(), processes: [], visibleStageIds: [],
         modelCfg: { autoEscalate: false, base: { model: bp.model, effort: bp.effort, maxTurns: bp.maxTurns }, rules: [] },
         network: { enabled: true, mode: 'whitelist', categories: ['package-registries', 'source-hosts', 'ai-apis'], domains: [] },
@@ -4023,10 +4026,10 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       let filled = 0;
       for (const st of existing) {
         const bp = blueprintForStage(st.key, isStageKind(st.kind) ? st.kind : 'code');
-        const data: { systemPrompt?: string; customInstructions?: string; promptTemplate?: string; definitionOfDone?: string } = {};
+        const data: { systemPrompt?: string; customInstructions?: string; handoverPrompt?: string; definitionOfDone?: string } = {};
         if (st.systemPrompt.trim().length === 0 && bp.systemPrompt.length > 0) data.systemPrompt = bp.systemPrompt;
         if (st.customInstructions.trim().length === 0 && bp.customInstructions.length > 0) data.customInstructions = bp.customInstructions;
-        if (st.promptTemplate.trim().length === 0 && bp.promptTemplate.length > 0) data.promptTemplate = bp.promptTemplate;
+        if (st.handoverPrompt.trim().length === 0 && bp.handoverPrompt.length > 0) data.handoverPrompt = bp.handoverPrompt;
         if (st.definitionOfDone.trim().length === 0 && bp.definitionOfDone.length > 0) data.definitionOfDone = bp.definitionOfDone;
         if (Object.keys(data).length === 0) continue;
         await prisma.pipelineStage.updateMany({ where: { workspaceId: action.workspaceId, projectId, key: st.key }, data });

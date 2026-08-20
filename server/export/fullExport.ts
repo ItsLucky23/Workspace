@@ -169,7 +169,7 @@ export async function importFullBundle(
           key: str(st, 'key'), kind: str(st, 'kind', 'code'), name: str(st, 'name', str(st, 'key')),
           order: num(st, 'order'), aiEnabled: bool(st, 'aiEnabled'),
           roleKey: str(st, 'roleKey', 'code'), systemPrompt: str(st, 'systemPrompt'),
-          customInstructions: str(st, 'customInstructions'), promptTemplate: str(st, 'promptTemplate'),
+          customInstructions: str(st, 'customInstructions'), handoverPrompt: str(st, 'handoverPrompt'),
           definitionOfDone: str(st, 'definitionOfDone'),
           skillKeys: [], sourceIds: [], visibleStageIds: [],
           commands: [], tools: [], processes: [],

@@ -42,7 +42,7 @@ const renderer = read('server/orchestrator/renderStage.ts');
 //? The SYSTEM channel is the `stageInstructions` array (passed via --append-system-prompt). Its first
 //? three entries are the three layers, in this order.
 const systemBody = renderer.slice(renderer.indexOf('const stageInstructions = ['));
-const systemOrder = ['ctx.workspaceInstruction', 'cfg.systemPrompt', 'renderPromptTemplate(cfg.promptTemplate'];
+const systemOrder = ['ctx.workspaceInstruction', 'cfg.systemPrompt', 'renderIncomingHandover(ctx.carryOver)'];
 let cursor = -1;
 for (const expr of systemOrder) {
   const at = systemBody.indexOf(expr);
@@ -90,7 +90,7 @@ assert(
 const layers = resolveAiLayers({
   workspace: { aiInstruction: 'WS' },
   skills: [{ id: 's1', slug: 's', name: 's', instruction: 'SKILL', examples: '', applyPoints: ['all'], builtin: false }],
-  stage: { systemPrompt: 'SYS', customInstructions: 'TASK', promptTemplate: 'CARRY' },
+  stage: { systemPrompt: 'SYS', customInstructions: 'TASK', handoverPrompt: 'CARRY' },
 });
 
 eq(composeChannel(layers, 'system'), 'WS\n\nSYS\n\nCARRY', 'the system channel composes its own three layers, in order');

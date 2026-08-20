@@ -1,7 +1,7 @@
 //? Turn-result parsing + carry-over template filling (04b §14, 02 §4). An in-container
 //? agent ends its turn with a named fenced block in `last_assistant_message`; the
 //? Conductor parses it (NO envelope schema change) to decide done / needs-input / continue,
-//? and fills the NEXT stage's `promptTemplate` `{{chips}}` from the stored envelope. Pure +
+//? and composes the NEXT stage's incoming handover from the stored envelope. Pure +
 //? unit-testable — no container/credential needed.
 
 import { tryCatch } from '@luckystack/core';
@@ -43,7 +43,7 @@ function strArr(v: unknown): string[] {
 
 //? W2 — an `openQuestions` entry is either a plain string (a note passed to the next stage, unchanged) OR an
 //? object `{question, assumption}` = a NON-blocking question the agent proceeded past. Split them: the strings
-//? (incl. a rendered "Q (assumed: A)" for each advisory) keep feeding `{{openQuestions}}`, the advisories drive W2.
+//? (incl. a rendered "Q (assumed: A)" for each advisory) keep feeding the next stage's incoming handover, the advisories drive W2.
 function extractOpenQuestions(v: unknown): { openQuestions: string[]; advisories: { q: string; assumption: string }[] } {
   if (!Array.isArray(v)) return { openQuestions: [], advisories: [] };
   const openQuestions: string[] = [];
@@ -110,21 +110,32 @@ export async function parseTurnResult(message: string): Promise<TurnResult> {
   return { kind: 'continue' };
 }
 
-//? Fill a stage's `promptTemplate` `{{chips}}` from the incoming carry-over envelope
-//? (CARRY_VARS: summary/changedFiles/openQuestions/commitHash). CarryOver is previous AI output,
-//? so every non-empty occurrence gets its OWN untrusted-data block; a repeated chip never reuses a
-//? delimiter. Null envelope (first stage) → chips resolve to empty. Arrays render as newline lists.
-export function renderPromptTemplate(template: string, envelope: CarryOverEnvelope | null): string {
-  const values: Record<string, string> = {
-    summary: envelope?.summary ?? '',
-    changedFiles: (envelope?.changedFiles ?? []).join('\n'),
-    openQuestions: (envelope?.openQuestions ?? []).join('\n'),
-    commitHash: envelope?.commitHash ?? '',
+const NEWLINE = '\n';
+
+//? The INCOMING handover, composed automatically from the previous stage's envelope.
+//?
+//? This replaced a per-stage template with `{{summary}}`-style slots (owner decision 2026-08-20). The
+//? slots were the wrong end of the problem: the user had to pre-write a sentence with holes in it for
+//? output that did not exist yet, while the AI that had just done the work — and knows what matters —
+//? had no say at all. Now the emitting stage shapes its own handover (`handoverPrompt`) and the
+//? receiving stage simply gets it. There is nothing here to configure.
+//?
+//? CarryOver is previous-AI output, so every non-empty field keeps its OWN untrusted-data block: this
+//? is the prompt-injection boundary between two stages, and it did not move.
+export function renderIncomingHandover(envelope: CarryOverEnvelope | null): string {
+  if (!envelope) return '';
+  const parts: string[] = [];
+  const field = (label: string, key: string, content: string): void => {
+    if (content.trim().length === 0) return;
+    parts.push(`${label}:
+${renderUntrustedContext({ provenance: `previous AI CarryOver field: ${key}`, content, maxChars: 6000 })}`);
   };
-  return template.replaceAll(/\{\{(summary|changedFiles|openQuestions|commitHash)\}\}/g, (_match, key: string) => {
-    const content = values[key] ?? '';
-    return content.length > 0
-      ? renderUntrustedContext({ provenance: `previous AI CarryOver field: ${key}`, content, maxChars: 6000 })
-      : '';
-  });
+  field('What the previous stage did', 'summary', envelope.summary);
+  field('Files it touched', 'changedFiles', envelope.changedFiles.join(NEWLINE));
+  field('Questions it left open', 'openQuestions', envelope.openQuestions.join(NEWLINE));
+  if ((envelope.commitHash ?? '').trim().length > 0) parts.push(`The ticket's context is pinned to commit ${(envelope.commitHash ?? '').trim()}.`);
+  if (parts.length === 0) return '';
+  return `## Handover from the previous stage
+
+${parts.join(NEWLINE + NEWLINE)}`;
 }

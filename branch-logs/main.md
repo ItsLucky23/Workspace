@@ -5765,3 +5765,43 @@ gat dat ik NIET gefikst heb:** die knop geeft de gebruiker geen enkel teken dat 
 13 wees-keys + 7 tips over de oude uit-stand verwijderd) · `skillsLayer` integratie **38/38** ·
 Playwright: nieuwe `skillsEditor.spec.ts` **2/2** (schrijven→heropenen→hernoemen→verwijderen, en een
 stage die een ongescopete skill aanzet + reload).
+
+## 2026-08-20 — Carry-over: de stage die klaar is schrijft de overdracht (ADR 0319)
+
+**Prompt van de gebruiker.** "Nu kunnen we een message met variabelen maar dit lijkt mij niet handig en
+ook to much om telkens op te zetten, misschien per stage gewoon een prompt die runt op het eind van
+iedere sessie." Plus: leg de /aibehaviour/tasks-pagina uit.
+
+**Eerst de premisse rechtgezet.** Het veld met `{{summary}}`-chips was de INKOMENDE kant — de openingszin
+van de vólgende stage. De eind-van-de-sessie-prompt bestond al (elke stage moet eindigen met een
+`ws-carryover`-blok, voorafgegaan door de done-guidance) maar was vast en onconfigureerbaar. De echte
+fout zat dieper: er werd aan de verkeerde partij gevraagd. De AI die het werk net gedaan heeft weet wat
+het doorgeven waard is; de gebruiker die maanden eerder een stage instelde niet.
+
+**Wat er nu staat.** `PipelineStage.promptTemplate` → `handoverPrompt`: gewone taal, geen slots, draait
+aan het EIND en bepaalt de `summary` die deze stage voor de volgende schrijft. De inkomende kant wordt
+automatisch samengesteld (`renderIncomingHandover`) met wat de vorige stage deed, welke bestanden,
+welke vragen open staan en de vastgezette commit. Leeg is een geldige waarde en betekent "bepaal zelf".
+Per stage-soort een default, dus een vers project hoeft niets in te stellen.
+
+**Wat expliciet NIET veranderd is.** De envelope-vorm (auto-escalatie leest `complexityScore`, het board
+leest `changedFiles`, W2-advisories rijden mee in `openQuestions`) en de prompt-injectiegrens: elk veld
+zit nog steeds in zijn eigen `renderUntrustedContext`-blok met een cap van 6.000 tekens. Dat is een
+prompt-wijziging, geen contract-wijziging.
+
+**Migratie (schema-stap 7), niets stilzwijgend kwijt.** Een template was een taakinstructie mét slots
+aan elkaar geplakt. De slots (en de kale labels die ze inleidden) worden gestript; de prose die
+overblijft gaat naar `customInstructions` — letterlijk "wat deze stage moet doen" — tenzij die er al in
+staat. De geseede templates parafraseren hun eigen customInstructions, dus voor een onaangeraakt project
+voegt het niets toe. Live gedraaid: **9591 stage-rijen**, tweede run is een no-op.
+
+**Uitleg gevraagd over Eigen taken (geen wijziging).** Een opgeslagen prompt met een naam die tekst
+genereert en verder niets doet: kan bewust niets in de werkruimte veranderen (B-23), draait op de
+`custom-generate`-provider en niet op de Claude-Code-CLI, en krijgt wél de werkruimte-instructie,
+uitvoertaal, productindex en de skills met bereik `Eigen taken`, maar géén repo/ticket/document-context.
+Owner-keuze: nu laten staan, later beslissen.
+
+**Verificatie.** `tsc` ✅ · `lint` ✅ · `ai:lint` ✅ · unit **124/124** (nieuw
+`carryOverMigration.test.mts`, 23 asserties op de stripper + de stap-registratie) · `stageEngine`
+**40/40** (de untrusted-blok-asserties zijn meeverhuisd naar `renderIncomingHandover`) · Playwright
+**40/40** (nieuw `handoverPrompt.spec.ts`: chips echt weg, default aanwezig, veld overleeft een reload).

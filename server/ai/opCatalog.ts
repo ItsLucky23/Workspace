@@ -410,8 +410,8 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   },
   'save-stage-config': {
     mode: 'enabled',
-    hint: "edit ONE pipeline stage's config: rename it, set its prompt/system-prompt/custom instructions/definition-of-done, toggle AI on it, or toggle its human approval gate. params: stageId (from the stage list) + only the fields to change (name?, promptTemplate?, systemPrompt?, customInstructions?, definitionOfDone?, aiEnabled?, gateForApproval?)",
-    params: { stageId: { kind: 'stageId', required: true }, name: { kind: 'string' }, promptTemplate: { kind: 'string' }, systemPrompt: { kind: 'string' }, customInstructions: { kind: 'string' }, definitionOfDone: { kind: 'string' }, aiEnabled: { kind: 'boolean' }, gateForApproval: { kind: 'boolean' } },
+    hint: "edit ONE pipeline stage's config: rename it, set its system-prompt/custom instructions/definition-of-done/handover instruction, toggle AI on it, or toggle its human approval gate. params: stageId (from the stage list) + only the fields to change (name?, systemPrompt?, customInstructions?, definitionOfDone?, handoverPrompt?, aiEnabled?, gateForApproval?). handoverPrompt shapes what this stage tells the NEXT stage.",
+    params: { stageId: { kind: 'stageId', required: true }, name: { kind: 'string' }, handoverPrompt: { kind: 'string' }, systemPrompt: { kind: 'string' }, customInstructions: { kind: 'string' }, definitionOfDone: { kind: 'string' }, aiEnabled: { kind: 'boolean' }, gateForApproval: { kind: 'boolean' } },
   },
   //? Excluded on purpose: these carry an API KEY, and removing one rewires which backend runs a
   //? feature. An assistant that can propose "store this credential" is one that can be talked into

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (236)
+## Decisions (237)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -249,6 +249,7 @@
 | 0316 | One first-run surface on the board, and it collapses rather than disappears | 🟢 accepted | onboarding, ux, ia | — | `docs/decisions/0316-one-first-run-surface-on-the-board-and-it-collapses-rather-than-disappears.md` |
 | 0317 | The runtime is a list of processes, not one command | 🟢 accepted | runtime, preview, containers, terminals, ux | — | `docs/decisions/0317-the-runtime-is-a-list-of-processes-not-one-command.md` |
 | 0318 | A skill is switched on by the stage that wants it, not globally | 🟢 accepted | ai, skills, pipeline, ux | — | `docs/decisions/0318-a-skill-is-switched-on-by-the-stage-that-wants-it-not-globally.md` |
+| 0319 | The handover is written by the stage that finishes, not the one that starts | 🟢 accepted | pipeline, prompts, ux, orchestrator | — | `docs/decisions/0319-the-handover-is-written-by-the-stage-that-finishes-not-the-one-that-starts.md` |
 
 ## Summaries
 
@@ -2167,6 +2168,14 @@ The project owns a **list** of runtime processes. Each entry starts in the ticke
 *Apply points are the only global switch, and a pipeline stage picks its own skills by id.**
 
 → `docs/decisions/0318-a-skill-is-switched-on-by-the-stage-that-wants-it-not-globally.md`
+
+### 0319 — The handover is written by the stage that finishes, not the one that starts
+
+**0319** · accepted · tags: pipeline, prompts, ux, orchestrator · 2026-08-20
+
+*The editable half of the carry-over moves from the receiving end to the emitting end.**
+
+→ `docs/decisions/0319-the-handover-is-written-by-the-stage-that-finishes-not-the-one-that-starts.md`
 
 ## Code governed by decisions
 

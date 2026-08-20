@@ -16,7 +16,7 @@ import { Collapse } from '../../_components/motion';
 import { Disclosure, IconButton, InfoDot, InfoTip, Segmented, Toggle, WsButton } from '../../_components/primitives';
 import { EmptyPicker } from '../../_components/SetupNotice';
 import { resolveAiLayers } from '../../_functions/aiLayers';
-import { CARRY_VARS, COMMAND_CATALOG, HOOK_CATALOG, NETWORK_CATEGORIES } from '../../_data/seed';
+import { COMMAND_CATALOG, HOOK_CATALOG, NETWORK_CATEGORIES } from '../../_data/seed';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { StageBlueprint } from './presets';
 import type { CommandMode, NetworkMode, PipelineStageCfg, StageEffort, StageModelChoice, StageModelTier, ToolTier } from '../../_data/types';
@@ -517,6 +517,15 @@ export function ProcessTab({ s, update }: TabProps) {
 }
 
 /* ----------------------------------------------------------------- Carry-over */
+//? One field, at the end of the chain instead of the start (owner decision 2026-08-20).
+//?
+//? What was here: a list of `{{summary}}` / `{{changedFiles}}` chips you clicked into a template, so you
+//? pre-wrote the next stage's opening sentence with holes in it — for output that did not exist yet.
+//? Two things were wrong with that. It was work you had to redo per stage on every project, and it asked
+//? the wrong party: the AI that just finished the work knows what is worth passing on, and had no say.
+//?
+//? Now the receiving end is composed automatically (renderIncomingHandover) and the only thing you set is
+//? what THIS stage should tell the next one.
 export function CarryoverTab({ s, update, bp }: TabProps) {
   const translate = useTranslator();
   const { activeWorkspace, aiSkills } = useWorkspaces();
@@ -525,36 +534,23 @@ export function CarryoverTab({ s, update, bp }: TabProps) {
     <div className="flex flex-col gap-4 max-w-3xl">
       {/* flow */}
       <div className="flex items-center gap-2 text-xs">
-        <span className="rounded-lg bg-container2 px-2.5 py-1.5 text-common">{translate({ key: 'workspaces.pipeline.carryFlowEmit' })}</span>
+        <span className="rounded-lg bg-primary/12 px-2.5 py-1.5 text-primary font-medium">{translate({ key: 'workspaces.pipeline.carryFlowEmit' })}</span>
         <Icon name="angle-right" className="text-muted" />
-        <span className="rounded-lg bg-primary/12 px-2.5 py-1.5 text-primary font-medium">{translate({ key: 'workspaces.pipeline.carryFlowInject' })}</span>
-        <Icon name="angle-right" className="text-muted" />
-        <span className="rounded-lg bg-container2 px-2.5 py-1.5 text-common">{translate({ key: 'workspaces.pipeline.carryFlowSameShape' })}</span>
-      </div>
-
-      <div>
-        <FieldLabel title={translate({ key: 'workspaces.pipeline.incomingVariables' })} hint={translate({ key: 'workspaces.pipeline.incomingVariablesHint' })} />
-        <div className="flex flex-col gap-1.5">
-          {CARRY_VARS.map((v) => (
-            <div key={v.token} className="flex items-center gap-3 rounded-xl border border-container1-border px-3 py-2">
-              <button type="button" onClick={() => { update({ promptTemplate: `${s.promptTemplate}${s.promptTemplate && !s.promptTemplate.endsWith('\n') ? ' ' : ''}${v.token}` }); }} className="rounded-md bg-container2 px-2 py-1 text-xs font-mono text-primary hover:bg-container2-hover cursor-pointer shrink-0">{v.token}</button>
-              <span className="text-xs text-muted">{v.desc}</span>
-            </div>
-          ))}
-        </div>
+        <span className="rounded-lg bg-container2 px-2.5 py-1.5 text-common">{translate({ key: 'workspaces.pipeline.carryFlowInject' })}</span>
       </div>
 
       <div>
         <FieldLabel
-          title={translate({ key: 'workspaces.pipeline.promptTemplate' })}
-          hint={translate({ key: 'workspaces.pipeline.promptTemplateHint' })}
+          title={translate({ key: 'workspaces.pipeline.handoverPrompt' })}
+          hint={translate({ key: 'workspaces.pipeline.handoverPromptHint' })}
           note={<LayerNote layers={carryLayers} id="carryOver" />}
-          info={<><LayerTip layers={carryLayers} id="carryOver" stageId={s.id} /><UseDefault value={s.promptTemplate} fallback={bp?.promptTemplate} onUse={(text) => { update({ promptTemplate: text }); }} /><InfoTip align="start" title={translate({ key: 'workspaces.tips.pipeline.promptTemplateTitle' })} body={translate({ key: 'workspaces.tips.pipeline.promptTemplateBody' })} /></>}
+          info={<><LayerTip layers={carryLayers} id="carryOver" stageId={s.id} /><UseDefault value={s.handoverPrompt} fallback={bp?.handoverPrompt} onUse={(text) => { update({ handoverPrompt: text }); }} /><InfoTip align="start" title={translate({ key: 'workspaces.tips.pipeline.handoverTitle' })} body={translate({ key: 'workspaces.tips.pipeline.handoverBody' })} /></>}
         />
-        <textarea rows={5} value={s.promptTemplate} onChange={(e) => { update({ promptTemplate: e.target.value }); }} className={areaCls} placeholder="Implement the plan.\nPlan: {{summary}}" />
+        <textarea rows={4} value={s.handoverPrompt} onChange={(e) => { update({ handoverPrompt: e.target.value }); }} className={areaCls} placeholder={translate({ key: 'workspaces.pipeline.handoverPromptPlaceholder' })} />
       </div>
 
-      {/* KISS — the read-only emit schema is reference material, one tap away instead of always on screen. */}
+      {/* Reference, not configuration: the shape is fixed, and seeing it answers "what does the next
+          stage actually receive?" without implying there is something here to set. */}
       <Disclosure summary={translate({ key: 'workspaces.pipeline.emitDisclosure' })} className="bg-container2/20">
         <div className="text-xs text-muted mb-2">{translate({ key: 'workspaces.pipeline.outgoingEmitHint' })}</div>
         <pre className="rounded-xl border border-container1-border bg-container2/40 p-3 text-xs font-mono text-common overflow-x-auto">{EMIT_SCHEMA_SAMPLE}</pre>

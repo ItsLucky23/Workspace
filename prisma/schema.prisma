@@ -906,7 +906,16 @@ model PipelineStage {
   roleKey            String            @default("code")       // 04 §3 (03 §3) — the AgentRole plugin binding
   systemPrompt       String            @default("")           // D2/D17 — layered base prompt
   customInstructions String            @default("")
-  promptTemplate     String            @default("")           // carry-over template with {{chips}}
+  //? DEPRECATED (owner decision 2026-08-20) — the old INCOMING carry-over template with {{chips}}.
+  //? Read ONLY by the one-time migration in server/db/schemaVersion.ts, which folds its task text into
+  //? customInstructions; the incoming handover is now composed automatically. Drop the column once no
+  //? deployment can still be on a pre-migration schema.
+  promptTemplate     String            @default("")
+  //? What this stage tells the NEXT one, in plain language. It rides at the END of the session, next
+  //? to the (fixed) ws-carryover JSON block it shapes the `summary` of. Replaced the incoming template:
+  //? the AI that just did the work knows what matters, so it writes the handover instead of the user
+  //? pre-writing a sentence with slots in it.
+  handoverPrompt     String            @default("")
   definitionOfDone   String            @default("")           // optional per-stage "done when…"; empty ⇒ the AI judges completion itself
 
   // --- V1_SCOPE §3.2 per-stage flow toggles ---

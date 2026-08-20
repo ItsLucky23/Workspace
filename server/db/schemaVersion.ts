@@ -16,6 +16,8 @@ import type { PrismaClient } from '@prisma/client';
 
 import { tryCatch } from '@luckystack/core';
 
+import { isStageKind, stageBlueprint } from '../bootstrap/defaultPipeline';
+
 export interface BackfillStep {
   version: number;
   name: string;
@@ -138,7 +140,53 @@ export const BACKFILL_STEPS: BackfillStep[] = [
       return normalized.count + migrated;
     },
   },
+  {
+    version: 7,
+    name: 'carry-over-template-to-handover-prompt',
+    //? Owner decision 2026-08-20 — `PipelineStage.promptTemplate` is gone. It was the INCOMING side: a
+    //? sentence the user pre-wrote with `{{summary}}`-style slots for output that did not exist yet.
+    //? The incoming handover is composed automatically now, and the one editable half moved to the END
+    //? of the session (`handoverPrompt`: what THIS stage tells the next one).
+    //?
+    //? Nothing is silently dropped. A template was two things glued together — a task instruction
+    //? ("Implement the plan.") and slots. The slots become noise, but the task instruction is real user
+    //? intent and belongs with `customInstructions`, which is exactly "what this stage should do". So:
+    //? strip the slots, and append whatever prose survives to customInstructions unless it is already
+    //? in there (the seeded templates paraphrase their own customInstructions, so most add nothing).
+    run: async (prisma) => {
+      const rows = await prisma.pipelineStage.findMany({ where: { promptTemplate: { not: '' } }, select: { id: true, kind: true, promptTemplate: true, customInstructions: true, handoverPrompt: true } }); // luckystack-allow tenant-scope: host-wide one-time migration of a retired field
+      let moved = 0;
+      for (const row of rows) {
+        const prose = stripCarrySlots(row.promptTemplate);
+        const keep = prose.length > 0 && !row.customInstructions.includes(prose);
+        const seeded = stageBlueprint(isStageKind(row.kind) ? row.kind : 'code').handoverPrompt;
+        await prisma.pipelineStage.update({ // luckystack-allow tenant-scope: updates only the ids enumerated above
+          where: { id: row.id },
+          data: {
+            promptTemplate: '',
+            ...(keep ? { customInstructions: [row.customInstructions.trim(), prose].filter((s) => s.length > 0).join('\n\n') } : {}),
+            ...(row.handoverPrompt.trim().length === 0 && seeded.length > 0 ? { handoverPrompt: seeded } : {}),
+          },
+        });
+        moved += 1;
+      }
+      if (moved > 0) console.log(`[schema] carry-over: ${String(moved)} stage template(s) folded into instructions + handover`);
+      return moved;
+    },
+  },
 ];
+
+//? Drop `{{token}}` slots and any line that was only a label for one ("Plan:", "Touched files:").
+//? What is left is the user's own prose. Exported for the migration test.
+export function stripCarrySlots(template: string): string {
+  return template
+    .split(/\r?\n/)
+    .map((line) => line.replaceAll(/\{\{\s*[\w.-]+\s*\}\}/g, '').trim())
+    //? A line that held nothing but a slot (or a slot behind a label) carried no instruction.
+    .filter((line) => line.length > 0 && !/^[\w ]{0,30}:$/.test(line))
+    .join('\n')
+    .trim();
+}
 
 export const CURRENT_SCHEMA_VERSION = Math.max(0, ...BACKFILL_STEPS.map((s) => s.version));
 

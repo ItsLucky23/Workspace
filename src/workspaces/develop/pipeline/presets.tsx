@@ -32,7 +32,7 @@ export type PresetKey = (typeof PRESET_KEYS)[number];
 export interface StageBlueprint {
   systemPrompt: string;
   customInstructions: string;
-  promptTemplate: string;
+  handoverPrompt: string;
   definitionOfDone: string;
   model: 'haiku' | 'sonnet' | 'opus';
   effort: 'low' | 'medium' | 'high';
@@ -101,7 +101,7 @@ export function emptyPromptFields(stage: PipelineStageCfg, data: PipelinePresetD
   const pairs: [string, string][] = [
     [stage.systemPrompt ?? '', bp.systemPrompt],
     [stage.customInstructions, bp.customInstructions],
-    [stage.promptTemplate, bp.promptTemplate],
+    [stage.handoverPrompt, bp.handoverPrompt],
     [stage.definitionOfDone ?? '', bp.definitionOfDone],
   ];
   return pairs.filter(([value, fallback]) => value.trim().length === 0 && fallback.trim().length > 0).length;

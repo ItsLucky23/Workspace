@@ -105,7 +105,7 @@ export function applicableSkills(skills: AiSkillEntry[], applyPoint?: string): A
 export function resolveAiLayers({ workspace, skills, stage, applyPoint }: {
   workspace: Pick<Workspace, 'aiInstruction'>;
   skills: AiSkillEntry[];
-  stage?: Pick<PipelineStageCfg, 'systemPrompt' | 'customInstructions' | 'promptTemplate'>;
+  stage?: Pick<PipelineStageCfg, 'systemPrompt' | 'customInstructions' | 'handoverPrompt'>;
   applyPoint?: string;
 }): ResolvedAiLayer[] {
   const skillText = applicableSkills(skills, applyPoint)
@@ -118,7 +118,10 @@ export function resolveAiLayers({ workspace, skills, stage, applyPoint }: {
     skills: skillText,
     stageSystemPrompt: (stage?.systemPrompt ?? '').trim(),
     stageInstructions: (stage?.customInstructions ?? '').trim(),
-    carryOver: (stage?.promptTemplate ?? '').trim(),
+    //? Still called `carryOver` because that is the mechanism it belongs to, but the editable half moved
+    //? from the RECEIVING end (a template with slots) to the EMITTING end (what this stage hands over).
+    //? Position in the channel is unchanged: it rides with the stage's own system-prompt layer.
+    carryOver: (stage?.handoverPrompt ?? '').trim(),
   };
   const source: Record<AiLayerId, 'workspace' | 'stage'> = {
     workspace: 'workspace', skills: 'workspace', stageSystemPrompt: 'stage', stageInstructions: 'stage', carryOver: 'stage',

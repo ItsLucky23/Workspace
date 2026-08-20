@@ -1043,7 +1043,11 @@ export interface PipelineStageCfg {
   order: number;
   aiEnabled: boolean;
   customInstructions: string;
-  promptTemplate: string;            // carry-over template with {{chips}}
+  //? What this stage tells the NEXT one, in plain language — rendered at the END of the session, where
+  //? it shapes the `summary` of the ws-carryover block. Replaced a per-stage INCOMING template with
+  //? `{{summary}}` slots (owner decision 2026-08-20): the incoming handover is composed automatically,
+  //? because the AI that just did the work is the one that knows what is worth passing on.
+  handoverPrompt: string;
   definitionOfDone?: string;         // optional "done when…"; empty ⇒ the AI judges completion itself
   // --- field sweep (04b §13) / V1_SCOPE §3.2 ---
   systemPrompt?: string;             // D2/D17 — layered base prompt, distinct from customInstructions
