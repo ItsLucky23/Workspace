@@ -47,7 +47,7 @@ test.describe('layer tip', () => {
     await createWorkspace(page, `E2E PW LayerTipWs ${String(Date.now())}`);
     await expect(page.getByText('Welcome to Workspaces')).toBeHidden({ timeout: 30_000 });
 
-    await page.goto('/workspaces/workspace/aibehavior');
+    await page.goto('/workspaces/workspace/aibehavior/instructions');
     await expect(page.getByText('Workspace instruction').first()).toBeVisible();
     await expect(page.getByText('How this prompt is composed')).toBeHidden();
 
@@ -106,7 +106,10 @@ test.describe('layer tip', () => {
     await createWorkspace(page, `E2E PW AiConn ${String(Date.now())}`);
     await expect(page.getByText('Welcome to Workspaces')).toBeHidden({ timeout: 30_000 });
 
-    await page.goto('/workspaces/workspace/aibehavior');
+    //? ADR 0312 — the page is sectioned like the Repository tab, so the backends live at their own
+    //? address rather than five panels down a single column.
+    await page.goto('/workspaces/workspace/aibehavior/backends');
+    await expect(page).toHaveURL(/\/aibehavior\/backends$/);
 
     //? A fresh workspace has connected nothing — and says so, rather than showing panels that imply
     //? a backend is set up. The page used to hardcode a Gemini panel and an OpenAI panel.

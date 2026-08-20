@@ -1539,7 +1539,8 @@
       "auditAction": "Action",
       "auditWhen": "When",
       "starterDescriptionLocked": "Curated conventions the AI follows in every stage — manage and toggle them on the Sources page.",
-      "manageInSources": "Manage context docs in Sources"
+      "manageInSources": "Manage context docs in Sources",
+      "providerDefault": "Default"
     },
     "services": {
       "title": "Services",
@@ -3548,6 +3549,12 @@
       "err_unknown": "Could not connect.",
       "kind_subscription": "Subscription",
       "kind_api-key": "API key"
+    },
+    "aiSections": {
+      "instructions": "Instructions",
+      "backends": "Backends",
+      "skills": "Skills",
+      "tasks": "Custom tasks"
     }
   }
 }

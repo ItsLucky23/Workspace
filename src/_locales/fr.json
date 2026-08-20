@@ -1539,7 +1539,8 @@
       "auditAction": "Action",
       "auditWhen": "Quand",
       "starterDescriptionLocked": "Conventions organisées que l'IA suit à chaque étape — gérez-les et activez-les sur la page Sources.",
-      "manageInSources": "Gérer les documents de contexte dans Sources"
+      "manageInSources": "Gérer les documents de contexte dans Sources",
+      "providerDefault": "Par défaut"
     },
     "services": {
       "title": "Services",
@@ -3548,6 +3549,12 @@
       "err_unknown": "Connexion impossible.",
       "kind_subscription": "Abonnement",
       "kind_api-key": "Clé API"
+    },
+    "aiSections": {
+      "instructions": "Instructions",
+      "backends": "Backends",
+      "skills": "Compétences",
+      "tasks": "Tâches perso"
     }
   }
 }

@@ -5693,3 +5693,29 @@ naar `aiProviders.test.mts` in plaats van stilzwijgend te verdwijnen.
 
 **Verificatie.** `tsc` ✅ · `lint` ✅ · `ai:lint` ✅ · `build` ✅ · unit **123/123** (nieuw
 `aiProviders.test.mts`, 71 asserties) · sweep **456/456** · Playwright **36/36**.
+
+## 2026-08-20 — AI-pagina opgesplitst in secties (zoals de Repository-tab)
+
+**Prompt van de gebruiker.** "Misschien ook de aibehaviour pagina UI opsplitsen met sub-categorieën
+zoals we ook met de repository page hebben."
+
+**Zes gestapelde panelen zijn vier secties geworden**, met dezelfde `PageSections` die de
+Repository-tab gebruikt — dus elke sectie is zijn eigen adres (`/workspaces/workspace/aibehavior/backends`),
+linkbaar en overleefbaar bij een refresh.
+
+- **Instructies** — werkruimte-instructie, uitvoertaal én de autonomie-dial. Autonomie staat er bewust
+  bij in plaats van apart: beide beantwoorden "hoe gedraagt de AI zich hier", en een sectie met één
+  dial erin leest als een vergissing.
+- **Backends** — gekoppelde AI's, koppelen, én de per-feature-routing. Routing hoort hier omdat hij
+  zonder koppelingen betekenisloos is: hij kiest tussen wat je hebt aangesloten.
+- **Vaardigheden** — de instructieblokken.
+- **Eigen taken** — de custom AI-tasks.
+
+**Onderweg een leftover gevonden.** De routing-dropdown stond nog op een hardgecodeerde
+`PROVIDER_OPTIONS = [default, Claude, Gemini]`, terwijl de catalogus inmiddels acht backends telt. Erger:
+je kon een feature routeren naar een backend die je nooit gekoppeld hebt, wat stil faalt bij dispatch.
+De opties komen nu uit de daadwerkelijk GEKOPPELDE backends, plus 'Standaard'.
+
+**Verificatie.** `tsc` ✅ · `lint` ✅ · `ai:lint` ✅ · `build` ✅ · unit **123/123** · Playwright
+**37/37** (nieuwe spec: sectieklik verandert de URL, en een getypt adres landt op díe sectie in plaats
+van op de eerste). De sweep is niet opnieuw gedraaid — deze wijziging raakt geen route.

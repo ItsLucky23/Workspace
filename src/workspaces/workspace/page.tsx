@@ -1179,7 +1179,9 @@ const OUTPUT_LANGUAGES: { id: string; label: string }[] = [
 //? P1 — the AI features where switching provider (Claude ↔ Gemini) is meaningful (non-coding reasoning/
 //? creative; the coding + chat features stay on the subscription-billed Claude PTY by design).
 const PROVIDER_FEATURES = ['script', 'docs-generate', 'studio-designer', 'studio-marketer', 'designer-theme', 'interviewer', 'mr-review', 'root-cause', 'plan-critique'];
-const PROVIDER_OPTIONS = [{ id: 'default', item: 'Default' }, { id: 'claude-cli', item: 'Claude' }, { id: 'gemini-api', item: 'Gemini' }];
+//? The routing options are built from the CONNECTED backends, not a hardcoded pair. This list still
+//? read `Claude | Gemini` after the catalog grew to eight, and routing a feature at a backend nobody
+//? has connected is a dead end that fails silently at dispatch.
 
 //? #92 — a custom task's prompt template can carry {{var}} placeholders; extract the distinct names so we
 //? can ask the user to fill them before running (else the task renders its placeholders empty).
@@ -1309,7 +1311,7 @@ function SkillsSection() {
 
 function AiBehaviorTab() {
   const translate = useTranslator();
-  const { activeWorkspace, saveAiInstruction, aiOverrides, saveAiProvider, saveAutonomy, customTasks, saveCustomTask, runCustomTask, deleteCustomTask, aiSkills, navigate } = useWorkspaces();
+  const { activeWorkspace, saveAiInstruction, aiOverrides, aiConnections, saveAiProvider, saveAutonomy, customTasks, saveCustomTask, runCustomTask, deleteCustomTask, aiSkills, navigate } = useWorkspaces();
   const [newTaskName, setNewTaskName] = useState('');
   const [newTaskTemplate, setNewTaskTemplate] = useState('');
   const autonomyItems = (['gate-every', 'gate-key-stages', 'full-auto'] as const).map((id) => ({ id, value: id, item: translate({ key: `workspaces.workspaceSettings.autonomy.${id}` }) }));
@@ -1334,16 +1336,32 @@ function AiBehaviorTab() {
   const layers = resolveAiLayers({ workspace: activeWorkspace, skills: aiSkills });
   const workspaceTip = useLayerTip(layers, 'workspace');
   const languageOptions = OUTPUT_LANGUAGES.map((l) => ({ id: l.id, value: l.id, item: l.label }));
-  const providerItems = PROVIDER_OPTIONS.map((p) => ({ id: p.id, value: p.id, item: p.item }));
+  //? 'default' plus one entry per DISTINCT connected backend — a feature can only be routed somewhere
+  //? that can actually answer it.
+  const providerItems = [
+    { id: 'default', value: 'default', item: translate({ key: 'workspaces.workspaceSettings.providerDefault' }) },
+    ...[...new Map(aiConnections.map((c) => [c.providerId, c.label])).entries()].map(([id, label]) => ({ id, value: id, item: label })),
+  ];
   const providerFor = (feature: string): string => aiOverrides.find((o) => o.feature === feature)?.providerId ?? 'default';
   //? Provider health used to be fetched here for a row of green/red chips. A connection now carries
   //? its OWN verified/failed state, tested on demand against the real backend — which answers the
   //? question the chips only gestured at ("a key is present" vs "this key works").
+  //? ADR 0312 — the same sectioned shape the Repository tab uses. This page had six stacked panels:
+  //? instruction, autonomy, connected backends, skills, custom tasks and per-feature routing, all in
+  //? one column. Each is a separate job, and scrolling past five of them to reach the sixth is what
+  //? made the page feel like a wall. Each section is its own URL, so a deep link lands on it.
+  //?
+  //? Autonomy sits WITH the instruction rather than alone: both answer "how does the AI behave here",
+  //? and a section holding one dial is a section that reads as a mistake. Routing sits with the
+  //? backends, because it is meaningless without them — it chooses among the ones you connected.
   return (
-    //? `mx-auto w-full` like every sibling tab, and one step wider: this is the densest tab on the page
-    //? (a six-row instruction textarea, provider settings, skills, custom tasks). It used to hug the
-    //? left edge at half width, which is what made it read as a broken layout rather than a narrow one.
-    <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
+    <PageSections
+      ariaLabel={translate({ key: 'workspaces.workspaceSettings.tabAi' })}
+      sections={[
+        {
+          id: 'instructions', label: translate({ key: 'workspaces.aiSections.instructions' }), icon: 'comments',
+          body: (
+            <div className="max-w-3xl w-full flex flex-col gap-4">
       {/* The composition is stated where it is edited — behind the "?" ON the field (ADR 0311 for the
           two-channel model). The full "what the AI actually receives" block used to sit here too; it
           is the same information in the container the owner asked twice to be rid of, and it belongs
@@ -1377,7 +1395,6 @@ function AiBehaviorTab() {
           control={<Dropdown width="full" value={languageOptions.find((o) => o.id === language)} items={languageOptions} onChange={(it) => { setLanguage(String(it.id)); }} />}
         />
       </FormSection>
-
       {/* A4 — autonomy dial: how often the human is asked to approve a stage. */}
       <FormSection title={translate({ key: 'workspaces.workspaceSettings.autonomyTitle' })}>
         {/* This dial overrides each stage's own "ask for approval" mark at the stage EXIT only
@@ -1404,17 +1421,54 @@ function AiBehaviorTab() {
           control={<Dropdown width="full" value={autonomyItems.find((a) => a.id === autonomyLevel)} items={autonomyItems} onChange={(it) => { saveAutonomy(String(it.id)); }} />}
         />
       </FormSection>
-
+            </div>
+          ),
+        },
+        {
+          id: 'backends', label: translate({ key: 'workspaces.aiSections.backends' }), icon: 'robot',
+          body: (
+            <div className="max-w-3xl w-full flex flex-col gap-4">
       {/* ADR 0007 — the general AI setup, rendered from the server's provider catalog: status, key,
           a PREDEFINED model list, endpoint and temperature, per backend. It used to be a status dot
           plus three free-text Gemini fields, with the key itself on the Content settings page next to
           ElevenLabs and Suno — so this page read as "Gemini's settings" and the one thing you had to
           do was somewhere else entirely. Media providers stay with media; this one runs the product. */}
       <AiProvidersSection />
-
+      {/* P1 — which AI backend runs each feature (persists on change). */}
+      <FormSection
+        title={translate({ key: 'workspaces.workspaceSettings.aiProviderTitle' })}
+        desc={translate({ key: 'workspaces.workspaceSettings.aiProviderDesc' })}
+      >
+        {PROVIDER_FEATURES.map((f) => {
+          //? #82 — human label + one-line description per feature (no raw slugs). The camelCase key
+          //? maps the internal slug to a translation entry under workspaceSettings.providerFeature.
+          const camel = f.replaceAll(/-([a-z])/g, (_m, c: string) => c.toUpperCase());
+          return (
+            <SettingRow
+              key={f}
+              label={translate({ key: `workspaces.workspaceSettings.providerFeature.${camel}` })}
+              help={translate({ key: `workspaces.workspaceSettings.providerFeatureDesc.${camel}` })}
+              control={<Dropdown width="full" size="sm" value={providerItems.find((p) => p.id === providerFor(f))} items={providerItems} onChange={(it) => { saveAiProvider(f, String(it.id)); }} />}
+            />
+          );
+        })}
+      </FormSection>
+            </div>
+          ),
+        },
+        {
+          id: 'skills', label: translate({ key: 'workspaces.aiSections.skills' }), icon: 'wand-magic-sparkles',
+          body: (
+            <div className="max-w-3xl w-full flex flex-col gap-4">
       {/* SK1 — the universal AI-skills layer (humanizer, tone-of-voice, …). */}
       <SkillsSection />
-
+            </div>
+          ),
+        },
+        {
+          id: 'tasks', label: translate({ key: 'workspaces.aiSections.tasks' }), icon: 'list-check',
+          body: (
+            <div className="max-w-3xl w-full flex flex-col gap-4">
       {/* E5 — user-defined custom AI tasks: a named prompt-template, run on demand (output only). */}
       <FormSection
         title={translate({ key: 'workspaces.workspaceSettings.customTasksTitle' })}
@@ -1442,27 +1496,11 @@ function AiBehaviorTab() {
           </div>
         </div>
       </FormSection>
-
-      {/* P1 — which AI backend runs each feature (persists on change). */}
-      <FormSection
-        title={translate({ key: 'workspaces.workspaceSettings.aiProviderTitle' })}
-        desc={translate({ key: 'workspaces.workspaceSettings.aiProviderDesc' })}
-      >
-        {PROVIDER_FEATURES.map((f) => {
-          //? #82 — human label + one-line description per feature (no raw slugs). The camelCase key
-          //? maps the internal slug to a translation entry under workspaceSettings.providerFeature.
-          const camel = f.replaceAll(/-([a-z])/g, (_m, c: string) => c.toUpperCase());
-          return (
-            <SettingRow
-              key={f}
-              label={translate({ key: `workspaces.workspaceSettings.providerFeature.${camel}` })}
-              help={translate({ key: `workspaces.workspaceSettings.providerFeatureDesc.${camel}` })}
-              control={<Dropdown width="full" size="sm" value={providerItems.find((p) => p.id === providerFor(f))} items={providerItems} onChange={(it) => { saveAiProvider(f, String(it.id)); }} />}
-            />
-          );
-        })}
-      </FormSection>
-    </div>
+            </div>
+          ),
+        },
+      ]}
+    />
   );
 }
 

@@ -1539,7 +1539,8 @@
       "auditAction": "Aktion",
       "auditWhen": "Wann",
       "starterDescriptionLocked": "Kuratierte Konventionen, denen die KI in jeder Phase folgt — verwalte und schalte sie auf der Sources-Seite.",
-      "manageInSources": "Kontextdokumente in Sources verwalten"
+      "manageInSources": "Kontextdokumente in Sources verwalten",
+      "providerDefault": "Standard"
     },
     "services": {
       "title": "Services",
@@ -3548,6 +3549,12 @@
       "err_unknown": "Verbinden fehlgeschlagen.",
       "kind_subscription": "Abonnement",
       "kind_api-key": "API-Schlüssel"
+    },
+    "aiSections": {
+      "instructions": "Anweisungen",
+      "backends": "Backends",
+      "skills": "Fähigkeiten",
+      "tasks": "Eigene Aufgaben"
     }
   }
 }

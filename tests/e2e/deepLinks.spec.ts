@@ -60,6 +60,31 @@ test.describe('deep links', () => {
     await expect(page).toHaveURL(/\/workspaces\/develop\/pipeline\/stage-\d+-\d+\/general$/);
   });
 
+
+  test('the AI tab is sectioned, and each section is its own address', async ({ authedPage }) => {
+    const page = authedPage;
+    await createWorkspace(page, `E2E PW AiSections ${String(Date.now())}`);
+    await expect(page.getByText('Welcome to Workspaces')).toBeHidden({ timeout: 30_000 });
+
+    await page.goto('/workspaces/workspace/aibehavior');
+    //? Six stacked panels became four sections, the same shape the Repository tab uses. Clicking one
+    //? must change the URL — a rail that only swaps the body leaves the section unlinkable, which is
+    //? the defect ADR 0312 removed everywhere else.
+    //? role="tab": the section rail is a real tablist (ADR 0312's accessibility pass), the same as
+    //? the Repository tab's sections.
+    await page.getByRole('tab', { name: 'Backends', exact: true }).click();
+    await expect(page).toHaveURL(/\/workspaces\/workspace\/aibehavior\/backends$/);
+    await expect(page.getByRole('heading', { name: 'Connected AIs' })).toBeVisible();
+
+    await page.getByRole('tab', { name: 'Custom tasks', exact: true }).click();
+    await expect(page).toHaveURL(/\/workspaces\/workspace\/aibehavior\/tasks$/);
+
+    //? …and a typed address lands on that section directly, not on the first one.
+    await page.goto('/workspaces/workspace/aibehavior/skills');
+    await expect(page).toHaveURL(/\/aibehavior\/skills$/);
+    await expect(page.getByRole('heading', { name: 'Connected AIs' })).toHaveCount(0);
+  });
+
   test('the workspace AI tip links to a real stage tab rather than dropping it', async ({ authedPage }) => {
     const page = authedPage;
     await createWorkspace(page, `E2E PW TipTab ${String(Date.now())}`);

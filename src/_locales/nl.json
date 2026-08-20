@@ -1539,7 +1539,8 @@
       "auditAction": "Actie",
       "auditWhen": "Wanneer",
       "starterDescriptionLocked": "Doordachte richtlijnen die de AI in elke fase volgt — beheer en schakel ze op de Sources-pagina.",
-      "manageInSources": "Beheer contextdocumenten in Sources"
+      "manageInSources": "Beheer contextdocumenten in Sources",
+      "providerDefault": "Standaard"
     },
     "services": {
       "title": "Services",
@@ -3548,6 +3549,12 @@
       "err_unknown": "Koppelen is niet gelukt.",
       "kind_subscription": "Abonnement",
       "kind_api-key": "API-sleutel"
+    },
+    "aiSections": {
+      "instructions": "Instructies",
+      "backends": "Backends",
+      "skills": "Vaardigheden",
+      "tasks": "Eigen taken"
     }
   }
 }
