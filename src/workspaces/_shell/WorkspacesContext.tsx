@@ -288,8 +288,7 @@ export interface WorkspacesCtx {
   deleteOutputTemplate: (templateId: string) => void;
   //? SK1 — the universal AI-skills layer (workspace-scoped instruction blocks injected into AI runs).
   aiSkills: AiSkillEntry[];
-  saveAiSkill: (input: { skillId?: string; name: string; instruction: string; examples?: string; applyPoints?: string[]; enabled?: boolean }) => void;
-  toggleAiSkill: (skillId: string, on: boolean) => void;
+  saveAiSkill: (input: { skillId?: string; name: string; instruction: string; examples?: string; applyPoints?: string[] }) => void;
   deleteAiSkill: (skillId: string) => void;
   resetAiSkill: (skillId: string) => void;
   //? DOC — the Documents module (AI output lands as aiDraft; applyDocumentDraft is the consent, B-23).

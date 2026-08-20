@@ -107,7 +107,7 @@ export function toStageConfig(s: DbPipelineStage): PipelineStageCfg {
     id: s.key, kind: asKind(s.kind), name: s.name, order: s.order, aiEnabled: s.aiEnabled,
     customInstructions: s.customInstructions, promptTemplate: s.promptTemplate, definitionOfDone: s.definitionOfDone,
     systemPrompt: s.systemPrompt, roleKey: s.roleKey, userEditable: s.userEditable, gateForApproval: s.gateForApproval,
-    skillKeys: s.skillKeys, sourceIds: s.sourceIds,
+    skillKeys: s.skillKeys, aiSkillIds: s.aiSkillIds, sourceIds: s.sourceIds,
     commands: s.commands.map((c): StageCommandCfg => ({
       id: c.id, pattern: c.pattern, mode: asCommandMode(c.mode), title: c.title ?? undefined, desc: c.desc ?? undefined, category: c.category ?? undefined,
     })),
@@ -701,7 +701,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       //? O5 — reusable output specs.
       outputTemplates: outputTemplateRows.map((t) => ({ id: t.id, name: t.name, format: t.format, watermarkPosition: t.watermarkPosition })),
       //? SK1 — instruction skills only; workflow capabilities use the sibling `skills` projection.
-      aiSkills: aiSkillRows.filter((s) => s.skillType === 'instruction').map((s) => ({ id: s.id, slug: s.slug, name: s.name, instruction: s.instruction, examples: s.examples, applyPoints: s.applyPoints, enabled: s.enabled, builtin: s.builtin })),
+      aiSkills: aiSkillRows.filter((s) => s.skillType === 'instruction').map((s) => ({ id: s.id, slug: s.slug, name: s.name, instruction: s.instruction, examples: s.examples, applyPoints: s.applyPoints, builtin: s.builtin })),
       //? DOC1 — the Documents module (assets JSON → typed list; unknown shapes dropped).
       documentTemplates,
       documents: documentRows.map((d) => ({

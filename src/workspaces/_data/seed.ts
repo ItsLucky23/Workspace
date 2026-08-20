@@ -584,7 +584,7 @@ function cfg(id: string, kind: StageKind, name: string, order: number, over: Par
     projectId: PRJ,
     id, kind, name, order, aiEnabled: true,
     customInstructions: '', promptTemplate: '',
-    skillKeys: [], sourceIds: ['summary'], commands: [],
+    skillKeys: [], aiSkillIds: [], sourceIds: ['summary'], commands: [],
     tools: [{ toolId: 'tool-mongodb', tier: 'ro' }],
     statuses: baseStatuses(),
     processes: [{ id: `${id}-claude`, name: 'claude', cwd: '/app', env: [], commands: ['npm run claude'] }],

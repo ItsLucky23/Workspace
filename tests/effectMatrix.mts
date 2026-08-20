@@ -50,7 +50,6 @@ export const EFFECT_MATRIX: Record<string, EffectRow> = {
   "ai-skill-delete": { status: "covered", ref: "tests/integration/skillsLayer.test.mts case asserting op 'ai-skill-delete' — deletes a user skill (Prisma count -> 0), lines 80-83" },
   "ai-skill-reset": { status: "covered", ref: "tests/integration/skillsLayer.test.mts case asserting op 'ai-skill-reset' — restores builtin name/instruction, lines 88-91" },
   "ai-skill-save": { status: "covered", ref: "src/workspaces/_sync/skillsControl_server_v1.tests.ts case 'happy path: ai-skill-save (no skillId) creates a Skill row (Prisma post-condition)' (lines 35-42); also tests/integration/skillsLayer.test.mts lines 71,76-77" },
-  "ai-skill-toggle": { status: "covered", ref: "tests/integration/skillsLayer.test.mts lines 73-74 — asserts Skill.enabled flips to true" },
   "apply-design-tokens": { status: "covered", ref: "tests/integration/applyDesignTokens.test.mts lines 118-128 — enqueueControlAction op apply-design-tokens then asserts real repo CSS file content changed via readRepoBranchFile" },
   "archive": { status: "covered", ref: "src/workspaces/_sync/archive_server_v1.tests.ts case 'happy path archives the ticket (Prisma post-condition after Conductor completion)'" },
   "asset-star": { status: "covered", ref: "tests/integration/surfacedOps.test.mts lines 96-99 — asserts library starred flips true then false" },

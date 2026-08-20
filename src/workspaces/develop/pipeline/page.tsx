@@ -35,7 +35,7 @@ function blankStage(projectId: string, id: string, name: string, order: number, 
     promptTemplate: bp?.promptTemplate ?? '', definitionOfDone: bp?.definitionOfDone ?? '',
     //? `['summary']` matches what `stage-create` writes server-side — an empty list here made the new
     //? stage flash with no carry-over source and then gain one on the refetch.
-    skillKeys: [], sourceIds: ['summary'], commands: [], tools: [],
+    skillKeys: [], aiSkillIds: [], sourceIds: ['summary'], commands: [], tools: [],
     statuses: [
       { key: 'needs-input', label: 'Needs input', kind: 'base' }, { key: 'busy', label: 'Busy', kind: 'base' },
       { key: 'stopped', label: 'Stopped', kind: 'base' }, { key: 'done', label: 'Done', kind: 'base' },

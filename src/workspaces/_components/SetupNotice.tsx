@@ -22,6 +22,10 @@ export interface SetupFix {
   cap: CapKey;        // the capability required — the button shows only when `can(cap)`
   view: WsView;       // the settings destination the button deep-links to
   tab?: string;       // the tab to pre-select on that page (via focusSetup)
+  //? The sub-section to open inside that tab. Without it a "go fix this" button can land on the right
+  //? page and still leave the thing it promised one more click away — which is the same dead end as
+  //? not offering a button at all.
+  section?: string;
   cta: ReactNode;     // the button label (already translated by the caller)
 }
 
@@ -40,7 +44,7 @@ function FixAction({ fix }: { fix: SetupFix }) {
   const { can, focusSetup } = useWorkspaces();
   if (can(CAP[fix.cap])) {
     return (
-      <WsButton icon="gear" onClick={() => { focusSetup({ view: fix.view, ...(fix.tab === undefined ? {} : { tab: fix.tab }) }); }}>
+      <WsButton icon="gear" onClick={() => { focusSetup({ view: fix.view, ...(fix.tab === undefined ? {} : { tab: fix.tab }), ...(fix.section === undefined ? {} : { section: fix.section }) }); }}>
         {fix.cta}
       </WsButton>
     );
@@ -116,7 +120,7 @@ export function EmptyPicker({ icon, label, fix }: {
           <WsButton
             variant="ghost"
             icon="arrow-right"
-            onClick={() => { focusSetup({ view: fix.view, ...(fix.tab === undefined ? {} : { tab: fix.tab }) }); }}
+            onClick={() => { focusSetup({ view: fix.view, ...(fix.tab === undefined ? {} : { tab: fix.tab }), ...(fix.section === undefined ? {} : { section: fix.section }) }); }}
           >
             {fix.cta}
           </WsButton>

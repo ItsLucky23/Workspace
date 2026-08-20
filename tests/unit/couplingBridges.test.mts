@@ -23,7 +23,7 @@ assert(interviewSrc.includes('memoryGrounding'), 'and grounds its ideas in it (n
 
 /* ------------------------------------------------------------ C3: skill ops are chat-enabled */
 
-for (const op of ['ai-skill-save', 'ai-skill-toggle', 'ai-skill-reset'] as const) {
+for (const op of ['ai-skill-save', 'ai-skill-reset'] as const) {
   eq(PROPOSE_CATALOG[op].mode, 'enabled', `${op} is proposable from chat`);
   assert(CHAT_ENABLED_OPS.includes(op), `${op} is in the client twin`);
 }
@@ -31,7 +31,10 @@ for (const op of ['ai-skill-save', 'ai-skill-toggle', 'ai-skill-reset'] as const
 //? guarded by the destructive accept-confirm like every other destructive op.
 eq(PROPOSE_CATALOG['ai-skill-delete'].mode, 'enabled', 'skill DELETE is chat-proposable by owner decision (ADR 0283)');
 eq(PROPOSE_CATALOG['ai-skill-delete'].destructive, true, 'and stays destructive-confirmed');
-assert(read('src/workspaces/_functions/chatDispatch.ts').includes("'ai-skill-toggle': skill("), 'the client can dispatch a skill proposal');
+assert(read('src/workspaces/_functions/chatDispatch.ts').includes("'ai-skill-save': skill("), 'the client can dispatch a skill proposal');
+//? Owner decision 2026-08-20 — there is no on/off op left: apply points are the global switch and a
+//? pipeline stage picks the rest, so an `ai-skill-toggle` would have flipped a flag nothing reads.
+assert(!Object.keys(PROPOSE_CATALOG).includes('ai-skill-toggle'), 'the retired skill on/off op is gone from the catalog');
 
 /* ------------------------------------------------------------ C4: the catalog is filtered by enabled modules */
 
@@ -58,9 +61,9 @@ const ctx: CatalogCtx = {
   enabledSections: contentOnly,
 };
 eq(validateGenericAction({ op: 'env-teardown', envId: 'e1' }, ctx), null, 'a disabled-module op cannot become a proposal');
-const skillProposal = validateGenericAction({ op: 'ai-skill-toggle', skillId: 's1', on: true }, ctx);
-assert(skillProposal !== null, 'a skill toggle against a REAL skill id validates');
-eq(validateGenericAction({ op: 'ai-skill-toggle', skillId: 'nope', on: true }, ctx), null, 'an unknown skill id is refused');
+const skillProposal = validateGenericAction({ op: 'ai-skill-reset', skillId: 's1' }, ctx);
+assert(skillProposal !== null, 'a skill op against a REAL skill id validates');
+eq(validateGenericAction({ op: 'ai-skill-reset', skillId: 'nope' }, ctx), null, 'an unknown skill id is refused');
 
 /* ------------------------------------------------------------ C5: root-cause reads the diff + RAG */
 

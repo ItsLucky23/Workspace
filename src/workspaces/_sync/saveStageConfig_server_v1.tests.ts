@@ -51,7 +51,7 @@ function baseCfg(projectId: string, stageId: string): PipelineStageCfg {
     aiEnabled: true,
     customInstructions: `updated instructions ${String(Date.now())}`,
     promptTemplate: '',
-    skillKeys: [],
+    skillKeys: [], aiSkillIds: [],
     sourceIds: [],
     commands: [],
     tools: [],

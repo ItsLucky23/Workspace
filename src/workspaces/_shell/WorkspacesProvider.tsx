@@ -1889,7 +1889,6 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       //? SK1 — the universal AI-skills layer (save/toggle/delete/reset via the skillsControl sync route).
       aiSkills: snap.aiSkills,
       saveAiSkill: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/skillsControl', version: 'v1', data: { op: 'ai-skill-save', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
-      toggleAiSkill: (skillId, on) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/skillsControl', version: 'v1', data: { op: 'ai-skill-toggle', skillId, on, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       deleteAiSkill: (skillId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/skillsControl', version: 'v1', data: { op: 'ai-skill-delete', skillId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       resetAiSkill: (skillId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/skillsControl', version: 'v1', data: { op: 'ai-skill-reset', skillId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? A4 — the workspace autonomy level (optimistic flip + persist).

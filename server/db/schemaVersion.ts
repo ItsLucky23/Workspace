@@ -92,6 +92,19 @@ export const BACKFILL_STEPS: BackfillStep[] = [
     //? InfoSource(mode=skill) was a second skill store for workflow capabilities. Preserve its exact stage,
     //? kind/model and enabled state in canonical Skill rows, then remove only the migrated source row.
     run: async (prisma) => {
+      //? Owner decision 2026-08-20 — `Skill.enabled` is retired: apply points ARE the switch. Two
+      //? controls that both meant "off" was the confusion (a skill could be enabled and still do
+      //? nothing because its apply points excluded the thing you were looking at).
+      //?
+      //? Migrated so NO workspace changes what it runs. The old rule was "enabled AND (applyPoints is
+      //? empty OR matches)"; the new one is "applyPoints matches", where empty matches nothing:
+      //?   enabled=false            -> clear apply points (it ran nowhere; it still runs nowhere)
+      //?   enabled=true,  points=[] -> set ['all']        (it ran everywhere; it still does)
+      //?   enabled=true,  points=[…]-> unchanged
+      const offRows = await prisma.skill.updateMany({ where: { skillType: 'instruction', enabled: false }, data: { applyPoints: [], enabled: true } }); // luckystack-allow tenant-scope: host-wide one-time normalization of a retired flag
+      const wideRows = await prisma.skill.updateMany({ where: { skillType: 'instruction', enabled: true, applyPoints: { isEmpty: true } }, data: { applyPoints: ['all'] } }); // luckystack-allow tenant-scope: host-wide one-time normalization of a retired flag
+      if (offRows.count > 0 || wideRows.count > 0) console.log(`[schema] skills: ${String(offRows.count)} disabled cleared, ${String(wideRows.count)} widened to 'all'`);
+
       const normalized = await prisma.skill.updateMany({ where: { skillType: { equals: undefined } }, data: { skillType: 'instruction' } }); // luckystack-allow tenant-scope: host-wide schema normalization before the canonical-model migration
       const legacy = await prisma.infoSource.findMany({ where: { mode: 'skill' } }); // luckystack-allow tenant-scope: host-wide one-time migration enumerates every legacy skill, then preserves its workspaceId
       let migrated = 0;

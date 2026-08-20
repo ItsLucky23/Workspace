@@ -80,8 +80,9 @@ export interface Ctx {
   mrs: { id: string; ticketKey: string; title: string }[];
   //? #150 — the workspace's publishing channels so the AI can propose setting a channel's brand voice.
   channels: { id: string; name: string }[];
-  //? C3 — the workspace's AI skills, so "turn on the SEO skill" resolves to a real skill id.
-  skills: { id: string; name: string; enabled: boolean }[];
+  //? C3 — the workspace's AI skills, so "make the SEO skill apply to content" resolves to a real
+  //? skill id. `scope` is where it runs on its own; empty means only the pipeline stages that picked it.
+  skills: { id: string; name: string; scope: string[] }[];
   //? Parity wave — the remaining reference collections upcoming proposal validation grounds on
   //? (compact id/name pairs; same capped-list pattern as the fields above).
   documents: { id: string; title: string; status: string }[];
@@ -156,7 +157,7 @@ export async function loadCtx(prisma: PrismaClient, workspaceId: string, project
     prisma.workspaceTrigger.findMany({ where: { workspaceId }, select: { id: true, name: true }, take: 30 }),
     prisma.mergeRequest.findMany({ where: { workspaceId, projectId: activeProjectId, status: { in: ['open', 'conflict', 'merged'] } }, select: { id: true, title: true, ticketId: true }, take: 20, orderBy: { createdAt: 'desc' } }),
     prisma.channel.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { id: true, name: true }, take: 30 }),
-    prisma.skill.findMany({ where: { workspaceId }, select: { id: true, name: true, enabled: true }, take: 40 }),
+    prisma.skill.findMany({ where: { workspaceId, skillType: 'instruction' }, select: { id: true, name: true, applyPoints: true }, take: 40 }),
     prisma.workspace.findUnique({ where: { id: workspaceId }, select: { enabledSections: true } }),
   ]);
   //? Parity wave — the remaining reference collections + the project-facts sources, same
@@ -221,7 +222,7 @@ export async function loadCtx(prisma: PrismaClient, workspaceId: string, project
     triggers: triggers.map((t) => ({ id: t.id, name: t.name })),
     mrs: mrRows.map((m) => ({ id: m.id, ticketKey: keyByTicketId.get(m.ticketId) ?? '', title: m.title })).filter((m) => m.ticketKey.length > 0),
     channels: channels.map((c) => ({ id: c.id, name: c.name })),
-    skills: skills.map((sk) => ({ id: sk.id, name: sk.name, enabled: sk.enabled })),
+    skills: skills.map((sk) => ({ id: sk.id, name: sk.name, scope: sk.applyPoints })),
     documents: documents.map((d) => ({ id: d.id, title: d.title, status: d.aiDraft === null ? 'ready' : 'draft-pending' })),
     documentTemplates: docTemplates.map((t) => ({ slug: t.slug, name: t.name })),
     sprints: sprints.map((s) => ({ id: s.id, name: s.name })),
@@ -278,8 +279,8 @@ function workspaceStateText(ctx: Ctx): string {
     `Automation triggers (triggerId — name): ${ctx.triggers.map((t) => `${t.id} — ${t.name}`).join('; ') || '(none)'}`,
     `Merge requests (mrId [ticketKey] — title): ${ctx.mrs.map((m) => `${m.id} [${m.ticketKey}] — ${m.title}`).join('; ') || '(none)'}`,
     `Channels (channelId — name): ${ctx.channels.map((c) => `${c.id} — ${c.name}`).join('; ') || '(none)'}`,
-    //? C3 — the AI-skills list, so a skill op proposal can name a REAL skillId (and see its on/off state).
-    `AI skills (skillId — name [on|off]): ${ctx.skills.map((sk) => `${sk.id} — ${sk.name} [${sk.enabled ? 'on' : 'off'}]`).join('; ') || '(none)'}`,
+    //? C3 — the AI-skills list, so a skill op proposal can name a REAL skillId (and see its scope).
+    `AI skills (skillId — name [where it applies on its own; 'stages only' = just the pipeline stages that picked it]): ${ctx.skills.map((sk) => `${sk.id} — ${sk.name} [${sk.scope.length > 0 ? sk.scope.join(',') : 'stages only'}]`).join('; ') || '(none)'}`,
     //? Parity wave — the remaining reference collections (documents/templates/sprints/invites/findings/
     //? ui-reviews/styles/output-templates/references/inbox) so proposals can name REAL ids here too.
     `Documents (docId — title [status]): ${ctx.documents.map((d) => `${d.id} — ${d.title} [${d.status}]`).join('; ') || '(none)'}`,

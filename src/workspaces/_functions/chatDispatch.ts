@@ -78,27 +78,25 @@ const contentGen = (op: string) => (p: ChatProposal, x: ChatDispatchExtras): voi
   void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op, contentProjectId: pieceId, ...(prompt ? { prompt } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
 };
 
-//? GAP_SCAN C3 — the AI-skills family. All three route through the SAME skillsControl `_sync` the settings
+//? GAP_SCAN C3 — the AI-skills family. Both route through the SAME skillsControl `_sync` the settings
 //? UI uses → RBAC(workspaceSettings) → Conductor (B-23); the chat only ever proposes.
-const skill = (op: 'ai-skill-save' | 'ai-skill-toggle' | 'ai-skill-reset') => (p: ChatProposal, x: ChatDispatchExtras): void => {
+const skill = (op: 'ai-skill-save' | 'ai-skill-reset') => (p: ChatProposal, x: ChatDispatchExtras): void => {
   const skillId = str(p, 'skillId');
   const name = str(p, 'name');
   const instruction = str(p, 'instruction');
   const examples = str(p, 'examples');
   const applyPointsRaw = str(p, 'applyPoints');
   const applyPoints = applyPointsRaw ? applyPointsRaw.split(',').map((v) => v.trim()).filter((v) => v.length > 0) : undefined;
-  const on = bool(p, 'on');
-  //? toggle/reset act on an EXISTING skill; save needs either a target id (update) or a name (create).
+  //? reset acts on an EXISTING skill; save needs either a target id (update) or a name (create).
   if (op !== 'ai-skill-save' && !skillId) return;
   if (op === 'ai-skill-save' && !skillId && !name) return;
-  if (op === 'ai-skill-toggle' && on === undefined) return;
   void syncRequest({
     name: 'workspaces/skillsControl', version: 'v1',
     data: {
       op,
       ...(skillId ? { skillId } : {}), ...(name ? { name } : {}),
       ...(instruction ? { instruction } : {}), ...(examples ? { examples } : {}),
-      ...(applyPoints ? { applyPoints } : {}), ...(on === undefined ? {} : { on }),
+      ...(applyPoints ? { applyPoints } : {}),
       clientRequestId: x.nextReqId(),
     },
     receiver: x.room,
@@ -165,7 +163,6 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-gen-thumbnail', contentProjectId: pieceId, headline, ...(backgroundPrompt ? { backgroundPrompt } : {}), clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
   'ai-skill-save': skill('ai-skill-save'),
-  'ai-skill-toggle': skill('ai-skill-toggle'),
   'ai-skill-reset': skill('ai-skill-reset'),
   pause: agent('pause'),
   resume: agent('resume'),

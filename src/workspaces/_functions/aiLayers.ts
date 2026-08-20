@@ -87,12 +87,15 @@ export function layerPlacement(id: AiLayerId): { channel: AiLayerChannel; positi
   return { channel: 'system', position: 1, channelTotal: 1 };
 }
 
-/** Which skills actually apply to a run. `[]` or `['all']` on a skill means "every AI run"; an
- *  explicit list applies only when the run's apply-point matches. Disabled skills never apply. */
+/** Which skills apply AUTOMATICALLY to a run. `['all']` means every AI run; an explicit list applies
+ *  only when the run's apply-point matches; EMPTY means nowhere automatic — such a skill runs only
+ *  where a pipeline stage picked it by id.
+ *
+ *  Mirrors `resolveSkillsFor` in server/ai/skills.ts. The separate `enabled` flag is gone: two
+ *  controls that both meant "off" is why a skill could be on and still do nothing. */
 export function applicableSkills(skills: AiSkillEntry[], applyPoint?: string): AiSkillEntry[] {
   return skills.filter((s) => {
-    if (!s.enabled) return false;
-    if (s.applyPoints.length === 0 || s.applyPoints.includes('all')) return true;
+    if (s.applyPoints.includes('all')) return true;
     return applyPoint !== undefined && s.applyPoints.includes(applyPoint);
   });
 }

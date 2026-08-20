@@ -914,7 +914,11 @@ model PipelineStage {
   gateForApproval    Boolean           @default(false)        // proceed-or-gate: gate for human approval before promoting
 
   // --- child config (embedded) ---
-  skillKeys          String[]                                 // enabled InfoSource(skill) ids
+  skillKeys          String[]                                 // enabled CAPABILITY skill ids (index-discovered)
+  //? Which INSTRUCTION skills (Skill.skillType === 'instruction') this stage runs with. Owner
+  //? decision 2026-08-20: a skill is no longer switched on globally — the stage that wants it picks
+  //? it. Empty = this stage runs no instruction skills.
+  aiSkillIds         String[]
   sourceIds          String[]                                 // loaded InfoSource(context-doc) ids
   commands           StageCommandCfg[]
   tools              StageToolCfg[]

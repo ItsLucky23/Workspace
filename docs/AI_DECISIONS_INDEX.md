@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (235)
+## Decisions (236)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -248,6 +248,7 @@
 | 0315 | A pipeline preset is a living choice, not a creation-time one | 🟢 accepted | pipeline, defaults, onboarding, control-api | — | `docs/decisions/0315-a-pipeline-preset-is-a-living-choice-not-a-creation-time-one.md` |
 | 0316 | One first-run surface on the board, and it collapses rather than disappears | 🟢 accepted | onboarding, ux, ia | — | `docs/decisions/0316-one-first-run-surface-on-the-board-and-it-collapses-rather-than-disappears.md` |
 | 0317 | The runtime is a list of processes, not one command | 🟢 accepted | runtime, preview, containers, terminals, ux | — | `docs/decisions/0317-the-runtime-is-a-list-of-processes-not-one-command.md` |
+| 0318 | A skill is switched on by the stage that wants it, not globally | 🟢 accepted | ai, skills, pipeline, ux | — | `docs/decisions/0318-a-skill-is-switched-on-by-the-stage-that-wants-it-not-globally.md` |
 
 ## Summaries
 
@@ -297,7 +298,7 @@ Encrypt these secrets in the app with **AES-256-GCM**, in `server/crypto/secretB
 
 Introduce a generic AI-provider layer under `server/ai/`: **`types.ts`** — the shared contract: `AiProviderId`, `AiFeature`, `AiProvider` (`available()` + `complete()`), and the request/result shapes. **`providers/*`** — one standalone handler per backend: `claude-cli` (drives the interactive PTY in a scrubbed env → Max subscription, reading the final message off the Stop hook via `--settings`, never `-p/--print`) and `gemini-api` (headless Generative Language API call, gated on `GEMINI_API_KEY`). **`assignments.ts`** — the single feature→provider map, with a `resolveAssignment` seam that a per-workspace/user override (a future picker UI backed by a DB setting) plugs into without touching feature code. **`registry.ts`** — `runAiCompletion(feature, req, overrides?)`: resolves the assigned provider, gates on `available()`, and dispatches. This is the ONLY entry point features import; no feature names a provider.
 
-**Governs** (`//? @adr 0007`): `server/ai/providerConfig.ts`, `server/ai/providers/anthropicApi.ts`, `server/ai/providers/catalog.ts`, `server/ai/providers/openaiCompatible.ts`, `src/workspaces/workspace/aiProviders.tsx`
+**Governs** (`//? @adr 0007`): `server/ai/providerConfig.ts`, `server/ai/providers/anthropicApi.ts`, `server/ai/providers/catalog.ts`, `server/ai/providers/openaiCompatible.ts`, `src/workspaces/workspace/aiProviders.tsx`, `src/workspaces/workspace/skillsEditor.tsx`
 
 → `docs/decisions/0007-pluggable-ai-provider-layer.md`
 
@@ -2159,6 +2160,14 @@ The project owns a **list** of runtime processes. Each entry starts in the ticke
 
 → `docs/decisions/0317-the-runtime-is-a-list-of-processes-not-one-command.md`
 
+### 0318 — A skill is switched on by the stage that wants it, not globally
+
+**0318** · accepted · tags: ai, skills, pipeline, ux · 2026-08-20
+
+*Apply points are the only global switch, and a pipeline stage picks its own skills by id.**
+
+→ `docs/decisions/0318-a-skill-is-switched-on-by-the-stage-that-wants-it-not-globally.md`
+
 ## Code governed by decisions
 
 > Reverse links from a `//? @adr NNNN` tag in source back to the ADR that explains it.
@@ -2187,3 +2196,4 @@ The project owns a **list** of runtime processes. Each entry starts in the ticke
 | `src/workspaces/workspace/aiProviders.tsx` | 0007 | Pluggable AI-provider layer — features resolve a backend at dispatch, never hardcode one |
 | `src/workspaces/workspace/repoIntrospection.tsx` | 0313 | Repository introspection is shown to the user, not only to the AI |
 | `src/workspaces/workspace/runProcesses.tsx` | 0317 | The runtime is a list of processes, not one command |
+| `src/workspaces/workspace/skillsEditor.tsx` | 0007 | Pluggable AI-provider layer — features resolve a backend at dispatch, never hardcode one |

@@ -69,7 +69,7 @@ export const CHAT_ENABLED_OPS = [
   // preview launch/stop (#17/#113) — dispatched via the openPreview/closePreview _api, not the Conductor
   'preview-up', 'preview-down',
   //? GAP_SCAN C3 — the universal AI-skills layer: "turn on the SEO skill" / "make the humanizer stricter".
-  'ai-skill-save', 'ai-skill-toggle', 'ai-skill-reset',
+  'ai-skill-save', 'ai-skill-reset',
   //? ---- Parity wave 2026-07-20 — full UI parity for the Workspace-AI (destructive ops keep the extra
   //? explicit confirm on accept via spec.destructive; the catalog is the single classification source).
   // board / sprints / ticket-artifact links

@@ -2,8 +2,8 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 449,
-    "edges": 670,
+    "nodes": 450,
+    "edges": 677,
     "symbols": 848,
     "callEdges": 279
   },
@@ -2250,6 +2250,11 @@
     },
     {
       "id": "workspaces/workspace/runProcesses.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/workspace/skillsEditor.tsx",
       "kind": "other",
       "route": null
     }
@@ -4908,6 +4913,10 @@
       "to": "workspaces/workspace/runProcesses.tsx"
     },
     {
+      "from": "workspaces/workspace/page.tsx",
+      "to": "workspaces/workspace/skillsEditor.tsx"
+    },
+    {
       "from": "workspaces/workspace/repoIntrospection.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
@@ -4934,6 +4943,30 @@
     {
       "from": "workspaces/workspace/runProcesses.tsx",
       "to": "workspaces/workspace/repoIntrospection.tsx"
+    },
+    {
+      "from": "workspaces/workspace/skillsEditor.tsx",
+      "to": "_functions/menuHandler.ts"
+    },
+    {
+      "from": "workspaces/workspace/skillsEditor.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/workspace/skillsEditor.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/workspace/skillsEditor.tsx",
+      "to": "workspaces/_components/SetupNotice.tsx"
+    },
+    {
+      "from": "workspaces/workspace/skillsEditor.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/workspace/skillsEditor.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
     }
   ],
   "blastRadius": {
@@ -5025,7 +5058,8 @@
       "workspaces/workspace/aiProviders.tsx",
       "workspaces/workspace/page.tsx",
       "workspaces/workspace/repoIntrospection.tsx",
-      "workspaces/workspace/runProcesses.tsx"
+      "workspaces/workspace/runProcesses.tsx",
+      "workspaces/workspace/skillsEditor.tsx"
     ],
     "_components/ConfirmMenu.tsx": [
       "_components/MenuHandler.tsx",
@@ -5078,7 +5112,8 @@
       "workspaces/insights/usage/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/aiProviders.tsx",
-      "workspaces/workspace/page.tsx"
+      "workspaces/workspace/page.tsx",
+      "workspaces/workspace/skillsEditor.tsx"
     ],
     "_components/dropdown/Dropdown.tsx": [
       "settings/page.tsx",
@@ -5330,7 +5365,8 @@
       "workspaces/workspace/aiProviders.tsx",
       "workspaces/workspace/page.tsx",
       "workspaces/workspace/repoIntrospection.tsx",
-      "workspaces/workspace/runProcesses.tsx"
+      "workspaces/workspace/runProcesses.tsx",
+      "workspaces/workspace/skillsEditor.tsx"
     ],
     "_components/inputs/floatingLayer.tsx": [
       "_components/inputs/DatePicker.tsx",
@@ -5420,7 +5456,8 @@
       "workspaces/workspace/aiProviders.tsx",
       "workspaces/workspace/page.tsx",
       "workspaces/workspace/repoIntrospection.tsx",
-      "workspaces/workspace/runProcesses.tsx"
+      "workspaces/workspace/runProcesses.tsx",
+      "workspaces/workspace/skillsEditor.tsx"
     ],
     "_components/inputs/TextField.tsx": [
       "_components/inputs/DatePicker.tsx",
@@ -5510,7 +5547,8 @@
       "workspaces/workspace/aiProviders.tsx",
       "workspaces/workspace/page.tsx",
       "workspaces/workspace/repoIntrospection.tsx",
-      "workspaces/workspace/runProcesses.tsx"
+      "workspaces/workspace/runProcesses.tsx",
+      "workspaces/workspace/skillsEditor.tsx"
     ],
     "_components/LoginForm.tsx": [
       "login/page.tsx",
@@ -5581,7 +5619,8 @@
       "workspaces/insights/usage/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/aiProviders.tsx",
-      "workspaces/workspace/page.tsx"
+      "workspaces/workspace/page.tsx",
+      "workspaces/workspace/skillsEditor.tsx"
     ],
     "_providers/SessionProvider.tsx": [
       "main.tsx"
@@ -5753,7 +5792,8 @@
       "workspaces/workspace/aiProviders.tsx",
       "workspaces/workspace/page.tsx",
       "workspaces/workspace/repoIntrospection.tsx",
-      "workspaces/workspace/runProcesses.tsx"
+      "workspaces/workspace/runProcesses.tsx",
+      "workspaces/workspace/skillsEditor.tsx"
     ],
     "workspaces/_components/ImageEditor.tsx": [
       "workspaces/content/[pieceId]/page.tsx"
@@ -5869,7 +5909,8 @@
       "workspaces/workspace/aiProviders.tsx",
       "workspaces/workspace/page.tsx",
       "workspaces/workspace/repoIntrospection.tsx",
-      "workspaces/workspace/runProcesses.tsx"
+      "workspaces/workspace/runProcesses.tsx",
+      "workspaces/workspace/skillsEditor.tsx"
     ],
     "workspaces/_components/MrReviewPanel.tsx": [
       "workspaces/develop/board/[ticketId]/page.tsx"
@@ -5955,7 +5996,8 @@
       "workspaces/workspace/aiProviders.tsx",
       "workspaces/workspace/page.tsx",
       "workspaces/workspace/repoIntrospection.tsx",
-      "workspaces/workspace/runProcesses.tsx"
+      "workspaces/workspace/runProcesses.tsx",
+      "workspaces/workspace/skillsEditor.tsx"
     ],
     "workspaces/_components/SearchPalette.tsx": [
       "_components/templates/TemplateProvider.tsx",
@@ -6016,7 +6058,8 @@
       "workspaces/develop/terminals/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/aiProviders.tsx",
-      "workspaces/workspace/page.tsx"
+      "workspaces/workspace/page.tsx",
+      "workspaces/workspace/skillsEditor.tsx"
     ],
     "workspaces/_components/SetupWizard.tsx": [
       "workspaces/workspace/page.tsx"
@@ -6065,7 +6108,8 @@
       "workspaces/develop/terminals/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/aiProviders.tsx",
-      "workspaces/workspace/page.tsx"
+      "workspaces/workspace/page.tsx",
+      "workspaces/workspace/skillsEditor.tsx"
     ],
     "workspaces/_data/chatOps.ts": [
       "_components/templates/TemplateProvider.tsx",
@@ -6224,7 +6268,8 @@
       "workspaces/workspace/aiProviders.tsx",
       "workspaces/workspace/page.tsx",
       "workspaces/workspace/repoIntrospection.tsx",
-      "workspaces/workspace/runProcesses.tsx"
+      "workspaces/workspace/runProcesses.tsx",
+      "workspaces/workspace/skillsEditor.tsx"
     ],
     "workspaces/_data/uiReviewTaxonomy.ts": [
       "workspaces/develop/designer/page.tsx"
@@ -6353,7 +6398,8 @@
       "workspaces/workspace/aiProviders.tsx",
       "workspaces/workspace/page.tsx",
       "workspaces/workspace/repoIntrospection.tsx",
-      "workspaces/workspace/runProcesses.tsx"
+      "workspaces/workspace/runProcesses.tsx",
+      "workspaces/workspace/skillsEditor.tsx"
     ],
     "workspaces/_functions/imageCrop.ts": [
       "workspaces/_components/ImageEditor.tsx",
@@ -6504,7 +6550,8 @@
       "workspaces/workspace/aiProviders.tsx",
       "workspaces/workspace/page.tsx",
       "workspaces/workspace/repoIntrospection.tsx",
-      "workspaces/workspace/runProcesses.tsx"
+      "workspaces/workspace/runProcesses.tsx",
+      "workspaces/workspace/skillsEditor.tsx"
     ],
     "workspaces/_shell/WorkspacesProvider.tsx": [
       "_components/templates/TemplateProvider.tsx",
@@ -6760,80 +6807,83 @@
     ],
     "workspaces/workspace/runProcesses.tsx": [
       "workspaces/workspace/page.tsx"
+    ],
+    "workspaces/workspace/skillsEditor.tsx": [
+      "workspaces/workspace/page.tsx"
     ]
   },
   "godNodes": [
     {
       "id": "workspaces/_functions/controlApi.ts",
       "kind": "other",
-      "dependents": 110,
+      "dependents": 111,
       "directDependents": 10
     },
     {
       "id": "workspaces/_data/types.ts",
       "kind": "other",
-      "dependents": 101,
-      "directDependents": 54
+      "dependents": 102,
+      "directDependents": 55
     },
     {
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
-      "dependents": 91,
-      "directDependents": 80
+      "dependents": 92,
+      "directDependents": 81
     },
     {
       "id": "workspaces/_components/motion.tsx",
       "kind": "other",
-      "dependents": 87,
+      "dependents": 88,
       "directDependents": 26
     },
     {
       "id": "_components/inputs/fieldShell.tsx",
       "kind": "component",
-      "dependents": 85,
+      "dependents": 86,
       "directDependents": 2
     },
     {
       "id": "_components/inputs/Popover.tsx",
       "kind": "component",
-      "dependents": 83,
+      "dependents": 84,
       "directDependents": 2
     },
     {
       "id": "_components/inputs/Toggle.tsx",
       "kind": "component",
-      "dependents": 83,
+      "dependents": 84,
       "directDependents": 2
     },
     {
       "id": "_components/Avatar.tsx",
       "kind": "component",
-      "dependents": 82,
+      "dependents": 83,
       "directDependents": 2
     },
     {
       "id": "workspaces/_components/primitives.tsx",
       "kind": "other",
-      "dependents": 81,
-      "directDependents": 77
+      "dependents": 82,
+      "directDependents": 78
     },
     {
       "id": "workspaces/_shell/WorkspacesContext.tsx",
       "kind": "other",
-      "dependents": 71,
-      "directDependents": 62
+      "dependents": 72,
+      "directDependents": 63
     },
     {
       "id": "_components/ConfirmMenu.tsx",
       "kind": "component",
-      "dependents": 51,
+      "dependents": 52,
       "directDependents": 1
     },
     {
       "id": "_functions/menuHandler.ts",
       "kind": "helper",
-      "dependents": 51,
-      "directDependents": 39
+      "dependents": 52,
+      "directDependents": 40
     },
     {
       "id": "_components/dropdown/dropdownInternals.tsx",
@@ -6850,14 +6900,14 @@
     {
       "id": "workspaces/_data/capabilities.ts",
       "kind": "other",
-      "dependents": 35,
+      "dependents": 36,
       "directDependents": 2
     },
     {
       "id": "workspaces/_components/SetupNotice.tsx",
       "kind": "other",
-      "dependents": 33,
-      "directDependents": 22
+      "dependents": 34,
+      "directDependents": 23
     },
     {
       "id": "workspaces/_data/modules.ts",

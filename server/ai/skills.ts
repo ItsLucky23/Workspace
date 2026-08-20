@@ -54,17 +54,37 @@ export interface ResolvedSkill {
   examples: string;
 }
 
-//? All ENABLED skills of a workspace whose applyPoints match the given group ([] / 'all' matches
-//? everything). Pure read, best-effort at call sites; deterministic order (slug) so prompts are stable.
+//? The skills of a workspace that apply automatically at the given point.
+//?
+//? Owner decision 2026-08-20: there is no `enabled` flag any more. Apply points ARE the switch — a
+//? skill with none runs nowhere automatically, and a pipeline stage picks its own skills by id
+//? (`resolveSkillsByIds`). Two controls that both meant "off" was the confusion: you could enable a
+//? skill and still see nothing, because its apply points excluded the thing you were looking at.
+//?
+//? That also flips the old "[] means everywhere" rule to "[] means nowhere". `schemaVersion.ts`
+//? migrates both directions so no existing workspace changes what it runs: a disabled skill loses its
+//? apply points, and an enabled skill with none gains 'all'.
+//? Deterministic order (slug) so prompts are stable.
 export async function resolveSkillsFor(workspaceId: string, applyPoint: SkillApplyPoint): Promise<ResolvedSkill[]> {
   const rows = await getPrismaClient().skill.findMany({
-    where: { workspaceId, skillType: 'instruction', enabled: true },
+    where: { workspaceId, skillType: 'instruction' },
     select: { slug: true, name: true, instruction: true, examples: true, applyPoints: true },
     orderBy: { slug: 'asc' },
   });
   return rows
-    .filter((r) => r.applyPoints.length === 0 || r.applyPoints.includes('all') || r.applyPoints.includes(applyPoint))
+    .filter((r) => r.applyPoints.includes('all') || r.applyPoints.includes(applyPoint))
     .map(({ slug, name, instruction, examples }) => ({ slug, name, instruction, examples }));
+}
+
+/** The skills a PIPELINE STAGE picked, by id. Explicit selection — apply points do not enter into it. */
+export async function resolveSkillsByIds(workspaceId: string, ids: string[]): Promise<ResolvedSkill[]> {
+  if (ids.length === 0) return [];
+  const rows = await getPrismaClient().skill.findMany({
+    where: { workspaceId, skillType: 'instruction', id: { in: ids } },
+    select: { slug: true, name: true, instruction: true, examples: true },
+    orderBy: { slug: 'asc' },
+  });
+  return rows;
 }
 
 //? The formatted prompt block for a workspace + apply-point ('' when no skill applies). Best-effort:
@@ -73,6 +93,18 @@ export async function skillPromptBlock(workspaceId: string | undefined, applyPoi
   if (!workspaceId) return '';
   const [err, skills] = await tryCatch(() => resolveSkillsFor(workspaceId, applyPoint));
   if (err || !skills || skills.length === 0) return '';
+  return formatSkillBlock(skills);
+}
+
+/** The same block for an explicit id list — what a pipeline stage renders. */
+export async function stageSkillBlock(workspaceId: string | undefined, ids: string[]): Promise<string> {
+  if (!workspaceId || ids.length === 0) return '';
+  const [err, skills] = await tryCatch(() => resolveSkillsByIds(workspaceId, ids));
+  if (err || !skills || skills.length === 0) return '';
+  return formatSkillBlock(skills);
+}
+
+function formatSkillBlock(skills: ResolvedSkill[]): string {
   const blocks = skills.map((s) => {
     const body = s.instruction.trim();
     const ex = s.examples.trim();
@@ -81,8 +113,9 @@ export async function skillPromptBlock(workspaceId: string | undefined, applyPoi
   return `## Active skills (apply these writing/working instructions to your output)\n\n${blocks.join('\n\n')}`;
 }
 
-//? SK3 — the builtin seed set. Editable per workspace (instruction/applyPoints/enabled), resettable to
-//? these texts, never deletable. All are OFF by default — enabling one is the user's explicit choice.
+//? SK3 — the builtin seed set. Editable per workspace (instruction/applyPoints), resettable to these
+//? texts, never deletable. `applyPoints` here is the SUGGESTED scope restored by "reset to default";
+//? a freshly seeded builtin starts with none, so it runs nowhere until asked for.
 const BUILTIN_SKILLS: { slug: string; name: string; applyPoints: SkillApplyPoint[]; instruction: string }[] = [
   {
     slug: 'humanizer',
@@ -162,7 +195,12 @@ export async function ensureBuiltinSkills(prisma: PrismaClient, workspaceId: str
       update: {},
       create: {
         id, workspaceId, slug: seed.slug, name: seed.name, instruction: seed.instruction,
-        applyPoints: [...seed.applyPoints], enabled: false, builtin: true,
+        //? Seeded with NO apply points, which is what "off" means now that `enabled` is gone: a
+        //? builtin is available to read and edit and runs nowhere until you give it apply points or a
+        //? pipeline stage picks it. `seed.applyPoints` is its SUGGESTED scope and is what "reset to
+        //? default" restores — seeding it here would silently turn Humanizer on for every new
+        //? workspace's content, documents, studio and chat.
+        applyPoints: [], enabled: true, builtin: true,
       },
     });
   }

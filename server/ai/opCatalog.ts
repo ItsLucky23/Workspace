@@ -300,21 +300,18 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   },
   'skill-toggle': {
     mode: 'enabled',
-    hint: 'enable or disable a workflow capability or context document from the Sources page (NOT an instruction AI skill; those use ai-skill-toggle). params: sourceId, on (true/false)',
+    hint: 'enable or disable a workflow capability or context document from the Sources page (NOT an instruction AI skill; those are scoped with ai-skill-save). params: sourceId, on (true/false)',
     params: { sourceId: { kind: 'sourceId', required: true }, on: { kind: 'boolean', required: true } },
   },
-  //? SK1 — the universal AI-skills layer. GAP_SCAN C3: toggling/saving a skill is exactly the kind of
-  //? "turn on the SEO skill" ask the Assistant should handle, so save/toggle/reset are ENABLED (delete
-  //? stays `later` — destroying a user-authored skill from a chat turn is a worse trade than a UI click).
+  //? SK1 — the universal AI-skills layer. GAP_SCAN C3: scoping/saving a skill is exactly the kind of
+  //? "make the SEO skill apply to content" ask the Assistant should handle, so save/reset are ENABLED.
+  //? There is no separate on/off op: owner decision 2026-08-20 made applyPoints the only global switch
+  //? (a pipeline stage picks its own skills), so `ai-skill-save` with applyPoints IS the toggle.
+  //? (delete stays `later` — destroying a user-authored skill from a chat turn is a worse trade than a UI click).
   'ai-skill-save': {
     mode: 'enabled',
     hint: 'create or update an AI skill (an instruction block injected into AI runs). params: instruction, name (required when creating), skillId (from the skills list below, to update), examples?, applyPoints? (any of: all|content|studio|designer|dev|interviewer|documents|chat|custom)',
     params: { instruction: { kind: 'string', required: true }, name: { kind: 'string' }, skillId: { kind: 'skillId' }, examples: { kind: 'string' }, applyPoints: { kind: 'string' } },
-  },
-  'ai-skill-toggle': {
-    mode: 'enabled',
-    hint: 'turn an AI skill on or off. params: skillId (from the skills list below), on (true/false)',
-    params: { skillId: { kind: 'skillId', required: true }, on: { kind: 'boolean', required: true } },
   },
   'ai-skill-reset': {
     mode: 'enabled',
@@ -325,7 +322,7 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   //? the assistant may propose skill deletion; destructive keeps the extra explicit confirm on accept.
   'ai-skill-delete': {
     mode: 'enabled', destructive: true,
-    hint: 'permanently delete an AI skill. params: skillId (from the skills list below). Destructive — the user gets an extra confirm; prefer ai-skill-toggle off unless the user explicitly wants it gone',
+    hint: 'permanently delete an AI skill. params: skillId (from the skills list below). Destructive — the user gets an extra confirm; prefer narrowing its applyPoints with ai-skill-save unless the user explicitly wants it gone',
     params: { skillId: { kind: 'skillId', required: true } },
   },
   //? DOC — the Documents module (draft-based). B-23-clean: document-ai writes ONLY a draft; apply-draft

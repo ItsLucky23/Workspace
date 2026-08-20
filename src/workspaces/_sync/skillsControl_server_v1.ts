@@ -14,7 +14,7 @@ import type { ControlOp } from '../_functions/controlApi';
 export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
-const SKILL_OPS = new Set<string>(['ai-skill-save', 'ai-skill-toggle', 'ai-skill-delete', 'ai-skill-reset']);
+const SKILL_OPS = new Set<string>(['ai-skill-save', 'ai-skill-delete', 'ai-skill-reset']);
 const isSkillOp = (op: string): op is ControlOp => SKILL_OPS.has(op);
 
 export interface SyncParams {

@@ -3664,14 +3664,12 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       }
       if (!name) return;
       const slug = `${name.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-+|-+$/g, '').slice(0, 40) || 'skill'}-${Date.now().toString(36)}`;
-      const created = await prisma.skill.create({ data: { workspaceId: action.workspaceId, slug, name, instruction, examples, applyPoints, skillType: 'instruction', enabled: bool(payload, 'enabled') } });
+      //? No `enabled`: owner decision 2026-08-20 retired it for instruction skills. Apply points are
+      //? the global switch (empty = nowhere automatic) and a pipeline stage picks the rest by id, so
+      //? writing a second "off" flag here would only reintroduce the state that could disagree with them.
+      const created = await prisma.skill.create({ data: { workspaceId: action.workspaceId, slug, name, instruction, examples, applyPoints, skillType: 'instruction' } });
       broadcastContentDirty(action.workspaceId);
       return { id: created.id };
-    }
-    case 'ai-skill-toggle': {
-      const skillId = str(payload, 'skillId');
-      if (skillId) { await prisma.skill.updateMany({ where: { workspaceId: action.workspaceId, id: skillId, skillType: 'instruction' }, data: { enabled: bool(payload, 'on') } }); broadcastContentDirty(action.workspaceId); }
-      return;
     }
     case 'ai-skill-delete': {
       const skillId = str(payload, 'skillId');
@@ -3933,6 +3931,9 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       if ('userEditable' in payload) data.userEditable = bool(payload, 'userEditable');
       if ('gateForApproval' in payload) data.gateForApproval = bool(payload, 'gateForApproval');
       if (Array.isArray(payload.skillKeys)) data.skillKeys = { set: strArr(payload, 'skillKeys') };
+      //? Owner decision 2026-08-20 — the INSTRUCTION skills this stage runs with, picked per stage
+      //? rather than switched on globally.
+      if (Array.isArray(payload.aiSkillIds)) data.aiSkillIds = { set: strArr(payload, 'aiSkillIds') };
       if (Array.isArray(payload.sourceIds)) data.sourceIds = { set: strArr(payload, 'sourceIds') };
       if (Array.isArray(payload.visibleStageIds)) data.visibleStageIds = { set: strArr(payload, 'visibleStageIds') };
       if (Array.isArray(payload.commands)) data.commands = { set: readCommands(payload.commands) };
@@ -3969,7 +3970,7 @@ async function executeAction(action: WriterAction): Promise<unknown> {
         workspaceId: action.workspaceId, projectId, key, kind, name, order, aiEnabled: true, wipLimit: null,
         roleKey: kind === 'code' ? 'code' : kind, systemPrompt: bp.systemPrompt, customInstructions: bp.customInstructions,
         promptTemplate: bp.promptTemplate.length > 0 ? bp.promptTemplate : '{{summary}}', definitionOfDone: bp.definitionOfDone,
-        skillKeys: [], sourceIds: ['summary'], commands: [], tools: [], statuses: baseStageStatuses(), processes: [], visibleStageIds: [],
+        skillKeys: [], aiSkillIds: [], sourceIds: ['summary'], commands: [], tools: [], statuses: baseStageStatuses(), processes: [], visibleStageIds: [],
         modelCfg: { autoEscalate: false, base: { model: bp.model, effort: bp.effort, maxTurns: bp.maxTurns }, rules: [] },
         network: { enabled: true, mode: 'whitelist', categories: ['package-registries', 'source-hosts', 'ai-apis'], domains: [] },
         hooks: {},

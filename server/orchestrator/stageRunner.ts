@@ -30,7 +30,7 @@ import { pushContainerBranch } from '../git/containerPush';
 import { postIssueComment } from '../git/gitlabSync';
 import { retrieve } from '../rag';
 import { retrieveProductKnowledge } from '../rag/productKnowledge';
-import { skillPromptBlock } from '../ai/skills';
+import { stageSkillBlock } from '../ai/skills';
 import { workspaceAiPrefix } from '../ai/registry';
 import { budgetForStage, shouldHandoff, parseHandoff, latestHandoff, renderHandoffReload, DEFAULT_HANDOFF_INSTRUCTION } from './handoff';
 import { killClaudeByContainer } from './agentControl';
@@ -633,9 +633,12 @@ async function runStageInTenant(workspaceId: string, ticketKey: string, stageKey
   //? a dev stage knows the platform around the code it writes. Best-effort — empty corpus = omitted.
   const [, pkChunks] = await tryCatch(() => retrieveProductKnowledge(prisma, `${ticket.title}\n${ticket.description ?? ''}`, 2));
   const productDoc = (pkChunks ?? []).map((c) => c.content).join('\n\n').slice(0, 2500);
-  //? SK2 — enabled 'dev' skills reach the PTY coding agent as a context-doc (the one-shot choke-point
-  //? in ai/registry.ts doesn't cover the PTY path). Best-effort: read failure = no doc.
-  const [, skillsDoc] = await tryCatch(() => skillPromptBlock(workspaceId, 'dev'));
+  //? SK2 — the stage's OWN skills reach the PTY coding agent as a context-doc (the one-shot
+  //? choke-point in ai/registry.ts doesn't cover the PTY path). Owner decision 2026-08-20: which
+  //? skills run is a per-STAGE choice, not a global switch plus a 'dev' apply point — a plan stage and
+  //? a review stage want different instructions, and there was no way to say so.
+  //? Best-effort: read failure = no doc.
+  const [, skillsDoc] = await tryCatch(() => stageSkillBlock(workspaceId, cfg.aiSkillIds));
   //? ADR 0311 — the workspace-wide AI instruction + output language. `ai/registry.ts` prefixes it onto
   //? every ONE-SHOT feature's system prompt, but the PTY path renders its own prompt and so never saw
   //? it: a user's "always-on" instruction steered docs/Dockerfile/chat and silently skipped the agent

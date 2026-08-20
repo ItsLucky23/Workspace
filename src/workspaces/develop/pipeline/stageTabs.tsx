@@ -31,6 +31,9 @@ const MODE_TINT: Record<CommandMode, string> = { allow: 'bg-correct/15 text-corr
 const inputCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 const areaCls = 'w-full px-3 py-2 rounded-lg border border-container1-border bg-container2/50 text-sm text-title font-mono leading-relaxed focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 
+/** The first line of a skill's text — enough to recognise it in a picker without opening it. */
+const firstLine = (text: string): string => text.split(/\r?\n/)[0] ?? '';
+
 //? Toggle a key's presence in a string array (used by the context + visibility tabs).
 const toggleKey = (arr: string[], key: string): string[] => (arr.includes(key) ? arr.filter((k) => k !== key) : [...arr, key]);
 
@@ -152,7 +155,7 @@ export function GeneralTab({ s, update, bp }: TabProps) {
 /* ----------------------------------------------------------------- Context & Skills */
 export function ContextTab({ s, update }: TabProps) {
   const translate = useTranslator();
-  const { docs, skills, focusSetup } = useWorkspaces();
+  const { docs, skills, aiSkills, focusSetup } = useWorkspaces();
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       <div>
@@ -181,6 +184,44 @@ export function ContextTab({ s, update }: TabProps) {
           })}
         </div>
       </div>
+      {/* Owner decision 2026-08-20 — a skill is switched on HERE, per stage, not globally on the AI
+          page. A plan stage and a review stage want different instructions, and a single workspace
+          toggle could not say so; worse, a skill could be "on" and still do nothing because its apply
+          points excluded the run you were looking at. The stage picks; the stage runner sends exactly
+          these to its agent. */}
+      <div>
+        <FieldLabel
+          title={translate({ key: 'workspaces.pipeline.aiSkills' })}
+          hint={translate({ key: 'workspaces.pipeline.aiSkillsHint' })}
+          info={<InfoTip align="start" title={translate({ key: 'workspaces.pipeline.aiSkillsTipTitle' })} body={translate({ key: 'workspaces.pipeline.aiSkillsTipBody' })} />}
+        />
+        <div className="flex flex-col gap-1.5">
+          {aiSkills.length === 0 && (
+            <EmptyPicker
+              icon="wand-magic-sparkles"
+              label={translate({ key: 'workspaces.pipeline.noAiSkills' })}
+              fix={{ cap: 'workspaceSettings', view: 'workspace', tab: 'aibehavior', section: 'skills', cta: translate({ key: 'workspaces.pipeline.manageAiSkills' }) }}
+            />
+          )}
+          {aiSkills.map((sk) => {
+            const on = s.aiSkillIds.includes(sk.id);
+            return (
+              <button
+                key={sk.id} type="button" role="switch" aria-checked={on}
+                onClick={() => { update({ aiSkillIds: toggleKey(s.aiSkillIds, sk.id) }); }}
+                className={`flex items-start gap-3 rounded-xl border px-3 py-2 text-left cursor-pointer transition-colors ${on ? 'border-primary/40 bg-primary/5' : 'border-container1-border hover:bg-container2/40'}`}
+              >
+                <Icon name={on ? 'circle-check' : 'wand-magic-sparkles'} className={`mt-0.5 shrink-0 ${on ? 'text-primary' : 'text-muted'}`} />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm text-title truncate">{sk.name}</span>
+                  <span className="block text-xs text-muted line-clamp-2">{firstLine(sk.instruction)}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div>
         <FieldLabel title={translate({ key: 'workspaces.pipeline.skillsMcp' })} hint={translate({ key: 'workspaces.pipeline.skillsMcpHint' })} />
         <div className="flex flex-col gap-1.5">

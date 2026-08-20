@@ -119,7 +119,7 @@ assert(hasKey(['workspaces', 'studio', 'publishLive']), 'the publish button is t
 const CHAT_REACHABLE = [
   'env-rollback', 'document-archive', 'document-unarchive', 'content-gen-thumbnail',
   'content-reply-comment', 'studio-publish-site', 'studio-unpublish-site', 'asset-star',
-  'prompt-experiment-save', 'prompt-experiment-stop', 'ai-skill-save', 'ai-skill-toggle', 'ai-skill-reset',
+  'prompt-experiment-save', 'prompt-experiment-stop', 'ai-skill-save', 'ai-skill-reset',
 ] as const;
 
 const dispatchable = new Set(Object.keys(CHAT_DISPATCH));

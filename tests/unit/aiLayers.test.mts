@@ -67,8 +67,13 @@ eq(AI_LAYER_ORDER_BY_CHANNEL.project.join(','), 'stageInstructions,skills', 'the
 
 //? The skills block reaches the agent as a context-DOC, not as a system-prompt layer. If this moves,
 //? the channel model above moves with it.
+//?
+//? Owner decision 2026-08-20 — a dev-pipeline run no longer resolves skills by apply-point: the STAGE
+//? names the skills it wants (`aiSkillIds`), so a plan stage and a review stage can differ. Asserting
+//? the old workspace-wide `skillPromptBlock(workspaceId, 'dev')` would pin the behaviour that made
+//? every stage run the same skills.
 const runner = read('server/orchestrator/stageRunner.ts');
-assert(runner.includes("skillPromptBlock(workspaceId, 'dev')"), 'skills resolve for the dev apply-point');
+assert(runner.includes('stageSkillBlock(workspaceId, cfg.aiSkillIds)'), "the stage's own skill selection is what reaches the agent");
 assert(runner.includes('contextDocs'), '…and are injected as a context document');
 
 //? ADR 0311's actual bug fix: the workspace instruction must be RESOLVED by the runner and PASSED to
@@ -84,7 +89,7 @@ assert(
 
 const layers = resolveAiLayers({
   workspace: { aiInstruction: 'WS' },
-  skills: [{ id: 's1', slug: 's', name: 's', instruction: 'SKILL', examples: [], applyPoints: ['all'], enabled: true, builtin: false }],
+  skills: [{ id: 's1', slug: 's', name: 's', instruction: 'SKILL', examples: '', applyPoints: ['all'], builtin: false }],
   stage: { systemPrompt: 'SYS', customInstructions: 'TASK', promptTemplate: 'CARRY' },
 });
 

@@ -199,7 +199,7 @@ export function stageCreateData(workspaceId: string, projectId: string, s: Defau
     aiEnabled: s.aiEnabled, wipLimit: null,
     roleKey: s.kind === 'code' ? 'code' : s.kind, systemPrompt: s.systemPrompt,
     customInstructions: s.customInstructions, promptTemplate: s.promptTemplate, definitionOfDone: s.definitionOfDone,
-    skillKeys: [], sourceIds: ['summary'], commands: [], tools: [],
+    skillKeys: [], aiSkillIds: [], sourceIds: ['summary'], commands: [], tools: [],
     statuses: baseStatuses(), processes: [], visibleStageIds: [],
     modelCfg: { autoEscalate: false, base: { model: s.model, effort: s.effort, maxTurns: s.maxTurns }, rules: [] },
     network: { enabled: true, mode: 'whitelist', categories: ['package-registries', 'source-hosts', 'ai-apis'], domains: [] },

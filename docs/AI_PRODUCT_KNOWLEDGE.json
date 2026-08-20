@@ -1,6 +1,6 @@
 {
-  "hash": "225337a3eef8927c",
-  "chunkCount": 252,
+  "hash": "f2bfc1e85d6e943d",
+  "chunkCount": 253,
   "chunks": [
     {
       "id": "cap-001",
@@ -1513,6 +1513,12 @@
       "kind": "decision",
       "title": "0317-the-runtime-is-a-list-of-processes-not-one-command",
       "text": "ADR 0317: 0317-the-runtime-is-a-list-of-processes-not-one-command. The owner's report: *\"for me, running the frontend needs 2 commands — one for the frontend and one for the backend — and who knows, maybe more, to open an ssh tunnel for instance.\"* That is exactly what the code did. `Project.devCommand` is one nullable string, with an optional `Service.devCommand` override for a monorepo unit and a per-stack default behind both (`resolveDevCommand`). `previewSession.ts` and `refPreview.ts` each ran a single `docker exec -d … sh -lc <devCmd>`; `deploy/environment.ts` resolves the same single string. The only way to express two servers was one shell line (`a & b & wait`), which starts, gives you one merged output stream where you cannot tell which half died, and no way to restart just that half. The interesting part is that **the model the owner described already existed, one layer over**: - `PipelineStage.processes` is a list of `{ id, name, cwd, env[], commands[] }`. - `startStageProcesses()` starts each of them detached in the ticket's container, teeing each to `/work/.claude/process-<name>.log`. - `TerminalPanel` renders one terminal tab per process of the ticket's current stage. - The stage runner, the preview and the editor all reach the same container — every one of them goes through `launchTicketContainer`, which is idempotent by name. So \"several commands, each with its own terminal, per ticket\" was built and working. It was attached to the **pipeline stage** rather th"
+    },
+    {
+      "id": "adr-0318",
+      "kind": "decision",
+      "title": "A skill is switched on by the stage that wants it, not globally",
+      "text": "ADR 0318: A skill is switched on by the stage that wants it, not globally. A `Skill` with `skillType: 'instruction'` is a reusable block of text injected into AI runs. Until today it had **two** independent switches: - `Skill.enabled` — a boolean toggled from a card on the workspace AI page. - `Skill.applyPoints` — a list of run-groups (`content`, `dev`, `chat`, …, or `all`) it applies to. `resolveSkillsFor` required both: enabled **and** a matching apply point. That produced a state a user cannot reason about — a skill showing \"on\" that contributes nothing, because the run they were looking at was not in its scope. It also produced the opposite: an empty apply-point list was treated as \"everywhere\", so switching a skill on with no scope silently added it to every AI task in the workspace. Separately, every dev-pipeline stage resolved the same set (`skillPromptBlock(workspaceId, 'dev')`). A plan stage and a review stage want different instructions, and there was no way to say so — the only control was workspace-wide. The owner's ask: *\"ik wil dat je de skills nooit aan hoeft te zetten maar dat je dus bij de pipeline stages de skills kan aan of uit zetten.\"* Decision: **Apply points are the only global switch, and a pipeline stage picks its own skills by id.** 1. `Skill.enabled` is retired for instruction skills. It survives in the schema because *capability* skills (`skillType: 'capability'`, toggled from the Sources page) genuinely use it. 2. `applyPoints` now means exactly "
     }
   ]
 }

@@ -28,14 +28,14 @@ import { EmptyPicker } from '../_components/SetupNotice';
 import { PageSections, useTrailSegment } from '../_components/sections';
 import { RepoInventoryPanel, RepoScriptPicker, useRepoIntrospection } from './repoIntrospection';
 import { RunProcessList, anyRowIncomplete, rowCommand, seedProcesses } from './runProcesses';
+import { SkillsSection } from './skillsEditor';
 import { AiProvidersSection } from './aiProviders';
 import { FormSection, SavePill, SettingRow, useAutosave } from '../_components/settings';
 import { resolveAiLayers } from '../_functions/aiLayers';
 import { INTEGRATION_TYPES, RBAC_CAPABILITIES, ROLE_DISPLAY } from '../_data/seed';
 import { GATEABLE_SECTIONS, WORKSPACE_MODULES, WORKSPACE_SECTIONS, isModuleEnabled } from '../_data/modules';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
-import { AI_SKILL_APPLY_POINTS } from '../_data/types';
-import type { StageProcessCfg, AiSkillEntry, BranchStrategyKind, EnvVar, GitConfig, IntegrationField, IntegrationTool, InviteEntry, Member, PushPolicy } from '../_data/types';
+import type { StageProcessCfg, BranchStrategyKind, EnvVar, GitConfig, IntegrationField, IntegrationTool, InviteEntry, Member, PushPolicy } from '../_data/types';
 
 //? `w-full` was missing, so every input built from this class rendered at the browser's intrinsic
 //? text-input width (~150px) inside a column sized for far more — a settings page of stubby boxes.
@@ -1214,101 +1214,6 @@ const fieldCls = 'h-9 w-full px-3 rounded-lg border border-container1-border bg-
 }
 
 //? SK1 — one AI-skill row: toggle + expandable editor (builtin = resettable, never deletable).
-function SkillCard({ s }: { s: AiSkillEntry }) {
-  const translate = useTranslator();
-  const { saveAiSkill, toggleAiSkill, deleteAiSkill, resetAiSkill } = useWorkspaces();
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState(s.name);
-  const [instruction, setInstruction] = useState(s.instruction);
-  const [examples, setExamples] = useState(s.examples);
-  const [points, setPoints] = useState<string[]>(s.applyPoints);
-  const togglePoint = (p: string): void => { setPoints((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev.filter((x) => (p === 'all' ? false : x !== 'all')), p])); };
-  return (
-    <div className="rounded-lg border border-container1-border bg-container1 p-2.5">
-      <div className="flex items-center justify-between gap-2">
-        <button type="button" onClick={() => { setOpen((o) => !o); }} className="flex items-center gap-2 min-w-0 cursor-pointer text-left">
-          <Icon name={open ? 'angle-down' : 'angle-right'} className="text-muted text-xs shrink-0" />
-          <span className="text-sm font-semibold text-title truncate">{s.name}</span>
-          {s.builtin && <span className="text-[10px] uppercase tracking-wide rounded-full bg-container2 text-muted px-1.5 py-0.5 shrink-0">{translate({ key: 'workspaces.workspaceSettings.skillsAi.builtin' })}</span>}
-        </button>
-        <div className="flex items-center gap-2 shrink-0">
-          <Toggle on={s.enabled} onChange={(next) => { toggleAiSkill(s.id, next); }} />
-        </div>
-      </div>
-      {!open && <div className="text-xs text-muted mt-1 truncate">{s.instruction.split('\n')[0]}</div>}
-      <Collapse open={open}>
-        <div className="flex flex-col gap-2 mt-2">
-          <input value={name} onChange={(e) => { setName(e.target.value); }} className={fieldCls} placeholder={translate({ key: 'workspaces.workspaceSettings.skillsAi.namePlaceholder' })} />
-          <textarea value={instruction} onChange={(e) => { setInstruction(e.target.value); }} rows={6} className={`${fieldCls} min-h-28 py-2 resize-y`} placeholder={translate({ key: 'workspaces.workspaceSettings.skillsAi.instructionPlaceholder' })} />
-          <textarea value={examples} onChange={(e) => { setExamples(e.target.value); }} rows={2} className={`${fieldCls} py-2 resize-y`} placeholder={translate({ key: 'workspaces.workspaceSettings.skillsAi.examplesPlaceholder' })} />
-          <div>
-            {/* Selecting nothing WIDENS the skill: the resolver treats an empty list like 'all'
-                (server/ai/skills.ts). Deselecting is not how you switch a skill off. */}
-            <div className="text-xs text-muted mb-1 flex items-center gap-1.5">
-              {translate({ key: 'workspaces.workspaceSettings.skillsAi.applyPointsLabel' })}
-              <InfoTip
-                label={translate({ key: 'workspaces.tips.workspace.skillScopeAria' })}
-                title={translate({ key: 'workspaces.tips.workspace.skillScopeTitle' })}
-                body={translate({ key: 'workspaces.tips.workspace.skillScopeBody' })}
-                points={[
-                  { id: 'none', label: translate({ key: 'workspaces.tips.workspace.skillScopeNoneLabel' }), desc: translate({ key: 'workspaces.tips.workspace.skillScopeNoneDesc' }) },
-                  { id: 'off', label: translate({ key: 'workspaces.tips.workspace.skillScopeOffLabel' }), desc: translate({ key: 'workspaces.tips.workspace.skillScopeOffDesc' }) },
-                ]}
-                align="start"
-              />
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {AI_SKILL_APPLY_POINTS.map((p) => (
-                <button key={p} type="button" onClick={() => { togglePoint(p); }}
-                  className={`text-xs rounded-full px-2.5 py-1 border cursor-pointer ${points.includes(p) ? 'bg-primary/15 border-primary text-title' : 'bg-container2/50 border-container1-border text-muted hover:text-common'}`}>
-                  {translate({ key: `workspaces.workspaceSettings.skillsAi.point.${p}` })}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <WsButton icon="check" onClick={() => { saveAiSkill({ skillId: s.id, name: name.trim() || s.name, instruction, examples, applyPoints: points }); setOpen(false); }}>{translate({ key: 'workspaces.workspaceSettings.skillsAi.save' })}</WsButton>
-            {s.builtin
-              ? <WsButton variant="ghost" icon="arrows-rotate" onClick={() => { resetAiSkill(s.id); setOpen(false); }}>{translate({ key: 'workspaces.workspaceSettings.skillsAi.reset' })}</WsButton>
-              : <button type="button" onClick={() => { deleteAiSkill(s.id); }} className="text-xs text-muted hover:text-wrong px-1.5 py-1 cursor-pointer"><Icon name="trash" /> {translate({ key: 'workspaces.workspaceSettings.skillsAi.delete' })}</button>}
-          </div>
-        </div>
-      </Collapse>
-    </div>
-  );
-}
-
-//? SK1 — the Skills section: the universal instruction blocks (humanizer, tone-of-voice, …) injected
-//? into every matching AI run. All OFF by default; enabling one is the user's explicit choice.
-function SkillsSection() {
-  const translate = useTranslator();
-  const { aiSkills, saveAiSkill } = useWorkspaces();
-  const [adding, setAdding] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newInstruction, setNewInstruction] = useState('');
-  return (
-    <div className="pt-2 border-t border-divider mt-2">
-      <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.skillsAi.title' })}</div>
-      <div className="text-sm text-muted mt-0.5 mb-2">{translate({ key: 'workspaces.workspaceSettings.skillsAi.desc' })}</div>
-      <div className="flex flex-col gap-2">
-        {aiSkills.map((s) => <SkillCard key={s.id} s={s} />)}
-      </div>
-      {adding ? (
-        <div className="flex flex-col gap-2 mt-2">
-          <input value={newName} onChange={(e) => { setNewName(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.skillsAi.namePlaceholder' })} className={fieldCls} />
-          <textarea value={newInstruction} onChange={(e) => { setNewInstruction(e.target.value); }} rows={3} placeholder={translate({ key: 'workspaces.workspaceSettings.skillsAi.instructionPlaceholder' })} className={`${fieldCls} py-2 resize-y`} />
-          <div className="flex items-center gap-2">
-            <WsButton icon="plus" onClick={() => { if (newName.trim() && newInstruction.trim()) { saveAiSkill({ name: newName.trim(), instruction: newInstruction.trim(), applyPoints: ['all'] }); setNewName(''); setNewInstruction(''); setAdding(false); } }}>{translate({ key: 'workspaces.workspaceSettings.skillsAi.add' })}</WsButton>
-            <WsButton variant="ghost" onClick={() => { setAdding(false); }}>{translate({ key: 'workspaces.workspaceSettings.skillsAi.cancel' })}</WsButton>
-          </div>
-        </div>
-      ) : (
-        <div className="mt-2"><WsButton variant="ghost" icon="plus" onClick={() => { setAdding(true); }}>{translate({ key: 'workspaces.workspaceSettings.skillsAi.addNew' })}</WsButton></div>
-      )}
-    </div>
-  );
-}
-
 function AiBehaviorTab() {
   const translate = useTranslator();
   const { activeWorkspace, saveAiInstruction, aiOverrides, aiConnections, saveAiProvider, saveAutonomy, customTasks, saveCustomTask, runCustomTask, deleteCustomTask, aiSkills, navigate } = useWorkspaces();

@@ -760,8 +760,10 @@ export interface AiSkillEntry {
   name: string;
   instruction: string;
   examples: string;
-  applyPoints: string[];     // apply-point group ids; [] or ['all'] = every AI run
-  enabled: boolean;
+  //? Where this skill applies automatically. `['all']` = every AI run; EMPTY = nowhere automatic —
+  //? it then runs only where a pipeline stage picks it by id. This replaced a separate `enabled`
+  //? flag: two controls that both meant "off" is why a skill could be on and still do nothing.
+  applyPoints: string[];
   builtin: boolean;          // seeded default — editable + resettable, never deletable
 }
 
@@ -1049,7 +1051,11 @@ export interface PipelineStageCfg {
   userEditable?: boolean;            // edit-lock: may the user edit while this stage is active
   gateForApproval?: boolean;         // proceed-or-gate: gate for human approval before promoting
   // child collections
-  skillKeys: string[];               // enabled SkillEntry ids
+  skillKeys: string[];
+  //? Owner decision 2026-08-20 — which INSTRUCTION skills this stage runs with. A skill is no longer
+  //? switched on globally; the stage that wants it picks it. Empty = none. Distinct from `skillKeys`,
+  //? which holds the index-discovered CAPABILITY skills.
+  aiSkillIds: string[];               // enabled SkillEntry ids
   sourceIds: string[];               // loaded InfoDoc ids (context docs)
   commands: StageCommandCfg[];
   tools: StageToolCfg[];

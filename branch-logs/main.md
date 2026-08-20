@@ -5719,3 +5719,49 @@ De opties komen nu uit de daadwerkelijk GEKOPPELDE backends, plus 'Standaard'.
 **Verificatie.** `tsc` ✅ · `lint` ✅ · `ai:lint` ✅ · `build` ✅ · unit **123/123** · Playwright
 **37/37** (nieuwe spec: sectieklik verandert de URL, en een getypt adres landt op díe sectie in plaats
 van op de eerste). De sweep is niet opnieuw gedraaid — deze wijziging raakt geen route.
+
+## 2026-08-20 — Skills: één editor, en de stage zet ze aan (ADR 0318)
+
+**Prompt van de gebruiker.** "Onder AI de skills tab wil ik dat je iedere skill goed kan inzien met
+een simpele editor ... en het toevoegen van skills moet ook via die code editor gaan. Ook wil ik dat
+je de skills nooit aan hoeft te zetten maar dat je dus bij de pipeline stages de skills kan aan of uit
+zetten." Plus, uitdrukkelijk alleen documenteren: één AI voor alles of een nieuwe AI per stage?
+
+**Eén editor.** De skill-kaart met een textarea van zes regels is weg. `skillsEditor.tsx`: een lijst
+die je opent, met de volledige tekst in een mono-veld van 18 regels, naam bewerkbaar, voorbeelden en
+bereik in hetzelfde formulier, verwijderen achter een confirm. "Toevoegen" opent diezelfde editor —
+daarvoor was het een tweede, armer formulier dat geen voorbeelden en geen bereik kon zetten, dus een
+nieuwe skill moest je eerst opslaan en heropenen om af te maken.
+
+**Twee schakelaars zijn er één geworden.** Een skill had `enabled` én `applyPoints`, en `resolveSkillsFor`
+eiste allebei — dus een skill kon "aan" staan en niets doen omdat de run buiten zijn bereik viel. Nu:
+apply points ZIJN de schakelaar (`['all']` = overal, lijst = die groepen, **leeg = nergens automatisch**),
+en `PipelineStage.aiSkillIds` bepaalt waar een stage mee draait. Leeg betekent niet "uit": de stage die
+'m koos krijgt 'm nog steeds. Migratie in `schemaVersion.ts` vouwt de oude vlag zo in dat geen enkele
+werkruimte iets anders gaat draaien.
+
+**Op verwijderd, niet omgekat.** `ai-skill-toggle` is uit de catalogus, RBAC, Conductor, chat-dispatch,
+de client-actie en de effect-matrix — hij zou een vlag omzetten die niets meer leest. De assistent
+scopet nu via `ai-skill-save`, en zijn state-tekst noemt per skill het bereik in plaats van on/off.
+`generateArtifacts` opnieuw gedraaid.
+
+**Onderweg.** `SetupFix` kreeg `section?`, zodat de "schrijf een vaardigheid"-knop in de lege picker op
+de pipeline direct in de skills-sectie landt in plaats van bovenaan de AI-pagina.
+
+**Documentatie-only, zoals gevraagd:** `src/workspaces/_docs/ONE_AI_VS_AI_PER_STAGE.md`. Kern: houd een
+sessie per stage. Niet vanwege contextgrootte — daar heeft de owner gelijk — maar omdat permissies per
+stage in `settings.json` staan die de CLI bij sessiestart leest, dus één sessie = de breedste permissieset
+voor álle stages. En de premisse klopt niet helemaal: "handover" zijn twee mechanismen. `CarryOver`
+(stage→stage) zou verdwijnen, maar `Handoff` (de gecontroleerde context-reset binnen één sessie) is
+juist de mechaniek waar het één-AI-model méér op leunt. Het doc noemt wél vier manieren om de
+configuratie echt te verkleinen (overerving in plaats van lege velden).
+
+**Valkuil in de eigen test.** De stage-e2e faalde eerst met `sync.notRoomMember`: "Stage opslaan" is
+fire-and-forget over de socket zonder enige bevestiging in de UI, dus een `reload()` direct na de klik
+sloot het transport midden in de vlucht. Opgelost door op het ack-frame te wachten. **Dit is een echt
+gat dat ik NIET gefikst heb:** die knop geeft de gebruiker geen enkel teken dat er iets opgeslagen is.
+
+**Verificatie.** `tsc` ✅ · `lint` ✅ · `localeIntegrity` ✅ (4 locales, `workspaces.skills.*` compleet;
+13 wees-keys + 7 tips over de oude uit-stand verwijderd) · `skillsLayer` integratie **38/38** ·
+Playwright: nieuwe `skillsEditor.spec.ts` **2/2** (schrijven→heropenen→hernoemen→verwijderen, en een
+stage die een ongescopete skill aanzet + reload).
