@@ -13,7 +13,6 @@
 
 import { connectionFor } from './connections';
 import { AI_PROVIDER_CATALOG } from './providers/catalog';
-import type { AiProviderId } from './types';
 
 export interface ResolvedProviderConfig {
   apiKey: string;
@@ -23,24 +22,22 @@ export interface ResolvedProviderConfig {
   temperature: number | null;
 }
 
-const cfgKey = (prefix: string, id: AiProviderId): string => `__ai_${prefix}_${id}`;
-
 /** Read the config a backend should run with: its CONNECTION first, then env defaults.
  *
  *  The endpoint is deliberately NOT part of what a user can set — it comes from the provider catalog,
  *  with an operator env override for a proxy or a self-hosted gateway. It is infrastructure. */
 export async function resolveProviderConfig(
-  id: AiProviderId,
+  id: string,
   workspaceId: string | undefined,
   envFallback: { apiKey: string; model: string; baseUrl: string },
 ): Promise<ResolvedProviderConfig> {
   const meta = AI_PROVIDER_CATALOG[id];
   const defaults: ResolvedProviderConfig = {
     apiKey: envFallback.apiKey,
-    model: envFallback.model || meta.defaultModel,
+    model: envFallback.model || (meta?.defaultModel ?? ''),
     //? Env first here, not last: only an operator sets this, and when they do it is because the
     //? default host is unreachable from their network.
-    baseUrl: envFallback.baseUrl || meta.defaultBaseUrl,
+    baseUrl: envFallback.baseUrl,
     temperature: null,
   };
   if (workspaceId === undefined) return defaults;
@@ -55,11 +52,3 @@ export async function resolveProviderConfig(
     temperature: null,
   };
 }
-
-/** The EnvVar keys one provider's settings occupy — used by the writer and by the snapshot. */
-export const providerConfigKeys = (id: AiProviderId): { key: string; model: string; baseUrl: string; temp: string } => ({
-  key: `__provider_key_${id}`,
-  model: cfgKey('model', id),
-  baseUrl: cfgKey('baseurl', id),
-  temp: cfgKey('temp', id),
-});

@@ -5651,3 +5651,45 @@ Ontkoppelen op de rij, confirm-tekst, en dat er nérgens een endpoint-veld staat
 **Developer-actie.** `prisma generate` is gedraaid en de runtimes zijn herstart. Bestaande
 Gemini-instellingen uit de oude opslag worden NIET automatisch een koppeling — koppel Gemini opnieuw
 via de nieuwe sectie.
+
+## 2026-08-20 — Abonnement vs API-sleutel · 8 backends · uitklapblok van de AI-pagina
+
+**Prompt van de gebruiker.** Het grote uitklapmenu over de promptlagen ("Wat de AI daadwerkelijk
+krijgt") staat nog op /aibehavior. En bij AI koppelen: onderscheid maken tussen subscription en API
+key, plus meer support voor subscription-providers en API-sleutels die ook echt werken.
+
+**Het uitklapblok is weg van die pagina.** De `?` naast het instructieveld draagt dezelfde uitleg al.
+Het blok blijft onderaan de pipeline-stage staan, waar de stage-lagen ook echt bewerkt worden; op een
+pagina met één veld voegde het niets toe behalve de container die er twee keer uit gevraagd is.
+
+**Abonnement vs API-sleutel is nu een echt onderscheid, geen label.** `AiProviderMeta` heeft
+`kind: 'subscription' | 'api-key'` en — belangrijker — `transport`, dat een écht bestaande
+implementatie noemt:
+
+- `claude-cli` — abonnement, ingelogd op de host. Geen sleutelveld, geen modelkeuze; die zouden twee
+  vakjes zijn die niets kunnen.
+- `anthropic` — eigen transport, want de messages-API verschilt echt: `system` is een top-level veld
+  in plaats van een message, `max_tokens` is verplicht, de sleutel gaat in `x-api-key` en er is een
+  versie-header. Door de OpenAI-transport sturen zou eruitzien alsof het werkte en bij de eerste turn
+  400'en — precies de "provider die niet echt werkt" die gevraagd werd te vermijden.
+- `openai-compatible` — één geteste implementatie voor OpenAI, Gemini (Google's OpenAI-endpoint),
+  OpenRouter, Groq, DeepSeek, Mistral en een lokale/self-hosted server. Dat is waarom "meer providers"
+  hier een cataloguswijziging is en geen project: een host die deze vorm spreekt werkt de dag dat hij
+  wordt toegevoegd.
+
+Van 3 backends naar **8**, waarvan 1 abonnement en 7 op sleutel. De lijst en de kiezer groeperen erop.
+Een unit-test bewaakt dat elke catalogus-entry een transport noemt dat bestaat, dat een abonnement géén
+model of sleutel claimt, en dat elke sleutel-backend een echt endpoint plus een operator-env heeft om
+het te herrichten.
+
+**Bug gevonden door de e2e, niet door mij.** `AddConnection` initialiseerde zijn providerkeuze lazily
+uit `aiProviderCatalog[0]` — dat is leeg bij de eerste render, dus de state bleef `''` en het hele
+toevoegformulier renderde als `null` zodra de snapshot ná mount binnenkwam. Nu afgeleid in plaats van
+vastgezet.
+
+**`geminiEndpoint.test.mts` verwijderd**, want `geminiApi.ts` bestaat niet meer. Wat die test
+beschermde (een proxy/self-host-base wordt gehonoreerd, meerdere slashes klappen samen) is overgezet
+naar `aiProviders.test.mts` in plaats van stilzwijgend te verdwijnen.
+
+**Verificatie.** `tsc` ✅ · `lint` ✅ · `ai:lint` ✅ · `build` ✅ · unit **123/123** (nieuw
+`aiProviders.test.mts`, 71 asserties) · sweep **456/456** · Playwright **36/36**.

@@ -3545,7 +3545,9 @@
       "err_ai.keyRequired": "This backend needs an API key.",
       "err_ai.modelRequired": "Pick a model first.",
       "err_ai.unknownProvider": "Unknown backend.",
-      "err_unknown": "Could not connect."
+      "err_unknown": "Could not connect.",
+      "kind_subscription": "Subscription",
+      "kind_api-key": "API key"
     }
   }
 }

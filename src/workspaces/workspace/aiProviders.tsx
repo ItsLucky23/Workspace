@@ -47,7 +47,21 @@ export function AiProvidersSection() {
             <EmptyPicker icon="robot" label={translate({ key: 'workspaces.aiProviders.noneConnected' })} />
           </div>
         )}
-        {aiConnections.map((c) => <ConnectionRow key={c.id} connection={c} />)}
+        {/* Grouped, because the two kinds are answerable by different questions: a subscription is
+            "is it signed in on the server", an API key is "is this key valid and does this model
+            exist". Mixing them in one flat list is what made the page read as key-only. */}
+        {(['subscription', 'api-key'] as const).map((kind) => {
+          const rows = aiConnections.filter((c) => c.kind === kind);
+          if (rows.length === 0) return null;
+          return (
+            <div key={kind}>
+              <div className={`px-5 pt-4 -mb-2 text-xs font-semibold uppercase tracking-wide text-meta`}>
+                {translate({ key: `workspaces.aiProviders.kind_${kind}` })}
+              </div>
+              {rows.map((c) => <ConnectionRow key={c.id} connection={c} />)}
+            </div>
+          );
+        })}
         {/* Where the OTHER kind of provider lives — a pointer, not a redirect, so nobody hunts for
             ElevenLabs on this page and nobody is sent away to configure what belongs here. */}
         <div className={`px-5 pb-5 text-xs text-meta leading-relaxed`}>{translate({ key: 'workspaces.aiProviders.mediaElsewhere' })}</div>
@@ -127,21 +141,30 @@ function statusLine(c: AiConnection, translate: ReturnType<typeof useTranslator>
   if (c.lastError !== null) return translate({ key: 'workspaces.aiProviders.lastFailed', params: [{ key: 'error', value: c.lastError }] });
   if (c.verifiedAt !== null) return translate({ key: 'workspaces.aiProviders.verifiedAt', params: [{ key: 'when', value: new Date(c.verifiedAt).toLocaleString() }] });
   //? "A key is present" is NOT "it works" — say which one this is rather than implying the stronger one.
-  return translate({ key: c.auth === 'host-cli' ? 'workspaces.aiProviders.untestedCli' : 'workspaces.aiProviders.untested' });
+  return translate({ key: c.kind === 'subscription' ? 'workspaces.aiProviders.untestedCli' : 'workspaces.aiProviders.untested' });
 }
 
 function AddConnection() {
   const translate = useTranslator();
   const { aiProviderCatalog, aiConnectionAction } = useWorkspaces();
-  const [providerId, setProviderId] = useState(aiProviderCatalog[0]?.id ?? '');
+  //? NOT initialised from the catalog: the first render happens before the snapshot lands, so a
+  //? lazy initial value pinned this to '' forever and the whole add-form rendered as null. The
+  //? selection is DERIVED instead — an empty choice resolves to the first backend the moment the
+  //? catalog arrives, and an explicit choice wins over it.
+  const [providerId, setProviderId] = useState('');
   const [modelChoice, setModelChoice] = useState('');
   const [customModel, setCustomModel] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const provider: AiProviderOption | undefined = aiProviderCatalog.find((p) => p.id === providerId);
-  const providerItems = aiProviderCatalog.map((p) => ({ id: p.id, value: p.id, item: p.label }));
+  const provider: AiProviderOption | undefined = aiProviderCatalog.find((p) => p.id === providerId) ?? aiProviderCatalog[0];
+  //? Labelled by kind in the picker itself, so the choice between "sign in on the server" and "paste
+  //? a key" is visible BEFORE you pick, not after the form changes shape underneath you.
+  const providerItems = aiProviderCatalog.map((p) => ({
+    id: p.id, value: p.id,
+    item: `${p.label} · ${translate({ key: `workspaces.aiProviders.kind_${p.kind}` })}`,
+  }));
   const modelItems = [
     ...(provider?.models ?? []).map((m) => ({ id: m.id, value: m.id, item: m.label })),
     { id: CUSTOM, value: CUSTOM, item: translate({ key: 'workspaces.aiProviders.customModel' }) },
@@ -149,7 +172,9 @@ function AddConnection() {
     //? Falls through the picker → the provider's default → nothing, and each step can legitimately be
   //? the EMPTY STRING (no choice made yet), so `||` is the right operator here, not `??`.
   const model = modelChoice === CUSTOM ? customModel.trim() : (modelChoice.length > 0 ? modelChoice : (provider?.defaultModel ?? ''));
-  const needsKey = provider?.auth === 'api-key';
+    //? A SUBSCRIPTION backend is signed in on the host: no key to paste, no model to pick. Rendering
+  //? either would be two boxes that cannot do anything — the dead end this page was full of.
+  const needsKey = provider?.kind === 'api-key';
 
   const add = async (): Promise<void> => {
     if (!provider) return;

@@ -171,8 +171,8 @@ export interface WorkspaceSnapshot {
   //? ADR 0007 — the CONNECTED AIs, and what can be connected. `hasKey` is presence ONLY; the
   //? credential is encrypted at rest and never leaves the server. No endpoint in either shape: which
   //? host answers is infrastructure, resolved server-side.
-  aiConnections: { id: string; providerId: string; label: string; model: string; auth: 'host-cli' | 'api-key'; hasKey: boolean; verifiedAt: string | null; lastError: string | null }[];
-  aiProviderCatalog: { id: string; label: string; auth: 'host-cli' | 'api-key'; models: { id: string; label: string }[]; defaultModel: string; keyUrl: string }[];
+  aiConnections: { id: string; providerId: string; label: string; model: string; kind: 'subscription' | 'api-key'; hasKey: boolean; verifiedAt: string | null; lastError: string | null }[];
+  aiProviderCatalog: { id: string; label: string; kind: 'subscription' | 'api-key'; models: { id: string; label: string }[]; defaultModel: string; keyUrl: string }[];
   //? E5 — user-defined custom AI tasks (name + template + last output).
   customTasks: { id: string; name: string; promptTemplate: string; lastOutput: string | null; lastRunAt: number | null }[];
   //? O5 — reusable output specs (name + render format + watermark position).
@@ -610,7 +610,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     //? Deliberately no endpoint in either: which host answers is infrastructure, not a user setting.
     const aiConnections = await listConnections(activeWorkspaceId);
     const aiProviderCatalog = AI_PROVIDER_LIST.map((meta) => ({
-      id: meta.id, label: meta.label, auth: meta.auth, models: meta.models,
+      id: meta.id, label: meta.label, kind: meta.kind, models: meta.models,
       defaultModel: meta.defaultModel, keyUrl: meta.keyUrl,
     }));
 

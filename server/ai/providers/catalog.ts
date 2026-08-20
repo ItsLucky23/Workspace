@@ -1,68 +1,88 @@
-//? What each TEXT backend needs to be set up, as data rather than as three hardcoded Gemini fields.
+//? What can be connected as a TEXT backend, as data.
 //?
-//? The AI-behaviour page used to be Gemini-shaped: a free-text model box, a free-text base URL, a
-//? temperature, and nothing at all for Claude — while Gemini's KEY lived on the Content settings page
-//? next to ElevenLabs and Suno. Two things were wrong with that. Media providers belong with media;
-//? the text backend that runs the whole product does not. And a model name you have to type from
-//? memory is a field that is wrong more often than it is right.
+//? Two things the owner asked for shape this file:
 //?
-//? So: one entry per backend, carrying how it authenticates, which models it offers, and what its
-//? defaults are. The settings UI renders itself from this — adding a backend is an entry here plus a
-//? provider implementation, never another hand-built settings panel.
+//? 1. SUBSCRIPTION vs API KEY is a real distinction, not a label. A subscription backend is signed in
+//?    on the HOST and billed by seat — there is no key to paste and no model to pick. An api-key
+//?    backend is metered and needs both. The settings page groups them, and the add-form shows a key
+//?    field only where a key exists to enter.
+//?
+//? 2. "More providers that ACTUALLY work." So an entry is not a name — it names a TRANSPORT, which is
+//?    a real implementation. Most metered hosts speak the OpenAI `/chat/completions` shape, so one
+//?    tested transport serves all of them and a new host is genuinely one entry here. Anthropic's
+//?    messages API is its own shape and has its own transport. A CLI subscription is a per-CLI
+//?    implementation (session handling, capture hooks, permissions), which is why exactly one exists:
+//?    adding a second is real work, not a line in this file, and listing one before it is built would
+//?    be the "looks connected, fails at the first turn" failure this page was made to remove.
 //? @adr 0007
 
-import type { AiProviderId } from '../types';
+export type AiTransport = 'claude-cli' | 'openai-compatible' | 'anthropic';
 
 export interface AiModelChoice { id: string; label: string }
 
 export interface AiProviderMeta {
-  id: AiProviderId;
+  id: string;
   label: string;
-  //? `host-cli` = installed and signed in on the SERVER; there is nothing to type in the app, and a
-  //? key field for it would be a lie. `api-key` = a per-workspace secret this page can take.
-  auth: 'host-cli' | 'api-key';
-  /** Offered in a dropdown. Empty ⇒ the backend has no model concept (the subscription CLI). */
+  /** How it is paid for and signed in — decides the whole shape of its add-form. */
+  kind: 'subscription' | 'api-key';
+  /** Which implementation runs it. Several entries may share one. */
+  transport: AiTransport;
+  /** Offered in a dropdown. Empty ⇒ the backend has no model concept (a subscription CLI). */
   models: AiModelChoice[];
   defaultModel: string;
-  /** Pre-filled, editable for a proxy/self-host. Empty ⇒ the backend has no endpoint to point. */
-  defaultBaseUrl: string;
-  supportsTemperature: boolean;
-  /** Where to get the key, for the one thing this app genuinely cannot do for you. */
+  /** Server-side only: the endpoint is infrastructure and is never rendered to a user. */
+  baseUrl: string;
+  /** Where to get a key, for the one thing this app cannot do for you. Empty for a subscription. */
   keyUrl: string;
+  /** Env var an operator can set to override this backend's endpoint (proxy / self-host / gateway). */
+  baseUrlEnv: string;
 }
 
-//? Model lists are deliberately short and current-generation. They are a STARTING POINT, not a
-//? whitelist: every provider row keeps an "other" escape hatch, because a model released after this
-//? file was written must not make the product unusable.
-export const AI_PROVIDER_CATALOG: Record<AiProviderId, AiProviderMeta> = {
+//? Model lists are a STARTING POINT, not a whitelist — every add-form keeps an "other" escape hatch,
+//? because a model released after this file was written must not make its backend unreachable.
+//? Named so the one transport that needs its own entry can import it WITHOUT an index lookup — the
+//? record's value type is `| undefined` under strict indexing, and a cast to remove that would be
+//? exactly the kind of paper-over this codebase forbids.
+export const ANTHROPIC_META: AiProviderMeta = {
+  id: 'anthropic-api', label: 'Anthropic API', kind: 'api-key', transport: 'anthropic',
+  models: [
+    { id: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5' },
+    { id: 'claude-opus-4-1', label: 'Claude Opus 4.1' },
+    { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5' },
+  ],
+  defaultModel: 'claude-sonnet-4-5',
+  baseUrl: 'https://api.anthropic.com/v1', keyUrl: 'https://console.anthropic.com/settings/keys',
+  baseUrlEnv: 'WS_ANTHROPIC_BASE_URL',
+};
+
+export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
+  //? ---------------------------------------------------------------- subscription
   'claude-cli': {
-    id: 'claude-cli',
-    label: 'Claude',
-    auth: 'host-cli',
-    models: [],
-    defaultModel: '',
-    defaultBaseUrl: '',
-    supportsTemperature: false,
-    keyUrl: '',
+    id: 'claude-cli', label: 'Claude Code', kind: 'subscription', transport: 'claude-cli',
+    models: [], defaultModel: '', baseUrl: '', keyUrl: '', baseUrlEnv: '',
   },
+
+  //? ---------------------------------------------------------------- api key, native shapes
+  'anthropic-api': ANTHROPIC_META,
   'gemini-api': {
-    id: 'gemini-api',
-    label: 'Gemini',
-    auth: 'api-key',
+    id: 'gemini-api', label: 'Gemini', kind: 'api-key', transport: 'openai-compatible',
     models: [
       { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
       { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
       { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
     ],
     defaultModel: 'gemini-2.5-flash',
-    defaultBaseUrl: 'https://generativelanguage.googleapis.com/v1beta',
-    supportsTemperature: true,
-    keyUrl: 'https://aistudio.google.com/apikey',
+    //? Google publishes an OpenAI-compatible endpoint, so Gemini rides the same tested transport as
+    //? every other metered host instead of carrying a second bespoke implementation.
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    keyUrl: 'https://aistudio.google.com/apikey', baseUrlEnv: 'WS_GEMINI_BASE_URL',
   },
+
+  //? ---------------------------------------------------------------- api key, OpenAI-compatible
+  //? These are not "more names": each one is a host that speaks the transport above, so connecting one
+  //? works the day it is added. That is the whole reason the transport is a first-class concept.
   'openai-api': {
-    id: 'openai-api',
-    label: 'OpenAI',
-    auth: 'api-key',
+    id: 'openai-api', label: 'OpenAI', kind: 'api-key', transport: 'openai-compatible',
     models: [
       { id: 'gpt-4o', label: 'GPT-4o' },
       { id: 'gpt-4o-mini', label: 'GPT-4o mini' },
@@ -71,12 +91,70 @@ export const AI_PROVIDER_CATALOG: Record<AiProviderId, AiProviderMeta> = {
       { id: 'o4-mini', label: 'o4-mini' },
     ],
     defaultModel: 'gpt-4o-mini',
-    //? OpenAI-COMPATIBLE, not OpenAI-only: the same shape reaches Azure OpenAI, OpenRouter, Groq,
-    //? Together and a local llama.cpp/Ollama server. Changing this one field is how you get there.
-    defaultBaseUrl: 'https://api.openai.com/v1',
-    supportsTemperature: true,
-    keyUrl: 'https://platform.openai.com/api-keys',
+    baseUrl: 'https://api.openai.com/v1', keyUrl: 'https://platform.openai.com/api-keys',
+    baseUrlEnv: 'WS_OPENAI_BASE_URL',
+  },
+  'openrouter-api': {
+    id: 'openrouter-api', label: 'OpenRouter', kind: 'api-key', transport: 'openai-compatible',
+    //? A gateway in front of many vendors — its model ids are `vendor/model`, and the "other" escape
+    //? hatch matters more here than anywhere else, because its catalog changes weekly.
+    models: [
+      { id: 'anthropic/claude-sonnet-4.5', label: 'Claude Sonnet 4.5' },
+      { id: 'openai/gpt-4o', label: 'GPT-4o' },
+      { id: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+      { id: 'meta-llama/llama-3.3-70b-instruct', label: 'Llama 3.3 70B' },
+    ],
+    defaultModel: 'openai/gpt-4o',
+    baseUrl: 'https://openrouter.ai/api/v1', keyUrl: 'https://openrouter.ai/keys',
+    baseUrlEnv: 'WS_OPENROUTER_BASE_URL',
+  },
+  'groq-api': {
+    id: 'groq-api', label: 'Groq', kind: 'api-key', transport: 'openai-compatible',
+    models: [
+      { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B' },
+      { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B (instant)' },
+    ],
+    defaultModel: 'llama-3.3-70b-versatile',
+    baseUrl: 'https://api.groq.com/openai/v1', keyUrl: 'https://console.groq.com/keys',
+    baseUrlEnv: 'WS_GROQ_BASE_URL',
+  },
+  'deepseek-api': {
+    id: 'deepseek-api', label: 'DeepSeek', kind: 'api-key', transport: 'openai-compatible',
+    models: [
+      { id: 'deepseek-chat', label: 'DeepSeek Chat' },
+      { id: 'deepseek-reasoner', label: 'DeepSeek Reasoner' },
+    ],
+    defaultModel: 'deepseek-chat',
+    baseUrl: 'https://api.deepseek.com/v1', keyUrl: 'https://platform.deepseek.com/api_keys',
+    baseUrlEnv: 'WS_DEEPSEEK_BASE_URL',
+  },
+  'mistral-api': {
+    id: 'mistral-api', label: 'Mistral', kind: 'api-key', transport: 'openai-compatible',
+    models: [
+      { id: 'mistral-large-latest', label: 'Mistral Large' },
+      { id: 'mistral-small-latest', label: 'Mistral Small' },
+    ],
+    defaultModel: 'mistral-large-latest',
+    baseUrl: 'https://api.mistral.ai/v1', keyUrl: 'https://console.mistral.ai/api-keys',
+    baseUrlEnv: 'WS_MISTRAL_BASE_URL',
+  },
+  'local-openai': {
+    id: 'local-openai', label: 'Local / self-hosted', kind: 'api-key', transport: 'openai-compatible',
+    //? Ollama, llama.cpp, vLLM, LM Studio — anything serving the OpenAI shape on your own machine.
+    //? The model name is whatever you pulled, so the list is a hint and "other" is the normal path.
+    models: [
+      { id: 'llama3.1', label: 'llama3.1' },
+      { id: 'qwen2.5', label: 'qwen2.5' },
+    ],
+    defaultModel: 'llama3.1',
+    baseUrl: 'http://localhost:11434/v1', keyUrl: '', baseUrlEnv: 'WS_LOCAL_AI_BASE_URL',
   },
 };
 
 export const AI_PROVIDER_LIST: AiProviderMeta[] = Object.values(AI_PROVIDER_CATALOG);
+
+/** The endpoint a backend talks to: an operator env override, else its catalog default. */
+export function providerBaseUrl(meta: AiProviderMeta): string {
+  const override = meta.baseUrlEnv.length > 0 ? (process.env[meta.baseUrlEnv] ?? '').trim() : '';
+  return override.length > 0 ? override : meta.baseUrl;
+}

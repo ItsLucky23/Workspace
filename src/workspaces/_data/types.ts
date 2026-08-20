@@ -720,7 +720,7 @@ export interface AiConnection {
   label: string;
   /** Empty for a host-CLI backend, which has no model concept. */
   model: string;
-  auth: 'host-cli' | 'api-key';
+  kind: 'subscription' | 'api-key';
   hasKey: boolean;
   /** ISO timestamp of the last SUCCESSFUL credential probe — very different from "a key is present". */
   verifiedAt: string | null;
@@ -731,7 +731,7 @@ export interface AiConnection {
 export interface AiProviderOption {
   id: string;
   label: string;
-  auth: 'host-cli' | 'api-key';
+  kind: 'subscription' | 'api-key';
   models: { id: string; label: string }[];
   defaultModel: string;
   keyUrl: string;

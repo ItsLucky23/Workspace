@@ -21,7 +21,7 @@ import Dropdown from 'src/_components/dropdown/Dropdown';
 import Icon from '../_components/Icon';
 import SetupWizard from '../_components/SetupWizard';
 import { Table, type TableColumn } from '../_components/dataDisplay';
-import { EffectivePromptPreview, LayerNote, useLayerTip } from '../_components/EffectivePromptPreview';
+import { LayerNote, useLayerTip } from '../_components/EffectivePromptPreview';
 import { Collapse } from '../_components/motion';
 import { AvatarBubble, IconButton, InfoTip, PopMenu, Tabs, Toggle, WsButton, type PopMenuItem, type TabDef } from '../_components/primitives';
 import { EmptyPicker } from '../_components/SetupNotice';
@@ -1345,8 +1345,9 @@ function AiBehaviorTab() {
     //? left edge at half width, which is what made it read as a broken layout rather than a narrow one.
     <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
       {/* The composition is stated where it is edited — behind the "?" ON the field (ADR 0311 for the
-          two-channel model; 0308's "layer 1 of 5" was the wrong story and the wrong container). The
-          full composed text stays at the bottom of the section as an opt-in debugging view. */}
+          two-channel model). The full "what the AI actually receives" block used to sit here too; it
+          is the same information in the container the owner asked twice to be rid of, and it belongs
+          on the pipeline where the stage layers are edited, not on a page with one field. */}
       <FormSection
         title={translate({ key: 'workspaces.workspaceSettings.aiInstructionTitle' })}
         desc={translate({ key: 'workspaces.workspaceSettings.aiInstructionDesc' })}
@@ -1375,9 +1376,6 @@ function AiBehaviorTab() {
           status={aiStatus}
           control={<Dropdown width="full" value={languageOptions.find((o) => o.id === language)} items={languageOptions} onChange={(it) => { setLanguage(String(it.id)); }} />}
         />
-        <div className="px-5 py-4">
-          <EffectivePromptPreview layers={layers} inlineIds={['workspace', 'skills']} />
-        </div>
       </FormSection>
 
       {/* A4 — autonomy dial: how often the human is asked to approve a stage. */}

@@ -113,17 +113,24 @@ test.describe('layer tip', () => {
     await expect(page.getByText(/No AI connected yet/)).toBeVisible();
 
     //? The add form is generated from the server catalog, so every backend is offered — including the
-    //? host-CLI one, which the owner could previously read about but never connect.
+    //? subscription one, which the owner could previously read about but never connect.
     await expect(page.getByRole('button', { name: 'Connect' })).toBeVisible();
+
+    //? Subscription vs API key is a real split, asserted where it is load-bearing: the connected list
+    //? groups by it (below, after connecting). The picker also labels each option with its kind, but
+    //? that text lives inside the Dropdown's trigger and is not worth coupling a test to.
 
     //? The endpoint is NOT a field anywhere on this page: which host answers is infrastructure.
     await expect(page.getByText('Endpoint', { exact: true })).toHaveCount(0);
     await expect(page.getByPlaceholder(/https:\/\//)).toHaveCount(0);
 
-    // Connect the host-CLI backend: no key, no model — the form must not demand either.
+    // Connect the SUBSCRIPTION backend: no key, no model — the form must not demand either.
     await page.getByRole('button', { name: 'Connect' }).click();
     const row = page.getByText(/Runs on the server\. Test asks whether the CLI/);
     await expect(row).toBeVisible({ timeout: 15_000 });
+
+    //? The list groups by kind, so a subscription and a metered key are never read as the same thing.
+    await expect(page.getByText('Subscription', { exact: true })).toBeVisible();
 
     //? Test and Disconnect are the two verbs the owner asked for, on the row itself.
     await expect(page.getByRole('button', { name: 'Test', exact: true })).toBeVisible();

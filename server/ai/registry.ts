@@ -15,8 +15,9 @@ import { loadWorkspaceAiOverrides } from './workspaceAssignments';
 import { recordAiRun } from './activity';
 import { recordTurnSpend } from '../spend/record';
 import { claudeCliProvider } from './providers/claudeCli';
-import { geminiApiProvider } from './providers/geminiApi';
-import { openAiProvider } from './providers/openaiApi';
+import { AI_PROVIDER_LIST } from './providers/catalog';
+import { openAiCompatibleProvider } from './providers/openaiCompatible';
+import { anthropicApiProvider } from './providers/anthropicApi';
 import type { AiCompletionRequest, AiCompletionResult, AiFeature, AiProvider, AiProviderId } from './types';
 import { runQueued } from './jobQueue';
 import { applyAiPromptBudget } from './promptBudget';
@@ -57,14 +58,18 @@ function productCapabilityIndex(): string {
 
 /** One backend by id, for the settings page's credential probe. `undefined` for an unknown id. */
 export function aiProviderById(id: string): AiProvider | undefined {
-  return Object.hasOwn(PROVIDERS, id) ? PROVIDERS[id as AiProviderId] : undefined;
+  return PROVIDERS[id];
 }
 
-const PROVIDERS: Record<AiProviderId, AiProvider> = {
-  'claude-cli': claudeCliProvider,
-  'gemini-api': geminiApiProvider,
-  'openai-api': openAiProvider,
-};
+//? Built FROM the catalog rather than hand-listed: a metered host that speaks `/chat/completions` is
+//? one catalog entry and nothing else, which is what makes "more providers" a data change instead of
+//? a project. The two bespoke transports — the Claude Code subscription CLI and Anthropic's messages
+//? API — are named explicitly, because each is a real implementation.
+const PROVIDERS: Record<string, AiProvider> = Object.fromEntries(AI_PROVIDER_LIST.map((meta) => {
+  if (meta.transport === 'claude-cli') return [meta.id, claudeCliProvider];
+  if (meta.transport === 'anthropic') return [meta.id, anthropicApiProvider];
+  return [meta.id, openAiCompatibleProvider(meta)];
+}));
 
 //? Run one AI completion for a feature. `overrides` carries the per-workspace/user
 //? assignment once the picker UI exists; omitted → global defaults. Returns a typed
@@ -78,6 +83,9 @@ export async function runAiCompletion(
   const wsOverrides = await loadWorkspaceAiOverrides(req.workspaceId);
   const providerId = resolveAssignment(feature, { ...wsOverrides, ...overrides });
   const provider = PROVIDERS[providerId];
+  //? An id with no implementation is configuration that outlived its backend. Treated as unavailable
+  //? rather than dereferenced, so one stale override cannot crash the workspace.
+  if (!provider) return { ok: false, text: '', providerId, error: 'ai.providerUnavailable' };
   const startedAt = Date.now();
   const available = await provider.available(req.workspaceId);
   if (!available) {

@@ -3545,7 +3545,9 @@
       "err_ai.keyRequired": "Dieses Backend benötigt einen API-Schlüssel.",
       "err_ai.modelRequired": "Wähle zuerst ein Modell.",
       "err_ai.unknownProvider": "Unbekanntes Backend.",
-      "err_unknown": "Verbinden fehlgeschlagen."
+      "err_unknown": "Verbinden fehlgeschlagen.",
+      "kind_subscription": "Abonnement",
+      "kind_api-key": "API-Schlüssel"
     }
   }
 }

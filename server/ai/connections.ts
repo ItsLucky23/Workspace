@@ -15,20 +15,20 @@ import { getPrismaClient, tryCatch } from '@luckystack/core';
 
 import { decryptSecret, encryptSecret } from '../crypto/secretBox';
 import { AI_PROVIDER_CATALOG } from './providers/catalog';
-import type { AiProviderId } from './types';
+import type { AiProviderMeta } from './providers/catalog';
 
 export interface AiConnectionView {
   id: string;
   providerId: string;
   label: string;
   model: string;
-  auth: 'host-cli' | 'api-key';
+  kind: 'subscription' | 'api-key';
   hasKey: boolean;
   verifiedAt: string | null;
   lastError: string | null;
 }
 
-const isProviderId = (v: string): v is AiProviderId => Object.hasOwn(AI_PROVIDER_CATALOG, v);
+const metaFor = (id: string): AiProviderMeta | undefined => AI_PROVIDER_CATALOG[id];
 
 /** Everything the settings page may see. Deliberately not the key. */
 export async function listConnections(workspaceId: string): Promise<AiConnectionView[]> {
@@ -37,9 +37,11 @@ export async function listConnections(workspaceId: string): Promise<AiConnection
   return (rows ?? []).map((r) => ({
     id: r.id,
     providerId: r.providerId,
-    label: isProviderId(r.providerId) ? AI_PROVIDER_CATALOG[r.providerId].label : r.providerId,
+    //? A row whose provider left the catalog still renders, under its raw id: hiding it would leave a
+    //? credential stored with no way to see or remove it.
+    label: metaFor(r.providerId)?.label ?? r.providerId,
     model: r.model,
-    auth: isProviderId(r.providerId) ? AI_PROVIDER_CATALOG[r.providerId].auth : 'api-key',
+    kind: metaFor(r.providerId)?.kind ?? 'api-key',
     hasKey: (r.apiKey ?? '').length > 0,
     verifiedAt: r.verifiedAt === null ? null : r.verifiedAt.toISOString(),
     lastError: r.lastError,
@@ -47,7 +49,7 @@ export async function listConnections(workspaceId: string): Promise<AiConnection
 }
 
 /** The credentials + model a provider should run with, from the FIRST connection that has them. */
-export async function connectionFor(workspaceId: string | undefined, providerId: AiProviderId): Promise<{ apiKey: string; model: string } | null> {
+export async function connectionFor(workspaceId: string | undefined, providerId: string): Promise<{ apiKey: string; model: string } | null> {
   if (workspaceId === undefined) return null;
   const prisma = getPrismaClient();
   const [, row] = await tryCatch(() => prisma.aiConnection.findFirst({ where: { workspaceId, providerId }, orderBy: { createdAt: 'asc' } }));
@@ -59,15 +61,17 @@ export async function connectionFor(workspaceId: string | undefined, providerId:
 export interface AddConnectionInput { workspaceId: string; providerId: string; model: string; apiKey: string }
 
 export async function addConnection(input: AddConnectionInput): Promise<{ ok: boolean; error?: string; id?: string }> {
-  if (!isProviderId(input.providerId)) return { ok: false, error: 'ai.unknownProvider' };
-  const meta = AI_PROVIDER_CATALOG[input.providerId];
+  const meta = metaFor(input.providerId);
+  if (meta === undefined) return { ok: false, error: 'ai.unknownProvider' };
   const model = input.model.trim();
   const apiKey = input.apiKey.trim();
 
   //? A metered backend without a key is a row that can never run — it would sit in the list looking
   //? connected and fail at the first turn, which is the failure mode this whole page exists to remove.
-  if (meta.auth === 'api-key' && apiKey.length === 0) return { ok: false, error: 'ai.keyRequired' };
-  if (meta.auth === 'api-key' && model.length === 0) return { ok: false, error: 'ai.modelRequired' };
+  //? A local/self-hosted backend legitimately has no key (`keyUrl` empty), so the key requirement
+  //? follows "is there anywhere to get one", not merely "is it metered".
+  if (meta.kind === 'api-key' && meta.keyUrl.length > 0 && apiKey.length === 0) return { ok: false, error: 'ai.keyRequired' };
+  if (meta.kind === 'api-key' && model.length === 0) return { ok: false, error: 'ai.modelRequired' };
 
   const prisma = getPrismaClient();
   //? One connection per (provider, model): connecting the same model twice is a duplicate row that

@@ -3545,7 +3545,9 @@
       "err_ai.keyRequired": "Deze backend heeft een API-sleutel nodig.",
       "err_ai.modelRequired": "Kies eerst een model.",
       "err_ai.unknownProvider": "Onbekende backend.",
-      "err_unknown": "Koppelen is niet gelukt."
+      "err_unknown": "Koppelen is niet gelukt.",
+      "kind_subscription": "Abonnement",
+      "kind_api-key": "API-sleutel"
     }
   }
 }

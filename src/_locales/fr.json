@@ -3545,7 +3545,9 @@
       "err_ai.keyRequired": "Ce backend nécessite une clé API.",
       "err_ai.modelRequired": "Choisissez d'abord un modèle.",
       "err_ai.unknownProvider": "Backend inconnu.",
-      "err_unknown": "Connexion impossible."
+      "err_unknown": "Connexion impossible.",
+      "kind_subscription": "Abonnement",
+      "kind_api-key": "Clé API"
     }
   }
 }
