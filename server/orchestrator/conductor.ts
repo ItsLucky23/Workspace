@@ -106,6 +106,7 @@ import { disconnectProjectRepo } from '../git/repoDisconnect';
 import { broadcastTicketDelta, broadcastContentAssetDelta, broadcastContentDirty, broadcastContentPieceDelta, broadcastWorkspaceDirty } from '../read/broadcast';
 import { sendWebPush } from '../hooks/webPush';
 import { runCustomTask } from '../ai/customTask';
+import { probeIntegration } from '../integrations/probe';
 import { SKILL_APPLY_POINTS, builtinSkillDefault } from '../ai/skills';
 import { indexDocument, runDocumentAi, generateDocumentImage, pruneDocumentRevisions, indexDocumentAsset, clearDocumentAssets, parseAssetEntries } from '../documents/docs';
 import { exportDocument, DOCUMENT_EXPORT_FORMATS } from '../documents/export';
@@ -2078,6 +2079,37 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const integrationId = str(target, 'integrationId');
       if (integrationId) await prisma.integrationTool.deleteMany({ where: { workspaceId: action.workspaceId, id: integrationId } });
       return;
+    }
+    //? ADR 0320 — actually connect to a configured integration and record what happened.
+    //?
+    //? It runs here rather than in the `_sync` route for one reason: this is the only place that
+    //? decrypts an integration's credentials, and the resolved plaintext must not spread. The route
+    //? passes an id; the values are read, used and dropped inside this case.
+    case 'integration-test': {
+      const integrationId = str(target, 'integrationId') ?? str(payload, 'integrationId') ?? '';
+      const tool = await prisma.integrationTool.findFirst({ where: { workspaceId: action.workspaceId, id: integrationId } });
+      if (!tool) return { ok: false, error: 'integration.notFound' };
+      //? Field order IS the contract with the type catalog (probe reads values[0] as the connection
+      //? string, values[1] as the auth header), so an unmapped field must hold its position as ''.
+      const envIds = tool.fields.map((f) => f.envVarId).filter((id): id is string => typeof id === 'string' && id.length > 0);
+      const envRows = envIds.length === 0 ? [] : await prisma.envVar.findMany({ where: { workspaceId: action.workspaceId, id: { in: envIds } } });
+      const values = tool.fields.map((f) => {
+        const row = envRows.find((e) => e.id === f.envVarId);
+        if (!row) return '';
+        return row.secret ? (decryptSecret(row.value) ?? '') : row.value;
+      });
+      const result = await probeIntegration(tool.type, values);
+      await prisma.integrationTool.updateMany({
+        where: { workspaceId: action.workspaceId, id: integrationId },
+        data: { lastTestAt: new Date(), lastTestStatus: result.status, lastTestDetail: result.detail.slice(0, 300) },
+      });
+      //? Audits the fact and the verdict — never a value. `detail` is redacted by the probe itself.
+      await recordAudit(prisma, action.workspaceId, userId, 'integration-test', tool.name, { status: result.status });
+      //? ALWAYS `ok: true` when the probe ran. `isControlActionFailure` reads `ok: false` as "the op could
+      //? not be performed" and turns the whole sync into an error, so reporting a failed CONNECTION that
+      //? way threw the verdict away and left the button silent — the one outcome the user most needs to
+      //? see. The op succeeded; `status` carries the news.
+      return { ok: true, status: result.status, detail: result.detail };
     }
     case 'gitlab-settings': {
       const gitlabUrl = str(payload, 'baseUrl') ?? str(payload, 'url'); const token = str(payload, 'token');

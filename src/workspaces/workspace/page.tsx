@@ -276,16 +276,38 @@ function EnvRow({ v, reveal, onToggleReveal, onCommit, onRemove }: {
   const [val, setVal] = useState(v.value);
   useEffect(() => { setVal(v.value); }, [v.value]);
   const status = useAutosave([val], () => { onCommit(val); }, { resetKey: v.id });
+  //? A secret's value never leaves the server, so this row cannot show it — but it CAN show whether
+  //? there IS one, and that is the whole difference between "saved" and "did nothing". Before this,
+  //? every secret rendered the same ten dots whether it held a value or not, and the eye that promised
+  //? to reveal it produced an empty box: the honest reading of that screen is "my value was not saved".
+  const stored = v.secret ? (v.configured ?? false) : v.value.length > 0;
+  //? Masked only when there is something to mask. An unset secret is a plain, directly editable box —
+  //? there is nothing to hide, and making the user click an eye first was pure ceremony.
+  const masked = v.secret && !reveal && stored;
   return (
     <div className="flex items-center gap-2">
       <input
-        value={v.secret && !reveal ? '••••••••••' : val}
-        readOnly={v.secret && !reveal}
+        value={masked ? '••••••••••' : val}
+        readOnly={masked}
         onChange={(e) => { setVal(e.target.value); }}
+        placeholder={translate({ key: v.secret && stored ? 'workspaces.workspaceSettings.envReplacePlaceholder' : 'workspaces.workspaceSettings.envEmptyPlaceholder' })}
         className={`flex-1 min-w-0 font-mono ${fieldCls}`}
       />
+      {v.secret && (
+        <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[11px] ${stored ? 'bg-correct/15 text-correct' : 'bg-warning/15 text-warning'}`}>
+          {translate({ key: stored ? 'workspaces.workspaceSettings.envStored' : 'workspaces.workspaceSettings.envNotStored' })}
+        </span>
+      )}
       <SavePill status={status} />
-      {v.secret && <IconButton icon="eye" title={reveal ? translate({ key: 'workspaces.workspaceSettings.hide' }) : translate({ key: 'workspaces.workspaceSettings.reveal' })} onClick={onToggleReveal} />}
+      {/* "Reveal" would be a lie: the plaintext is not here to reveal. What this button does is clear
+          the mask so you can type a REPLACEMENT, so that is what it says. */}
+      {v.secret && stored && (
+        <IconButton
+          icon={reveal ? 'xmark' : 'pen'}
+          title={translate({ key: reveal ? 'workspaces.workspaceSettings.envKeepStored' : 'workspaces.workspaceSettings.envReplace' })}
+          onClick={onToggleReveal}
+        />
+      )}
       <IconButton icon="trash" title={translate({ key: 'workspaces.workspaceSettings.removeVariable' })} onClick={onRemove} />
     </div>
   );
@@ -338,9 +360,13 @@ function EnvTab() {
       <div className="text-xs text-muted rounded-xl border border-container1-border bg-container2/30 px-3 py-2">{translate({ key: 'workspaces.workspaceSettings.deployHookHint' })}</div>
       <Table columns={columns} rows={envVars} rowKey={(v) => v.id} empty={translate({ key: 'workspaces.workspaceSettings.noEnvVars' })} />
       <div className="rounded-xl border border-container1-border bg-container2/40 p-3 flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <input value={newKey} onChange={(e) => { setNewKey(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.keyPlaceholder' })} className={`w-44 font-mono ${fieldCls}`} />
-          <input value={newVal} onChange={(e) => { setNewVal(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.valuePlaceholder' })} className={`flex-1 min-w-0 font-mono ${fieldCls}`} />
+        {/* A grid, not flex with a `w-44` on the key: `fieldCls` carries `w-full`, and two width
+            utilities on one element are decided by their order in the generated stylesheet rather than
+            in the class attribute — `w-full` won, the key box took the row, and the value box collapsed
+            to a few characters you could type into but not read. Tracks cannot lose that argument. */}
+        <div className="grid grid-cols-[11rem_1fr] gap-2">
+          <input value={newKey} onChange={(e) => { setNewKey(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.keyPlaceholder' })} className={`min-w-0 font-mono ${fieldCls}`} />
+          <input value={newVal} onChange={(e) => { setNewVal(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.valuePlaceholder' })} className={`min-w-0 font-mono ${fieldCls}`} />
         </div>
         <div className="flex items-center justify-between gap-2">
           <Toggle on={newSecret} onChange={setNewSecret} label={translate({ key: 'workspaces.workspaceSettings.secretMasked' })} />
@@ -355,7 +381,12 @@ function IntegrationToolForm({ tool, onSave, onCancel }: { tool: IntegrationTool
   const translate = useTranslator();
   const { envVars, navigate } = useWorkspaces();
   const [typeKey, setTypeKey] = useState(tool?.type ?? INTEGRATION_TYPES[0]?.key ?? '');
-  const [name, setName] = useState(tool?.name ?? '');
+  //? Seeded from the pre-selected type, not empty. The form OPENS with MongoDB chosen, and `applyType`
+  //? — which is what filled the name — only runs when you CHANGE the type. So the default path was:
+  //? open, map your env var, click Save, and nothing happens, silently, because `submit` bails on an
+  //? empty name. A form whose visible state is already valid must be saveable.
+  const [name, setName] = useState(tool?.name ?? INTEGRATION_TYPES[0]?.label ?? '');
+  const [error, setError] = useState('');
   const [fields, setFields] = useState<IntegrationField[]>(tool?.fields ?? INTEGRATION_TYPES[0]?.fields.map((f, i) => ({ id: `imf-${String(i)}`, label: f.label, placeholder: f.placeholder, envVarId: null })) ?? []);
   const [mcpEnabled, setMcpEnabled] = useState(tool?.mcp.enabled ?? true);
   const [mcpCmd, setMcpCmd] = useState(tool?.mcp.command ?? INTEGRATION_TYPES[0]?.mcp ?? '');
@@ -371,13 +402,19 @@ function IntegrationToolForm({ tool, onSave, onCancel }: { tool: IntegrationTool
 
   const envItems = [{ id: '__none__', value: '__none__', item: '— none —' }, ...envVars.map((v) => ({ id: v.id, value: v.id, item: v.key }))];
   const typeItems = INTEGRATION_TYPES.map((t) => ({ id: t.key, value: t.key, item: t.label }));
-  const submit = () => { const n = name.trim(); if (!n) return; onSave({ id: tool?.id ?? `tool-${String(Date.now())}`, name: n, type: typeKey, fields, mcp: { enabled: mcpEnabled, command: mcpCmd.trim() } }); };
+  //? Says why instead of returning. A dead button teaches nothing — the user concludes the page is
+  //? broken, which is the correct conclusion to draw from a control that does nothing when pressed.
+  const submit = () => {
+    const n = name.trim();
+    if (!n) { setError(translate({ key: 'workspaces.workspaceSettings.integrationNameRequired' })); return; }
+    onSave({ id: tool?.id ?? `tool-${String(Date.now())}`, name: n, type: typeKey, fields, mcp: { enabled: mcpEnabled, command: mcpCmd.trim() } });
+  };
 
   return (
     <div className="rounded-xl border border-container1-border bg-container2/40 p-4 flex flex-col gap-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.workspaceSettings.type' })}</div><Dropdown size="sm" width="full" value={typeItems.find((t) => t.id === typeKey)} items={typeItems} onChange={(it) => { applyType(String(it.id)); }} /></div>
-        <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.workspaceSettings.name' })}</div><input value={name} onChange={(e) => { setName(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.namePlaceholder' })} className={`w-full ${fieldCls}`} /></div>
+        <div><div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.workspaceSettings.name' })}</div><input value={name} onChange={(e) => { setName(e.target.value); setError(''); }} placeholder={translate({ key: 'workspaces.workspaceSettings.namePlaceholder' })} className={`w-full ${fieldCls}`} /></div>
       </div>
       <div>
         <div className="text-xs text-muted mb-1">{translate({ key: 'workspaces.workspaceSettings.configFieldsToEnvVars' })}</div>
@@ -428,14 +465,56 @@ function IntegrationToolForm({ tool, onSave, onCancel }: { tool: IntegrationTool
       <div className="flex items-center gap-2">
         <WsButton icon="check" onClick={submit}>{translate({ key: 'workspaces.workspaceSettings.saveIntegration' })}</WsButton>
         <WsButton variant="ghost" onClick={onCancel}>{translate({ key: 'workspaces.workspaceSettings.cancel' })}</WsButton>
+        {error.length > 0 && <span className={`text-xs text-wrong`}>{error}</span>}
       </div>
     </div>
   );
 }
 
+//? The tint per verdict. `reachable` is amber on purpose: it is a partial answer, and colouring it green
+//? next to a real `ok` would erase the only distinction this feature is built around.
+const TEST_TINT: Record<string, string> = {
+  ok: 'bg-correct/15 text-correct',
+  reachable: 'bg-warning/15 text-warning',
+  failed: 'bg-wrong/15 text-wrong',
+  unsupported: 'bg-container2 text-muted',
+};
+
+//? One row's test button + the verdict it produced. Its own component because it holds the in-flight
+//? state: without that the button is a click with no feedback for the seconds a TCP dial can take, and
+//? the user clicks again.
+function IntegrationTestButton({ tool, onTest }: { tool: IntegrationTool; onTest: (id: string) => Promise<{ ok: boolean; status?: string; detail?: string }> }) {
+  const translate = useTranslator();
+  const [busy, setBusy] = useState(false);
+  const last = tool.lastTest;
+  const run = async (): Promise<void> => {
+    if (busy) return;
+    setBusy(true);
+    await onTest(tool.id);
+    setBusy(false);
+  };
+  return (
+    <>
+      {last && !busy && (
+        //? The detail line is the whole value of a failure ("ECONNREFUSED", "no answer within 6s"), and
+        //? it is too long for the row — so the chip carries the verdict and its title carries the reason.
+        <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[11px] ${TEST_TINT[last.status] ?? TEST_TINT.unsupported ?? ''}`} title={last.detail}>
+          {translate({ key: `workspaces.workspaceSettings.testStatus.${last.status}` })}
+        </span>
+      )}
+      <button
+        type="button" onClick={() => { void run(); }} disabled={busy}
+        className={`text-xs text-common hover:text-title cursor-pointer shrink-0 disabled:cursor-not-allowed disabled:opacity-50`}
+      >
+        {translate({ key: busy ? 'workspaces.workspaceSettings.testingIntegration' : 'workspaces.workspaceSettings.testIntegration' })}
+      </button>
+    </>
+  );
+}
+
 function IntegrationsTab() {
   const translate = useTranslator();
-  const { integrationTools, saveIntegrationTool, removeIntegrationTool, envVars } = useWorkspaces();
+  const { integrationTools, saveIntegrationTool, removeIntegrationTool, testIntegrationTool, envVars } = useWorkspaces();
   const [editing, setEditing] = useState<IntegrationTool | null>(null);
   const [adding, setAdding] = useState(false);
   const envName = (id: string | null) => (id ? (envVars.find((v) => v.id === id)?.key ?? '—') : '— none —');
@@ -457,9 +536,10 @@ function IntegrationsTab() {
     {
       id: 'actions',
       header: '',
-      className: 'w-20',
+      className: 'w-44',
       cell: (t) => (
         <div className="flex justify-end items-center gap-1">
+          <IntegrationTestButton tool={t} onTest={testIntegrationTool} />
           <button type="button" onClick={() => { setEditing(t); setAdding(false); }} className="text-xs text-common hover:text-title cursor-pointer shrink-0">{translate({ key: 'workspaces.workspaceSettings.edit' })}</button>
           <IconButton icon="trash" title={translate({ key: 'workspaces.workspaceSettings.removeIntegration' })} onClick={() => { removeIntegrationTool(t.id); }} />
         </div>
@@ -1192,10 +1272,6 @@ const extractTaskVars = (tpl: string): string[] => [...new Set([...tpl.matchAll(
 function CustomTaskVarsForm({ vars, onRun }: { vars: string[]; onRun: (values: Record<string, string>) => void }) {
   const translate = useTranslator();
   const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(vars.map((v) => [v, ''])));
-  //? `w-full` was missing, so every input built from this class rendered at the browser's intrinsic
-//? text-input width (~150px) inside a column sized for far more — a settings page of stubby boxes.
-//? SettingRow already caps the control column (`sm:max-w-sm`), so filling it is the intended size.
-const fieldCls = 'h-9 w-full px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
   return (
     <div className="w-full flex flex-col gap-3 p-5">
       <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.customTaskVarsTitle' })}</div>

@@ -34,6 +34,7 @@ import { computeInsights, type WorkspaceInsights } from '../obs/insights';
 import { computeAnalytics } from '../obs/analytics';
 import { computeContentAnalytics } from '../content/contentAnalytics';
 import { listWorkspaceTemplates } from '../documents/templates';
+import { isIntegrationTestStatus } from '../../src/workspaces/_data/types';
 import type {
   ActivityEvent, AiSuggestion, CommandMode, EnvVar, InfoDoc, IntegrationTool, InviteEntry, Member,
   ModelRule, MyInvite, NetworkMode, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, Role,
@@ -783,7 +784,16 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       //? Internal `__` rows stay server-only; secret EnvVars are write-only metadata. The mapper
       //? deliberately emits neither plaintext nor ciphertext, including on legacy rows.
       envVars: envRows.map((envRow) => toEnvVar(envRow)).filter((envVar): envVar is EnvVar => envVar !== null),
-      integrations: integrationRows.map((it): IntegrationTool => ({ id: it.id, name: it.name, type: it.type, fields: it.fields.map((f) => ({ id: f.id, label: f.label, placeholder: f.placeholder ?? undefined, envVarId: f.envVarId })), mcp: it.mcp })),
+      integrations: integrationRows.map((it): IntegrationTool => ({
+        id: it.id, name: it.name, type: it.type,
+        fields: it.fields.map((f) => ({ id: f.id, label: f.label, placeholder: f.placeholder ?? undefined, envVarId: f.envVarId })),
+        mcp: it.mcp,
+        //? ADR 0320 — the last connection test, so the list answers "does this work?" on arrival and
+        //? not only for whoever clicked. `detail` is already redacted where it was produced.
+        ...(it.lastTestStatus !== null && isIntegrationTestStatus(it.lastTestStatus)
+          ? { lastTest: { status: it.lastTestStatus, detail: it.lastTestDetail ?? '', at: it.lastTestAt === null ? 0 : it.lastTestAt.getTime() } }
+          : {}),
+      })),
       invites: inviteRows.map((inv): InviteEntry => ({ id: inv.id, email: inv.email, role: asRole(inv.roleKey), sentAt: inv.createdAt.toISOString(), expiresAt: inv.expiresAt ? inv.expiresAt.toISOString() : null })),
       //? Events store ticket ObjectIds, but the frontend keys tickets by their
       //? DEV-#### `key` — map ObjectId → key so open-ticket / activity-tab filters

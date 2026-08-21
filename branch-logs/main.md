@@ -5805,3 +5805,48 @@ Owner-keuze: nu laten staan, later beslissen.
 `carryOverMigration.test.mts`, 23 asserties op de stripper + de stap-registratie) · `stageEngine`
 **40/40** (de untrusted-blok-asserties zijn meeverhuisd naar `renderIncomingHandover`) · Playwright
 **40/40** (nieuw `handoverPrompt.spec.ts`: chips echt weg, default aanwezig, veld overleeft een reload).
+
+## 2026-08-21 — Env-velden gefikst + integraties zijn nu echt te testen (ADR 0320)
+
+**Prompt van de gebruiker.** "Op /workspace/env kan ik geen env values toevoegen want de 2 input velden
+zijn niet goed ingesteld, de key input veld is 95% van de lengte en de value maar 5% ... en als ik op save
+klik dan word er ook geen value opgeslagen. Dan bij workspace/integrations wil ik graag iets maken dat
+voor alle pre defined tools zoals mongodb waar mogelijk een ping call toevoegen."
+
+**De breedte was mijn eigen regressie.** Toen ik `w-full` aan `fieldCls` toevoegde voor de AI-pagina
+(sessie 2026-08-19), won die het van de `w-44` op het key-veld — twee width-utilities op één element
+worden beslist door hun volgorde in de gegenereerde stylesheet, niet in het class-attribuut. Nu een
+grid met vaste tracks; die discussie kan een track niet verliezen. **Ook opgeruimd:** die edit had
+destijds een tweede, function-scoped `const fieldCls` middenin `CustomTaskVarsForm` gezet met een
+zwevend commentaarblok. Weg.
+
+**"Er wordt geen value opgeslagen" was waar én niet waar.** Het opslaan werkte; je kon het alleen niet
+zien. Een secret rendert altijd tien puntjes, of er nu een waarde in zit of niet, en het oogje beloofde
+"reveal" en gaf je een leeg vakje. Nu: een chip `ingevuld`/`leeg` per secret (uit `configured`, dat de
+snapshot al meestuurde), een leeg secret is direct bewerkbaar zonder oog-klik, en de knop heet wat 'ie
+doet — vervangen, niet onthullen. De tip die het oogje beschreef is herschreven.
+
+**Integratie-test (ADR 0320).** Nieuwe op `integration-test` → `_sync`-route → RBAC → Conductor, want dat
+is de enige plek die de credentials ontsleutelt. Het oordeel is bewust **vier woorden**, geen boolean:
+`werkt` (protocol antwoordde én credentials geaccepteerd — Redis PING via ioredis, HTTP/Elasticsearch
+GET), `bereikbaar` (TCP-dial slaagde, credentials NIET geverifieerd — amber), `mislukt`, `niet testbaar`.
+`bereikbaar` samenvouwen met `werkt` zou precies de leugen zijn die deze feature moet wegnemen. Het
+oordeel wordt op de rij opgeslagen, dus de lijst zegt ook iets bij de vólgende keer.
+
+**Geen nieuwe dependencies.** Alleen Redis heeft hier een client-library; Mongo/Postgres/MySQL/Kafka/AMQP
+zouden er vijf kosten voor één knop. Dat is jouw keuze, niet die van dit bestand — tot dan een eerlijke
+TCP-dial, en een echte driver toevoegen is later één functie.
+
+**De e2e legde een derde bug bloot die ik niet zocht:** het integratie-formulier opent met MongoDB
+voorgeselecteerd maar met een LEGE naam (`applyType` vult de naam alleen als je het type wijzigt), en
+`submit` stopte stil bij een lege naam. Dus het standaardpad — openen, env-var koppelen, Opslaan — deed
+letterlijk niets. Naam wordt nu geseed uit het voorgeselecteerde type, en een lege naam zegt waarom.
+
+**Verificatie.** `tsc` ✅ · `lint` ✅ · `ai:lint` ✅ · unit **125/125** (nieuw `integrationProbe.test.mts`,
+18 asserties incl. een echte TCP-listener op een ephemeral port) · nieuwe per-route-tests
+`integrationTest_server_v1.tests.ts` (3 cases) · Playwright **42/42** (nieuw `envAndIntegrations.spec.ts`
+— meet de bounding boxes, want geen type/lint/vertaal-check ziet een te smal veld).
+
+**Nog steeds open, niet gefikst:** meerdere settings-writes zijn fire-and-forget over de socket zonder
+enige bevestiging ("Stage opslaan", "Variabele toevoegen"). Voor een mens niet merkbaar, maar het is de
+derde keer dat mijn eigen e2e erover struikelt.

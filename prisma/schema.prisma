@@ -1640,6 +1640,13 @@ model IntegrationTool {
   fields      IntegrationField[]
   mcp         McpCfg
   createdAt   DateTime           @default(now())
+  //? Last connection test (`integration-test`). Persisted rather than returned-and-forgotten so the
+  //? list answers "does this work?" on arrival instead of only right after someone clicked.
+  //? Status is one of ok | reachable | failed | unsupported — see server/integrations/probe.ts for
+  //? why "reachable" is a separate word from "ok". Detail is redacted before it is stored.
+  lastTestAt     DateTime?
+  lastTestStatus String?
+  lastTestDetail String?
 
   @@index([workspaceId])
 }

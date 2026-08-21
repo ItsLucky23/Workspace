@@ -1008,12 +1008,26 @@ export interface StageToolCfg { toolId: string; tier: ToolTier }
 //? Secret values are write-only: `value` is always an empty replacement buffer when `secret` is true.
 export interface EnvVar { id: string; key: string; value: string; secret: boolean; configured?: boolean }
 export interface IntegrationField { id: string; label: string; placeholder?: string; envVarId: string | null }
+//? The outcome of the last connection test. `status` is deliberately four words rather than a boolean:
+//? `ok` = the protocol answered and the credentials were accepted; `reachable` = the port is open but
+//? nothing about the credentials was verified; `failed` = it did not work; `unsupported` = there was
+//? nothing to test. Collapsing `reachable` into `ok` would be the lie this whole feature exists to avoid.
+export const INTEGRATION_TEST_STATUSES = ['ok', 'reachable', 'failed', 'unsupported'] as const;
+export type IntegrationTestStatus = (typeof INTEGRATION_TEST_STATUSES)[number];
+//? The stored column is a plain string, so a row written by an older/newer build can hold anything.
+//? Narrowing here (rather than casting at the read site) means an unrecognised value drops the whole
+//? verdict instead of rendering as a mislabelled chip.
+export function isIntegrationTestStatus(v: string): v is IntegrationTestStatus {
+  return (INTEGRATION_TEST_STATUSES as readonly string[]).includes(v);
+}
+export interface IntegrationTest { status: IntegrationTestStatus; detail: string; at: number }
 export interface IntegrationTool {
   id: string;
   name: string;
   type: string;        // INTEGRATION_TYPES key, or custom
   fields: IntegrationField[];
   mcp: { enabled: boolean; command: string };
+  lastTest?: IntegrationTest;
 }
 export interface StageStatusCfg { key: string; label: string; kind: 'base' | 'custom' }
 export interface StageEnvVar { key: string; value: string }

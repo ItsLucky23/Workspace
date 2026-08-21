@@ -1770,6 +1770,16 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         if (room) void syncRequest({ name: 'workspaces/saveIntegration', version: 'v1', data: { ...(known ? { integrationId: t.id } : {}), name: t.name, type: t.type, fields: t.fields, mcp: t.mcp, clientRequestId: nextReqId() }, receiver: room });
       },
       removeIntegrationTool: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/removeIntegration', version: 'v1', data: { integrationId: id, clientRequestId: nextReqId() }, receiver: room }); },
+      testIntegrationTool: async (id) => {
+        const room = snap.activeWorkspaceId;
+        if (!room) return { ok: false };
+        const [error, res] = await tryCatch(() => syncRequest({ name: 'workspaces/integrationTest', version: 'v1', data: { integrationId: id, clientRequestId: nextReqId() }, receiver: room }));
+        //? Refetch regardless of the verdict: a failed test is still a result worth persisting on the row.
+        refetch();
+        if (error || res?.status !== 'success') return { ok: false };
+        const result = res.result as { status?: string; detail?: string } | undefined;
+        return { ok: true, ...(result?.status === undefined ? {} : { status: result.status }), ...(result?.detail === undefined ? {} : { detail: result.detail }) };
+      },
       stageOverrides,
       moveTicket: (id, stage) => { setStageOverrides((prev) => ({ ...prev, [id]: stage })); },
       quickAdd: quickAddApi,

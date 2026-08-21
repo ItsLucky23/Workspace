@@ -1,6 +1,6 @@
 {
-  "hash": "046d304570cb99a7",
-  "chunkCount": 254,
+  "hash": "7be400f8c6f5af01",
+  "chunkCount": 255,
   "chunks": [
     {
       "id": "cap-001",
@@ -1525,6 +1525,12 @@
       "kind": "decision",
       "title": "The handover is written by the stage that finishes, not the one that starts",
       "text": "ADR 0319: The handover is written by the stage that finishes, not the one that starts. Every pipeline stage carried a `promptTemplate`: the opening line of its own session, written by the user with `{{summary}}`, `{{changedFiles}}`, `{{openQuestions}}` and `{{commitHash}}` slots that the renderer filled from the previous stage's carry-over envelope. The Carry-over tab showed the four chips, a click inserted one, and a textarea held the sentence being built around them. The owner, after agreeing to keep a separate AI session per stage (see `src/workspaces/_docs/ONE_AI_VS_AI_PER_STAGE.md`): *\"nu kunnen we een message met variabelen maar dit lijkt mij niet handig en ook to much om telkens op te zetten, misschien per stage gewoon een prompt die runt op het eind van iedere sessie.\"* Two things were true and neither was visible on the screen: 1. **An end-of-session prompt already existed** — every stage is told to end its final message with a fenced `ws-carryover` JSON block, preceded by the done-guidance (the stage's Definition of done, or \"judge for yourself\"). It was fixed and unconfigurable. 2. **The chips were the OTHER end.** They configured what this stage *receives*, not what it *emits* — which is why setting them up felt like work for no return: you were pre-writing a sentence with holes in it for output that did not exist yet. Underneath both: the wrong party was being asked. The AI that has just finished the work knows what is worth passing on. The user, configuring a st"
+    },
+    {
+      "id": "adr-0320",
+      "kind": "decision",
+      "title": "An integration test reports what it verified, not that it passed",
+      "text": "ADR 0320: An integration test reports what it verified, not that it passed. Workspace settings lets you declare an integration — MongoDB, Postgres, Redis, Kafka, an HTTP API — by picking a type and pointing each of its fields at an env var. Nothing ever connected to it. The first time a wrong host or a stale password was discovered was inside a pipeline run, in an agent's container, where the error surfaces as a stage failure rather than as \"your connection string is wrong\". The owner: *\"bij workspace/integrations wil ik graag iets maken dat voor alle pre defined tools zoals mongodb dat waar mogelijk we een ping call toevoegen of iets om de integration daadwerkelijk te testen.\"* The hard part is \"waar mogelijk\". Of the nine predefined types, exactly one (Redis) has a client library already in this project. Adding `mongodb`, `pg`, `mysql2`, `kafkajs` and `amqplib` for the sake of a settings-page button is a real dependency decision, not an implementation detail. Decision: **A test reports the strongest thing it actually verified, in its own word.** | Verdict | Means | How it is reached | |---|---|---| | `ok` | The protocol answered and the credentials were accepted | Redis `PING` (real, via `ioredis`); an HTTP/Elasticsearch `GET` returning 2xx/3xx | | `reachable` | The host resolves and the port accepts a connection. **Credentials not verified.** | A TCP dial to the host+port parsed out of the connection string | | `failed` | It did not work | Refused/timed-out connection, or "
     }
   ]
 }

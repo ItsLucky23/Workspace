@@ -211,6 +211,9 @@ export interface WorkspacesCtx {
   integrationTools: IntegrationTool[];
   saveIntegrationTool: (t: IntegrationTool) => void;
   removeIntegrationTool: (id: string) => void;
+  //? ADR 0320 — connect to a configured integration and report back. Async because the button waits on
+  //? the verdict; the same verdict also lands on the row for everyone else.
+  testIntegrationTool: (id: string) => Promise<{ ok: boolean; status?: string; detail?: string }>;
   //? AI-driven board moves: stage overrides on top of the live data, so the
   //? Workspace-AI chat can move a ticket and the board animates it.
   stageOverrides: Record<string, string>;        // ticketId → stage id (free string, 04b §12)

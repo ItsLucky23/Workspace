@@ -2,10 +2,10 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 450,
+    "nodes": 452,
     "edges": 677,
-    "symbols": 848,
-    "callEdges": 279
+    "symbols": 857,
+    "callEdges": 283
   },
   "nodes": [
     {
@@ -1432,6 +1432,16 @@
       "id": "workspaces/_sync/infoDocAdmin_server_v1.ts",
       "kind": "sync",
       "route": "sync/workspaces/infoDocAdmin/v1"
+    },
+    {
+      "id": "workspaces/_sync/integrationTest_server_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_sync/integrationTest_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/integrationTest/v1"
     },
     {
       "id": "workspaces/_sync/invite_server_v1.tests.ts",
@@ -9018,6 +9028,12 @@
       "kind": "module"
     },
     {
+      "id": "workspaces/_data/types.ts::isIntegrationTestStatus",
+      "file": "workspaces/_data/types.ts",
+      "name": "isIntegrationTestStatus",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_data/uiReviewTaxonomy.ts::<module>",
       "file": "workspaces/_data/uiReviewTaxonomy.ts",
       "name": "<module>",
@@ -10202,6 +10218,54 @@
     {
       "id": "workspaces/_sync/infoDocAdmin_server_v1.ts::main",
       "file": "workspaces/_sync/infoDocAdmin_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/integrationTest_server_v1.tests.ts::<module>",
+      "file": "workspaces/_sync/integrationTest_server_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/integrationTest_server_v1.tests.ts::fn",
+      "file": "workspaces/_sync/integrationTest_server_v1.tests.ts",
+      "name": "fn",
+      "kind": "fn"
+    },
+    {
+      "id": "workspaces/_sync/integrationTest_server_v1.tests.ts::makeIntegration",
+      "file": "workspaces/_sync/integrationTest_server_v1.tests.ts",
+      "name": "makeIntegration",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/integrationTest_server_v1.tests.ts::poll",
+      "file": "workspaces/_sync/integrationTest_server_v1.tests.ts",
+      "name": "poll",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/integrationTest_server_v1.tests.ts::run",
+      "file": "workspaces/_sync/integrationTest_server_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "workspaces/_sync/integrationTest_server_v1.tests.ts::wait",
+      "file": "workspaces/_sync/integrationTest_server_v1.tests.ts",
+      "name": "wait",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/integrationTest_server_v1.ts::<module>",
+      "file": "workspaces/_sync/integrationTest_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/integrationTest_server_v1.ts::main",
+      "file": "workspaces/_sync/integrationTest_server_v1.ts",
       "name": "main",
       "kind": "function"
     },
@@ -12588,6 +12652,22 @@
       "to": "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::seedDoc"
     },
     {
+      "from": "workspaces/_sync/integrationTest_server_v1.tests.ts::poll",
+      "to": "workspaces/_sync/integrationTest_server_v1.tests.ts::fn"
+    },
+    {
+      "from": "workspaces/_sync/integrationTest_server_v1.tests.ts::poll",
+      "to": "workspaces/_sync/integrationTest_server_v1.tests.ts::wait"
+    },
+    {
+      "from": "workspaces/_sync/integrationTest_server_v1.tests.ts::run",
+      "to": "workspaces/_sync/integrationTest_server_v1.tests.ts::makeIntegration"
+    },
+    {
+      "from": "workspaces/_sync/integrationTest_server_v1.tests.ts::run",
+      "to": "workspaces/_sync/integrationTest_server_v1.tests.ts::poll"
+    },
+    {
       "from": "workspaces/_sync/invite_server_v1.tests.ts::poll",
       "to": "workspaces/_sync/invite_server_v1.tests.ts::fn"
     },
@@ -13615,6 +13695,20 @@
     "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::wait": [
       "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::poll",
       "workspaces/_sync/infoDocAdmin_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/integrationTest_server_v1.tests.ts::fn": [
+      "workspaces/_sync/integrationTest_server_v1.tests.ts::poll",
+      "workspaces/_sync/integrationTest_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/integrationTest_server_v1.tests.ts::makeIntegration": [
+      "workspaces/_sync/integrationTest_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/integrationTest_server_v1.tests.ts::poll": [
+      "workspaces/_sync/integrationTest_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/integrationTest_server_v1.tests.ts::wait": [
+      "workspaces/_sync/integrationTest_server_v1.tests.ts::poll",
+      "workspaces/_sync/integrationTest_server_v1.tests.ts::run"
     ],
     "workspaces/_sync/invite_server_v1.tests.ts::fn": [
       "workspaces/_sync/invite_server_v1.tests.ts::poll",

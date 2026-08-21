@@ -139,6 +139,7 @@ Every typed sync route in this project. Sourced from `_ProjectSyncTypeMap` in `s
 | `workspaces/findingAction/v1` | — | — | ✓ |
 | `workspaces/gitlabSettings/v1` | — | — | ✓ |
 | `workspaces/infoDocAdmin/v1` | — | — | ✓ |
+| `workspaces/integrationTest/v1` | — | — | ✓ |
 | `workspaces/invite/v1` | — | — | ✓ |
 | `workspaces/linkRepo/v1` | — | — | ✓ |
 | `workspaces/mrAction/v1` | — | — | ✓ |

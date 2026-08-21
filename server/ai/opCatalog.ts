@@ -162,6 +162,10 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   'remove-env': EXCLUDED,
   'save-integration': EXCLUDED, // integration credentials
   'remove-integration': EXCLUDED,
+  //? Read-only, but it decrypts a credential and dials a host the user supplied. A chat turn should not
+  //? be able to make this server open outbound connections to arbitrary addresses — same reasoning as
+  //? `ai-connection-test`, which is excluded for the same class of side effect.
+  'integration-test': EXCLUDED,
   'service-provision': {
     mode: 'enabled',
     hint: 'attach a curated third-party service stack (Kafka/Postgres/Redis/…) to the workspace. params: name (stack name), preset (one of the preset keys below)',

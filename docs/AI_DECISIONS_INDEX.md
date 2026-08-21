@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (237)
+## Decisions (238)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -250,6 +250,7 @@
 | 0317 | The runtime is a list of processes, not one command | 🟢 accepted | runtime, preview, containers, terminals, ux | — | `docs/decisions/0317-the-runtime-is-a-list-of-processes-not-one-command.md` |
 | 0318 | A skill is switched on by the stage that wants it, not globally | 🟢 accepted | ai, skills, pipeline, ux | — | `docs/decisions/0318-a-skill-is-switched-on-by-the-stage-that-wants-it-not-globally.md` |
 | 0319 | The handover is written by the stage that finishes, not the one that starts | 🟢 accepted | pipeline, prompts, ux, orchestrator | — | `docs/decisions/0319-the-handover-is-written-by-the-stage-that-finishes-not-the-one-that-starts.md` |
+| 0320 | An integration test reports what it verified, not that it passed | 🟢 accepted | integrations, settings, ux, security | — | `docs/decisions/0320-an-integration-test-reports-what-it-verified-not-that-it-passed.md` |
 
 ## Summaries
 
@@ -2177,6 +2178,16 @@ The project owns a **list** of runtime processes. Each entry starts in the ticke
 
 → `docs/decisions/0319-the-handover-is-written-by-the-stage-that-finishes-not-the-one-that-starts.md`
 
+### 0320 — An integration test reports what it verified, not that it passed
+
+**0320** · accepted · tags: integrations, settings, ux, security · 2026-08-21
+
+*A test reports the strongest thing it actually verified, in its own word.**
+
+**Governs** (`//? @adr 0320`): `server/integrations/probe.ts`
+
+→ `docs/decisions/0320-an-integration-test-reports-what-it-verified-not-that-it-passed.md`
+
 ## Code governed by decisions
 
 > Reverse links from a `//? @adr NNNN` tag in source back to the ADR that explains it.
@@ -2196,6 +2207,7 @@ The project owns a **list** of runtime processes. Each entry starts in the ticke
 | `server/designer/applyTokens.ts` | 0276 | Design tokens apply only through managed Tailwind blocks with expected-HEAD CAS |
 | `server/documents/docs.ts` | 0271 | documents module markdown bron plus render targets |
 | `server/documents/export.ts` | 0271 | documents module markdown bron plus render targets |
+| `server/integrations/probe.ts` | 0320 | An integration test reports what it verified, not that it passed |
 | `server/voice/voice.ts` | 0275 | voice interface provider abstracted stt plus tts |
 | `src/workspaces/_components/EffectivePromptPreview.tsx` | 0311 | AI prompt layers are two channels, not one stack |
 | `src/workspaces/_components/SetupChecklist.tsx` | 0314 | Onboarding is a standing checklist, not a tour |

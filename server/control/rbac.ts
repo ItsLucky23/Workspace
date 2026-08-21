@@ -77,6 +77,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'ui-review-dismiss': CAP.workTickets,   // U2 gap-fix — dismiss without ticket
   'save-integration': CAP.workspaceSettings,
   'remove-integration': CAP.workspaceSettings,
+  'integration-test': CAP.workspaceSettings,
   'gitlab-settings': CAP.workspaceSettings,
   'save-git-config': CAP.workspaceSettings,
   'project-runtime-save': CAP.workspaceSettings,
