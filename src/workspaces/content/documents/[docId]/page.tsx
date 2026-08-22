@@ -39,8 +39,10 @@ function fileAssetIcon(stub: boolean, extractStatus?: string): string {
 export default function DocumentDetail({ params }: { params: Record<string, string | undefined> }) {
   const translate = useTranslator();
   const id = params.docid ?? '';
-  const { documents, content: contentSnapshot, setAssetStarred, editDocument, runDocumentAi, applyDocumentDraft, discardDocumentDraft, genDocumentImage, exportDocument, restoreDocumentRevision, navigate, activeWorkspace, focusSetup } = useWorkspaces();
+  const { documents, content: contentSnapshot, setAssetStarred, editDocument, runDocumentAi, applyDocumentDraft, discardDocumentDraft, genDocumentImage, exportDocument, restoreDocumentRevision, navigate, activeWorkspace, focusSetup, aiOverrides, aiProviderCatalog } = useWorkspaces();
   const doc = documents.find((d) => d.id === id);
+  const documentProviderId = aiOverrides.find((override) => override.feature === 'document-generate')?.providerId ?? 'gemini-api';
+  const documentProviderLabel = aiProviderCatalog.find((provider) => provider.id === documentProviderId)?.label ?? documentProviderId;
 
   const [title, setTitle] = useState(doc?.title ?? '');
   const [content, setContent] = useState(doc?.content ?? '');
@@ -69,6 +71,16 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
   //? An export finished when a new export asset lands in the refetched snapshot.
   const exports = (doc?.assets ?? []).filter((a) => a.kind === 'export');
   useEffect(() => { setExporting(null); }, [exports.length]);
+  //? A failed Docker/render path may not append an export asset. Do not leave every format button
+  //? disabled forever while the user waits for a snapshot change that cannot arrive.
+  useEffect(() => {
+    if (exporting === null) return;
+    const timer = globalThis.setTimeout(() => {
+      notify.error({ key: 'workspaces.documents.exportTimedOut' });
+      setExporting(null);
+    }, 60_000);
+    return () => { globalThis.clearTimeout(timer); };
+  }, [exporting]);
 
   if (!doc) {
     return (
@@ -108,14 +120,14 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
         <div className="w-36 shrink-0">
           <Dropdown size="sm" width="full" value={modeItems.find((m) => m.id === aiMode)} items={modeItems} onChange={(it) => { setAiMode(String(it.id)); }} />
         </div>
-        {/* UI_AUDIT — which AI actually runs this: 'document-generate' is its own fixed assignment
-            (server/ai/assignments.ts), untouched by pipeline stage personas and NOT the same feature as
+        {/* UI_AUDIT — which AI actually runs this: 'document-generate' has its own default assignment
+            (server/ai/assignments.ts) and can be overridden per workspace. It is NOT the same feature as
             the similarly-named "Docs generate" row in Workspace → AI (that one drives the repo project-summary
             doc, not this editor). The link still goes there because the workspace AI instruction + skills
-            DO apply here — only the provider choice doesn't. */}
+            DO apply here. */}
         <div className="flex items-center gap-1 shrink-0">
           <WsButton variant="ghost" icon="robot" onClick={() => { focusSetup({ view: 'workspace', tab: 'aibehavior' }); }}>
-            {translate({ key: 'workspaces.documents.aiProviderChip', params: [{ key: 'provider', value: 'Gemini' }] })}
+            {translate({ key: 'workspaces.documents.aiProviderChip', params: [{ key: 'provider', value: documentProviderLabel }] })}
           </WsButton>
           <InfoDot title={translate({ key: 'workspaces.documents.aiProviderInfoTitle' })} body={translate({ key: 'workspaces.documents.aiProviderInfo' })} />
         </div>

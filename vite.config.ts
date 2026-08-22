@@ -113,6 +113,7 @@ export default defineConfig(({ command, mode }) => {
         '/sync': entry(),
         '/auth': entry(),
         '/uploads': entry(),
+        '/media': entry(),
         '/_health': entry(),
         '/livez': entry(),
         '/readyz': entry(),

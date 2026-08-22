@@ -544,7 +544,8 @@
       "welcome": "Welcome to Workspaces",
       "subtitle": "Create a workspace to get started, or accept an invitation below.",
       "createHeading": "Create a workspace",
-      "invitesHeading": "Your invitations"
+      "invitesHeading": "Your invitations",
+      "pipelineTier": "Pipeline depth"
     },
     "pipeline": {
       "tabStages": "Stages",
@@ -1768,7 +1769,7 @@
       "activity": "Activity",
       "sources": "Sources",
       "pipeline": "Pipeline",
-      "scheduled": "Scheduled",
+      "scheduled": "Automation runs",
       "scheduled-posts": "Scheduled posts",
       "content": "Content",
       "marketing": "Marketing",
@@ -3460,6 +3461,7 @@
       "uploadedLabel": "Uploaded",
       "exportTitle": "Export",
       "exporting": "Exporting…",
+      "exportTimedOut": "The export did not finish. Check the server and try again.",
       "format": {
         "md": "Markdown",
         "html": "HTML",
@@ -3495,8 +3497,8 @@
       "archivedBadge": "Archived",
       "searchPlaceholder": "Search documents…",
       "aiProviderChip": "Using {{provider}}",
-      "aiProviderInfoTitle": "Fixed provider",
-      "aiProviderInfo": "Document AI always runs on Gemini — this is fixed and isn't affected by pipeline stage personas or the per-feature provider list. It does inherit your workspace AI instruction and enabled skills, which you can manage in Workspace → AI."
+      "aiProviderInfoTitle": "Resolved provider",
+      "aiProviderInfo": "This is the provider resolved for document generation in this workspace. It inherits your workspace AI instruction and enabled skills, which you can manage in Workspace → AI."
     },
     "inspire": {
       "title": "Inspiration",

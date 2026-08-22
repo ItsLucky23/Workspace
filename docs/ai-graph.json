@@ -3,7 +3,7 @@
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
     "nodes": 456,
-    "edges": 686,
+    "edges": 688,
     "symbols": 865,
     "callEdges": 288
   },
@@ -2912,6 +2912,10 @@
     },
     {
       "from": "workspaces/_shell/Onboarding.tsx",
+      "to": "_components/dropdown/Dropdown.tsx"
+    },
+    {
+      "from": "workspaces/_shell/Onboarding.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
     {
@@ -3429,6 +3433,10 @@
     {
       "from": "workspaces/content/page.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/content/page.tsx",
+      "to": "workspaces/content/[pieceId]/assetHref.ts"
     },
     {
       "from": "workspaces/content/scheduled-posts/page.tsx",
@@ -5182,10 +5190,15 @@
       "workspaces/workspace/skillsEditor.tsx"
     ],
     "_components/dropdown/Dropdown.tsx": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
       "settings/page.tsx",
       "workspaces/_components/AutomationPanel.tsx",
       "workspaces/_components/ImageEditor.tsx",
       "workspaces/_components/VideoTimelineEditor.tsx",
+      "workspaces/_shell/Onboarding.tsx",
+      "workspaces/_shell/WorkspacesShell.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/documents/[docId]/page.tsx",
       "workspaces/content/documents/page.tsx",
@@ -5225,10 +5238,15 @@
     "_components/dropdown/dropdownInternals.tsx": [
       "_components/dropdown/Dropdown.tsx",
       "_components/dropdown/MultiSelectDropdown.tsx",
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
       "settings/page.tsx",
       "workspaces/_components/AutomationPanel.tsx",
       "workspaces/_components/ImageEditor.tsx",
       "workspaces/_components/VideoTimelineEditor.tsx",
+      "workspaces/_shell/Onboarding.tsx",
+      "workspaces/_shell/WorkspacesShell.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/documents/[docId]/page.tsx",
       "workspaces/content/documents/page.tsx",
@@ -6658,7 +6676,8 @@
     ],
     "workspaces/content/[pieceId]/assetHref.ts": [
       "workspaces/content/[pieceId]/AssetCard.tsx",
-      "workspaces/content/[pieceId]/page.tsx"
+      "workspaces/content/[pieceId]/page.tsx",
+      "workspaces/content/page.tsx"
     ],
     "workspaces/content/documents/lineDiff.ts": [
       "workspaces/content/documents/[docId]/page.tsx"
@@ -6986,14 +7005,14 @@
     {
       "id": "_components/dropdown/dropdownInternals.tsx",
       "kind": "component",
-      "dependents": 41,
+      "dependents": 46,
       "directDependents": 2
     },
     {
       "id": "_components/dropdown/Dropdown.tsx",
       "kind": "component",
-      "dependents": 39,
-      "directDependents": 29
+      "dependents": 44,
+      "directDependents": 30
     },
     {
       "id": "workspaces/_data/capabilities.ts",

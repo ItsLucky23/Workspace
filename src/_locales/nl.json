@@ -544,7 +544,8 @@
       "welcome": "Welkom bij Workspaces",
       "subtitle": "Maak een workspace aan om te beginnen, of accepteer hieronder een uitnodiging.",
       "createHeading": "Workspace aanmaken",
-      "invitesHeading": "Je uitnodigingen"
+      "invitesHeading": "Je uitnodigingen",
+      "pipelineTier": "Pipeline-diepte"
     },
     "pipeline": {
       "tabStages": "Stages",
@@ -1768,7 +1769,7 @@
       "activity": "Activiteit",
       "sources": "Bronnen",
       "pipeline": "Pipeline",
-      "scheduled": "Gepland",
+      "scheduled": "Automatiseringsruns",
       "scheduled-posts": "Geplande posts",
       "content": "Content",
       "marketing": "Marketing",
@@ -3460,6 +3461,7 @@
       "uploadedLabel": "Geüpload",
       "exportTitle": "Exporteren",
       "exporting": "Bezig…",
+      "exportTimedOut": "De export is niet voltooid. Controleer de server en probeer opnieuw.",
       "format": {
         "md": "Markdown",
         "html": "HTML",
@@ -3495,8 +3497,8 @@
       "archivedBadge": "Gearchiveerd",
       "searchPlaceholder": "Documenten zoeken…",
       "aiProviderChip": "Gebruikt {{provider}}",
-      "aiProviderInfoTitle": "Vaste provider",
-      "aiProviderInfo": "Document-AI draait altijd op Gemini — dit staat vast en wordt niet beïnvloed door pipeline-stage-persona's of de per-functie providerlijst. Het gebruikt wel je workspace-AI-instructie en ingeschakelde skills, die je beheert via Workspace → AI."
+      "aiProviderInfoTitle": "Bepaalde provider",
+      "aiProviderInfo": "Dit is de provider die voor documentgeneratie in deze workspace is bepaald. De provider gebruikt wel je workspace-AI-instructie en ingeschakelde skills, die je beheert via Workspace → AI."
     },
     "inspire": {
       "title": "Inspiratie",

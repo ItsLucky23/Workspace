@@ -368,7 +368,7 @@ export default function ContentPiece({ params }: { params: Record<string, string
 
   //? Lifecycle ops that were previously only reachable via the AI chat — surfaced as a UI button + menu so a user
   //? can drive them directly (mobile + desktop). All go through the existing runContentOp dispatch.
-  const pieceMenu: PopMenuItem[] = piece.status === 'archived'
+  const pieceMenu: PopMenuItem[] = piece.archived === true
     ? [{ label: translate({ key: 'workspaces.content.restorePiece' }), icon: 'rotate-left', onClick: () => { runContentOp('content-unarchive', piece.id, {}); } }]
     : [{ label: translate({ key: 'workspaces.content.archivePiece' }), icon: 'box-archive', danger: true, onClick: () => { void menuHandler.confirm({ title: translate({ key: 'workspaces.content.archivePiece' }), content: piece.title }).then((ok) => { if (ok) runContentOp('content-archive', piece.id, {}); }); } }];
 

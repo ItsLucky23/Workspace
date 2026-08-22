@@ -4,7 +4,7 @@
 //? (critique, AI edit, restyle, transcode webm/gif, trim audio, regenerate ×1/×3) into a per-card overflow
 //? menu. The visibility rules are SEMANTIC, not cosmetic (ready/stub/kind guards mirror the ops' own guards).
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
@@ -75,9 +75,14 @@ export function AssetCard({ asset, connectedPlatforms, onPublish, onUnpublish, o
   //? An image uses its own url directly. Anything without a usable still falls through to the kind icon.
   const posterHref = asset.posterUrl ? assetHref(asset.posterUrl) : null;
   let previewSrc: string | null = null;
+  let videoPreviewSrc: string | null = null;
   if (asset.status === 'ready') {
-    if (asset.kind === 'image') previewSrc = href;
-    else if (asset.kind === 'render') previewSrc = posterHref;
+    switch (asset.kind) {
+      case 'image': { previewSrc = href; break; }
+      case 'render': { previewSrc = posterHref; break; }
+      case 'video': { videoPreviewSrc = href; break; }
+      default: { break; }
+    }
   }
   const canPublish = isPublishable(asset) && !asset.stub && connectedPlatforms.length > 0;
   const isReadyImage = asset.kind === 'image' && asset.status === 'ready' && asset.url.length > 0;
@@ -116,16 +121,16 @@ export function AssetCard({ asset, connectedPlatforms, onPublish, onUnpublish, o
     );
   }
 
+  let preview: ReactNode = <Icon name={ASSET_ICON[asset.kind] ?? 'file-lines'} className={`text-2xl text-muted`} />;
+  if (previewSrc) preview = <img src={previewSrc} alt={asset.kind} className={`w-full h-full object-cover`} />;
+  if (videoPreviewSrc) preview = <video src={videoPreviewSrc} poster={posterHref ?? undefined} muted playsInline className={`w-full h-full object-cover`} />;
+
   return (
     <div className={`rounded-xl border border-container2-border bg-container2 flex flex-col`}>
       <div className={`aspect-square bg-container1 flex items-center justify-center relative overflow-hidden rounded-t-xl`}>
         {asset.status === 'queued' || asset.status === 'processing' ? (
           <GenProgress asset={asset} translate={translate} />
-        ) : (previewSrc ? (
-          <img src={previewSrc} alt={asset.kind} className={`w-full h-full object-cover`} />
-        ) : (
-          <Icon name={ASSET_ICON[asset.kind] ?? 'file-lines'} className={`text-2xl text-muted`} />
-        ))}
+        ) : preview}
         {/* P-C — surface the honest states (ADR 0144): an error render (no keys/Docker) shows a failure badge;
             a not-real stub shows the preview badge. Error takes precedence (a stub render is also an error). */}
         {asset.status === 'error' ? (

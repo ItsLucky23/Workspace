@@ -544,7 +544,8 @@
       "welcome": "Bienvenue sur Workspaces",
       "subtitle": "Créez un espace de travail pour commencer, ou acceptez une invitation ci-dessous.",
       "createHeading": "Créer un espace de travail",
-      "invitesHeading": "Vos invitations"
+      "invitesHeading": "Vos invitations",
+      "pipelineTier": "Profondeur du pipeline"
     },
     "pipeline": {
       "tabStages": "Étapes",
@@ -1768,7 +1769,7 @@
       "activity": "Activité",
       "sources": "Sources",
       "pipeline": "Pipeline",
-      "scheduled": "Planifié",
+      "scheduled": "Exécutions d’automatisation",
       "scheduled-posts": "Publications planifiées",
       "content": "Contenu",
       "marketing": "Marketing",
@@ -3460,6 +3461,7 @@
       "uploadedLabel": "Téléversé",
       "exportTitle": "Exporter",
       "exporting": "Export…",
+      "exportTimedOut": "L’export n’est pas terminé. Vérifiez le serveur et réessayez.",
       "format": {
         "md": "Markdown",
         "html": "HTML",
@@ -3495,8 +3497,8 @@
       "archivedBadge": "Archivé",
       "searchPlaceholder": "Rechercher des documents…",
       "aiProviderChip": "Utilise {{provider}}",
-      "aiProviderInfoTitle": "Fournisseur fixe",
-      "aiProviderInfo": "L'IA des documents tourne toujours sur Gemini — c'est fixe et n'est pas affecté par les personas d'étape du pipeline ni par la liste des fournisseurs par fonctionnalité. Elle hérite en revanche de l'instruction IA de l'espace de travail et des compétences activées, gérables dans Espace de travail → IA."
+      "aiProviderInfoTitle": "Fournisseur résolu",
+      "aiProviderInfo": "C'est le fournisseur résolu pour la génération de documents dans cet espace de travail. L'instruction IA de l'espace et les compétences activées restent prises en compte et se gèrent dans Espace de travail → IA."
     },
     "inspire": {
       "title": "Inspiration",

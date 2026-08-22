@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslator } from '@luckystack/core/client';
 
 import Icon from '../_components/Icon';
+import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import { ModulePicker } from '../_components/ModulePicker';
 import { WsButton } from '../_components/primitives';
 import { WORKSPACE_MODULES, sectionsForModules, type WorkspaceModuleId } from '../_data/modules';
@@ -25,19 +26,19 @@ export function Onboarding() {
   //? initially only added to the in-app create form, which is the one place the question matters least:
   //? by then you already know what the product does.
   const [pack, setPack] = useState<string>('');
+  const [preset, setPreset] = useState<'simple' | 'advanced' | 'professional'>('professional');
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { inputRef.current?.focus(); }, []);
   const toggleModule = (id: WorkspaceModuleId) => { setModules((cur) => (cur.includes(id) ? cur.filter((m) => m !== id) : [...cur, id])); };
   const choosePack = (packId: string): void => {
     setPack(packId);
     const chosen = WORKSPACE_PACK_CHOICES.find((p) => p.id === packId);
-    if (chosen) setModules(chosen.modules);
+    if (chosen) { setModules(chosen.modules); setPreset(chosen.preset); }
   };
   const submit = () => {
     const n = name.trim();
     if (!n || modules.length === 0) return;
-    const chosen = WORKSPACE_PACK_CHOICES.find((p) => p.id === pack);
-    createWorkspace(n, sectionsForModules(modules), chosen?.preset, pack || undefined);
+    createWorkspace(n, sectionsForModules(modules), preset, pack || undefined);
   };
 
   return (
@@ -79,6 +80,17 @@ export function Onboarding() {
             <div className="text-xs font-medium text-muted">{translate({ key: 'workspaces.modules.pickHeading' })}</div>
             <ModulePicker selected={modules} onToggle={toggleModule} />
           </div>
+          {modules.includes('development') && (
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-medium text-muted">{translate({ key: 'workspaces.onboarding.pipelineTier' })}</span>
+              <Dropdown
+                size="sm" width="full"
+                value={{ id: preset, value: preset, item: translate({ key: `workspaces.modules.tier_${preset}` }) }}
+                items={(['simple', 'advanced', 'professional'] as const).map((tier): DropdownItem => ({ id: tier, value: tier, item: translate({ key: `workspaces.modules.tier_${tier}` }) }))}
+                onChange={(item) => { const id = String(item.id); if (id === 'simple' || id === 'advanced' || id === 'professional') setPreset(id); }}
+              />
+            </div>
+          )}
           <WsButton icon="plus" onClick={submit} disabled={name.trim().length === 0 || modules.length === 0}>{translate({ key: 'workspaces.shell.create' })}</WsButton>
         </div>
 

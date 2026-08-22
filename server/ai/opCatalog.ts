@@ -220,8 +220,8 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   },
   'save-ai-instruction': {
     mode: 'enabled',
-    hint: 'set the workspace-wide AI behaviour: the always-on instruction prepended to every AI run, the preferred output language, and/or the Gemini model/temperature(0-2)/base-url. Only pass the fields to change; the rest keep their current value. params: aiInstruction?, outputLanguage?, geminiModel?, geminiTemperature?, geminiBaseUrl?',
-    params: { aiInstruction: { kind: 'string' }, outputLanguage: { kind: 'string' }, geminiModel: { kind: 'string' }, geminiTemperature: { kind: 'string' }, geminiBaseUrl: { kind: 'string' } },
+    hint: 'set the workspace-wide AI behaviour: the always-on instruction prepended to every AI run and/or the preferred output language. Only pass the fields to change; the rest keep their current value. Provider connections and per-feature routing are managed through AI provider settings.',
+    params: { aiInstruction: { kind: 'string' }, outputLanguage: { kind: 'string' } },
   },
   'save-ai-provider': {
     mode: 'enabled',
