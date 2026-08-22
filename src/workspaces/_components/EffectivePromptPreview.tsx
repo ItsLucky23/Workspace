@@ -38,8 +38,12 @@ function LayerLink({ id, stageId, inline }: { id: ResolvedAiLayer['id']; stageId
   //? The editor for this layer is already on screen — a jump would land the user where they are.
   if (inline) return null;
 
+  //? F-010 — on a pipeline stage the skills layer is the stage's own PICK (Context tab), so that is where
+  //? the link goes; the workspace editor is only the destination when no stage is in play.
+  const stageSkills = id === 'skills' && stageId !== undefined;
   const go = (): void => {
-    if (id === 'workspace' || id === 'skills') { focusSetup({ view: 'workspace', tab: 'aibehavior' }); return; }
+    if (id === 'workspace' || (id === 'skills' && !stageSkills)) { focusSetup({ view: 'workspace', tab: 'aibehavior' }); return; }
+    if (stageSkills) { navigate('pipeline', [stageId, 'context']); return; }
     const tab = id === 'carryOver' ? 'carryover' : 'general';
     //? Same rule as useLayerTip: never navigate to the pipeline without the stage, or the tab segment
     //? is dropped and the link lands on the first stage's General tab whatever the label promised.
@@ -51,7 +55,7 @@ function LayerLink({ id, stageId, inline }: { id: ResolvedAiLayer['id']; stageId
       type="button" onClick={go}
       className={`shrink-0 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-primary hover:bg-primary/10 cursor-pointer transition-colors ${FOCUS_RING}`}
     >
-      {translate({ key: `workspaces.aiLayers.goto_${id}` })} <Icon name="arrow-right-long" className={`text-[10px]`} />
+      {translate({ key: stageSkills ? 'workspaces.aiLayers.goto_skillsStage' : `workspaces.aiLayers.goto_${id}` })} <Icon name="arrow-right-long" className={`text-[10px]`} />
     </button>
   );
 }

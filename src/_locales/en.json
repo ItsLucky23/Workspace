@@ -707,7 +707,12 @@
       "manageAiSkills": "Write a skill",
       "handoverPrompt": "What you hand to the next stage",
       "handoverPromptHint": "Runs at the END of this stage's session and shapes the summary it writes. Leave it empty and the AI decides for itself what is worth passing on.",
-      "handoverPromptPlaceholder": "In plain language: what does the next stage need to know from you?"
+      "handoverPromptPlaceholder": "In plain language: what does the next stage need to know from you?",
+      "unsavedChanges": "Unsaved changes",
+      "remoteUpdated": "This stage was changed elsewhere while you were editing.",
+      "discardEdits": "Discard my edits and load it",
+      "networkNotEnforcedTitle": "Not enforced yet",
+      "networkNotEnforcedBody": "Egress is currently controlled host-wide by the WS_EGRESS / WS_EGRESS_ALLOW environment (one allowlist for every stage). These per-stage settings are saved but do not change what the container can reach."
     },
     "settings": {
       "saving": "Saving…",
@@ -751,7 +756,8 @@
       "goto_carryOver": "Edit on the Carry-over tab",
       "tipTitle": "How this prompt is composed",
       "tipPosition": "This field is {{channel}} {{n}} of {{total}}.",
-      "tipThisField": " — this field"
+      "tipThisField": " — this field",
+      "goto_skillsStage": "Pick on this stage's Context tab"
     },
     "tips": {
       "automations": {

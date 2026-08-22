@@ -707,7 +707,12 @@
       "manageAiSkills": "Fähigkeit schreiben",
       "handoverPrompt": "Was du an die nächste Stufe übergibst",
       "handoverPromptHint": "Läuft am ENDE der Sitzung dieser Stufe und prägt die Zusammenfassung, die sie schreibt. Lässt du es leer, entscheidet die KI selbst, was weitergegeben gehört.",
-      "handoverPromptPlaceholder": "In klarer Sprache: Was muss die nächste Stufe von dir wissen?"
+      "handoverPromptPlaceholder": "In klarer Sprache: Was muss die nächste Stufe von dir wissen?",
+      "unsavedChanges": "Ungespeicherte Änderungen",
+      "remoteUpdated": "Diese Stufe wurde anderswo geändert, während du sie bearbeitet hast.",
+      "discardEdits": "Meine Änderungen verwerfen und sie laden",
+      "networkNotEnforcedTitle": "Noch nicht durchgesetzt",
+      "networkNotEnforcedBody": "Egress wird derzeit hostweit über die Umgebung WS_EGRESS / WS_EGRESS_ALLOW gesteuert (eine Allowlist für jede Stufe). Diese Einstellungen pro Stufe werden gespeichert, ändern aber nicht, was der Container erreichen kann."
     },
     "settings": {
       "saving": "Wird gespeichert…",
@@ -751,7 +756,8 @@
       "goto_carryOver": "Im Reiter Übergabe bearbeiten",
       "tipTitle": "Wie dieser Prompt aufgebaut ist",
       "tipPosition": "Dieses Feld ist {{channel}} {{n}} von {{total}}.",
-      "tipThisField": " — dieses Feld"
+      "tipThisField": " — dieses Feld",
+      "goto_skillsStage": "Auf dem Kontext-Tab dieser Stufe wählen"
     },
     "tips": {
       "automations": {

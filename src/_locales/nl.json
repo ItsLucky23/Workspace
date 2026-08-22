@@ -707,7 +707,12 @@
       "manageAiSkills": "Vaardigheid schrijven",
       "handoverPrompt": "Wat je doorgeeft aan de volgende stage",
       "handoverPromptHint": "Draait aan het EIND van de sessie van deze stage en bepaalt de samenvatting die hij schrijft. Laat je 'm leeg, dan bepaalt de AI zelf wat het doorgeven waard is.",
-      "handoverPromptPlaceholder": "In gewone taal: wat moet de volgende stage van jou weten?"
+      "handoverPromptPlaceholder": "In gewone taal: wat moet de volgende stage van jou weten?",
+      "unsavedChanges": "Niet-opgeslagen wijzigingen",
+      "remoteUpdated": "Deze stage is elders gewijzigd terwijl jij aan het bewerken was.",
+      "discardEdits": "Mijn wijzigingen weggooien en die laden",
+      "networkNotEnforcedTitle": "Nog niet afgedwongen",
+      "networkNotEnforcedBody": "Egress wordt nu host-breed geregeld door de WS_EGRESS / WS_EGRESS_ALLOW-omgeving (één allowlist voor elke stage). Deze per-stage instellingen worden opgeslagen maar veranderen niet wat de container kan bereiken."
     },
     "settings": {
       "saving": "Opslaan…",
@@ -751,7 +756,8 @@
       "goto_carryOver": "Bewerk op het tabblad Overdracht",
       "tipTitle": "Hoe deze prompt is opgebouwd",
       "tipPosition": "Dit veld is {{channel}} {{n}} van {{total}}.",
-      "tipThisField": " — dit veld"
+      "tipThisField": " — dit veld",
+      "goto_skillsStage": "Kies op het Context-tabblad van deze stage"
     },
     "tips": {
       "automations": {

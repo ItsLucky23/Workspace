@@ -656,6 +656,17 @@ export function NetworkTab({ s, update }: TabProps) {
   const toggleCat = (key: string) => { update({ network: { ...n, categories: n.categories.includes(key) ? n.categories.filter((c) => c !== key) : [...n.categories, key] } }); };
   return (
     <div className="flex flex-col gap-4 max-w-2xl">
+      {/* F-007 — honesty notice, not a hidden tab: nothing server-side reads cfg.network yet (egress is the
+          single host-wide squid allowlist in server/container/egress.ts — WS_EGRESS / WS_EGRESS_ALLOW).
+          A security-looking control that is silently inert is worse than one that says so. Remove this
+          block the day launchTicketContainer honours the per-stage config. */}
+      <div className="flex items-start gap-3 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2.5">
+        <Icon name="triangle-exclamation" className="mt-0.5 shrink-0 text-warning" />
+        <div className="min-w-0">
+          <div className="text-sm font-medium text-title">{translate({ key: 'workspaces.pipeline.networkNotEnforcedTitle' })}</div>
+          <div className="text-xs text-muted mt-0.5">{translate({ key: 'workspaces.pipeline.networkNotEnforcedBody' })}</div>
+        </div>
+      </div>
       <div className="flex items-center gap-3 rounded-xl border border-container1-border px-3 py-2.5">
         <div className="flex-1"><div className="text-sm font-medium text-title">{translate({ key: 'workspaces.pipeline.networkEgress' })}</div><div className="text-xs text-muted mt-0.5">{translate({ key: 'workspaces.pipeline.networkEgressDesc' })}</div></div>
         <Toggle on={n.enabled} onChange={(v) => { update({ network: { ...n, enabled: v } }); }} />
@@ -721,9 +732,11 @@ export function HooksTab({ s, update }: TabProps) {
                 </div>
                 {/* F29 — a required hook shows as permanently on rather than as a switch that silently
                     refuses: the engine's turn-detection depends on it. */}
+                {/* F-008 — the default mirrors the ENGINE (renderStage: a hook runs unless explicitly false); the
+                    conductor writes hooks:{} for new/seeded stages, so `?? false` showed OFF for hooks that ran. */}
                 {h.required === true
                   ? <span className="text-[11px] rounded-md bg-primary/10 text-primary px-1.5 py-0.5 shrink-0 mt-0.5">{translate({ key: 'workspaces.pipeline.hookRequired' })}</span>
-                  : <Toggle on={s.hooks[h.key] ?? false} onChange={(v) => { update({ hooks: { ...s.hooks, [h.key]: v } }); }} />}
+                  : <Toggle on={s.hooks[h.key] ?? true} onChange={(v) => { update({ hooks: { ...s.hooks, [h.key]: v } }); }} />}
               </div>
             ))}
           </div>

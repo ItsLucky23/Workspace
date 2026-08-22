@@ -707,7 +707,12 @@
       "manageAiSkills": "Écrire une compétence",
       "handoverPrompt": "Ce que tu transmets à l'étape suivante",
       "handoverPromptHint": "S'exécute à la FIN de la session de cette étape et façonne le résumé qu'elle écrit. Laisse vide et l'IA décide elle-même de ce qui mérite d'être transmis.",
-      "handoverPromptPlaceholder": "En langage clair : que doit savoir l'étape suivante de ta part ?"
+      "handoverPromptPlaceholder": "En langage clair : que doit savoir l'étape suivante de ta part ?",
+      "unsavedChanges": "Modifications non enregistrées",
+      "remoteUpdated": "Cette étape a été modifiée ailleurs pendant que vous l'éditiez.",
+      "discardEdits": "Abandonner mes modifications et la charger",
+      "networkNotEnforcedTitle": "Pas encore appliqué",
+      "networkNotEnforcedBody": "La sortie réseau est actuellement contrôlée pour tout l'hôte par l'environnement WS_EGRESS / WS_EGRESS_ALLOW (une seule liste d'autorisation pour chaque étape). Ces réglages par étape sont enregistrés mais ne changent pas ce que le conteneur peut atteindre."
     },
     "settings": {
       "saving": "Enregistrement…",
@@ -751,7 +756,8 @@
       "goto_carryOver": "Modifier dans l'onglet Transmission",
       "tipTitle": "Comment ce prompt est composé",
       "tipPosition": "Ce champ est {{channel}} {{n}} sur {{total}}.",
-      "tipThisField": " — ce champ"
+      "tipThisField": " — ce champ",
+      "goto_skillsStage": "Choisir dans l'onglet Contexte de cette étape"
     },
     "tips": {
       "automations": {
