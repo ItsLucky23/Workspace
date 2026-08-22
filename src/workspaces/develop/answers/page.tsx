@@ -53,7 +53,7 @@ function isStale(iso: string | undefined): boolean {
 //? it in one place should not have to relearn it in the other.
 function QueueCard({ item }: { item: { ticketKey: string; title: string; question: string; priority: TicketPriority; stageId: string; waitingSince?: string; openQuestionCount?: number } }) {
   const translate = useTranslator();
-  const { answerInput, isAnswerPending, openTicket } = useWorkspaces();
+  const { answerInput, isAnswerPending, openTicket, claimTicket, claimedBy, membersById, currentUser } = useWorkspaces();
   const [reply, setReply] = useState('');
   const [note, setNote] = useState('');
   const [noteOpen, setNoteOpen] = useState(false);
@@ -62,7 +62,10 @@ function QueueCard({ item }: { item: { ticketKey: string; title: string; questio
   //? `autoFocus` prop the jsx-a11y rule bans for on-load focus).
   const noteRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (noteOpen) noteRef.current?.focus(); }, [noteOpen]);
+  useEffect(() => () => { claimTicket(item.ticketKey, false); }, [claimTicket, item.ticketKey]);
 
+  const claimantId = claimedBy(item.ticketKey);
+  const claimant = claimantId !== null && claimantId !== currentUser.id ? membersById[claimantId] : undefined;
   const sq = parseStructuredQuestion(item.question);
   const pending = isAnswerPending(item.ticketKey);
   const waited = waitedFor(item.waitingSince, translate);
@@ -120,16 +123,27 @@ function QueueCard({ item }: { item: { ticketKey: string; title: string; questio
           </div>
           <div className={`text-sm font-medium text-title truncate`}>{item.title}</div>
         </div>
-        {waited !== null && (
-          <span title={stale ? translate({ key: 'workspaces.answers.staleTooltip' }) : undefined} className={`text-xs shrink-0 ${stale ? 'text-warning' : 'text-muted'}`}>
-            {stale && <Icon name="triangle-exclamation" className={`mr-1`} />}{waited}
-          </span>
-        )}
+        <div className={`flex items-center gap-2 shrink-0`}>
+          {claimant && <span className={`text-xs text-warning`}>{translate({ key: 'workspaces.answers.claimedBy', params: [{ key: 'name', value: claimant.name }] })}</span>}
+          {waited !== null && (
+            <span title={stale ? translate({ key: 'workspaces.answers.staleTooltip' }) : undefined} className={`text-xs ${stale ? 'text-warning' : 'text-muted'}`}>
+              {stale && <Icon name="triangle-exclamation" className={`mr-1`} />}{waited}
+            </span>
+          )}
+        </div>
       </div>
 
-      <p className={`text-sm text-common`}>{sq.prompt}</p>
+      <div
+        className={`flex flex-col gap-2`}
+        onFocus={() => { claimTicket(item.ticketKey, true); }}
+        onBlur={(event) => {
+          const next = event.relatedTarget;
+          if (!(next instanceof Node) || !event.currentTarget.contains(next)) claimTicket(item.ticketKey, false);
+        }}
+      >
+        <p className={`text-sm text-common`}>{sq.prompt}</p>
 
-      {sq.kind === 'approve' && (
+        {sq.kind === 'approve' && (
         <div className={`flex flex-col gap-2`}>
           <div className={`flex flex-wrap items-center gap-2`}>
             <WsButton icon={pending ? 'spinner' : 'check'} disabled={pending} onClick={() => { withNote(translate({ key: 'workspaces.ticket.approved' })); }}>{translate({ key: pending ? 'workspaces.ticket.sending' : 'workspaces.ticket.approve' })}</WsButton>
@@ -170,16 +184,17 @@ function QueueCard({ item }: { item: { ticketKey: string; title: string; questio
         </div>
       )}
 
-      {sq.kind === 'free' && (
-        <div className={`flex flex-wrap items-center gap-2`}>
-          <input
-            value={reply} onChange={(e) => { setReply(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') answer(reply); }}
-            placeholder={translate({ key: 'workspaces.ticket.answerPlaceholder' })} disabled={pending}
-            className={`flex-1 min-w-40 h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary disabled:opacity-50`}
-          />
-          <WsButton icon={pending ? 'spinner' : undefined} disabled={pending} onClick={() => { answer(reply); }}>{translate({ key: pending ? 'workspaces.ticket.sending' : 'workspaces.ticket.send' })}</WsButton>
-        </div>
-      )}
+        {sq.kind === 'free' && (
+          <div className={`flex flex-wrap items-center gap-2`}>
+            <input
+              value={reply} onChange={(e) => { setReply(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter') answer(reply); }}
+              placeholder={translate({ key: 'workspaces.ticket.answerPlaceholder' })} disabled={pending}
+              className={`flex-1 min-w-40 h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary disabled:opacity-50`}
+            />
+            <WsButton icon={pending ? 'spinner' : undefined} disabled={pending} onClick={() => { answer(reply); }}>{translate({ key: pending ? 'workspaces.ticket.sending' : 'workspaces.ticket.send' })}</WsButton>
+          </div>
+        )}
+      </div>
 
       {/* Metadata nobody needs for the decision itself — which pipeline stage is asking, whether more
           questions follow — folds away so the card stays scannable at phone width. */}

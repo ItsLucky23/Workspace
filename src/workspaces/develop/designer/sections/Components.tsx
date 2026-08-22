@@ -1,6 +1,5 @@
-//? Designer › Components — browse every component we ship, rendered LIVE under the active theme.
-//? Reorganised from one long page into a category rail + search, so it stays scannable. The gallery
-//? reads the real component library, so anything the coding-agent adds to `src/_components` shows here.
+//? Designer › Components — browse a curated showcase of the shared component kit, rendered LIVE under
+//? the active theme. Reorganised from one long page into a category rail + search, so it stays scannable.
 
 import { useState } from 'react';
 
@@ -34,11 +33,7 @@ const DEMO_MEMBERS: Member[] = [
 ];
 const ALL_STATUSES: TicketStatus[] = ['busy', 'needs-input', 'done', 'idle', 'paused', 'stuck'];
 const DEMO_LABELS = ['bug', 'feature', 'frontend', 'auth', 'perf', 'security'];
-const APPLE: DropdownItem = { id: 'apple', value: 'apple', item: 'Apple' };
-const FRUIT: DropdownItem[] = [APPLE, { id: 'banana', value: 'banana', item: 'Banana' }, { id: 'cherry', value: 'cherry', item: 'Cherry' }];
-const TAG_FE: DropdownItem = { id: 1, value: 1, item: 'Frontend' };
-const TAGS: DropdownItem[] = [TAG_FE, { id: 2, value: 2, item: 'Backend' }, { id: 3, value: 3, item: 'Design' }];
-const DEMO = { primary: 'Primary', secondary: 'Secondary', ghost: 'Ghost', danger: 'Danger', disabled: 'Disabled', signedIn: 'Signed in as Ada', profile: 'Profile', signOut: 'Sign out', popover: 'Popover', newItem: 'New item', default: 'Default', focus: 'Focus', loading: 'Loading', focused: 'Focused', error: 'Error' } as const;
+
 const inputBase = 'h-9 px-3 rounded-lg border bg-container2/40 text-sm text-title focus:outline-none';
 const SHADOWS = ['shadow-sm', 'shadow', 'shadow-md', 'shadow-lg', 'shadow-xl'];
 const RADII = ['rounded-none', 'rounded', 'rounded-lg', 'rounded-xl', 'rounded-2xl', 'rounded-full'];
@@ -51,6 +46,32 @@ export default function Components() {
   const { tokens } = useDesigner();
   const [cat, setCat] = useState('all');
   const [q, setQ] = useState('');
+  const demo = {
+    primary: translate({ key: 'workspaces.components.demoPrimary' }), secondary: translate({ key: 'workspaces.components.demoSecondary' }),
+    ghost: translate({ key: 'workspaces.components.demoGhost' }), danger: translate({ key: 'workspaces.components.demoDanger' }),
+    disabled: translate({ key: 'workspaces.components.demoDisabled' }), signedIn: translate({ key: 'workspaces.components.demoSignedIn' }),
+    profile: translate({ key: 'workspaces.components.demoProfile' }), signOut: translate({ key: 'workspaces.components.demoSignOut' }),
+    popover: translate({ key: 'workspaces.components.demoPopover' }), newItem: translate({ key: 'workspaces.components.demoNewItem' }),
+    default: translate({ key: 'workspaces.components.demoDefault' }), focus: translate({ key: 'workspaces.components.demoFocus' }),
+    loading: translate({ key: 'workspaces.components.demoLoading' }), focused: translate({ key: 'workspaces.components.demoFocused' }),
+    error: translate({ key: 'workspaces.components.demoError' }), dropdownMd: translate({ key: 'workspaces.components.demoDropdownMd' }),
+    dropdownSearch: translate({ key: 'workspaces.components.demoDropdownSearch' }), multiSelect: translate({ key: 'workspaces.components.demoMultiSelect' }),
+    text: translate({ key: 'workspaces.components.demoText' }), number: translate({ key: 'workspaces.components.demoNumber' }),
+    password: translate({ key: 'workspaces.components.demoPassword' }), search: translate({ key: 'workspaces.components.demoSearch' }),
+    searchPlaceholder: translate({ key: 'workspaces.components.demoSearchPlaceholder' }), email: translate({ key: 'workspaces.components.demoEmailNotifications' }),
+    compact: translate({ key: 'workspaces.components.demoCompactMode' }), agree: translate({ key: 'workspaces.components.demoAgreeTerms' }),
+    subscribe: translate({ key: 'workspaces.components.demoSubscribe' }), dueDate: translate({ key: 'workspaces.components.demoDueDate' }),
+    board: translate({ key: 'workspaces.components.demoBoard' }), list: translate({ key: 'workspaces.components.demoList' }),
+    workspaceToggle: translate({ key: 'workspaces.components.demoWorkspaceToggle' }), overview: translate({ key: 'workspaces.components.demoOverview' }),
+    activity: translate({ key: 'workspaces.components.demoActivity' }), settings: translate({ key: 'workspaces.components.demoSettings' }),
+    edit: translate({ key: 'workspaces.components.demoEdit' }), duplicate: translate({ key: 'workspaces.components.demoDuplicate' }),
+    delete: translate({ key: 'workspaces.components.demoDelete' }), infoDot: translate({ key: 'workspaces.components.demoInfoDot' }),
+    apple: translate({ key: 'workspaces.components.demoApple' }), banana: translate({ key: 'workspaces.components.demoBanana' }),
+    cherry: translate({ key: 'workspaces.components.demoCherry' }), frontend: translate({ key: 'workspaces.components.demoFrontend' }),
+    backend: translate({ key: 'workspaces.components.demoBackend' }), design: translate({ key: 'workspaces.components.demoDesign' }),
+  };
+  const fruitItems: DropdownItem[] = [{ id: 'apple', value: 'apple', item: demo.apple }, { id: 'banana', value: 'banana', item: demo.banana }, { id: 'cherry', value: 'cherry', item: demo.cherry }];
+  const tagItems: DropdownItem[] = [{ id: 1, value: 1, item: demo.frontend }, { id: 2, value: 2, item: demo.backend }, { id: 3, value: 3, item: demo.design }];
 
   const [text, setText] = useState('Ada Lovelace');
   const [num, setNum] = useState('3');
@@ -62,57 +83,57 @@ export default function Components() {
   const [wsT, setWsT] = useState(true);
   const [seg, setSeg] = useState<'board' | 'list'>('board');
   const [tab, setTab] = useState('overview');
-  const [fruit, setFruit] = useState<DropdownItem>(APPLE);
-  const [tags, setTags] = useState<DropdownItem[]>([TAG_FE]);
+  const [fruit, setFruit] = useState<DropdownItem>(fruitItems[0]);
+  const [tags, setTags] = useState<DropdownItem[]>([tagItems[0]]);
   const [date, setDate] = useState<Date | null>(null);
 
   const cats: Cat[] = [
     { key: 'buttons', icon: 'hand-pointer', render: () => (
       <div className="flex flex-wrap items-center gap-3">
-        <WsButton icon="check">{DEMO.primary}</WsButton>
-        <WsButton variant="secondary" icon="pen">{DEMO.secondary}</WsButton>
-        <WsButton variant="ghost" icon="arrow-left">{DEMO.ghost}</WsButton>
-        <WsButton variant="danger" icon="trash-can">{DEMO.danger}</WsButton>
-        <WsButton icon="rotate" disabled>{DEMO.disabled}</WsButton>
+        <WsButton icon="check">{demo.primary}</WsButton>
+        <WsButton variant="secondary" icon="pen">{demo.secondary}</WsButton>
+        <WsButton variant="ghost" icon="arrow-left">{demo.ghost}</WsButton>
+        <WsButton variant="danger" icon="trash-can">{demo.danger}</WsButton>
+        <WsButton icon="rotate" disabled>{demo.disabled}</WsButton>
         <div className="w-px h-6 bg-divider" />
         <IconButton icon="gear" /><IconButton icon="bell" active /><IconButton icon="ellipsis" />
       </div>
     ) },
     { key: 'selects', icon: 'caret-down', render: () => (
       <div className="flex flex-wrap items-start gap-4">
-        <Field label="Dropdown · md"><Dropdown items={FRUIT} value={fruit} onChange={setFruit} size="md" /></Field>
-        <Field label="Dropdown · lg · search"><Dropdown items={FRUIT} value={fruit} onChange={setFruit} size="lg" showSearch /></Field>
-        <Field label="Multi-select"><MultiSelectDropdown items={TAGS} value={tags} onChange={setTags} selectedCountText={(n) => `${String(n)} selected`} size="md" /></Field>
+        <Field label={demo.dropdownMd}><Dropdown items={fruitItems} value={fruit} onChange={setFruit} size="md" /></Field>
+        <Field label={demo.dropdownSearch}><Dropdown items={fruitItems} value={fruit} onChange={setFruit} size="lg" showSearch /></Field>
+        <Field label={demo.multiSelect}><MultiSelectDropdown items={tagItems} value={tags} onChange={setTags} selectedCountText={(n) => translate({ key: 'workspaces.components.demoSelected', params: [{ key: 'n', value: String(n) }] })} size="md" /></Field>
       </div>
     ) },
     { key: 'inputs', icon: 'keyboard', render: () => (
       <div className="grid sm:grid-cols-2 gap-4 max-w-2xl">
-        <TextField label="Text" value={text} onChange={setText} leftIcon={faMagnifyingGlass} clearable />
-        <TextField type="number" label="Number" value={num} onChange={setNum} min={0} max={99} />
-        <TextField type="password" label="Password" value="hunter2" onChange={() => { /* demo */ }} />
-        <TextField type="search" label="Search" value={search} onChange={setSearch} placeholder="Type to filter…" />
-        <div className="flex flex-col gap-3"><InputToggle checked={t1} onChange={setT1} label="Email notifications" /><InputToggle checked={t2} onChange={setT2} label="Compact mode" size="sm" /></div>
-        <div className="flex flex-col gap-3"><Checkbox checked={c1} onChange={setC1} label="I agree to the terms" /><Checkbox checked={c2} onChange={setC2} label="Subscribe" indeterminate /></div>
-        <DatePicker label="Due date" value={date} onChange={setDate} />
+        <TextField label={demo.text} value={text} onChange={setText} leftIcon={faMagnifyingGlass} clearable />
+        <TextField type="number" label={demo.number} value={num} onChange={setNum} min={0} max={99} />
+        <TextField type="password" label={demo.password} value="hunter2" onChange={() => { /* demo */ }} />
+        <TextField type="search" label={demo.search} value={search} onChange={setSearch} placeholder={demo.searchPlaceholder} />
+        <div className="flex flex-col gap-3"><InputToggle checked={t1} onChange={setT1} label={demo.email} /><InputToggle checked={t2} onChange={setT2} label={demo.compact} size="sm" /></div>
+        <div className="flex flex-col gap-3"><Checkbox checked={c1} onChange={setC1} label={demo.agree} /><Checkbox checked={c2} onChange={setC2} label={demo.subscribe} indeterminate /></div>
+        <DatePicker label={demo.dueDate} value={date} onChange={setDate} />
       </div>
     ) },
     { key: 'controls', icon: 'sliders', render: () => (
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-4">
-          <Segmented<'board' | 'list'> options={[{ id: 'board', label: 'Board' }, { id: 'list', label: 'List' }]} value={seg} onChange={setSeg} />
-          <WsToggle on={wsT} onChange={setWsT} label="Workspace toggle" />
+          <Segmented<'board' | 'list'> options={[{ id: 'board', label: demo.board }, { id: 'list', label: demo.list }]} value={seg} onChange={setSeg} />
+          <WsToggle on={wsT} onChange={setWsT} label={demo.workspaceToggle} />
         </div>
-        <div className="max-w-md"><Tabs tabs={[{ id: 'overview', label: 'Overview', icon: 'table-columns' }, { id: 'activity', label: 'Activity', icon: 'wave-square', count: 3 }, { id: 'settings', label: 'Settings', icon: 'gear' }]} active={tab} onChange={setTab} /></div>
+        <div className="max-w-md"><Tabs tabs={[{ id: 'overview', label: demo.overview, icon: 'table-columns' }, { id: 'activity', label: demo.activity, icon: 'wave-square', count: 3 }, { id: 'settings', label: demo.settings, icon: 'gear' }]} active={tab} onChange={setTab} /></div>
       </div>
     ) },
     { key: 'overlays', icon: 'layer-group', render: () => (
       <div className="flex flex-wrap items-center gap-4">
-        <BasePopover content={<div className="flex flex-col gap-1 text-sm text-common"><div className="font-medium text-title mb-1">{DEMO.signedIn}</div><button type="button" className="text-left hover:text-primary cursor-pointer">{DEMO.profile}</button><button type="button" className="text-left hover:text-primary cursor-pointer">{DEMO.signOut}</button></div>}>
-          <WsButton variant="secondary" icon="caret-down">{DEMO.popover}</WsButton>
+        <BasePopover content={<div className="flex flex-col gap-1 text-sm text-common"><div className="font-medium text-title mb-1">{demo.signedIn}</div><button type="button" className="text-left hover:text-primary cursor-pointer">{demo.profile}</button><button type="button" className="text-left hover:text-primary cursor-pointer">{demo.signOut}</button></div>}>
+          <WsButton variant="secondary" icon="caret-down">{demo.popover}</WsButton>
         </BasePopover>
-        <PopMenu items={[{ label: 'Edit', icon: 'pen' }, { label: 'Duplicate', icon: 'copy' }, { divider: true }, { label: 'Delete', icon: 'trash-can', danger: true }]} triggerClass="inline-flex items-center gap-2 rounded-xl px-3.5 h-9 text-sm font-medium bg-container2 text-title hover:bg-container2-hover cursor-pointer" />
+        <PopMenu items={[{ label: demo.edit, icon: 'pen' }, { label: demo.duplicate, icon: 'copy' }, { divider: true }, { label: demo.delete, icon: 'trash-can', danger: true }]} triggerClass="inline-flex items-center gap-2 rounded-xl px-3.5 h-9 text-sm font-medium bg-container2 text-title hover:bg-container2-hover cursor-pointer" />
         <WsButton variant="secondary" icon="triangle-exclamation" onClick={() => { void menuHandler.confirm({ title: translate({ key: 'workspaces.designer.confirmDemoTitle' }), content: translate({ key: 'workspaces.designer.confirmDemoBody' }) }); }}>{translate({ key: 'workspaces.designer.openConfirm' })}</WsButton>
-        <InfoDot title="Info dot" body={translate({ key: 'workspaces.designer.infoDotBody' })} align="left" />
+        <InfoDot title={demo.infoDot} body={translate({ key: 'workspaces.designer.infoDotBody' })} align="left" />
       </div>
     ) },
     { key: 'data', icon: 'table-cells', render: () => (
@@ -120,22 +141,22 @@ export default function Components() {
         <div className="flex flex-wrap items-center gap-2">{ALL_STATUSES.map((s) => <StatusPill key={s} status={s} />)}</div>
         <div className="flex flex-wrap items-center gap-1.5">{DEMO_LABELS.map((l) => <LabelChip key={l} name={l} />)}</div>
         <div className="flex items-center gap-4"><AvatarStack users={DEMO_MEMBERS} max={3} size={28} /><div className="flex items-center gap-2">{DEMO_MEMBERS.slice(0, 3).map((m) => <AvatarBubble key={m.id} user={m} size={32} />)}</div></div>
-        <EmptyState icon="inbox" title={translate({ key: 'workspaces.designer.emptyDemoTitle' })} sub={translate({ key: 'workspaces.designer.emptyDemoSub' })} action={<WsButton icon="plus">{DEMO.newItem}</WsButton>} />
+        <EmptyState icon="inbox" title={translate({ key: 'workspaces.designer.emptyDemoTitle' })} sub={translate({ key: 'workspaces.designer.emptyDemoSub' })} action={<WsButton icon="plus">{demo.newItem}</WsButton>} />
       </div>
     ) },
     { key: 'states', icon: 'wand-sparkles', render: () => (
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <WsButton icon="check">{DEMO.default}</WsButton>
-          <WsButton icon="check" className="ring-2 ring-focus-ring">{DEMO.focus}</WsButton>
-          <WsButton icon="spinner" className="[&_svg]:animate-spin">{DEMO.loading}</WsButton>
-          <WsButton icon="check" disabled>{DEMO.disabled}</WsButton>
+          <WsButton icon="check">{demo.default}</WsButton>
+          <WsButton icon="check" className="ring-2 ring-focus-ring">{demo.focus}</WsButton>
+          <WsButton icon="spinner" className="[&_svg]:animate-spin">{demo.loading}</WsButton>
+          <WsButton icon="check" disabled>{demo.disabled}</WsButton>
         </div>
         <div className="grid sm:grid-cols-2 gap-3 max-w-xl">
-          <input placeholder={DEMO.default} className={`${inputBase} border-container1-border focus:border-primary focus:ring-2 focus:ring-primary/30`} />
-          <input placeholder={DEMO.focused} className={`${inputBase} border-primary ring-2 ring-primary/30`} />
-          <input placeholder={DEMO.error} className={`${inputBase} border-wrong ring-2 ring-wrong/20`} />
-          <input placeholder={DEMO.disabled} disabled className={`${inputBase} border-container1-border opacity-50 cursor-not-allowed`} />
+          <input placeholder={demo.default} className={`${inputBase} border-container1-border focus:border-primary focus:ring-2 focus:ring-primary/30`} />
+          <input placeholder={demo.focused} className={`${inputBase} border-primary ring-2 ring-primary/30`} />
+          <input placeholder={demo.error} className={`${inputBase} border-wrong ring-2 ring-wrong/20`} />
+          <input placeholder={demo.disabled} disabled className={`${inputBase} border-container1-border opacity-50 cursor-not-allowed`} />
         </div>
       </div>
     ) },
