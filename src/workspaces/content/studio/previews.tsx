@@ -10,9 +10,11 @@ import Icon from '../../_components/Icon';
 import { asRecord, asStr, asStrArr } from './content';
 import type { StudioArtifactKind } from '../../_data/types';
 
-//? Render the artifact body by kind (avoids a nested ternary at the call site).
-export function ArtifactBody({ kind, c }: { kind: StudioArtifactKind; c: Record<string, unknown> }): ReactNode {
-  if (kind === 'landing' || kind === 'component' || kind === 'thumbnail') return <LandingPreview html={asStr(c.html)} />;
+//? Render the artifact body by kind (avoids a nested ternary at the call site). `full` makes the HTML
+//? preview's expand CONTROLLED (the marketing card toggles it from its overflow menu); omitted, the
+//? preview owns its own corner toggle.
+export function ArtifactBody({ kind, c, full }: { kind: StudioArtifactKind; c: Record<string, unknown>; full?: boolean }): ReactNode {
+  if (kind === 'landing' || kind === 'component' || kind === 'thumbnail') return <LandingPreview html={asStr(c.html)} {...(full === undefined ? {} : { full })} />;
   if (kind === 'videoScript') return <VideoScriptPreview c={c} />;
   if (kind === 'brand') return <BrandPreview c={c} />;
   if (kind === 'copy') return <CopyPreview c={c} />;
@@ -23,23 +25,24 @@ export function ArtifactBody({ kind, c }: { kind: StudioArtifactKind; c: Record<
   return <NamesPreview c={c} />;
 }
 
-function LandingPreview({ html }: { html: string }) {
+function LandingPreview({ html, full: controlled }: { html: string; full?: boolean }) {
   const translate = useTranslator();
-  const [full, setFull] = useState(false);
+  const [ownFull, setFull] = useState(false);
+  const full = controlled ?? ownFull;
   if (html.trim().length === 0) return <div className={`text-sm text-muted`}>{translate({ key: 'workspaces.studio.empty' })}</div>;
   return (
-    <div className={`relative rounded-xl border border-container1-border overflow-hidden bg-white ${full ? 'h-[70vh]' : 'h-96'}`}>
+    <div className={`relative rounded-xl border border-container1-border overflow-hidden bg-white max-w-full ${full ? 'h-[70vh]' : 'h-96'}`}>
       {/* sandboxed: no scripts run — a safe visual preview of the generated page */}
       <iframe title="landing-preview" srcDoc={html} sandbox="" className={`w-full h-full border-0`} />
       {/* expand/collapse lives as a single corner icon button — Copy HTML / Download PNG moved to the card's overflow menu */}
-      <button
+      {controlled === undefined && <button
         type="button" onClick={() => { setFull((v) => !v); }}
         title={translate({ key: full ? 'workspaces.studio.collapse' : 'workspaces.studio.expand' })}
         aria-label={translate({ key: full ? 'workspaces.studio.collapse' : 'workspaces.studio.expand' })}
         className={`absolute top-2 right-2 w-8 h-8 rounded-lg border border-container1-border bg-container1/90 text-common hover:text-title shadow-sm flex items-center justify-center cursor-pointer transition-colors`}
       >
         <Icon name={full ? 'xmark' : 'up-right-from-square'} className={`text-xs`} />
-      </button>
+      </button>}
     </div>
   );
 }

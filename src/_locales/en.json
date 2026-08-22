@@ -2768,7 +2768,8 @@
       "refinedWith": "refined: “{{refine}}”",
       "regenerateWithRefine": "Regenerate — refined: “{{refine}}”",
       "refineUsed": "Refined with: {{text}}",
-      "brandSetFrom": "Last set from {{source}}"
+      "brandSetFrom": "Last set from {{source}}",
+      "marketerMoved": "Marketing assets (copy, emails, ads, social, names, thumbnails, video scripts) live on Marketing"
     },
     "uiReview": {
       "emptyTitle": "No UI feedback yet.",
@@ -3138,7 +3139,9 @@
       "previewRunCommand": "run \"{{command}}\"",
       "previewWebhook": "call the webhook {{url}}",
       "previewCron": "on schedule \"{{cron}}\"",
-      "previewTemplate": "When {{event}} → {{detail}}"
+      "previewTemplate": "When {{event}} → {{detail}}",
+      "cronCountRow": "{{count}} scheduled task(s) run on a timer",
+      "cronCountLink": "Scheduled"
     },
     "automations": {
       "title": "Automations",

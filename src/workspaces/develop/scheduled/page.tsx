@@ -11,7 +11,7 @@ import { useTranslator } from '@luckystack/core/client';
 
 import BaseDropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import MultiSelectDropdown from 'src/_components/dropdown/MultiSelectDropdown';
-import { menuHandler } from 'src/_functions/menuHandler';
+import { confirmDeleteTrigger } from '../../_functions/confirmDeleteTrigger';
 
 import Icon from '../../_components/Icon';
 import { Disclosure, EmptyState, InfoTip, PopMenu, SectionCard, Toggle, WsButton } from '../../_components/primitives';
@@ -85,10 +85,10 @@ export default function Scheduled() {
   const { triggers, agentRoles, toggleTrigger, deleteTrigger, runTrigger } = useWorkspaces();
   const scheduled = triggers.filter((t) => t.on === 'cron');
   const [creating, setCreating] = useState(false);
-  //? #93 — confirm before destroying a scheduled task (a mis-tap should not delete it silently).
+  //? #93 — confirm before destroying a scheduled task (a mis-tap should not delete it silently). Shared
+  //? with the Automations panel (F-019).
   const confirmDelete = async (id: string, taskName: string): Promise<void> => {
-    const ok = await menuHandler.confirm({ title: translate({ key: 'workspaces.automation.deleteConfirmTitle' }), content: translate({ key: 'workspaces.automation.deleteConfirmBody', params: [{ key: 'name', value: taskName }] }) });
-    if (ok) deleteTrigger(id);
+    if (await confirmDeleteTrigger(translate, taskName)) deleteTrigger(id);
   };
 
   return (

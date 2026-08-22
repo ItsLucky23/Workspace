@@ -2768,7 +2768,8 @@
       "refinedWith": "verfijnd: “{{refine}}”",
       "regenerateWithRefine": "Opnieuw genereren — verfijnd: “{{refine}}”",
       "refineUsed": "Verfijnd met: {{text}}",
-      "brandSetFrom": "Laatst ingesteld vanuit {{source}}"
+      "brandSetFrom": "Laatst ingesteld vanuit {{source}}",
+      "marketerMoved": "Marketing-assets (copy, e-mails, ads, social, namen, thumbnails, videoscripts) staan op Marketing"
     },
     "uiReview": {
       "emptyTitle": "Nog geen UI-feedback.",
@@ -3138,7 +3139,9 @@
       "previewRunCommand": "voer \"{{command}}\" uit",
       "previewWebhook": "roep de webhook {{url}} aan",
       "previewCron": "op schema \"{{cron}}\"",
-      "previewTemplate": "Wanneer {{event}} → {{detail}}"
+      "previewTemplate": "Wanneer {{event}} → {{detail}}",
+      "cronCountRow": "{{count}} geplande taak/taken draaien op een timer",
+      "cronCountLink": "Gepland"
     },
     "automations": {
       "title": "Automatiseringen",

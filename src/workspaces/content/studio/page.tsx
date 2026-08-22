@@ -8,10 +8,9 @@ import { useEffect, useState } from 'react';
 
 import { i18nNotify as notify, useTranslator } from '@luckystack/core/client';
 
-import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import { menuHandler } from 'src/_functions/menuHandler';
 import Icon, { type IconName } from '../../_components/Icon';
-import { Disclosure, EmptyState, InfoTip, InteractiveRow, PopMenu, SectionCard, Segmented, WsButton, type InfoTipPoint, type PopMenuItem } from '../../_components/primitives';
+import { Disclosure, EmptyState, InfoTip, InteractiveRow, PopMenu, Segmented, WsButton, type InfoTipPoint, type PopMenuItem } from '../../_components/primitives';
 import { SetupNotice } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { isSectionEnabled } from '../../_data/modules';
@@ -19,32 +18,25 @@ import type { StudioArtifact, StudioArtifactKind, StudioBrief } from '../../_dat
 import { BrandDiffList } from './BrandDiffList';
 import { buildBrandDiff } from './brandDiff';
 import { BrandPanel } from './BrandPanel';
+import { BriefForm, type BriefDraft } from './BriefForm';
+import { DESIGNER_KINDS, KIND_ICONS } from './kinds';
 import { ContentPromptPreview } from './promptStack';
 import { ArtifactBody } from './previews';
 import { asRecord, asStr, downloadHtmlAsPng, inputCls } from './content';
 
 export const template = 'workspaces';
 
-const KINDS: { kind: StudioArtifactKind; icon: IconName; role: 'designer' | 'marketer' }[] = [
-  { kind: 'landing', icon: 'display', role: 'designer' },
-  { kind: 'component', icon: 'table-columns', role: 'designer' },
-  { kind: 'brand', icon: 'wand-magic-sparkles', role: 'designer' },
-  { kind: 'copy', icon: 'file-lines', role: 'marketer' },
-  { kind: 'strategy', icon: 'diagram-project', role: 'marketer' },
-  { kind: 'email', icon: 'paper-plane', role: 'marketer' },
-  { kind: 'ads', icon: 'bolt', role: 'marketer' },
-  { kind: 'social', icon: 'calendar-day', role: 'marketer' },
-  { kind: 'names', icon: 'list-check', role: 'marketer' },
-  { kind: 'thumbnail', icon: 'crop', role: 'marketer' },
-  { kind: 'videoScript', icon: 'play', role: 'marketer' },
-];
+//? F-020 — the recorded split, honoured: /studio generates the DESIGNER kinds (landing, component,
+//? brand); the eight marketer kinds are generated on /marketing (one catalogue: ./kinds). Artifacts of
+//? any kind still render here (they are filtered by brief), so a marketer card made over there shows up
+//? under the same brief with the same icon.
+const KINDS: { kind: StudioArtifactKind; icon: IconName }[] = DESIGNER_KINDS.map((kind) => ({ kind, icon: KIND_ICONS[kind] }));
 
-export default function Studio() { return <StudioSurface variant="studio" />; }
+export default function Studio() { return <StudioSurface />; }
 
 //? #109 — AI-drives-UI: map a copilot prefill (free-form field→value hints) onto the brief-form fields.
 //? Returns null when the prefill carries nothing brief-shaped, so a directive aimed at another page's form
 //? is never swallowed here. Aliases cover the likely model spellings ("product", "brief", "description").
-interface BriefDraft { name: string; productName: string; audience: string; tone: string; goals: string; notes: string }
 function briefDraftFromPrefill(prefill: Record<string, string>): BriefDraft | null {
   const pick = (...keys: string[]) => { for (const k of keys) { const v = prefill[k]; if (v !== undefined && v.trim().length > 0) return v.trim(); } return ''; };
   const draft: BriefDraft = {
@@ -62,12 +54,12 @@ function briefDraftFromPrefill(prefill: Record<string, string>): BriefDraft | nu
   return draft;
 }
 
-//? The shared Studio surface. `variant` gives /studio (design + marketing kinds) and /marketing (marketing kinds
-//? only) their own page + focus while sharing the brief workspace + generator — the user chose a split marketing
-//? page over one shared Studio. `/marketing` re-uses this with variant="marketing" (marketer kinds, no Brand tab).
-export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'marketing' }) {
+//? The Studio surface: brief workspace + designer generator + the Brand tab. /marketing is its own page
+//? (content/marketing) with the marketer generator; the two share the brief/artifact/brand store and the
+//? shared pieces (BriefForm, BrandPanel, previews, kinds) — never a second copy of them.
+export function StudioSurface() {
   const translate = useTranslator();
-  const { studioBriefs, studioArtifacts, studioBrand, generateArtifact, deleteBrief, deleteArtifact, promoteBrand, runContentOp, activeWorkspace, copilotPrefill, consumeCopilotPrefill, readiness, focusSetup } = useWorkspaces();
+  const { studioBriefs, studioArtifacts, studioBrand, generateArtifact, deleteBrief, deleteArtifact, promoteBrand, runContentOp, activeWorkspace, copilotPrefill, consumeCopilotPrefill, readiness, focusSetup, navigate } = useWorkspaces();
   //? Send-to-Content (gap-fix): only offered when the content lane is enabled for this workspace.
   const contentOn = isSectionEnabled(activeWorkspace.enabledSections, 'content');
   //? GAP_SCAN G3 — put a generated landing page live at /s/<slug>. Re-publishing keeps the same URL, so
@@ -81,8 +73,6 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
     runContentOp('studio-send-to-content', '', { artifactId });
     notify.success({ key: 'workspaces.studio.sentToContent' });
   };
-  //? Marketing focuses on the marketer kinds; Studio shows both designer + marketer groups.
-  const roles: readonly ('designer' | 'marketer')[] = variant === 'marketing' ? ['marketer'] : ['designer', 'marketer'];
   const [selectedId, setSelectedId] = useState<string | null>(studioBriefs[0]?.id ?? null);
   const [editing, setEditing] = useState(false);
   const [busyKind, setBusyKind] = useState<StudioArtifactKind | null>(null);
@@ -157,7 +147,7 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
       ? translate({ key: 'workspaces.studio.brandColours', params: [{ key: 'count', value: String(studioBrand.palette.length) }] })
       : translate({ key: 'workspaces.studio.brandSet' }))
     : translate({ key: 'workspaces.studio.brandUnset' });
-  const brandOpen = variant === 'studio' && tab === 'brand';
+  const brandOpen = tab === 'brand';
 
   return (
     <div className={`flex flex-col h-full min-h-0`}>
@@ -175,9 +165,8 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
           />
         </div>
       )}
-      {/* ---- Assets | Brand — the brand library is a secondary tab, only on the studio variant ---- */}
-      {variant === 'studio' && (
-        <div className={`px-4 md:px-6 pt-4 shrink-0 overflow-x-auto ws-no-scrollbar flex items-center gap-2`}>
+      {/* ---- Assets | Brand — the brand library is a secondary tab ---- */}
+      <div className={`px-4 md:px-6 pt-4 shrink-0 overflow-x-auto ws-no-scrollbar flex items-center gap-2`}>
           <Segmented
             options={[
               { id: 'assets', label: <span className={`inline-flex items-center gap-1.5`}><Icon name="table-cells-large" />{translate({ key: 'workspaces.studio.tabAssets' })}</span> },
@@ -196,6 +185,16 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
               { id: 'voice', label: translate({ key: 'workspaces.tips.studio.brandGateVoice' }), desc: translate({ key: 'workspaces.tips.studio.brandGateVoiceDesc' }) },
             ]}
           />
+        </div>
+      {/* F-020 — the marketer kinds moved to their own page; a one-tap cross-link where their grid used to be. */}
+      {isSectionEnabled(activeWorkspace.enabledSections, 'marketing') && (
+        <div className={`px-4 md:px-6 pt-2 shrink-0`}>
+          <button
+            type="button" onClick={() => { navigate('marketing'); }}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-muted hover:text-common hover:bg-container2 cursor-pointer transition-colors`}
+          >
+            <Icon name="bullhorn" className={`text-primary`} /> {translate({ key: 'workspaces.studio.marketerMoved' })} <Icon name="arrow-right-long" className={`text-xs`} />
+          </button>
         </div>
       )}
 
@@ -286,23 +285,21 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
                             ]}
                           />
                         </div>
-                        {roles.map((role) => (
-                          <div key={role}>
-                            <div className={`text-xs font-medium text-muted uppercase tracking-wide mb-1.5 flex items-center gap-1.5`}>
-                              <Icon name={role === 'designer' ? 'sliders' : 'chart-column'} className={`text-disabled`} />
-                              {translate({ key: `workspaces.studio.role.${role}` })}
-                            </div>
-                            <div className={`grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2`}>
-                              {KINDS.filter((k) => k.role === role).map(({ kind, icon }) => (
-                                <button key={kind} type="button" disabled={busyKind !== null} onClick={() => { void runGenerate(kind); }}
-                                  className={`flex items-center gap-2 rounded-xl border border-container1-border bg-container1 px-3 py-2.5 text-sm text-title hover:border-primary hover:bg-container1-hover transition-colors ${busyKind === null ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
-                                  <Icon name={busyKind === kind ? 'spinner' : icon} className={busyKind === kind ? 'animate-spin text-primary' : 'text-primary'} />
-                                  <span className={`truncate`}>{translate({ key: `workspaces.studio.kind.${kind}` })}</span>
-                                </button>
-                              ))}
-                            </div>
+                        <div>
+                          <div className={`text-xs font-medium text-muted uppercase tracking-wide mb-1.5 flex items-center gap-1.5`}>
+                            <Icon name="sliders" className={`text-disabled`} />
+                            {translate({ key: 'workspaces.studio.role.designer' })}
                           </div>
-                        ))}
+                          <div className={`grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2`}>
+                            {KINDS.map(({ kind, icon }) => (
+                              <button key={kind} type="button" disabled={busyKind !== null} onClick={() => { void runGenerate(kind); }}
+                                className={`flex items-center gap-2 rounded-xl border border-container1-border bg-container1 px-3 py-2.5 text-sm text-title hover:border-primary hover:bg-container1-hover transition-colors ${busyKind === null ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
+                                <Icon name={busyKind === kind ? 'spinner' : icon} className={busyKind === kind ? 'animate-spin text-primary' : 'text-primary'} />
+                                <span className={`truncate`}>{translate({ key: `workspaces.studio.kind.${kind}` })}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                         {/* I4 — the optional refine instruction, collapsed by default; the badge shows it will be applied. */}
                         <Disclosure summary={(
                           <span className={`inline-flex items-center gap-2`}>
@@ -334,7 +331,7 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
                           <EmptyState
                             icon="wand-magic-sparkles"
                             title={translate({ key: 'workspaces.studio.emptyBriefTitle' })}
-                            sub={translate({ key: variant === 'marketing' ? 'workspaces.studio.emptyBriefBodyMarketing' : 'workspaces.studio.emptyBriefBody' })}
+                            sub={translate({ key: 'workspaces.studio.emptyBriefBody' })}
                           />
                         )}
                         {artifacts.map((a) => <ArtifactCard key={a.id} artifact={a} busy={busyKind !== null} pendingRefine={refine} onDelete={() => { deleteArtifact(a.id); }} onRegenerate={() => { void runGenerate(a.kind); }} {...(a.kind === 'brand' && a.status === 'ready' ? { onPromote: () => { promoteWithConfirm(a); } } : {})} {...(contentOn && a.status === 'ready' ? { onSendToContent: () => { sendToContent(a.id); } } : {})} {...(a.kind === 'landing' && a.status === 'ready' ? { onPublishLive: () => { publishLive(a.id); } } : {})} />)}
@@ -345,79 +342,6 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
             </div>
           </div>
         )}
-    </div>
-  );
-}
-
-//? ---- Brief form ----
-//? `initial` (#109) seeds a NEW brief from a copilot prefill; the user reviews + saves themselves.
-function BriefForm({ brief, initial, onSaved, onCancel }: { brief: StudioBrief | null; initial?: BriefDraft; onSaved: () => void; onCancel?: () => void }) {
-  const translate = useTranslator();
-  const { saveBrief, studioBriefs } = useWorkspaces();
-  const [name, setName] = useState(brief?.name ?? initial?.name ?? '');
-  const [productName, setProductName] = useState(brief?.productName ?? initial?.productName ?? '');
-  const [audience, setAudience] = useState(brief?.audience ?? initial?.audience ?? '');
-  const [tone, setTone] = useState(brief?.tone ?? initial?.tone ?? '');
-  const [goals, setGoals] = useState(brief?.goals ?? initial?.goals ?? '');
-  const [notes, setNotes] = useState(brief?.notes ?? initial?.notes ?? '');
-  const [saving, setSaving] = useState(false);
-  const canSave = name.trim().length > 0 && productName.trim().length > 0;
-
-  const save = async () => {
-    if (!canSave) return;
-    setSaving(true);
-    await saveBrief({ ...(brief ? { id: brief.id } : {}), name: name.trim(), productName: productName.trim(), audience: audience.trim(), tone: tone.trim(), goals: goals.trim(), notes: notes.trim() });
-    setSaving(false);
-    onSaved();
-  };
-
-  const field = (label: string, value: string, set: (v: string) => void, placeholder: string, area = false) => (
-    <div className={`flex flex-col gap-1`}>
-      <span className={`text-xs text-muted`}>{label}</span>
-      {area
-        ? <textarea value={value} onChange={(e) => { set(e.target.value); }} placeholder={placeholder} rows={3} className={`${inputCls} h-auto py-2 resize-y`} />
-        : <input value={value} onChange={(e) => { set(e.target.value); }} placeholder={placeholder} className={inputCls} />}
-    </div>
-  );
-
-  //? "flat stack of 6 identical rows" finding — a second/third brief re-typed everything from a blank
-  //? page every time. Offered only on a brand-new brief (not edit) when a brief already exists to copy.
-  const duplicateItems: DropdownItem[] = studioBriefs.map((b) => ({ id: b.id, value: b.id, item: `${b.name} — ${b.productName}` }));
-  const applyDuplicate = (id: string) => {
-    const source = studioBriefs.find((b) => b.id === id);
-    if (!source) return;
-    setName(source.name); setProductName(source.productName); setAudience(source.audience); setTone(source.tone); setGoals(source.goals); setNotes(source.notes ?? '');
-  };
-
-  return (
-    <div className={`p-4 md:p-6 max-w-2xl flex flex-col gap-4`}>
-      <div className={`text-lg font-semibold text-title`}>{translate({ key: brief ? 'workspaces.studio.editBrief' : 'workspaces.studio.newBrief' })}</div>
-      <div className={`text-sm text-muted -mt-2`}>{translate({ key: 'workspaces.studio.briefIntro' })}</div>
-      {!brief && studioBriefs.length > 0 && (
-        <div className={`flex flex-col gap-1`}>
-          <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.studio.duplicateFromLabel' })}</span>
-          <Dropdown width="full" items={duplicateItems} placeholder={translate({ key: 'workspaces.studio.duplicateFromPlaceholder' })} onChange={(it) => { applyDuplicate(String(it.id)); }} />
-        </div>
-      )}
-      {/* grouped into two visually distinct clusters instead of six identical label+input rows */}
-      <SectionCard title={translate({ key: 'workspaces.studio.identitySection' })}>
-        <div className={`flex flex-col gap-4`}>
-          {field(translate({ key: 'workspaces.studio.fieldName' }), name, setName, translate({ key: 'workspaces.studio.fieldNamePlaceholder' }))}
-          {field(translate({ key: 'workspaces.studio.fieldProduct' }), productName, setProductName, translate({ key: 'workspaces.studio.fieldProductPlaceholder' }))}
-        </div>
-      </SectionCard>
-      <SectionCard title={translate({ key: 'workspaces.studio.targetingSection' })}>
-        <div className={`flex flex-col gap-4`}>
-          {field(translate({ key: 'workspaces.studio.fieldAudience' }), audience, setAudience, translate({ key: 'workspaces.studio.fieldAudiencePlaceholder' }))}
-          {field(translate({ key: 'workspaces.studio.fieldTone' }), tone, setTone, translate({ key: 'workspaces.studio.fieldTonePlaceholder' }))}
-        </div>
-      </SectionCard>
-      {field(translate({ key: 'workspaces.studio.fieldGoals' }), goals, setGoals, translate({ key: 'workspaces.studio.fieldGoalsPlaceholder' }), true)}
-      {field(translate({ key: 'workspaces.studio.fieldNotes' }), notes, setNotes, translate({ key: 'workspaces.studio.fieldNotesPlaceholder' }), true)}
-      <div className={`flex items-center justify-end gap-2 pt-1`}>
-        {onCancel && <WsButton variant="ghost" onClick={onCancel}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>}
-        <WsButton icon="check" onClick={() => { void save(); }} disabled={!canSave || saving}>{translate({ key: 'workspaces.studio.saveBrief' })}</WsButton>
-      </div>
     </div>
   );
 }
@@ -463,7 +387,7 @@ function ArtifactCard({ artifact, busy, pendingRefine, onDelete, onRegenerate, o
   return (
     <div className={`rounded-2xl border border-container1-border bg-container1 overflow-hidden`}>
       <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2.5 border-b border-divider`}>
-        <Icon name={KINDS.find((k) => k.kind === artifact.kind)?.icon ?? 'file-lines'} className={`text-primary`} />
+        <Icon name={KIND_ICONS[artifact.kind]} className={`text-primary`} />
         <div className={`text-sm font-medium text-title flex-1 min-w-0 truncate`}>{artifact.title}</div>
         {/* #168 — a 'generating' artifact shows an in-progress spinner until the detached completion flips it. */}
         {artifact.status === 'generating' && <span className={`text-xs text-muted flex items-center gap-1.5`}><Icon name="spinner" className={`animate-spin`} />{translate({ key: 'workspaces.studio.generating' })}</span>}

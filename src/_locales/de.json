@@ -2768,7 +2768,8 @@
       "refinedWith": "verfeinert: „{{refine}}“",
       "regenerateWithRefine": "Neu generieren — verfeinert: „{{refine}}“",
       "refineUsed": "Verfeinert mit: {{text}}",
-      "brandSetFrom": "Zuletzt gesetzt aus {{source}}"
+      "brandSetFrom": "Zuletzt gesetzt aus {{source}}",
+      "marketerMoved": "Marketing-Assets (Texte, E-Mails, Anzeigen, Social, Namen, Thumbnails, Videoskripte) liegen unter Marketing"
     },
     "uiReview": {
       "emptyTitle": "Noch kein UI-Feedback.",
@@ -3138,7 +3139,9 @@
       "previewRunCommand": "\"{{command}}\" ausführen",
       "previewWebhook": "Webhook {{url}} aufrufen",
       "previewCron": "nach Zeitplan \"{{cron}}\"",
-      "previewTemplate": "Wenn {{event}} → {{detail}}"
+      "previewTemplate": "Wenn {{event}} → {{detail}}",
+      "cronCountRow": "{{count}} geplante Aufgabe(n) laufen nach Zeitplan",
+      "cronCountLink": "Geplant"
     },
     "automations": {
       "title": "Automatisierungen",

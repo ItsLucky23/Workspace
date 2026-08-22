@@ -19,9 +19,10 @@ import type { StudioArtifact, StudioArtifactKind, StudioBrief } from '../../_dat
 import { BrandDiffList } from '../studio/BrandDiffList';
 import { buildBrandDiff } from '../studio/brandDiff';
 import { ContentPromptPreview } from '../studio/promptStack';
+import { BrandPanel } from '../studio/BrandPanel';
+import { BriefForm } from '../studio/BriefForm';
+import { KIND_ICONS, MARKETER_KINDS } from '../studio/kinds';
 import { ArtifactCard } from './cards';
-import { MARKETER_KINDS } from './kinds';
-import { BrandPanel, BriefForm } from './panels';
 
 export const template = 'workspaces';
 
@@ -142,7 +143,7 @@ export default function Marketing() {
       {/* brief create/edit drill-in */}
       {view === 'form' && (
         <div className={`p-5 md:p-6 max-w-2xl`}>
-          <BriefForm
+          <BriefForm compact
             key={formTarget?.id ?? 'new'}
             brief={formTarget}
             onSaved={() => { if (!formTarget) setSelectedId(null); setView('main'); }}
@@ -222,12 +223,12 @@ export default function Marketing() {
                       />
                     </div>
                     <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2`}>
-                      {MARKETER_KINDS.map(({ kind, icon }) => (
+                      {MARKETER_KINDS.map((kind) => (
                         <button
                           key={kind} type="button" disabled={busyKind !== null} onClick={() => { void runGenerate(kind); }}
                           className={`flex items-center gap-2 rounded-xl border border-container1-border bg-container1 px-3 py-2.5 text-sm text-title hover:border-primary hover:bg-container1-hover transition-colors ${busyKind === null ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
                         >
-                          <Icon name={busyKind === kind ? 'spinner' : icon} className={busyKind === kind ? `animate-spin text-primary` : `text-primary`} />
+                          <Icon name={busyKind === kind ? 'spinner' : KIND_ICONS[kind]} className={busyKind === kind ? `animate-spin text-primary` : `text-primary`} />
                           <span className={`truncate`}>{translate({ key: `workspaces.studio.kind.${kind}` })}</span>
                         </button>
                       ))}
