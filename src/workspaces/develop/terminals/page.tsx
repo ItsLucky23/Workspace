@@ -6,30 +6,27 @@
 
 import { useEffect, useState } from 'react';
 
+import { useLocation } from 'react-router-dom';
+
 import { apiRequest, tryCatch, useTranslator } from '@luckystack/core/client';
 
 import { AnimatePresence, motion } from 'motion/react';
 
 import Icon from '../../_components/Icon';
 import { SPRING_SOFT } from '../../_components/motion';
-import { EmptyState, FOCUS_RING, InfoTip, Segmented, statusColorVar } from '../../_components/primitives';
+import { EmptyState, FOCUS_RING, InfoTip, Segmented } from '../../_components/primitives';
 import { SetupNotice } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import TerminalPanel from './TerminalPanel';
-import type { Terminal, TicketStatus } from '../../_data/types';
+import type { Terminal } from '../../_data/types';
 
 type Layout = 'tabs' | 'grid';
-
-function termStatus(t: Terminal): TicketStatus {
-  if (t.processes.some((p) => p.status === 'stuck')) return 'stuck';
-  if (t.processes.some((p) => p.status === 'needs-input')) return 'needs-input';
-  return t.processes.some((p) => p.status === 'busy') ? 'busy' : 'idle';
-}
 
 export const template = 'workspaces';
 
 export default function Terminals() {
   const translate = useTranslator();
+  const location = useLocation();
   const { currentUser, navigate, activeWorkspace, readiness } = useWorkspaces();
   //? Tabs (one fill-height terminal at a time) is the phone-friendly DEFAULT; grid is the
   //? demoted desktop preference behind the Segmented (hidden at phone width — a view
@@ -56,6 +53,15 @@ export default function Terminals() {
     const timer = setInterval(() => { void load(); }, 5000);
     return () => { cancelled = true; clearInterval(timer); };
   }, [activeWorkspace.id]);
+
+  useEffect(() => {
+    const target = new URLSearchParams(location.search).get('ticket');
+    if (target) setActiveTab(target);
+  }, [location.search]);
+
+  useEffect(() => {
+    if (maximizedId !== null && !terminals.some((terminal) => terminal.ticketId === maximizedId)) setMaximizedId(null);
+  }, [terminals, maximizedId]);
 
   //? Tabs mode always shows a panel: fall back to the FIRST terminal when nothing is
   //? selected yet or the selected container stopped (the old '' state rendered an empty
@@ -137,7 +143,6 @@ export default function Terminals() {
               {terminals.map((t) => (
                 <button key={t.ticketId} type="button" onClick={() => { setActiveTab(t.ticketId); }}
                   className={`flex items-center gap-2 rounded-lg px-3 h-8 text-sm font-mono whitespace-nowrap cursor-pointer transition-colors ${FOCUS_RING} ${shownTab === t.ticketId ? 'bg-container1 text-title shadow-sm' : 'text-muted hover:text-common'}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full`} style={{ background: statusColorVar(termStatus(t)) }} />
                   {t.ticketId}
                 </button>
               ))}

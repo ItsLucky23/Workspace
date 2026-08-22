@@ -1,11 +1,10 @@
 //? Terminals — one live terminal panel (extracted from page.tsx in the KISS pass).
-//? Header: ticket key + stage + StatusPill + process sub-tabs + optional maximize
-//? toggle + the per-panel PopMenu (restart / clear / copy buffer / kill — kill keeps
-//? its menuHandler.confirm dialog). Body: the REAL xterm session; the sessionId
-//? contract is `${ticketId}:${proc.name}` keyed with key={sessionId} + the container
-//? prop — changing it orphans live ws-term relay sessions. Footer: ssh identity +
-//? cwd (collapses to just the live dot on phone). Grid mode adds the drag-resize
-//? handle (desktop-only; fill/tabs mode omits it). Always-dark terminal tokens.
+//? Header: ticket key + process sub-tabs + optional maximize toggle + the per-panel PopMenu
+//? (restart / clear / copy buffer / kill — kill keeps its menuHandler.confirm dialog). Body:
+//? the REAL xterm session; the sessionId contract is `${workspaceId}:${ticketId}:${proc.name}`
+//? keyed with key={sessionId} + the container prop — changing it orphans live ws-term relay
+//? sessions. Grid mode adds the drag-resize handle (desktop-only; fill/tabs mode omits it).
+//? Always-dark terminal tokens.
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 
@@ -15,13 +14,14 @@ import { menuHandler } from 'src/_functions/menuHandler';
 
 import Icon from '../../_components/Icon';
 import XtermTerminal, { clearSession, copySessionBuffer, killSession, restartSession } from '../../_components/XtermTerminal';
-import { FOCUS_RING, PopMenu, StatusPill } from '../../_components/primitives';
+import { FOCUS_RING, PopMenu } from '../../_components/primitives';
 import type { Terminal, TerminalProcess } from '../../_data/types';
 
 //? Remembered grid-panel height (module-level so a drag persists across remounts
 //? and layout switches without threading height through page state — mirrors the
 //? AI panel's rememberedAiWidth pattern in Shell.tsx).
 let rememberedGridHeight = 460;
+const rememberedAdHocShells = new Map<string, TerminalProcess[]>();
 const MIN_PANEL_HEIGHT = 220;
 const MAX_PANEL_HEIGHT = 900;
 
@@ -32,10 +32,10 @@ export default function TerminalPanel({ workspaceId, terminal, viewerName, fill 
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef<{ startY: number; startH: number } | null>(null);
   //? Ad-hoc shells opened via the trailing '+' tab (gap-fix: the process list was a fixed, read-only
-  //? container snapshot with no way to pop open one more shell alongside it). Kept as local component
-  //? state rather than merged into `terminal.processes` because that array is server-polled and gets
-  //? replaced wholesale every few seconds — an ad-hoc entry living there would vanish on the next poll.
-  const [adHocShells, setAdHocShells] = useState<TerminalProcess[]>([]);
+  //? container snapshot with no way to pop open one more shell alongside it). Keep the names outside
+  //? this panel so tabs survive unmounts when the user switches terminal tabs or layouts.
+  const adHocKey = `${workspaceId}:${terminal.ticketId}`;
+  const [adHocShells, setAdHocShells] = useState<TerminalProcess[]>(() => rememberedAdHocShells.get(adHocKey) ?? []);
   const [addingShell, setAddingShell] = useState(false);
   const [draftShellName, setDraftShellName] = useState('');
   //? Escape sets this just before the programmatic blur() below, so the single onBlur handler
@@ -64,7 +64,11 @@ export default function TerminalPanel({ workspaceId, terminal, viewerName, fill 
     let suffix = 2;
     while (taken.has(uniqueName)) { uniqueName = `${name}-${String(suffix)}`; suffix += 1; }
     setActive(allProcesses.length);
-    setAdHocShells((prev) => [...prev, { name: uniqueName, status: 'idle', cwd: proc.cwd, exit: '', lines: [] }]);
+    setAdHocShells((prev) => {
+      const next = [...prev, { name: uniqueName, status: 'idle', cwd: proc.cwd, exit: '', lines: [] }];
+      rememberedAdHocShells.set(adHocKey, next);
+      return next;
+    });
   };
 
   //? Drag the bottom strip to resize the panel height. Clamp to a sane range and
@@ -103,8 +107,6 @@ export default function TerminalPanel({ workspaceId, terminal, viewerName, fill 
       <div className={`flex items-center justify-between gap-2 bg-terminal-surface px-3 h-10 shrink-0`}>
         <div className={`flex items-center gap-2 min-w-0`}>
           <span className={`font-mono text-xs text-terminal-text`}>{terminal.ticketId}</span>
-          <span className={`text-xs text-terminal-muted truncate`}>· {terminal.stage}</span>
-          <StatusPill status={proc.status} />
         </div>
         <div className={`flex items-center gap-2 min-w-0`}>
           <span className={`hidden md:inline-flex items-center gap-1 rounded-md bg-white/5 px-1.5 py-0.5 text-[11px] text-terminal-muted shrink-0`}><Icon name="user" /> {viewerName}</span>
@@ -154,7 +156,6 @@ export default function TerminalPanel({ workspaceId, terminal, viewerName, fill 
       </div>
       <XtermTerminal key={sessionId} sessionId={sessionId} workspaceId={workspaceId} ticketKey={terminal.ticketId} className={`flex-1 min-h-0`} />
       <div className={`flex items-center justify-between gap-2 bg-terminal-surface border-t border-white/5 px-3 h-7 shrink-0 text-[11px] font-mono text-terminal-muted`}>
-        <span className={`hidden sm:block min-w-0 truncate`}>{terminal.ticketId.toLowerCase()}:{proc.cwd}</span>
         <span className={`inline-flex items-center gap-1 shrink-0 ml-auto`}><span className={`w-1.5 h-1.5 rounded-full bg-terminal-green`} /> {translate({ key: 'workspaces.terminals.live' })}</span>
       </div>
       {!fill && (

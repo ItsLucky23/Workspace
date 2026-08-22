@@ -2497,7 +2497,9 @@
       "restoreTitle": "Back to grid",
       "resizeTitle": "Drag to resize height",
       "newShell": "New shell",
-      "newShellPlaceholder": "Shell name…"
+      "newShellPlaceholder": "Shell name…",
+      "notConnected": "Not connected to the backend socket — start the server and sign in.",
+      "processExited": "[process exited with code {{code}}]"
     },
     "sources": {
       "subtitle": "Context docs are loaded whole before each AI run · skills & MCP tools are called on demand.",
@@ -2549,7 +2551,10 @@
       "delete": "Delete permanently",
       "deleteConfirmTitle": "Delete {{name}}?",
       "deleteConfirmContent": "This permanently removes the document and its content. Archiving keeps it restorable instead.",
-      "archivedCount": "Archived ({{n}})"
+      "archivedCount": "Archived ({{n}})",
+      "emptyFile": "This file is empty, so it was not uploaded.",
+      "uploadQueued": "Upload queued.",
+      "reindexFailed": "Reindexing did not finish. Try again."
     },
     "mr": {
       "runCi": "Run CI",
@@ -3139,7 +3144,52 @@
       "tagline": "Every UI component we ship, live under your design theme.",
       "openInDesigner": "Open in Designer",
       "previewOnly": "Preview only",
-      "previewOnlyBody": "Picking a theme or light/dark here only changes what YOU see in this gallery — it never saves and never changes what the coding agent builds with."
+      "previewOnlyBody": "Picking a theme or light/dark here only changes what YOU see in this gallery — it never saves and never changes what the coding agent builds with.",
+      "demoPrimary": "Primary",
+      "demoSecondary": "Secondary",
+      "demoGhost": "Ghost",
+      "demoDanger": "Danger",
+      "demoDisabled": "Disabled",
+      "demoSignedIn": "Signed in as Ada",
+      "demoProfile": "Profile",
+      "demoSignOut": "Sign out",
+      "demoPopover": "Popover",
+      "demoNewItem": "New item",
+      "demoDefault": "Default",
+      "demoFocus": "Focus",
+      "demoLoading": "Loading",
+      "demoFocused": "Focused",
+      "demoError": "Error",
+      "demoDropdownMd": "Dropdown · md",
+      "demoDropdownSearch": "Dropdown · lg · search",
+      "demoMultiSelect": "Multi-select",
+      "demoText": "Text",
+      "demoNumber": "Number",
+      "demoPassword": "Password",
+      "demoSearch": "Search",
+      "demoSearchPlaceholder": "Type to filter…",
+      "demoEmailNotifications": "Email notifications",
+      "demoCompactMode": "Compact mode",
+      "demoAgreeTerms": "I agree to the terms",
+      "demoSubscribe": "Subscribe",
+      "demoDueDate": "Due date",
+      "demoBoard": "Board",
+      "demoList": "List",
+      "demoWorkspaceToggle": "Workspace toggle",
+      "demoOverview": "Overview",
+      "demoActivity": "Activity",
+      "demoSettings": "Settings",
+      "demoEdit": "Edit",
+      "demoDuplicate": "Duplicate",
+      "demoDelete": "Delete",
+      "demoInfoDot": "Info dot",
+      "demoApple": "Apple",
+      "demoBanana": "Banana",
+      "demoCherry": "Cherry",
+      "demoFrontend": "Frontend",
+      "demoBackend": "Backend",
+      "demoDesign": "Design",
+      "demoSelected": "{{n}} selected"
     },
     "code": {
       "title": "Code",
@@ -3173,6 +3223,7 @@
       "agentNeedsRepo": "No agent can run yet — this workspace has no linked repository. Link one under Settings → Workspace → Git, and check the AI settings.",
       "unassigned": "Unassigned",
       "terminal": "terminal",
+      "needsProject": "Select or create a project before adding a ticket.",
       "overWipLimit": "Over WIP limit",
       "aiDrivenStage": "AI-driven stage",
       "noTickets": "No tickets",
@@ -3334,7 +3385,8 @@
       "offline": "No connection — your actions are saved and sent when you are back online.",
       "offlineReconnected": "Reconnected.",
       "offlineQueued": "waiting",
-      "offlineRetry": "Retry now"
+      "offlineRetry": "Retry now",
+      "syncFailed": "That change could not be saved. Try again."
     },
     "documents": {
       "useTemplate": "Use a template",
@@ -3427,7 +3479,8 @@
       "compare": "Compare",
       "done": "Done - check your theme library / review inbox.",
       "failed": "Failed - is the vision AI configured?",
-      "useLive": "use live site"
+      "useLive": "use live site",
+      "clearImage": "Clear screenshot"
     },
     "comments": {
       "replyNote": "The AI only drafts a reply when you ask — sending is always your click.",
@@ -3527,7 +3580,8 @@
       "waitedDays": "{{n}}d waiting",
       "moreOpen": "+{{n}} more",
       "staleTooltip": "Waiting over 2h — the pipeline is blocked on this answer.",
-      "sameAsTicket": "Answering here does exactly the same thing as answering on the ticket."
+      "sameAsTicket": "Answering here does exactly the same thing as answering on the ticket.",
+      "claimedBy": "{{name}} is answering"
     },
     "runtime": {
       "processesLabel": "What starts this app",

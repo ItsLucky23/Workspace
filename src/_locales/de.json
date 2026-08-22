@@ -2497,7 +2497,9 @@
       "restoreTitle": "Zurück zum Raster",
       "resizeTitle": "Ziehen, um die Höhe anzupassen",
       "newShell": "Neue Shell",
-      "newShellPlaceholder": "Shell-Name…"
+      "newShellPlaceholder": "Shell-Name…",
+      "notConnected": "Keine Verbindung zum Backend-Socket — starte den Server und melde dich an.",
+      "processExited": "[Prozess mit Code {{code}} beendet]"
     },
     "sources": {
       "subtitle": "Kontextdokumente werden vor jedem AI-Lauf vollständig geladen · Skills & MCP-Tools werden bei Bedarf aufgerufen.",
@@ -2549,7 +2551,10 @@
       "delete": "Endgültig löschen",
       "deleteConfirmTitle": "{{name}} löschen?",
       "deleteConfirmContent": "Dies entfernt das Dokument und seinen Inhalt endgültig. Archivieren hält es wiederherstellbar.",
-      "archivedCount": "Archiviert ({{n}})"
+      "archivedCount": "Archiviert ({{n}})",
+      "emptyFile": "Diese Datei ist leer und wurde nicht hochgeladen.",
+      "uploadQueued": "Upload vorgemerkt.",
+      "reindexFailed": "Die Indizierung wurde nicht abgeschlossen. Versuche es erneut."
     },
     "mr": {
       "runCi": "CI ausführen",
@@ -3139,7 +3144,52 @@
       "tagline": "Jede UI-Komponente, die wir ausliefern — live unter deinem Design-Theme.",
       "openInDesigner": "In Designer öffnen",
       "previewOnly": "Nur Vorschau",
-      "previewOnlyBody": "Die Wahl eines Themes oder Hell/Dunkel ändert hier nur, was DU in dieser Galerie siehst — es wird nie gespeichert und ändert nie, womit der Coding-Agent baut."
+      "previewOnlyBody": "Die Wahl eines Themes oder Hell/Dunkel ändert hier nur, was DU in dieser Galerie siehst — es wird nie gespeichert und ändert nie, womit der Coding-Agent baut.",
+      "demoPrimary": "Primär",
+      "demoSecondary": "Sekundär",
+      "demoGhost": "Ghost",
+      "demoDanger": "Gefahr",
+      "demoDisabled": "Deaktiviert",
+      "demoSignedIn": "Als Ada angemeldet",
+      "demoProfile": "Profil",
+      "demoSignOut": "Abmelden",
+      "demoPopover": "Popover",
+      "demoNewItem": "Neuer Eintrag",
+      "demoDefault": "Standard",
+      "demoFocus": "Fokus",
+      "demoLoading": "Lädt",
+      "demoFocused": "Fokussiert",
+      "demoError": "Fehler",
+      "demoDropdownMd": "Dropdown · mittel",
+      "demoDropdownSearch": "Dropdown · groß · Suche",
+      "demoMultiSelect": "Mehrfachauswahl",
+      "demoText": "Text",
+      "demoNumber": "Zahl",
+      "demoPassword": "Passwort",
+      "demoSearch": "Suche",
+      "demoSearchPlaceholder": "Zum Filtern eingeben…",
+      "demoEmailNotifications": "E-Mail-Benachrichtigungen",
+      "demoCompactMode": "Kompaktmodus",
+      "demoAgreeTerms": "Ich stimme den Bedingungen zu",
+      "demoSubscribe": "Abonnieren",
+      "demoDueDate": "Fälligkeitsdatum",
+      "demoBoard": "Board",
+      "demoList": "Liste",
+      "demoWorkspaceToggle": "Workspace-Schalter",
+      "demoOverview": "Übersicht",
+      "demoActivity": "Aktivität",
+      "demoSettings": "Einstellungen",
+      "demoEdit": "Bearbeiten",
+      "demoDuplicate": "Duplizieren",
+      "demoDelete": "Löschen",
+      "demoInfoDot": "Info",
+      "demoApple": "Apfel",
+      "demoBanana": "Banane",
+      "demoCherry": "Kirsche",
+      "demoFrontend": "Frontend",
+      "demoBackend": "Backend",
+      "demoDesign": "Design",
+      "demoSelected": "{{n}} ausgewählt"
     },
     "code": {
       "title": "Code",
@@ -3174,6 +3224,7 @@
       "agentNeedsRepo": "Es kann noch kein Agent laufen — dieser Workspace hat kein verknüpftes Repository. Verknüpfe eines unter Einstellungen → Workspace → Git und prüfe die KI-Einstellungen.",
       "unassigned": "Nicht zugewiesen",
       "terminal": "Terminal",
+      "needsProject": "Wähle zuerst ein Projekt aus oder erstelle eines, bevor du ein Ticket anlegst.",
       "overWipLimit": "Über WIP-Limit",
       "aiDrivenStage": "AI-gesteuerte Stage",
       "noTickets": "Keine Tickets",
@@ -3334,7 +3385,8 @@
       "offline": "Keine Verbindung — deine Aktionen werden gespeichert und gesendet, sobald du wieder online bist.",
       "offlineReconnected": "Wieder verbunden.",
       "offlineQueued": "wartend",
-      "offlineRetry": "Jetzt erneut senden"
+      "offlineRetry": "Jetzt erneut senden",
+      "syncFailed": "Die Änderung konnte nicht gespeichert werden. Versuche es erneut."
     },
     "documents": {
       "useTemplate": "Vorlage verwenden",
@@ -3427,7 +3479,8 @@
       "compare": "Vergleichen",
       "done": "Fertig - siehe Theme-Bibliothek / Review-Inbox.",
       "failed": "Fehlgeschlagen - ist die Vision-KI konfiguriert?",
-      "useLive": "Live-Site nutzen"
+      "useLive": "Live-Site nutzen",
+      "clearImage": "Screenshot löschen"
     },
     "comments": {
       "replyNote": "Die KI entwirft nur dann eine Antwort, wenn du darum bittest — gesendet wird immer erst durch deinen Klick.",
@@ -3527,7 +3580,8 @@
       "waitedDays": "{{n}}T wartend",
       "moreOpen": "+{{n}} weitere",
       "staleTooltip": "Wartet seit über 2 Std. — die Pipeline ist dadurch blockiert.",
-      "sameAsTicket": "Hier zu antworten bewirkt genau dasselbe wie auf dem Ticket zu antworten."
+      "sameAsTicket": "Hier zu antworten bewirkt genau dasselbe wie auf dem Ticket zu antworten.",
+      "claimedBy": "{{name}} antwortet gerade"
     },
     "runtime": {
       "processesLabel": "Was diese App startet",

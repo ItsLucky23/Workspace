@@ -15,7 +15,7 @@
 /* eslint-disable react-refresh/only-export-components -- the panel-menu action helpers (clear/copy/kill/restart) operate on this module's live xterm session registry, so they co-export with the component by design (#14) */
 import { useEffect, useRef } from 'react';
 
-import { waitForSocket } from '@luckystack/core/client';
+import { useTranslator, waitForSocket } from '@luckystack/core/client';
 
 import { FitAddon } from '@xterm/addon-fit';
 import { Terminal } from '@xterm/xterm';
@@ -34,7 +34,16 @@ const THEME = {
   brightBlack: '#6B7688', brightRed: '#F85149', brightGreen: '#3FB950', brightYellow: '#D29922', brightBlue: '#58A6FF', brightMagenta: '#BC8CFF', brightCyan: '#39C5CF', brightWhite: '#FFFFFF',
 };
 
-interface Session { term: Terminal; fit: FitAddon; el: HTMLDivElement; started: boolean; workspaceId: string; ticketKey: string }
+interface Session {
+  term: Terminal;
+  fit: FitAddon;
+  el: HTMLDivElement;
+  started: boolean;
+  workspaceId: string;
+  ticketKey: string;
+  notConnectedMessage: string;
+  processExitedMessage: (exitCode: number) => string;
+}
 const sessions = new Map<string, Session>();
 
 //? #14 — panel-menu actions operate on the live session registry. clear/copyBuffer are client-side
@@ -61,11 +70,16 @@ export function restartSession(sessionId: string): void {
 
 let socketPromise: Promise<LiveSocket | null> | null = null;
 const getSocket = (): Promise<LiveSocket | null> => {
-  socketPromise ??= (async () => {
+  if (socketPromise !== null) return socketPromise;
+  const request = (async () => {
     const raw: unknown = await waitForSocket().catch(() => null);
     if (!raw) return null;
     return raw as LiveSocket;
   })();
+  socketPromise = request.then((socket) => {
+    if (socket === null) socketPromise = null;
+    return socket;
+  });
   return socketPromise;
 };
 
@@ -77,13 +91,14 @@ const ensureRouting = (): void => {
   void getSocket().then((s) => {
     if (!s) return;
     s.on('ws-term:out', (p) => { const e = sessions.get(p.id); if (e && p.data !== undefined) e.term.write(p.data); });
-    s.on('ws-term:exit', (p) => { const e = sessions.get(p.id); if (e) e.term.write(`\r\n${ESC}[90m[process exited with code ${String(p.exitCode ?? 0)}]${ESC}[0m\r\n`); });
+    s.on('ws-term:exit', (p) => { const e = sessions.get(p.id); if (e) e.term.write(`\r\n${ESC}[90m${e.processExitedMessage(p.exitCode ?? 0)}${ESC}[0m\r\n`); });
   });
 };
 
 //? The browser sends workspace+ticket identity, never a Docker object name. The server derives and verifies
 //? the canonical labelled container before opening the shell; there is no host-shell fallback.
 export default function XtermTerminal({ sessionId, workspaceId, ticketKey, className }: { sessionId: string; workspaceId: string; ticketKey: string; className?: string }) {
+  const translate = useTranslator();
   const mountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -91,6 +106,8 @@ export default function XtermTerminal({ sessionId, workspaceId, ticketKey, class
     if (!host) return;
     ensureRouting();
 
+    const notConnectedMessage = translate({ key: 'workspaces.terminals.notConnected' });
+    const processExitedMessage = (exitCode: number) => translate({ key: 'workspaces.terminals.processExited', params: [{ key: 'code', value: String(exitCode) }] });
     let entry = sessions.get(sessionId);
     if (!entry) {
       const el = document.createElement('div');
@@ -101,10 +118,12 @@ export default function XtermTerminal({ sessionId, workspaceId, ticketKey, class
       term.loadAddon(fit);
       term.open(el);
       term.onData((d) => { void getSocket().then((s) => s?.emit('ws-term:input', { id: sessionId, data: d })); });
-      entry = { term, fit, el, started: false, workspaceId, ticketKey };
+      entry = { term, fit, el, started: false, workspaceId, ticketKey, notConnectedMessage, processExitedMessage };
       sessions.set(sessionId, entry);
     }
     const e = entry;
+    e.notConnectedMessage = notConnectedMessage;
+    e.processExitedMessage = processExitedMessage;
     host.append(e.el);
 
     const doFit = () => {
@@ -119,7 +138,7 @@ export default function XtermTerminal({ sessionId, workspaceId, ticketKey, class
     if (!e.started) {
       e.started = true;
       void getSocket().then((s) => {
-        if (!s) { e.term.write(`${ESC}[33mNot connected to the backend socket — start the server and sign in.${ESC}[0m\r\n`); return; }
+        if (!s) { e.term.write(`${ESC}[33m${e.notConnectedMessage}${ESC}[0m\r\n`); return; }
         s.emit('ws-term:start', { id: sessionId, cols: e.term.cols, rows: e.term.rows, workspaceId, ticketKey });
       });
     }
@@ -132,7 +151,7 @@ export default function XtermTerminal({ sessionId, workspaceId, ticketKey, class
       ro.disconnect();
       if (e.el.parentNode === host) e.el.remove();
     };
-  }, [sessionId, workspaceId, ticketKey]);
+  }, [sessionId, workspaceId, ticketKey, translate]);
 
   return <div ref={mountRef} className={`bg-terminal-bg ${className ?? ''}`} />;
 }

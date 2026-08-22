@@ -199,7 +199,7 @@ _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-
 | `/workspaces/develop/board/[ticketId]` | workspaces | — | `workspaces/develop/board/[ticketId]/page.tsx` | intent: Follow ONE AI-driven ticket and steer it: answer the agent's question when |
 | `/workspaces/develop/board/[ticketId]/editor` | workspaces | — | `workspaces/develop/board/[ticketId]/editor/page.tsx` | intent: The ticket's live editor, full-page — the real openvscode-server (browser VS Code) running |
 | `/workspaces/develop/code` | workspaces | — | `workspaces/develop/code/page.tsx` | intent: Code — a read-only browser for the WHOLE codebase of the workspace's linked project repo, |
-| `/workspaces/develop/components` | workspaces | — | `workspaces/develop/components/page.tsx` | intent: Components — the live reference gallery of every UI component the product ships, rendered under |
+| `/workspaces/develop/components` | workspaces | — | `workspaces/develop/components/page.tsx` | intent: Components — a curated showcase of the shared UI component kit, rendered under a selectable |
 | `/workspaces/develop/designer` | workspaces | — | `workspaces/develop/designer/page.tsx` | intent: Designer — shape the product's whole visual language and make it the design system the |
 | `/workspaces/develop/interviewer` | workspaces | — | `workspaces/develop/interviewer/page.tsx` | intent: Interviewer — a repo-aware AI chat: ask how this codebase works, what's worth improving, |
 | `/workspaces/develop/pipeline` | workspaces | — | `workspaces/develop/pipeline/page.tsx` | intent: the project's AI pipeline — the ordered stages every ticket flows through, each stage run |
