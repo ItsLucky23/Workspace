@@ -51,16 +51,16 @@ You will also touch (expected, fine): server-side readers/ops named in the evide
 
 ### Batch 1 — Team management is dead (role pickers empty + role change sends name instead of key)
 
-- [ ] **F-003** · CRITICAL · `broken-flow` — In a workspace with only the built-in roles, the member-role dropdown and the invite-role picker are both empty, so you cannot invite anyone (submit bails without roleKey) or change any member's role — the entire team-management flow is dead.
+- [x] **F-003** · CRITICAL · `broken-flow` — In a workspace with only the built-in roles, the member-role dropdown and the invite-role picker are both empty, so you cannot invite anyone (submit bails without roleKey) or change any member's role — the entire team-management flow is dead.
   - **Where:** `src/workspaces/workspace/page.tsx:63`
   - **Evidence (already traced, trust it but re-verify the anchor):** MembersTab line 63 and InvitesTab line 204 both build roleItems via permRoles.filter((r) => !r.locked). permRoles = snap.roles (WorkspacesProvider.tsx:1743), and server/read/workspaceSnapshot.ts:695 now sets locked: r.key === 'owner' || r.builtIn (the SEC2 lock fix). server/bootstrap/seedWorkspace.ts:56-60 seeds owner/admin/member all with builtIn: true, so a default workspace has ZERO unlocked roles. InvitesTab.submit (page.tsx:207-212) returns early when roleKey is empty, silently. This also makes the whole RBAC feature unusable end-to-end: built-in matrix cells are (correctly) read-only, and the custom-role escape hatch cannot be assigned to anyone.
   - **Fix:** 'locked' means 'matrix not editable', not 'not assignable'. In MembersTab (line 63) and InvitesTab (line 204) filter on r.key !== 'owner' instead of !r.locked, keeping the locked flag only for PermissionsTab cell editing. Verify an invite as Admin and a role change to Member work after the change.
-  - **Result:** _(fill in: fixed <commit> / skipped: <reason> / already-fixed)_
-- [ ] **F-024** · HIGH · `ui-bug` — Changing a member's role never persists (silent no-op), and the dropdown never shows the member's current role even when one is set.
+  - **Result:** fixed 5f24af6 — both pickers filter `r.key !== 'owner'`; `locked` stays matrix-only. Manual: invite as Admin + re-role to Member now offered in a default workspace.
+- [x] **F-024** · HIGH · `ui-bug` — Changing a member's role never persists (silent no-op), and the dropdown never shows the member's current role even when one is set.
   - **Where:** `src/workspaces/workspace/page.tsx:85`
   - **Evidence (already traced, trust it but re-verify the anchor):** MembersTab roleItems use id: r.name (the label, e.g. 'Admin' or a custom role's label), but (a) memberRoles[m.id] comes from snapshot member.role = asRole(m.roleKey) (server/read/workspaceSnapshot.ts:423 + :69), i.e. the lowercase KEY flattened to 'owner'|'admin'|'member' — so roleItems.find((r) => r.id === memberRoles[m.id]) compares 'Admin' vs 'admin' and never matches; (b) onChange (line 91) calls setMemberRole with String(it.id) = the NAME, which WorkspacesProvider.tsx:1758 sends as roleKey to workspaces/changeRole, and conductor.ts 'change-role' (line 1615) does workspaceRole.findFirst({ key: roleKey }) → null → { ok:false, error:'role.unknown' }, discarded silently. InvitesTab does it right (id: r.key, line 204).
   - **Fix:** Mirror InvitesTab: build roleItems with id: r.key, value: r.key, item: r.name. Additionally the snapshot member projection must carry the RAW roleKey (add roleKey: m.roleKey next to the flattened role at workspaceSnapshot.ts:423) and memberRoles (WorkspacesProvider.tsx:1757) should map to it, otherwise custom-role members still display as 'member'.
-  - **Result:** _(fill in: fixed <commit> / skipped: <reason> / already-fixed)_
+  - **Result:** fixed 5f24af6 — MembersTab items keyed on `r.key`; snapshot member + changeRole ack carry raw `roleKey` (optional on `Member` so seed/Components untouched); `memberRoles` maps to it. Test: changeRole happy path asserts the ack's `roleKey`.
 
 ### Batch 2 — Documents module unopenable (un-prefixed navigate path → error page)
 
