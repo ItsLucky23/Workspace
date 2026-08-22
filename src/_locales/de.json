@@ -1545,7 +1545,15 @@
         "failed": "fehlgeschlagen",
         "unsupported": "nicht testbar"
       },
-      "integrationNameRequired": "Gib der Integration einen Namen."
+      "integrationNameRequired": "Gib der Integration einen Namen.",
+      "forgeScopeTitle": "Workspace-Standard",
+      "forgeScopeBody": "Diese Forge-Einstellungen (Anbieter, Basis-URL, API-Token) sind der workspace-weite STANDARD: Issue-Sync, Merge Requests und Webhooks nutzen sie für jedes Projekt ohne eigene Verbindung. Die eigene Verbindung eines Projekts gewinnt immer.",
+      "forgeOverrideActive": "Projekt „{{project}}“ überschreibt dies mit einer eigenen {{mode}}-Verbindung{{url}} — die nutzen Sync/MR/Webhook tatsächlich.",
+      "forgeOverrideNone": "Projekt „{{project}}“ hat keine eigene Verbindung, also gilt dieser Standard dafür.",
+      "forgeOverrideLink": "Projektverbindungen · Einstellungen › Developer",
+      "baseUrlConfigured": "Konfiguriert: {{host}}",
+      "forgeApiToken": "Forge-API-Token",
+      "cloneToken": "Clone-Token (git über HTTPS, nur dieses Projekt)"
     },
     "skills": {
       "title": "Fähigkeiten",

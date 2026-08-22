@@ -565,14 +565,26 @@ function IntegrationsTab() {
   );
 }
 
+//? The forge DEFAULT for the workspace + the inbound webhook. Single-owner split (F-018/F-026, ADR 0036):
+//? per-project ForgeConnection (Settings › Developer › Connections) is the authority — server/git/forgeResolve
+//? reads it FIRST and falls back to these workspace fields. Neither surface used to mention the other, so a
+//? token typed here could be silently shadowed by a project connection. The tab now says what it is (the
+//? default), shows the ACTIVE project's resolved state read-only, and links to the override editor.
+const forgeDefaultUrl = (forge: 'gitlab' | 'github'): string => (forge === 'github' ? 'https://api.github.com' : 'https://gitlab.com');
 function GitLabTab() {
   const translate = useTranslator();
-  const { activeWorkspace, saveGitlab, resyncForge, rotateWebhookSecret } = useWorkspaces();
+  const { activeWorkspace, activeProject, saveGitlab, resyncForge, rotateWebhookSecret, focusSetup } = useWorkspaces();
   const [forge, setForge] = useState<'gitlab' | 'github'>(activeWorkspace.forgeType === 'github' ? 'github' : 'gitlab');
-  const [baseUrl, setBaseUrl] = useState(() => (activeWorkspace.forgeType === 'github' ? 'https://api.github.com' : 'https://gitlab.com'));
+  //? F-025 — seeded from the STORED base URL (exposed in the snapshot; it is not a secret). The field used to
+  //? start at the hardcoded default, so opening the tab to paste a new token and hitting Save overwrote a
+  //? self-hosted URL with gitlab.com.
+  const storedBaseUrl = (activeWorkspace.forgeBaseUrl ?? '').trim();
+  const [baseUrl, setBaseUrl] = useState(() => (storedBaseUrl.length > 0 ? storedBaseUrl : forgeDefaultUrl(forge)));
   //? Never pre-filled from the (write-only, encrypted) stored token — an empty
   //? value tells `saveGitlab` to keep the existing token unchanged.
   const [token, setToken] = useState('');
+  const projectOverride = activeProject?.forgeMode !== undefined;
+  const overrideUrl = (activeProject?.forgeBaseUrl ?? '').trim();
   const forgeItems = [
     { id: 'gitlab', value: 'gitlab', item: translate({ key: 'workspaces.workspaceSettings.forgeGitlab' }) },
     { id: 'github', value: 'github', item: translate({ key: 'workspaces.workspaceSettings.forgeGithub' }) },
@@ -597,17 +609,32 @@ function GitLabTab() {
   const webhookLastEventAt = activeWorkspace.webhookLastEventAt ?? '';
   return (
     <div className="max-w-2xl mx-auto w-full flex flex-col gap-4">
-      <FormSection title={translate({ key: 'workspaces.workspaceSettings.tabGitlab' })} desc={translate({ key: 'workspaces.workspaceSettings.gitlabDescription' })}>
+      <FormSection title={translate({ key: 'workspaces.workspaceSettings.forgeScopeTitle' })} desc={translate({ key: 'workspaces.workspaceSettings.forgeScopeBody' })}>
+        {/* The resolved state for the ACTIVE project — what the sync/MR/webhook flows will actually use. */}
+        {activeProject && (
+          <div className="px-5 py-3 flex flex-wrap items-center gap-2 text-xs text-muted border-b border-divider">
+            <Icon name={projectOverride ? 'circle-info' : 'circle-check'} className={projectOverride ? 'text-warning' : 'text-correct'} />
+            <span className="flex-1 min-w-0">
+              {projectOverride
+                ? translate({ key: 'workspaces.workspaceSettings.forgeOverrideActive', params: [{ key: 'project', value: activeProject.name }, { key: 'mode', value: activeProject.forgeMode === 'github' ? translate({ key: 'workspaces.workspaceSettings.forgeGithub' }) : translate({ key: 'workspaces.workspaceSettings.forgeGitlab' }) }, { key: 'url', value: overrideUrl.length > 0 ? ` (${overrideUrl})` : '' }] })
+                : translate({ key: 'workspaces.workspaceSettings.forgeOverrideNone', params: [{ key: 'project', value: activeProject.name }] })}
+            </span>
+            <button type="button" onClick={() => { focusSetup({ view: 'settings', tab: 'developer' }); }} className="text-primary hover:underline cursor-pointer inline-flex items-center gap-1 shrink-0">
+              {translate({ key: 'workspaces.workspaceSettings.forgeOverrideLink' })} <Icon name="arrow-right-long" className="text-[10px]" />
+            </button>
+          </div>
+        )}
         <SettingRow
           label={translate({ key: 'workspaces.workspaceSettings.forgeProvider' })}
-          control={<Dropdown width="full" size="sm" items={forgeItems} value={forgeItems.find((i) => i.id === forge)} onChange={(it) => { setForge(it.id === 'github' ? 'github' : 'gitlab'); if (it.id === 'github') setBaseUrl('https://api.github.com'); }} />}
+          control={<Dropdown width="full" size="sm" items={forgeItems} value={forgeItems.find((i) => i.id === forge)} onChange={(it) => { const next = it.id === 'github' ? 'github' : 'gitlab'; setForge(next); if (baseUrl === forgeDefaultUrl(forge)) setBaseUrl(forgeDefaultUrl(next)); }} />}
         />
         <SettingRow
           label={translate({ key: 'workspaces.workspaceSettings.baseUrl' })}
+          {...(storedBaseUrl.length > 0 ? { help: translate({ key: 'workspaces.workspaceSettings.baseUrlConfigured', params: [{ key: 'host', value: storedBaseUrl }] }) } : {})}
           control={<input value={baseUrl} onChange={(e) => { setBaseUrl(e.target.value); }} className={fieldCls} />}
         />
         <SettingRow
-          label={translate({ key: 'workspaces.workspaceSettings.accessToken' })}
+          label={translate({ key: 'workspaces.workspaceSettings.forgeApiToken' })}
           //? #22 — the live-verify round-trip is a deliberate no-op (owner decision); the dead Verify
           //? button was removed so the token field doesn't render a click with zero feedback.
           control={<input type="password" value={token} onChange={(e) => { setToken(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.tokenPlaceholder' })} className={`${fieldCls} font-mono`} />}
@@ -1090,7 +1117,7 @@ function RepositoryTab() {
           control={<input value={gitUrl} onChange={(e) => { setGitUrl(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.repoUrlPlaceholder' })} className={fieldCls} />}
         />
         <SettingRow
-          label={translate({ key: 'workspaces.workspaceSettings.accessToken' })}
+          label={translate({ key: 'workspaces.workspaceSettings.cloneToken' })}
           control={<input type="password" value={token} onChange={(e) => { setToken(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.tokenPlaceholder' })} className={`${fieldCls} font-mono`} />}
         />
         <div className="px-5 py-4 flex flex-wrap gap-2">

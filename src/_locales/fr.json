@@ -1545,7 +1545,15 @@
         "failed": "échec",
         "unsupported": "non testable"
       },
-      "integrationNameRequired": "Donne un nom à l'intégration."
+      "integrationNameRequired": "Donne un nom à l'intégration.",
+      "forgeScopeTitle": "Défaut de l'espace de travail",
+      "forgeScopeBody": "Ces réglages de forge (fournisseur, URL de base, jeton API) sont le DÉFAUT de tout l'espace de travail : la synchronisation des issues, les merge requests et les webhooks les utilisent pour tout projet sans connexion propre. La connexion propre d'un projet gagne toujours.",
+      "forgeOverrideActive": "Le projet « {{project}} » remplace ceci par sa propre connexion {{mode}}{{url}} — c'est elle que sync/MR/webhook utilisent réellement.",
+      "forgeOverrideNone": "Le projet « {{project}} » n'a pas de connexion propre, ce défaut s'applique donc à lui.",
+      "forgeOverrideLink": "Connexions de projet · Paramètres › Développeur",
+      "baseUrlConfigured": "Configuré : {{host}}",
+      "forgeApiToken": "Jeton API de la forge",
+      "cloneToken": "Jeton de clonage (git via HTTPS, ce projet seulement)"
     },
     "skills": {
       "title": "Compétences",

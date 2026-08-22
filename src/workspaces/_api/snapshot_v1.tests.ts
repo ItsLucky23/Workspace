@@ -20,7 +20,7 @@ import { loginSeededUser, cleanupWorkspace } from '../../../tests/_helpers.mjs';
 interface SnapshotOk {
   status: 'success';
   result: {
-    workspaces: { id: string }[];
+    workspaces: { id: string; forgeBaseUrl?: string }[];
     tickets: unknown[];
     stages: { id: string }[];
   };
@@ -35,6 +35,25 @@ type SnapshotResponse = SnapshotOk | SnapshotErr;
 const OBJECT_ID = /^[0-9a-f]{24}$/i;
 
 export const customTests: CustomTestCase[] = [
+  {
+    //? F-025 — the Git tab seeds its Base URL field from the snapshot; a stored self-hosted URL that never
+    //? reached the client was silently overwritten with the provider default on the next Save.
+    name: 'the workspace projection carries the stored forge base URL (not the token)',
+    run: async (ctx: TestContext) => {
+      const { userId, workspaceId } = await loginSeededUser(ctx, 'snapshot_c3');
+      try {
+        const gitlabUrl = `https://gitlab.example.com/${String(Date.now())}`;
+        await ctx.prisma.workspace.update({ where: { id: workspaceId }, data: { gitlabUrl } });
+        const res = await ctx.callApi<{ workspaceId?: string }, SnapshotResponse>({ workspaceId });
+        ctx.expect.eq(res.status, 'success', 'snapshot returns status "success"');
+        const ws = res.status === 'success' ? res.result.workspaces.find((w) => w.id === workspaceId) : undefined;
+        ctx.expect.eq(ws?.forgeBaseUrl, gitlabUrl, 'workspaces[].forgeBaseUrl mirrors Workspace.gitlabUrl');
+        ctx.expect.ok(!JSON.stringify(ws ?? {}).includes('gitlabTokenEnc'), 'the encrypted token never enters the projection');
+      } finally {
+        await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
+      }
+    },
+  },
   {
     name: 'a seeded workspace populates the snapshot (workspaces non-empty, tickets array)',
     run: async (ctx: TestContext) => {

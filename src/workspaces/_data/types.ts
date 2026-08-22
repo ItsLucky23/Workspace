@@ -91,6 +91,7 @@ export interface Workspace {
   handoffInstruction?: string;    // editable self-handoff instruction template
   gitConfig?: GitConfig;          // per-workspace git strategy + push policy (hosting-proxy plan)
   forgeType?: string;             // #10 'gitlab' | 'github' — which forge provider
+  forgeBaseUrl?: string;          // F-025 — stored Workspace.gitlabUrl (not a secret); '' = provider default
   webhookConfigured?: boolean;    // #27 — metadata only; the inbound-webhook secret never enters snapshot/realtime state
   webhookLastEventAt?: string;    // #27 — ISO timestamp of the last accepted inbound webhook (settings-card "last event" chip)
   allowMergeOnRedCI?: boolean;    // ci-allow-red: let a human merge while CI is red
@@ -162,6 +163,7 @@ export interface ProjectSummary {
   name: string;
   gitUrl?: string;
   forgeMode?: 'gitlab' | 'github';
+  forgeBaseUrl?: string;   // F-018 — the per-project ForgeConnection's base URL, shown read-only on the Git tab
   forgeStatus?: string;
   forgeRepoPath?: string;
   baseImageRef?: string;   // #45 — the built/selected image tag, so a reload shows what image is built

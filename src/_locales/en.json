@@ -1545,7 +1545,15 @@
         "failed": "failed",
         "unsupported": "not testable"
       },
-      "integrationNameRequired": "Give the integration a name."
+      "integrationNameRequired": "Give the integration a name.",
+      "forgeScopeTitle": "Workspace default",
+      "forgeScopeBody": "These forge settings (provider, base URL, API token) are the workspace-wide DEFAULT: issue sync, merge requests and webhooks use them for any project without its own connection. A project's own connection always wins.",
+      "forgeOverrideActive": "Project “{{project}}” overrides this with its own {{mode}} connection{{url}} — it is what sync/MR/webhook flows actually use.",
+      "forgeOverrideNone": "Project “{{project}}” has no connection of its own, so this default applies to it.",
+      "forgeOverrideLink": "Project connections · Settings › Developer",
+      "baseUrlConfigured": "Configured: {{host}}",
+      "forgeApiToken": "Forge API token",
+      "cloneToken": "Clone token (git over HTTPS, this project only)"
     },
     "skills": {
       "title": "Skills",

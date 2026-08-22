@@ -1545,7 +1545,15 @@
         "failed": "mislukt",
         "unsupported": "niet testbaar"
       },
-      "integrationNameRequired": "Geef de integratie een naam."
+      "integrationNameRequired": "Geef de integratie een naam.",
+      "forgeScopeTitle": "Workspace-standaard",
+      "forgeScopeBody": "Deze forge-instellingen (provider, basis-URL, API-token) zijn de workspace-brede STANDAARD: issue-sync, merge requests en webhooks gebruiken ze voor elk project zonder eigen koppeling. De eigen koppeling van een project wint altijd.",
+      "forgeOverrideActive": "Project “{{project}}” overschrijft dit met een eigen {{mode}}-koppeling{{url}} — die gebruiken sync/MR/webhook echt.",
+      "forgeOverrideNone": "Project “{{project}}” heeft geen eigen koppeling, dus deze standaard geldt ervoor.",
+      "forgeOverrideLink": "Projectkoppelingen · Instellingen › Developer",
+      "baseUrlConfigured": "Ingesteld: {{host}}",
+      "forgeApiToken": "Forge API-token",
+      "cloneToken": "Clone-token (git over HTTPS, alleen dit project)"
     },
     "skills": {
       "title": "Vaardigheden",
