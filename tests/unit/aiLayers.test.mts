@@ -98,6 +98,21 @@ eq(composeChannel(layers, 'project'), 'TASK\n\nSKILL', 'the project channel comp
 eq(layersInChannel(layers, 'system').map((l) => l.position).join(','), '1,2,3', 'positions are per channel, not global');
 eq(layersInChannel(layers, 'project').map((l) => l.position).join(','), '1,2', 'so the project channel starts at 1 again');
 
+//? F-010 — a pipeline STAGE receives exactly its picked skills (stageRunner → resolveSkillsByIds), not
+//? the apply-point='all' set. The preview must say the same.
+{
+  const skills = [
+    { id: 'all1', slug: 'b-all', name: 'all', instruction: 'ALL-SKILL', examples: '', applyPoints: ['all'], builtin: false },
+    { id: 'pick1', slug: 'a-picked', name: 'picked', instruction: 'PICKED', examples: '', applyPoints: [], builtin: false },
+  ];
+  const staged = resolveAiLayers({ workspace: { aiInstruction: '' }, skills, stage: { systemPrompt: '', customInstructions: '', handoverPrompt: '', aiSkillIds: ['pick1'] } });
+  eq(staged.find((l) => l.id === 'skills')?.text, 'PICKED', 'a stage shows the skills it PICKED — an unpicked "all" skill is not sent and not shown');
+  const both = resolveAiLayers({ workspace: { aiInstruction: '' }, skills, stage: { systemPrompt: '', customInstructions: '', handoverPrompt: '', aiSkillIds: ['all1', 'pick1'] } });
+  eq(both.find((l) => l.id === 'skills')?.text, 'PICKED\n\nALL-SKILL', 'picked skills are ordered by slug, like the server block');
+  const noStage = resolveAiLayers({ workspace: { aiInstruction: '' }, skills, applyPoint: 'chat' });
+  eq(noStage.find((l) => l.id === 'skills')?.text, 'ALL-SKILL', 'without a stage the apply-point rule still applies (workspace/chat call sites)');
+}
+
 //? An empty layer must still be LISTED — its absence is the answer to "why is this being ignored?".
 const sparse = resolveAiLayers({ workspace: { aiInstruction: '' }, skills: [] });
 eq(sparse.length, AI_LAYER_COUNT, 'every layer is resolved even when nothing is filled in');

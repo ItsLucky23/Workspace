@@ -707,7 +707,12 @@
       "manageAiSkills": "Écrire une compétence",
       "handoverPrompt": "Ce que tu transmets à l'étape suivante",
       "handoverPromptHint": "S'exécute à la FIN de la session de cette étape et façonne le résumé qu'elle écrit. Laisse vide et l'IA décide elle-même de ce qui mérite d'être transmis.",
-      "handoverPromptPlaceholder": "En langage clair : que doit savoir l'étape suivante de ta part ?"
+      "handoverPromptPlaceholder": "En langage clair : que doit savoir l'étape suivante de ta part ?",
+      "unsavedChanges": "Modifications non enregistrées",
+      "remoteUpdated": "Cette étape a été modifiée ailleurs pendant que vous l'éditiez.",
+      "discardEdits": "Abandonner mes modifications et la charger",
+      "networkNotEnforcedTitle": "Pas encore appliqué",
+      "networkNotEnforcedBody": "La sortie réseau est actuellement contrôlée pour tout l'hôte par l'environnement WS_EGRESS / WS_EGRESS_ALLOW (une seule liste d'autorisation pour chaque étape). Ces réglages par étape sont enregistrés mais ne changent pas ce que le conteneur peut atteindre."
     },
     "settings": {
       "saving": "Enregistrement…",
@@ -751,7 +756,8 @@
       "goto_carryOver": "Modifier dans l'onglet Transmission",
       "tipTitle": "Comment ce prompt est composé",
       "tipPosition": "Ce champ est {{channel}} {{n}} sur {{total}}.",
-      "tipThisField": " — ce champ"
+      "tipThisField": " — ce champ",
+      "goto_skillsStage": "Choisir dans l'onglet Contexte de cette étape"
     },
     "tips": {
       "automations": {
@@ -1539,7 +1545,16 @@
         "failed": "échec",
         "unsupported": "non testable"
       },
-      "integrationNameRequired": "Donne un nom à l'intégration."
+      "integrationNameRequired": "Donne un nom à l'intégration.",
+      "forgeScopeTitle": "Défaut de l'espace de travail",
+      "forgeScopeBody": "Ces réglages de forge (fournisseur, URL de base, jeton API) sont le DÉFAUT de tout l'espace de travail : la synchronisation des issues, les merge requests et les webhooks les utilisent pour tout projet sans connexion propre. La connexion propre d'un projet gagne toujours.",
+      "forgeOverrideActive": "Le projet « {{project}} » remplace ceci par sa propre connexion {{mode}}{{url}} — c'est elle que sync/MR/webhook utilisent réellement.",
+      "forgeOverrideNone": "Le projet « {{project}} » n'a pas de connexion propre, ce défaut s'applique donc à lui.",
+      "forgeOverrideLink": "Connexions de projet · Paramètres › Développeur",
+      "baseUrlConfigured": "Configuré : {{host}}",
+      "forgeApiToken": "Jeton API de la forge",
+      "cloneToken": "Jeton de clonage (git via HTTPS, ce projet seulement)",
+      "ownerActionsOnly": "Transférer la propriété et supprimer l'espace de travail nécessitent la permission owner-actions, que votre rôle n'a pas — ces actions sont masquées plutôt que proposées puis refusées."
     },
     "skills": {
       "title": "Compétences",
@@ -2472,7 +2487,15 @@
       "aiAgentTab": "agent IA",
       "aiAgentTailHint": "Flux en lecture seule de la sortie en direct de l'agent — le même flux que l'aperçu intégré dans Vue d'ensemble.",
       "liveAgentOpenTerminal": "Ouvrir dans le terminal",
-      "branchChipLabel": "{{branch}} · branche de travail"
+      "branchChipLabel": "{{branch}} · branche de travail",
+      "changesLoadingFiles": "Lecture des fichiers du worktree…",
+      "changesNeedContainer": "Les modifications éditables nécessitent le conteneur en cours du ticket — activez le ticket (ou utilisez la vue Diff, qui lit le diff de la branche).",
+      "diffLoading": "Chargement du diff de la branche…",
+      "diffNoBranch": "Ce ticket n'a pas encore de branche de travail — les modifications apparaîtront dès que l'agent démarre une étape.",
+      "shellTab": "shell",
+      "terminalNoContainerTitle": "Aucun conteneur pour ce ticket",
+      "terminalNoContainerSub": "Le terminal est un shell dans le conteneur en cours du ticket. Activez le ticket (démarrez une étape) et il apparaît ici ; la page Terminaux liste chaque conteneur en cours.",
+      "terminalShellHint": "Un shell dans /work du conteneur de ce ticket — les processus runtime/étape configurés n'y sont pas attachés ; lancez-les depuis ce shell ou suivez-les sur la page Terminaux."
     },
     "terminals": {
       "subtitle": "Un shell en direct dans chaque conteneur de ticket actif — observez l'IA ou intervenez vous-même.",
@@ -2758,7 +2781,8 @@
       "refinedWith": "affiné : « {{refine}} »",
       "regenerateWithRefine": "Régénérer — affiné : « {{refine}} »",
       "refineUsed": "Affiné avec : {{text}}",
-      "brandSetFrom": "Dernière définition depuis {{source}}"
+      "brandSetFrom": "Dernière définition depuis {{source}}",
+      "marketerMoved": "Les assets marketing (textes, e-mails, pubs, social, noms, vignettes, scripts vidéo) sont sur Marketing"
     },
     "uiReview": {
       "emptyTitle": "Pas encore de retours UI.",
@@ -3128,7 +3152,9 @@
       "previewRunCommand": "exécuter « {{command}} »",
       "previewWebhook": "appeler le webhook {{url}}",
       "previewCron": "selon le planning « {{cron}} »",
-      "previewTemplate": "Quand {{event}} → {{detail}}"
+      "previewTemplate": "Quand {{event}} → {{detail}}",
+      "cronCountRow": "{{count}} tâche(s) planifiée(s) s'exécutent sur un minuteur",
+      "cronCountLink": "Planifié"
     },
     "automations": {
       "title": "Automatisations",
@@ -3276,7 +3302,9 @@
       "archiveConfirmContent": "Ils quittent le board actif.",
       "noAi": "Sans IA",
       "creatorAssignee": "Créateur · assigné",
-      "clearSelection": "Effacer la sélection"
+      "clearSelection": "Effacer la sélection",
+      "filterArchived": "Archivés",
+      "restore": "Restaurer"
     },
     "placeholder": {
       "comingNext": "{{title}} — bientôt disponible",
@@ -3321,7 +3349,9 @@
       "board": "Board",
       "logoInitial": "W",
       "appName": "Workspaces",
-      "switchWorkspace": "Changer de workspace"
+      "switchWorkspace": "Changer de workspace",
+      "projects": "Projets",
+      "services": "Services"
     },
     "wsShell": {
       "back": "Retour",

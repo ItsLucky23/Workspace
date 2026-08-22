@@ -73,7 +73,7 @@ export const CHAT_ENABLED_OPS = [
   //? ---- Parity wave 2026-07-20 — full UI parity for the Workspace-AI (destructive ops keep the extra
   //? explicit confirm on accept via spec.destructive; the catalog is the single classification source).
   // board / sprints / ticket-artifact links
-  'archive', 'bulk-status', 'bulk-sprint', 'bulk-archive', 'sprint-create', 'sprint-edit',
+  'archive', 'bulk-status', 'bulk-sprint', 'bulk-archive', 'unarchive', 'sprint-create', 'sprint-edit',
   'ticket-link-artifact', 'ticket-unlink-artifact',
   // members / roles / workspace lifecycle
   'invite', 'revoke-invite', 'change-role', 'remove-member', 'role-create', 'role-update',

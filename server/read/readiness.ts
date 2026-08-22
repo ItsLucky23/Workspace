@@ -9,6 +9,7 @@
 
 import { dockerAvailable } from '../container/runtime';
 import { claudeCliAvailable } from '../ai/providers/claudeCli';
+import { AI_PROVIDER_CATALOG } from '../ai/providers/catalog';
 import type { WorkspaceReadiness } from '../../src/workspaces/_data/types';
 
 //? Host-global readiness (identical for every workspace on this instance) — the part worth caching.
@@ -39,18 +40,32 @@ export interface WorkspaceReadinessInput {
   repoLinked: boolean;
   publishingConnected: boolean;
   providerKeys: Set<string>;
+  //? An AiConnection row (Workspace → AI → Backends, ADR 0007) for a metered text backend that HAS a key.
+  //? That table — not `__provider_key_*` — is what the text dispatch (resolveProviderConfig) reads.
+  hasTextConnection: boolean;
+}
+
+//? The host-wide env fallback the text transports honour: `WS_<PROVIDER_ID>_KEY` (openai-compatible /
+//? anthropic `envKey()`), e.g. WS_GEMINI_API_KEY. GEMINI_API_KEY is NOT a text fallback — it is only the
+//? RAG-embed key (server/rag/embed.ts) — so it deliberately does not count here.
+export function textEnvKeyPresent(env: NodeJS.ProcessEnv = process.env): boolean {
+  return Object.values(AI_PROVIDER_CATALOG)
+    .filter((meta) => meta.kind === 'api-key')
+    .some((meta) => (env[`WS_${meta.id.toUpperCase().replaceAll('-', '_')}_KEY`] ?? '').trim().length > 0);
 }
 
 //? Fold the cached host readiness + the workspace config signals into the client-facing block. Mirrors what
-//? each registry treats as "available": a text provider = Claude CLI on the host OR a Gemini key; a media
-//? provider = its own stored key OR its env fallback.
+//? each registry treats as "available": a text provider = Claude CLI on the host OR a keyed AiConnection OR a
+//? WS_<PROVIDER>_KEY env fallback (the SAME sources providerConfig.ts resolves — readiness used to read a
+//? `__provider_key_gemini` store that nothing in server/ai consumed, F-001); a media provider = its own
+//? stored key OR its env fallback.
 export async function buildReadiness(now: number, input: WorkspaceReadinessInput): Promise<WorkspaceReadiness> {
   const host = await hostReadiness(now);
   const has = (id: string, ...envVars: string[]): boolean =>
     input.providerKeys.has(`__provider_key_${id}`) || envVars.some((v) => (process.env[v] ?? '').trim().length > 0);
   return {
     repoLinked: input.repoLinked,
-    aiText: host.claudeCli || has('gemini', 'GEMINI_API_KEY'),
+    aiText: host.claudeCli || input.hasTextConnection || textEnvKeyPresent(),
     media: {
       fal: has('fal', 'FAL_KEY'),
       elevenlabs: has('elevenlabs', 'ELEVENLABS_KEY'),

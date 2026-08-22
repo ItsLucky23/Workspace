@@ -2,10 +2,10 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 452,
-    "edges": 677,
-    "symbols": 857,
-    "callEdges": 283
+    "nodes": 456,
+    "edges": 686,
+    "symbols": 865,
+    "callEdges": 288
   },
   "nodes": [
     {
@@ -1089,6 +1089,11 @@
       "route": null
     },
     {
+      "id": "workspaces/_functions/confirmDeleteTrigger.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_functions/controlApi.ts",
       "kind": "other",
       "route": null
@@ -1854,6 +1859,16 @@
       "route": "sync/workspaces/uiReviewCreate/v1"
     },
     {
+      "id": "workspaces/_sync/unarchive_server_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_sync/unarchive_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/unarchive/v1"
+    },
+    {
       "id": "workspaces/_sync/workspaceDirty_server_v1.ts",
       "kind": "sync",
       "route": "sync/workspaces/workspaceDirty/v1"
@@ -1904,18 +1919,8 @@
       "route": null
     },
     {
-      "id": "workspaces/content/marketing/kinds.ts",
-      "kind": "other",
-      "route": null
-    },
-    {
       "id": "workspaces/content/marketing/page.tsx",
       "kind": "page",
-      "route": null
-    },
-    {
-      "id": "workspaces/content/marketing/panels.tsx",
-      "kind": "other",
       "route": null
     },
     {
@@ -1979,7 +1984,17 @@
       "route": null
     },
     {
+      "id": "workspaces/content/studio/BriefForm.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/content/studio/content.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/content/studio/kinds.ts",
       "kind": "other",
       "route": null
     },
@@ -2060,6 +2075,11 @@
     },
     {
       "id": "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/develop/board/[ticketId]/ticketDiff.ts",
       "kind": "other",
       "route": null
     },
@@ -2540,10 +2560,6 @@
     },
     {
       "from": "workspaces/_components/AutomationPanel.tsx",
-      "to": "_functions/menuHandler.ts"
-    },
-    {
-      "from": "workspaces/_components/AutomationPanel.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
     {
@@ -2561,6 +2577,10 @@
     {
       "from": "workspaces/_components/AutomationPanel.tsx",
       "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/_components/AutomationPanel.tsx",
+      "to": "workspaces/_functions/confirmDeleteTrigger.ts"
     },
     {
       "from": "workspaces/_components/AutomationPanel.tsx",
@@ -2853,6 +2873,10 @@
     {
       "from": "workspaces/_functions/chatDispatch.ts",
       "to": "workspaces/_functions/controlApi.ts"
+    },
+    {
+      "from": "workspaces/_functions/confirmDeleteTrigger.ts",
+      "to": "_functions/menuHandler.ts"
     },
     {
       "from": "workspaces/_functions/priority.ts",
@@ -3312,15 +3336,15 @@
     },
     {
       "from": "workspaces/content/marketing/cards.tsx",
-      "to": "workspaces/content/marketing/kinds.ts"
+      "to": "workspaces/content/studio/content.ts"
     },
     {
-      "from": "workspaces/content/marketing/kinds.ts",
-      "to": "workspaces/_components/Icon.tsx"
+      "from": "workspaces/content/marketing/cards.tsx",
+      "to": "workspaces/content/studio/kinds.ts"
     },
     {
-      "from": "workspaces/content/marketing/kinds.ts",
-      "to": "workspaces/_data/types.ts"
+      "from": "workspaces/content/marketing/cards.tsx",
+      "to": "workspaces/content/studio/previews.tsx"
     },
     {
       "from": "workspaces/content/marketing/page.tsx",
@@ -3352,14 +3376,6 @@
     },
     {
       "from": "workspaces/content/marketing/page.tsx",
-      "to": "workspaces/content/marketing/kinds.ts"
-    },
-    {
-      "from": "workspaces/content/marketing/page.tsx",
-      "to": "workspaces/content/marketing/panels.tsx"
-    },
-    {
-      "from": "workspaces/content/marketing/page.tsx",
       "to": "workspaces/content/studio/brandDiff.ts"
     },
     {
@@ -3368,27 +3384,19 @@
     },
     {
       "from": "workspaces/content/marketing/page.tsx",
+      "to": "workspaces/content/studio/BrandPanel.tsx"
+    },
+    {
+      "from": "workspaces/content/marketing/page.tsx",
+      "to": "workspaces/content/studio/BriefForm.tsx"
+    },
+    {
+      "from": "workspaces/content/marketing/page.tsx",
+      "to": "workspaces/content/studio/kinds.ts"
+    },
+    {
+      "from": "workspaces/content/marketing/page.tsx",
       "to": "workspaces/content/studio/promptStack.tsx"
-    },
-    {
-      "from": "workspaces/content/marketing/panels.tsx",
-      "to": "_functions/menuHandler.ts"
-    },
-    {
-      "from": "workspaces/content/marketing/panels.tsx",
-      "to": "workspaces/_components/Icon.tsx"
-    },
-    {
-      "from": "workspaces/content/marketing/panels.tsx",
-      "to": "workspaces/_components/primitives.tsx"
-    },
-    {
-      "from": "workspaces/content/marketing/panels.tsx",
-      "to": "workspaces/_data/types.ts"
-    },
-    {
-      "from": "workspaces/content/marketing/panels.tsx",
-      "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
       "from": "workspaces/content/page.tsx",
@@ -3619,8 +3627,32 @@
       "to": "workspaces/content/studio/content.ts"
     },
     {
-      "from": "workspaces/content/studio/page.tsx",
+      "from": "workspaces/content/studio/BriefForm.tsx",
       "to": "_components/dropdown/Dropdown.tsx"
+    },
+    {
+      "from": "workspaces/content/studio/BriefForm.tsx",
+      "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/content/studio/BriefForm.tsx",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/content/studio/BriefForm.tsx",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/content/studio/BriefForm.tsx",
+      "to": "workspaces/content/studio/content.ts"
+    },
+    {
+      "from": "workspaces/content/studio/kinds.ts",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
+      "from": "workspaces/content/studio/kinds.ts",
+      "to": "workspaces/_data/types.ts"
     },
     {
       "from": "workspaces/content/studio/page.tsx",
@@ -3664,7 +3696,15 @@
     },
     {
       "from": "workspaces/content/studio/page.tsx",
+      "to": "workspaces/content/studio/BriefForm.tsx"
+    },
+    {
+      "from": "workspaces/content/studio/page.tsx",
       "to": "workspaces/content/studio/content.ts"
+    },
+    {
+      "from": "workspaces/content/studio/page.tsx",
+      "to": "workspaces/content/studio/kinds.ts"
     },
     {
       "from": "workspaces/content/studio/page.tsx",
@@ -3792,6 +3832,10 @@
     },
     {
       "from": "workspaces/develop/backlog/page.tsx",
+      "to": "workspaces/_data/capabilities.ts"
+    },
+    {
+      "from": "workspaces/develop/backlog/page.tsx",
       "to": "workspaces/_data/types.ts"
     },
     {
@@ -3857,6 +3901,10 @@
     {
       "from": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "to": "workspaces/develop/board/[ticketId]/liveEditor.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "to": "workspaces/develop/board/[ticketId]/ticketDiff.ts"
     },
     {
       "from": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
@@ -3977,6 +4025,14 @@
     {
       "from": "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/ticketDiff.ts",
+      "to": "_components/editor/CodeEditorPanel.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/ticketDiff.ts",
+      "to": "workspaces/_data/types.ts"
     },
     {
       "from": "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
@@ -4508,10 +4564,6 @@
     },
     {
       "from": "workspaces/develop/pipeline/page.tsx",
-      "to": "workspaces/_data/seed.ts"
-    },
-    {
-      "from": "workspaces/develop/pipeline/page.tsx",
       "to": "workspaces/_data/types.ts"
     },
     {
@@ -4596,10 +4648,6 @@
     },
     {
       "from": "workspaces/develop/scheduled/page.tsx",
-      "to": "_functions/menuHandler.ts"
-    },
-    {
-      "from": "workspaces/develop/scheduled/page.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
     {
@@ -4609,6 +4657,10 @@
     {
       "from": "workspaces/develop/scheduled/page.tsx",
       "to": "workspaces/_components/SetupNotice.tsx"
+    },
+    {
+      "from": "workspaces/develop/scheduled/page.tsx",
+      "to": "workspaces/_functions/confirmDeleteTrigger.ts"
     },
     {
       "from": "workspaces/develop/scheduled/page.tsx",
@@ -4892,6 +4944,10 @@
     },
     {
       "from": "workspaces/workspace/page.tsx",
+      "to": "workspaces/_data/capabilities.ts"
+    },
+    {
+      "from": "workspaces/workspace/page.tsx",
       "to": "workspaces/_data/modules.ts"
     },
     {
@@ -5018,7 +5074,6 @@
       "workspaces/content/insights/page.tsx",
       "workspaces/content/marketing/cards.tsx",
       "workspaces/content/marketing/page.tsx",
-      "workspaces/content/marketing/panels.tsx",
       "workspaces/content/page.tsx",
       "workspaces/content/scheduled-posts/page.tsx",
       "workspaces/content/settings/AdminTab.tsx",
@@ -5027,6 +5082,7 @@
       "workspaces/content/settings/page.tsx",
       "workspaces/content/settings/portalForms.tsx",
       "workspaces/content/studio/BrandPanel.tsx",
+      "workspaces/content/studio/BriefForm.tsx",
       "workspaces/content/studio/page.tsx",
       "workspaces/content/studio/promptStack.tsx",
       "workspaces/develop/answers/page.tsx",
@@ -5081,6 +5137,7 @@
       "workspaces/_components/AutomationPanel.tsx",
       "workspaces/_components/Glossary.tsx",
       "workspaces/_components/SearchPalette.tsx",
+      "workspaces/_functions/confirmDeleteTrigger.ts",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Shell.tsx",
       "workspaces/_shell/WorkspacesProvider.tsx",
@@ -5090,7 +5147,6 @@
       "workspaces/content/documents/[docId]/page.tsx",
       "workspaces/content/documents/page.tsx",
       "workspaces/content/marketing/page.tsx",
-      "workspaces/content/marketing/panels.tsx",
       "workspaces/content/page.tsx",
       "workspaces/content/settings/BrandStylesTab.tsx",
       "workspaces/content/settings/ChannelsTab.tsx",
@@ -5133,12 +5189,14 @@
       "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/documents/[docId]/page.tsx",
       "workspaces/content/documents/page.tsx",
+      "workspaces/content/marketing/page.tsx",
       "workspaces/content/page.tsx",
       "workspaces/content/settings/AdminTab.tsx",
       "workspaces/content/settings/BrandStylesTab.tsx",
       "workspaces/content/settings/ChannelsTab.tsx",
       "workspaces/content/settings/page.tsx",
       "workspaces/content/settings/portalForms.tsx",
+      "workspaces/content/studio/BriefForm.tsx",
       "workspaces/content/studio/page.tsx",
       "workspaces/develop/automations/page.tsx",
       "workspaces/develop/backlog/forms.tsx",
@@ -5174,12 +5232,14 @@
       "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/documents/[docId]/page.tsx",
       "workspaces/content/documents/page.tsx",
+      "workspaces/content/marketing/page.tsx",
       "workspaces/content/page.tsx",
       "workspaces/content/settings/AdminTab.tsx",
       "workspaces/content/settings/BrandStylesTab.tsx",
       "workspaces/content/settings/ChannelsTab.tsx",
       "workspaces/content/settings/page.tsx",
       "workspaces/content/settings/portalForms.tsx",
+      "workspaces/content/studio/BriefForm.tsx",
       "workspaces/content/studio/page.tsx",
       "workspaces/develop/automations/page.tsx",
       "workspaces/develop/backlog/forms.tsx",
@@ -5213,7 +5273,8 @@
     "_components/editor/CodeEditorPanel.tsx": [
       "editor-demo/page.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
-      "workspaces/develop/board/[ticketId]/page.tsx"
+      "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/[ticketId]/ticketDiff.ts"
     ],
     "_components/editor/editorThemes.ts": [
       "_components/editor/CodeEditorPanel.tsx",
@@ -5225,6 +5286,7 @@
       "workspaces/develop/board/[ticketId]/editor/page.tsx",
       "workspaces/develop/board/[ticketId]/liveEditor.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/[ticketId]/ticketDiff.ts",
       "workspaces/develop/code/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
@@ -5233,6 +5295,7 @@
       "editor-demo/page.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/[ticketId]/ticketDiff.ts",
       "workspaces/develop/code/page.tsx"
     ],
     "_components/editor/fileTree.ts": [
@@ -5242,6 +5305,7 @@
       "editor-demo/page.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/[ticketId]/ticketDiff.ts",
       "workspaces/develop/code/page.tsx"
     ],
     "_components/editor/languages.ts": [
@@ -5250,6 +5314,7 @@
       "editor-demo/page.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/[ticketId]/ticketDiff.ts",
       "workspaces/develop/code/page.tsx"
     ],
     "_components/editor/MonacoEditor.tsx": [
@@ -5257,6 +5322,7 @@
       "editor-demo/page.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/[ticketId]/ticketDiff.ts",
       "workspaces/develop/code/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
@@ -5266,6 +5332,7 @@
       "editor-demo/page.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/[ticketId]/ticketDiff.ts",
       "workspaces/develop/code/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
@@ -5324,7 +5391,6 @@
       "workspaces/content/insights/page.tsx",
       "workspaces/content/marketing/cards.tsx",
       "workspaces/content/marketing/page.tsx",
-      "workspaces/content/marketing/panels.tsx",
       "workspaces/content/page.tsx",
       "workspaces/content/scheduled-posts/page.tsx",
       "workspaces/content/settings/AdminTab.tsx",
@@ -5333,6 +5399,7 @@
       "workspaces/content/settings/page.tsx",
       "workspaces/content/settings/portalForms.tsx",
       "workspaces/content/studio/BrandPanel.tsx",
+      "workspaces/content/studio/BriefForm.tsx",
       "workspaces/content/studio/page.tsx",
       "workspaces/content/studio/promptStack.tsx",
       "workspaces/develop/answers/page.tsx",
@@ -5415,7 +5482,6 @@
       "workspaces/content/insights/page.tsx",
       "workspaces/content/marketing/cards.tsx",
       "workspaces/content/marketing/page.tsx",
-      "workspaces/content/marketing/panels.tsx",
       "workspaces/content/page.tsx",
       "workspaces/content/scheduled-posts/page.tsx",
       "workspaces/content/settings/AdminTab.tsx",
@@ -5424,6 +5490,7 @@
       "workspaces/content/settings/page.tsx",
       "workspaces/content/settings/portalForms.tsx",
       "workspaces/content/studio/BrandPanel.tsx",
+      "workspaces/content/studio/BriefForm.tsx",
       "workspaces/content/studio/page.tsx",
       "workspaces/content/studio/promptStack.tsx",
       "workspaces/develop/answers/page.tsx",
@@ -5506,7 +5573,6 @@
       "workspaces/content/insights/page.tsx",
       "workspaces/content/marketing/cards.tsx",
       "workspaces/content/marketing/page.tsx",
-      "workspaces/content/marketing/panels.tsx",
       "workspaces/content/page.tsx",
       "workspaces/content/scheduled-posts/page.tsx",
       "workspaces/content/settings/AdminTab.tsx",
@@ -5515,6 +5581,7 @@
       "workspaces/content/settings/page.tsx",
       "workspaces/content/settings/portalForms.tsx",
       "workspaces/content/studio/BrandPanel.tsx",
+      "workspaces/content/studio/BriefForm.tsx",
       "workspaces/content/studio/page.tsx",
       "workspaces/content/studio/promptStack.tsx",
       "workspaces/develop/answers/page.tsx",
@@ -5588,6 +5655,7 @@
       "workspaces/_components/AutomationPanel.tsx",
       "workspaces/_components/Glossary.tsx",
       "workspaces/_components/SearchPalette.tsx",
+      "workspaces/_functions/confirmDeleteTrigger.ts",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Shell.tsx",
       "workspaces/_shell/WorkspacesProvider.tsx",
@@ -5597,7 +5665,6 @@
       "workspaces/content/documents/[docId]/page.tsx",
       "workspaces/content/documents/page.tsx",
       "workspaces/content/marketing/page.tsx",
-      "workspaces/content/marketing/panels.tsx",
       "workspaces/content/page.tsx",
       "workspaces/content/settings/BrandStylesTab.tsx",
       "workspaces/content/settings/ChannelsTab.tsx",
@@ -5745,9 +5812,7 @@
       "workspaces/content/documents/page.tsx",
       "workspaces/content/insights/page.tsx",
       "workspaces/content/marketing/cards.tsx",
-      "workspaces/content/marketing/kinds.ts",
       "workspaces/content/marketing/page.tsx",
-      "workspaces/content/marketing/panels.tsx",
       "workspaces/content/page.tsx",
       "workspaces/content/scheduled-posts/page.tsx",
       "workspaces/content/settings/AdminTab.tsx",
@@ -5758,6 +5823,8 @@
       "workspaces/content/settings/portalForms.tsx",
       "workspaces/content/studio/BrandDiffList.tsx",
       "workspaces/content/studio/BrandPanel.tsx",
+      "workspaces/content/studio/BriefForm.tsx",
+      "workspaces/content/studio/kinds.ts",
       "workspaces/content/studio/page.tsx",
       "workspaces/content/studio/previews.tsx",
       "workspaces/content/studio/promptStack.tsx",
@@ -5869,7 +5936,6 @@
       "workspaces/content/insights/page.tsx",
       "workspaces/content/marketing/cards.tsx",
       "workspaces/content/marketing/page.tsx",
-      "workspaces/content/marketing/panels.tsx",
       "workspaces/content/page.tsx",
       "workspaces/content/scheduled-posts/page.tsx",
       "workspaces/content/settings/AdminTab.tsx",
@@ -5878,6 +5944,7 @@
       "workspaces/content/settings/page.tsx",
       "workspaces/content/settings/portalForms.tsx",
       "workspaces/content/studio/BrandPanel.tsx",
+      "workspaces/content/studio/BriefForm.tsx",
       "workspaces/content/studio/page.tsx",
       "workspaces/content/studio/promptStack.tsx",
       "workspaces/develop/answers/page.tsx",
@@ -5956,7 +6023,6 @@
       "workspaces/content/insights/page.tsx",
       "workspaces/content/marketing/cards.tsx",
       "workspaces/content/marketing/page.tsx",
-      "workspaces/content/marketing/panels.tsx",
       "workspaces/content/page.tsx",
       "workspaces/content/scheduled-posts/page.tsx",
       "workspaces/content/settings/AdminTab.tsx",
@@ -5965,6 +6031,7 @@
       "workspaces/content/settings/page.tsx",
       "workspaces/content/settings/portalForms.tsx",
       "workspaces/content/studio/BrandPanel.tsx",
+      "workspaces/content/studio/BriefForm.tsx",
       "workspaces/content/studio/page.tsx",
       "workspaces/content/studio/promptStack.tsx",
       "workspaces/develop/answers/page.tsx",
@@ -6219,9 +6286,7 @@
       "workspaces/content/documents/page.tsx",
       "workspaces/content/insights/page.tsx",
       "workspaces/content/marketing/cards.tsx",
-      "workspaces/content/marketing/kinds.ts",
       "workspaces/content/marketing/page.tsx",
-      "workspaces/content/marketing/panels.tsx",
       "workspaces/content/page.tsx",
       "workspaces/content/scheduled-posts/page.tsx",
       "workspaces/content/settings/AdminTab.tsx",
@@ -6231,7 +6296,9 @@
       "workspaces/content/settings/portalForms.tsx",
       "workspaces/content/studio/BrandDiffList.tsx",
       "workspaces/content/studio/BrandPanel.tsx",
+      "workspaces/content/studio/BriefForm.tsx",
       "workspaces/content/studio/brandDiff.ts",
+      "workspaces/content/studio/kinds.ts",
       "workspaces/content/studio/page.tsx",
       "workspaces/content/studio/previews.tsx",
       "workspaces/content/studio/promptStack.tsx",
@@ -6251,6 +6318,7 @@
       "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/editor/page.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/[ticketId]/ticketDiff.ts",
       "workspaces/develop/board/boardFilters.ts",
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/code/page.tsx",
@@ -6297,6 +6365,11 @@
       "main.tsx",
       "workspaces/_shell/WorkspacesProvider.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx"
+    ],
+    "workspaces/_functions/confirmDeleteTrigger.ts": [
+      "workspaces/_components/AutomationPanel.tsx",
+      "workspaces/develop/automations/page.tsx",
+      "workspaces/develop/scheduled/page.tsx"
     ],
     "workspaces/_functions/controlApi.ts": [
       "_components/templates/TemplateProvider.tsx",
@@ -6349,9 +6422,7 @@
       "workspaces/content/documents/page.tsx",
       "workspaces/content/insights/page.tsx",
       "workspaces/content/marketing/cards.tsx",
-      "workspaces/content/marketing/kinds.ts",
       "workspaces/content/marketing/page.tsx",
-      "workspaces/content/marketing/panels.tsx",
       "workspaces/content/page.tsx",
       "workspaces/content/scheduled-posts/page.tsx",
       "workspaces/content/settings/AdminTab.tsx",
@@ -6361,7 +6432,9 @@
       "workspaces/content/settings/portalForms.tsx",
       "workspaces/content/studio/BrandDiffList.tsx",
       "workspaces/content/studio/BrandPanel.tsx",
+      "workspaces/content/studio/BriefForm.tsx",
       "workspaces/content/studio/brandDiff.ts",
+      "workspaces/content/studio/kinds.ts",
       "workspaces/content/studio/page.tsx",
       "workspaces/content/studio/previews.tsx",
       "workspaces/content/studio/promptStack.tsx",
@@ -6381,6 +6454,7 @@
       "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/editor/page.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/[ticketId]/ticketDiff.ts",
       "workspaces/develop/board/boardFilters.ts",
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/code/page.tsx",
@@ -6515,7 +6589,6 @@
       "workspaces/content/documents/page.tsx",
       "workspaces/content/insights/page.tsx",
       "workspaces/content/marketing/page.tsx",
-      "workspaces/content/marketing/panels.tsx",
       "workspaces/content/page.tsx",
       "workspaces/content/scheduled-posts/page.tsx",
       "workspaces/content/settings/AdminTab.tsx",
@@ -6523,6 +6596,7 @@
       "workspaces/content/settings/ChannelsTab.tsx",
       "workspaces/content/settings/page.tsx",
       "workspaces/content/studio/BrandPanel.tsx",
+      "workspaces/content/studio/BriefForm.tsx",
       "workspaces/content/studio/page.tsx",
       "workspaces/develop/answers/page.tsx",
       "workspaces/develop/automations/page.tsx",
@@ -6593,13 +6667,6 @@
     "workspaces/content/marketing/cards.tsx": [
       "workspaces/content/marketing/page.tsx"
     ],
-    "workspaces/content/marketing/kinds.ts": [
-      "workspaces/content/marketing/cards.tsx",
-      "workspaces/content/marketing/page.tsx"
-    ],
-    "workspaces/content/marketing/panels.tsx": [
-      "workspaces/content/marketing/page.tsx"
-    ],
     "workspaces/content/settings/AdminTab.tsx": [
       "workspaces/content/settings/page.tsx"
     ],
@@ -6636,14 +6703,29 @@
       "workspaces/content/studio/page.tsx"
     ],
     "workspaces/content/studio/BrandPanel.tsx": [
+      "workspaces/content/marketing/page.tsx",
+      "workspaces/content/studio/page.tsx"
+    ],
+    "workspaces/content/studio/BriefForm.tsx": [
+      "workspaces/content/marketing/page.tsx",
       "workspaces/content/studio/page.tsx"
     ],
     "workspaces/content/studio/content.ts": [
+      "workspaces/content/marketing/cards.tsx",
+      "workspaces/content/marketing/page.tsx",
       "workspaces/content/studio/BrandPanel.tsx",
+      "workspaces/content/studio/BriefForm.tsx",
       "workspaces/content/studio/page.tsx",
       "workspaces/content/studio/previews.tsx"
     ],
+    "workspaces/content/studio/kinds.ts": [
+      "workspaces/content/marketing/cards.tsx",
+      "workspaces/content/marketing/page.tsx",
+      "workspaces/content/studio/page.tsx"
+    ],
     "workspaces/content/studio/previews.tsx": [
+      "workspaces/content/marketing/cards.tsx",
+      "workspaces/content/marketing/page.tsx",
       "workspaces/content/studio/page.tsx"
     ],
     "workspaces/content/studio/promptStack.tsx": [
@@ -6678,6 +6760,10 @@
       "workspaces/develop/board/[ticketId]/page.tsx"
     ],
     "workspaces/develop/board/[ticketId]/TerminalPanel.tsx": [
+      "workspaces/develop/board/[ticketId]/page.tsx"
+    ],
+    "workspaces/develop/board/[ticketId]/ticketDiff.ts": [
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx"
     ],
     "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx": [
@@ -6826,20 +6912,20 @@
     {
       "id": "workspaces/_functions/controlApi.ts",
       "kind": "other",
-      "dependents": 111,
+      "dependents": 112,
       "directDependents": 10
     },
     {
       "id": "workspaces/_data/types.ts",
       "kind": "other",
-      "dependents": 102,
-      "directDependents": 55
+      "dependents": 103,
+      "directDependents": 56
     },
     {
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
       "dependents": 92,
-      "directDependents": 81
+      "directDependents": 80
     },
     {
       "id": "workspaces/_components/motion.tsx",
@@ -6893,25 +6979,25 @@
       "id": "_functions/menuHandler.ts",
       "kind": "helper",
       "dependents": 52,
-      "directDependents": 40
+      "directDependents": 38
     },
     {
       "id": "_components/dropdown/dropdownInternals.tsx",
       "kind": "component",
-      "dependents": 39,
+      "dependents": 41,
       "directDependents": 2
     },
     {
       "id": "_components/dropdown/Dropdown.tsx",
       "kind": "component",
-      "dependents": 37,
+      "dependents": 39,
       "directDependents": 29
     },
     {
       "id": "workspaces/_data/capabilities.ts",
       "kind": "other",
       "dependents": 36,
-      "directDependents": 2
+      "directDependents": 4
     },
     {
       "id": "workspaces/_components/SetupNotice.tsx",
@@ -6932,16 +7018,16 @@
       "directDependents": 4
     },
     {
+      "id": "_components/editor/editorThemes.ts",
+      "kind": "component",
+      "dependents": 12,
+      "directDependents": 9
+    },
+    {
       "id": "workspaces/develop/designer/styles.ts",
       "kind": "other",
       "dependents": 12,
       "directDependents": 6
-    },
-    {
-      "id": "_components/editor/editorThemes.ts",
-      "kind": "component",
-      "dependents": 11,
-      "directDependents": 9
     },
     {
       "id": "_sockets/apiRequest.ts",
@@ -6968,10 +7054,10 @@
       "directDependents": 2
     },
     {
-      "id": "_sockets/syncRequest.ts",
-      "kind": "other",
+      "id": "_components/editor/fileTree.ts",
+      "kind": "component",
       "dependents": 8,
-      "directDependents": 4
+      "directDependents": 5
     }
   ],
   "symbols": [
@@ -12094,6 +12180,54 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_sync/unarchive_server_v1.tests.ts::<module>",
+      "file": "workspaces/_sync/unarchive_server_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/unarchive_server_v1.tests.ts::fn",
+      "file": "workspaces/_sync/unarchive_server_v1.tests.ts",
+      "name": "fn",
+      "kind": "fn"
+    },
+    {
+      "id": "workspaces/_sync/unarchive_server_v1.tests.ts::poll",
+      "file": "workspaces/_sync/unarchive_server_v1.tests.ts",
+      "name": "poll",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/unarchive_server_v1.tests.ts::run",
+      "file": "workspaces/_sync/unarchive_server_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "workspaces/_sync/unarchive_server_v1.tests.ts::seedTwoTickets",
+      "file": "workspaces/_sync/unarchive_server_v1.tests.ts",
+      "name": "seedTwoTickets",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/unarchive_server_v1.tests.ts::wait",
+      "file": "workspaces/_sync/unarchive_server_v1.tests.ts",
+      "name": "wait",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/unarchive_server_v1.ts::<module>",
+      "file": "workspaces/_sync/unarchive_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/unarchive_server_v1.ts::main",
+      "file": "workspaces/_sync/unarchive_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_sync/workspaceDirty_server_v1.ts::<module>",
       "file": "workspaces/_sync/workspaceDirty_server_v1.ts",
       "name": "<module>",
@@ -12976,6 +13110,10 @@
       "to": "workspaces/_sync/saveAiProvider_server_v1.tests.ts::poll"
     },
     {
+      "from": "workspaces/_sync/saveAiProvider_server_v1.tests.ts::run",
+      "to": "workspaces/_sync/saveAiProvider_server_v1.tests.ts::wait"
+    },
+    {
       "from": "workspaces/_sync/saveAutonomy_server_v1.tests.ts::poll",
       "to": "workspaces/_sync/saveAutonomy_server_v1.tests.ts::fn"
     },
@@ -13242,6 +13380,22 @@
     {
       "from": "workspaces/_sync/uiReviewCreate_server_v1.tests.ts::run",
       "to": "workspaces/_sync/uiReviewCreate_server_v1.tests.ts::poll"
+    },
+    {
+      "from": "workspaces/_sync/unarchive_server_v1.tests.ts::poll",
+      "to": "workspaces/_sync/unarchive_server_v1.tests.ts::fn"
+    },
+    {
+      "from": "workspaces/_sync/unarchive_server_v1.tests.ts::poll",
+      "to": "workspaces/_sync/unarchive_server_v1.tests.ts::wait"
+    },
+    {
+      "from": "workspaces/_sync/unarchive_server_v1.tests.ts::run",
+      "to": "workspaces/_sync/unarchive_server_v1.tests.ts::poll"
+    },
+    {
+      "from": "workspaces/_sync/unarchive_server_v1.tests.ts::run",
+      "to": "workspaces/_sync/unarchive_server_v1.tests.ts::seedTwoTickets"
     },
     {
       "from": "workspaces/_sync/workspaceDirty_server_v1.ts::main",
@@ -14245,6 +14399,20 @@
     "workspaces/_sync/uiReviewCreate_server_v1.tests.ts::wait": [
       "workspaces/_sync/uiReviewCreate_server_v1.tests.ts::poll",
       "workspaces/_sync/uiReviewCreate_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/unarchive_server_v1.tests.ts::fn": [
+      "workspaces/_sync/unarchive_server_v1.tests.ts::poll",
+      "workspaces/_sync/unarchive_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/unarchive_server_v1.tests.ts::poll": [
+      "workspaces/_sync/unarchive_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/unarchive_server_v1.tests.ts::seedTwoTickets": [
+      "workspaces/_sync/unarchive_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/unarchive_server_v1.tests.ts::wait": [
+      "workspaces/_sync/unarchive_server_v1.tests.ts::poll",
+      "workspaces/_sync/unarchive_server_v1.tests.ts::run"
     ],
     "workspaces/_sync/workspaceDirty_server_v1.ts::goneFlag": [
       "workspaces/_sync/workspaceDirty_server_v1.ts::main"

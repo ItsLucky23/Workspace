@@ -289,7 +289,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
   const workspaceRows = wsIds.length > 0 ? await prisma.workspace.findMany({ where: { id: { in: wsIds } } }) : [];
   const roleByWs = new Map(memberships.map((m) => [m.workspaceId, m.roleKey]));
   //? Webhook secrets are write-once credentials: the snapshot exposes only configured state.
-  const workspaces = workspaceRows.map((w) => ({ id: w.id, name: w.name, slug: w.slug, ownerId: w.ownerId, role: asRole(roleByWs.get(w.id) ?? 'member'), forgeType: w.forgeType, webhookConfigured: (w.webhookSecret ?? '').length > 0, webhookLastEventAt: w.webhookLastEventAt ? w.webhookLastEventAt.toISOString() : '', allowMergeOnRedCI: w.allowMergeOnRedCI, enabledSections: w.enabledSections, productContext: w.productContext, aiInstruction: w.aiInstruction, outputLanguage: w.outputLanguage, geminiModel: w.geminiModel, geminiTemperature: w.geminiTemperature, geminiBaseUrl: w.geminiBaseUrl, autonomyLevel: w.autonomyLevel }));
+  const workspaces = workspaceRows.map((w) => ({ id: w.id, name: w.name, slug: w.slug, ownerId: w.ownerId, role: asRole(roleByWs.get(w.id) ?? 'member'), forgeType: w.forgeType, forgeBaseUrl: w.gitlabUrl ?? '', webhookConfigured: (w.webhookSecret ?? '').length > 0, webhookLastEventAt: w.webhookLastEventAt ? w.webhookLastEventAt.toISOString() : '', allowMergeOnRedCI: w.allowMergeOnRedCI, enabledSections: w.enabledSections, productContext: w.productContext, aiInstruction: w.aiInstruction, outputLanguage: w.outputLanguage, geminiModel: w.geminiModel, geminiTemperature: w.geminiTemperature, geminiBaseUrl: w.geminiBaseUrl, autonomyLevel: w.autonomyLevel }));
 
   //? Cross-workspace, by-email (NOT tenant-scoped): the pending invitations this user
   //? can accept from the onboarding. Uses the plain client — a user with no workspace
@@ -420,7 +420,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       const u = userById.get(m.userId);
       const avatar = u && u.avatar.length > 0 ? u.avatar : undefined;
       const avatarFallback = u && u.avatarFallback.length > 0 ? u.avatarFallback : '#6366F1';
-      return { id: m.userId, name: u?.name ?? u?.email ?? 'Member', email: u?.email ?? '', avatar, avatarFallback, role: asRole(m.roleKey) };
+      return { id: m.userId, name: u?.name ?? u?.email ?? 'Member', email: u?.email ?? '', avatar, avatarFallback, role: asRole(m.roleKey), roleKey: m.roleKey };
     });
 
     const ticketCountBySprint = new Map<string, number>();
@@ -632,6 +632,9 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       repoLinked: repo.linked,
       publishingConnected: publishTargets.some((t) => t.connected),
       providerKeys,
+      //? Text readiness mirrors the dispatch source: a keyed api-key connection (claude-cli's subscription row
+      //? has no key — the host probe inside buildReadiness covers it).
+      hasTextConnection: aiConnections.some((c) => c.kind === 'api-key' && c.hasKey),
     });
     //? The caller's RESOLVED capabilities in this workspace — the raw role key (not `asRole`-flattened, so a
     //? custom role resolves to its own perms) mapped to its `WorkspaceRole.perms`. Mirrors the server's
@@ -648,6 +651,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
           name: p.name,
           ...(p.gitUrl ? { gitUrl: p.gitUrl } : {}),
           ...(forge?.mode === 'github' || forge?.mode === 'gitlab' ? { forgeMode: forge.mode } : {}),
+          ...(forge?.baseUrl ? { forgeBaseUrl: forge.baseUrl } : {}),
           ...(forge?.status ? { forgeStatus: forge.status } : {}),
           ...(forge?.repoPath ? { forgeRepoPath: forge.repoPath } : {}),
           ...(p.baseImageRef ? { baseImageRef: p.baseImageRef } : {}),

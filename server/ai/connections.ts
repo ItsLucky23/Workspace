@@ -92,6 +92,27 @@ export async function addConnection(input: AddConnectionInput): Promise<{ ok: bo
   return { ok: true, id: created.id };
 }
 
+//? F-001 — one-time migration of the DEAD legacy store. Content-settings → Admin used to offer a "Gemini"
+//? key row that wrote EnvVar `__provider_key_gemini`; nothing in server/ai ever read it, so the key
+//? "saved" while every text generation kept failing. The single owner is now this table. For every
+//? workspace that has the legacy row and NO gemini-api connection, create one from it (the legacy row is
+//? left in place — deleting secrets is not this migration's call). Idempotent; best-effort per workspace.
+export async function migrateLegacyGeminiKeys(): Promise<number> {
+  const prisma = getPrismaClient();
+  const [, legacy] = await tryCatch(() => prisma.envVar.findMany({ where: { key: '__provider_key_gemini' }, select: { workspaceId: true, value: true } }));
+  let created = 0;
+  for (const row of legacy ?? []) {
+    const [, existing] = await tryCatch(() => prisma.aiConnection.findFirst({ where: { workspaceId: row.workspaceId, providerId: 'gemini-api' }, select: { id: true } }));
+    if (existing) continue;
+    const apiKey = (decryptSecret(row.value) ?? '').trim();
+    if (apiKey.length === 0) continue;
+    const meta = metaFor('gemini-api');
+    const [err, res] = await tryCatch(() => addConnection({ workspaceId: row.workspaceId, providerId: 'gemini-api', model: meta?.defaultModel ?? '', apiKey }));
+    if (!err && res?.ok) created += 1;
+  }
+  return created;
+}
+
 export interface Reassignment { feature: string; from: string; to: string | null }
 
 //? What removing this connection would DO to the rest of the configuration — computed before the

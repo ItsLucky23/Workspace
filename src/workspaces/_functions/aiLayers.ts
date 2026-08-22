@@ -100,15 +100,27 @@ export function applicableSkills(skills: AiSkillEntry[], applyPoint?: string): A
   });
 }
 
+/** The skills a PIPELINE STAGE actually receives: exactly the ones picked on its Context tab
+ *  (`aiSkillIds`), resolved against the workspace's skill list — apply points do not enter into it.
+ *  Mirrors `server/ai/skills.ts` resolveSkillsByIds (stageRunner builds the stage block from it, ordered
+ *  by slug). F-010: the preview used `applicableSkills('all')` here and so showed the wrong layer. */
+export function stagePickedSkills(skills: AiSkillEntry[], aiSkillIds: readonly string[]): AiSkillEntry[] {
+  const picked = new Set(aiSkillIds);
+  return skills.filter((s) => picked.has(s.id)).toSorted((a, b) => a.slug.localeCompare(b.slug));
+}
+
 /** Compose the layers for a given workspace + optional stage. Passing no stage resolves only the
- *  workspace-wide half (layers 1-2) — which is exactly what the workspace settings page shows. */
+ *  workspace-wide half (layers 1-2) — which is exactly what the workspace settings page shows.
+ *  A stage that carries `aiSkillIds` resolves its skills layer from that pick (what stageRunner sends);
+ *  `applyPoint` is the rule for the NON-stage call sites (chat, content, …). */
 export function resolveAiLayers({ workspace, skills, stage, applyPoint }: {
   workspace: Pick<Workspace, 'aiInstruction'>;
   skills: AiSkillEntry[];
-  stage?: Pick<PipelineStageCfg, 'systemPrompt' | 'customInstructions' | 'handoverPrompt'>;
+  stage?: Pick<PipelineStageCfg, 'systemPrompt' | 'customInstructions' | 'handoverPrompt'> & Partial<Pick<PipelineStageCfg, 'aiSkillIds'>>;
   applyPoint?: string;
 }): ResolvedAiLayer[] {
-  const skillText = applicableSkills(skills, applyPoint)
+  const skillSet = stage?.aiSkillIds === undefined ? applicableSkills(skills, applyPoint) : stagePickedSkills(skills, stage.aiSkillIds);
+  const skillText = skillSet
     .map((s) => s.instruction.trim())
     .filter((t) => t.length > 0)
     .join('\n\n');

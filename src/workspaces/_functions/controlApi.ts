@@ -25,7 +25,7 @@ export type ControlOp =
   | 'ticket-edit'
   | 'add-comment'
   | 'archive'
-  | 'bulk-move' | 'bulk-status' | 'bulk-assign' | 'bulk-sprint' | 'bulk-archive'
+  | 'bulk-move' | 'bulk-status' | 'bulk-assign' | 'bulk-sprint' | 'bulk-archive' | 'unarchive'
   | 'sprint-create' | 'sprint-edit'
   // members / RBAC / workspace lifecycle (16/17)
   | 'create-workspace' | 'clone-workspace' | 'rename-workspace' | 'delete-workspace' | 'transfer-ownership'

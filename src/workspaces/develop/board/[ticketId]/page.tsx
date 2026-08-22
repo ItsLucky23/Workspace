@@ -102,8 +102,8 @@ export default function TicketPage({ params }: { params: Record<string, string |
       <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 py-5">
         <div className={`mx-auto w-full ${wide ? 'max-w-5xl' : 'max-w-3xl'}`}>
           {tab === 'overview' && <OverviewTab ticket={ticket} stage={stage?.name} />}
-          {tab === 'code' && <CodePanel files={ticket.files ?? []} workspaceId={ctx.activeWorkspace.id} ticketKey={ticket.id} initialMode={codePreview?.mode} initialFile={codePreview?.file} />}
-          {tab === 'terminal' && <TerminalPanel ticketId={ticket.id} stageId={ticket.stageId} />}
+          {tab === 'code' && <CodePanel ticket={ticket} workspaceId={ctx.activeWorkspace.id} initialMode={codePreview?.mode} initialFile={codePreview?.file} />}
+          {tab === 'terminal' && <TerminalPanel ticketId={ticket.id} />}
           {tab === 'review' && <MrReviewPanel ticket={ticket} onPreviewFile={(path, mode) => { setCodePreview({ mode, file: path }); setTab('code'); }} />}
           {tab === 'activity' && <ActivityPanel ticket={ticket} />}
         </div>

@@ -16,6 +16,7 @@ import type { ChatProposal } from '../../src/workspaces/_data/types';
 import { listServicePresets } from '../container/servicePresets';
 import { isSectionEnabled, type WorkspaceModuleId } from '../../src/workspaces/_data/modules';
 import { OP_CAPABILITY } from '../control/rbac';
+import { AI_PROVIDER_CATALOG } from './providers/catalog';
 
 //? The context slice generic validation checks references against (structural subset of
 //? workspaceChat's Ctx — no import to avoid a runtime cycle).
@@ -94,6 +95,11 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   'bulk-archive': {
     mode: 'enabled', destructive: true,
     hint: 'archive several tickets at once (soft; hidden from board/backlog). params: ticketKeys (list)',
+    params: { ticketKeys: { kind: 'ticketKeys', required: true } },
+  },
+  unarchive: {
+    mode: 'enabled',
+    hint: 'restore archived ticket(s) to the board/backlog (the inverse of archive). params: ticketKeys (list)',
     params: { ticketKeys: { kind: 'ticketKeys', required: true } },
   },
   'sprint-create': {
@@ -219,10 +225,11 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   },
   'save-ai-provider': {
     mode: 'enabled',
-    hint: "switch which AI provider runs ONE non-coding feature ('use Gemini for MR reviews'). params: feature (script|docs-generate|studio-designer|studio-marketer|designer-theme|interviewer|mr-review|root-cause|plan-critique), providerId (default clears the override | claude-cli | gemini-api). The CODING agent is not switchable.",
+    hint: `switch which AI provider runs ONE non-coding feature ('use Gemini for MR reviews'). params: feature (script|docs-generate|studio-designer|studio-marketer|designer-theme|interviewer|mr-review|root-cause|plan-critique), providerId (default clears the override | ${Object.keys(AI_PROVIDER_CATALOG).join(' | ')}). The CODING agent is not switchable.`,
     params: {
       feature: { kind: 'enum', required: true, values: ['script', 'docs-generate', 'studio-designer', 'studio-marketer', 'designer-theme', 'interviewer', 'mr-review', 'root-cause', 'plan-critique'] },
-      providerId: { kind: 'enum', required: true, values: ['default', 'claude-cli', 'gemini-api'] },
+      //? F-017 — every catalog backend, not a stale pair (the picker + dispatch allow the same set).
+      providerId: { kind: 'enum', required: true, values: ['default', ...Object.keys(AI_PROVIDER_CATALOG)] },
     },
   },
   'save-autonomy': {
@@ -897,7 +904,7 @@ export const OP_MODULE: Partial<Record<ControlOp, WorkspaceModuleId>> = {
   'service-provision': 'development', 'service-teardown': 'development',
   'preview-up': 'development', 'preview-down': 'development',
   //? Parity wave — board/sprint/MR/service ops follow their enabled siblings into `development`.
-  archive: 'development', 'bulk-status': 'development', 'bulk-sprint': 'development', 'bulk-archive': 'development',
+  archive: 'development', 'bulk-status': 'development', 'bulk-sprint': 'development', 'bulk-archive': 'development', unarchive: 'development',
   'sprint-create': 'development', 'sprint-edit': 'development',
   'ticket-link-artifact': 'development', 'ticket-unlink-artifact': 'development',
   'mr-create': 'development', 'mr-comment': 'development', 'mr-approve': 'development', 'mr-merge': 'development', 'mr-resolve': 'development',

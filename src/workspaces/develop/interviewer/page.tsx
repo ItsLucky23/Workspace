@@ -71,11 +71,15 @@ export default function Interviewer() {
     setView('chat'); //? sending is always a chat action — bring the conversation back on screen
     const stamp = String(seq + 1); seq += 1;
     const aiId = `a${stamp}`;
+    //? F-013 — the last 8 settled turns ride along (aiChat's `history`, #112) so a follow-up ("and how would I
+    //? test that?") keeps its context. Mirrors the shell's sendChat; this page is a CONVERSATION and used to
+    //? send every message as a fresh single turn.
+    const history = messages.filter((m) => !m.pending && m.text.length > 0).slice(-8).map((m) => ({ role: m.role, text: m.text }));
     setMessages((prev) => [...prev, { id: `u${stamp}`, role: 'user', text: trimmed }, { id: aiId, role: 'ai', text: '', pending: true }]);
     setDraft('');
     setBusy(true);
     void (async () => {
-      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/aiChat', version: 'v1', data: { workspaceId, message: trimmed, ...(activeProject ? { projectId: activeProject.id } : {}), clientRequestId: globalThis.crypto.randomUUID() } }));
+      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/aiChat', version: 'v1', data: { workspaceId, message: trimmed, ...(activeProject ? { projectId: activeProject.id } : {}), ...(history.length > 0 ? { history } : {}), clientRequestId: globalThis.crypto.randomUUID() } }));
       setMessages((prev) => prev.map((m) => {
         if (m.id !== aiId) return m;
         if (error || res?.status !== 'success' || res.result.error) return { ...m, pending: false, text: translate({ key: 'workspaces.interviewer.error' }) };

@@ -138,7 +138,7 @@ export default function DocumentsPage() {
         {visibleDocuments.map((d) => (
           <div key={d.id} data-testid={`ws-documents-row-${d.id}`} className={`rounded-xl border border-container1-border bg-container1 p-3 flex items-center gap-2 hover:border-primary-border transition-colors`}>
             {/* The whole card body navigates — one comfortable tap target on a phone. */}
-            <button type="button" onClick={() => { navigate(`documents/${d.id}`); }} className={`flex-1 min-w-0 text-left cursor-pointer`}>
+            <button type="button" onClick={() => { navigate(`content/documents/${d.id}`); }} className={`flex-1 min-w-0 text-left cursor-pointer`}>
               <div className={`flex items-center gap-2`}>
                 <Icon name="file-lines" className={`text-muted shrink-0`} />
                 <span className={`text-sm font-semibold text-title truncate`}>{d.title}</span>

@@ -92,6 +92,9 @@ export function useDesigner(): DesignerCtx {
   return ctx;
 }
 
+//? A 24-hex Mongo ObjectId = a PERSISTED library row; anything else is a seed/ai/manual local id.
+const isObjectId = (id: string): boolean => /^[a-f\d]{24}$/i.test(id);
+
 export function DesignerProvider({ children }: { children: ReactNode }) {
   const { activeWorkspace, refetch, designArtifacts } = useWorkspaces();
   const activeThemeName = designArtifacts.find((d) => d.kind === 'theme' && d.active)?.name ?? null;
@@ -107,19 +110,58 @@ export function DesignerProvider({ children }: { children: ReactNode }) {
   const [anims, setAnims] = useState<AnimSpec[]>(SEED_ANIMS);
   const [activeAnimId, setActiveAnimId] = useState(FADE_ANIM.id);
 
+  //? F-011 — ids deleted through the library op, remembered until the snapshot confirms they are gone, so
+  //? the merge below cannot resurrect a just-deleted row from a stale designArtifacts list.
+  const deletedIds = useRef<Set<string>>(new Set());
+
   //? L2 — round-trip: merge the PERSISTED design artifacts (from the snapshot) into the libraries, so a
-  //? saved theme/style/anim reappears on reload + right after saving (was seed-only, one-directional). Append
-  //? by id (idempotent), never clobbering unsaved local edits.
+  //? saved theme/style/anim reappears on reload + right after saving (was seed-only, one-directional).
+  //? Never clobbers unsaved local edits. F-012: a persisted row is matched by id FIRST, then by (kind via
+  //? the list, name) against a local item that has no persisted id yet — that local item adopts the row's
+  //? id instead of the row being appended as a same-named twin (every save used to create one).
   useEffect(() => {
     const parsed = parsePersistedLibraries(designArtifacts);
-    const mergeById = <T extends { id: string }>(prev: T[], add: T[]): T[] => {
-      const fresh = add.filter((p) => !prev.some((x) => x.id === p.id));
-      return fresh.length > 0 ? [...prev, ...fresh] : prev;
+    const present = new Set(designArtifacts.map((a) => a.id));
+    for (const id of deletedIds.current) if (!present.has(id)) deletedIds.current.delete(id);
+    const merge = <T extends { id: string; name: string }>(prev: T[], add: T[]): T[] => {
+      let next = prev;
+      let changed = false;
+      for (const row of add) {
+        if (deletedIds.current.has(row.id) || next.some((x) => x.id === row.id)) continue;
+        const twin = next.findIndex((x) => !isObjectId(x.id) && x.name === row.name);
+        if (twin === -1) { next = [...next, row]; changed = true; continue; }
+        const local = next[twin];
+        if (!local) continue;
+        next = next.map((x, i) => (i === twin ? { ...local, id: row.id } : x));
+        changed = true;
+      }
+      return changed ? next : prev;
     };
-    setThemes((prev) => mergeById(prev, parsed.themes));
-    setStyles((prev) => mergeById(prev, parsed.styles));
-    setAnims((prev) => mergeById(prev, parsed.anims));
+    setThemes((prev) => merge(prev, parsed.themes));
+    setStyles((prev) => merge(prev, parsed.styles));
+    setAnims((prev) => merge(prev, parsed.anims));
   }, [designArtifacts]);
+
+  //? F-012 — after a successful save the LOCAL item adopts the persisted id, so the next save of the same
+  //? item (renamed, re-tokened) updates that row instead of hashing into a brand-new one, and the merge
+  //? above recognises it by id. The active-id follows the re-key so the rail selection does not jump.
+  const adoptId = (kind: 'theme' | 'style' | 'animation', localId: string, persistedId: string): void => {
+    if (localId === persistedId) return;
+    if (kind === 'theme') { setThemes((p) => p.map((t) => (t.id === localId ? { ...t, id: persistedId } : t))); setActiveThemeId((cur) => (cur === localId ? persistedId : cur)); }
+    else if (kind === 'style') { setStyles((p) => p.map((s) => (s.id === localId ? { ...s, id: persistedId } : s))); setActiveStyleId((cur) => (cur === localId ? persistedId : cur)); }
+    else { setAnims((p) => p.map((a) => (a.id === localId ? { ...a, id: persistedId } : a))); setActiveAnimId((cur) => (cur === localId ? persistedId : cur)); }
+  };
+  //? F-011 — a persisted item's delete goes through the library op (the rail used to filter local state
+  //? only, and the next merge brought the row straight back).
+  const deletePersisted = async (id: string): Promise<void> => {
+    if (!isObjectId(id)) return;
+    const workspaceId = activeWorkspace.id;
+    if (!workspaceId) return;
+    deletedIds.current.add(id);
+    const [err, res] = await tryCatch(() => apiRequest({ name: 'workspaces/designerLibrary', version: 'v1', data: { workspaceId, op: 'delete', artifactId: id } }));
+    if (err || res?.status !== 'success') { deletedIds.current.delete(id); return; }
+    refetch();
+  };
 
   //? gap-fix (duplicate-concept "active theme"): activeThemeId was seeded from LUCKYSTACK_THEME.id and
   //? never synced to whichever design artifact the workspace actually flags `active:true` — every page
@@ -142,13 +184,23 @@ export function DesignerProvider({ children }: { children: ReactNode }) {
     const activeAnim = anims.find((a) => a.id === activeAnimId) ?? FADE_ANIM;
 
     const editTheme = (id: string, fn: (t: DesignTheme) => DesignTheme) => { setThemes((prev) => prev.map((t) => (t.id === id ? fn(t) : t))); };
+    //? The library payload for the active theme/style. F-012: an item that already has a persisted id sends
+    //? it, so the route UPDATES that row (designerLibrary_v1 derives a fresh id from a content hash otherwise).
+    const activeArtifact = (kind: 'theme' | 'style'): { id?: string; kind: string; name: string; description: string; content: unknown; source: string } | null => {
+      if (kind === 'theme') {
+        const t = themes.find((x) => x.id === activeThemeId);
+        return t ? { ...(isObjectId(t.id) ? { id: t.id } : {}), kind: 'theme', name: t.name, description: t.description, content: { light: t.light, dark: t.dark }, source: t.source } : null;
+      }
+      const s = styles.find((x) => x.id === activeStyleId);
+      return s ? { ...(isObjectId(s.id) ? { id: s.id } : {}), kind: 'style', name: s.name, description: s.description, content: s, source: s.source } : null;
+    };
 
     return {
       themes, activeThemeId, setActiveThemeId, mode, setMode, activeTheme, tokens: activeTheme[mode],
       addTheme: () => { const t = blankTheme(nextId('theme'), `Custom ${String(themes.filter((x) => x.source === 'manual').length + 1)}`); setThemes((p) => [...p, t]); setActiveThemeId(t.id); },
       duplicateTheme: (id) => { const src = themes.find((t) => t.id === id) ?? activeTheme; const t: DesignTheme = { ...src, id: nextId('theme'), name: `${src.name} copy`, source: 'manual', light: { ...src.light }, dark: { ...src.dark } }; setThemes((p) => [...p, t]); setActiveThemeId(t.id); },
       renameTheme: (id, name) => { editTheme(id, (t) => ({ ...t, name })); },
-      removeTheme: (id) => { setThemes((p) => p.filter((t) => t.id !== id)); if (activeThemeId === id) setActiveThemeId(LUCKYSTACK_THEME.id); },
+      removeTheme: (id) => { setThemes((p) => p.filter((t) => t.id !== id)); if (activeThemeId === id) setActiveThemeId(LUCKYSTACK_THEME.id); void deletePersisted(id); },
       setToken: (token, value) => { editTheme(activeThemeId, (t) => { const src: ThemeSource = t.source === 'seed' ? 'seed' : 'manual'; const next: ThemeTokens = { ...t[mode], [token]: value }; return mode === 'light' ? { ...t, source: src, light: next } : { ...t, source: src, dark: next }; }); },
       applyTokens: (light, dark) => { editTheme(activeThemeId, (t) => ({ ...t, source: t.source === 'seed' ? 'seed' : 'manual', light, dark })); },
       importTheme: (name, light, dark) => { const t: DesignTheme = { id: nextId('theme'), name, description: 'Imported', source: 'manual', light, dark }; setThemes((p) => [...p, t]); setActiveThemeId(t.id); },
@@ -168,7 +220,7 @@ export function DesignerProvider({ children }: { children: ReactNode }) {
       addStyle: () => { const s = blankStyle(nextId('style'), `Custom ${String(styles.filter((x) => x.source === 'manual').length + 1)}`); setStyles((p) => [...p, s]); setActiveStyleId(s.id); },
       duplicateStyle: (id) => { const src = styles.find((s) => s.id === id) ?? activeStyle; const s: DesignStyle = { ...src, id: nextId('style'), name: `${src.name} copy`, source: 'manual' }; setStyles((p) => [...p, s]); setActiveStyleId(s.id); },
       renameStyle: (id, name) => { setStyles((p) => p.map((s) => (s.id === id ? { ...s, name } : s))); },
-      removeStyle: (id) => { setStyles((p) => p.filter((s) => s.id !== id)); if (activeStyleId === id) setActiveStyleId(APPLE_STYLE.id); },
+      removeStyle: (id) => { setStyles((p) => p.filter((s) => s.id !== id)); if (activeStyleId === id) setActiveStyleId(APPLE_STYLE.id); void deletePersisted(id); },
       setStyle: (patch) => { setStyles((p) => p.map((s) => (s.id === activeStyleId ? { ...s, ...patch, source: s.source === 'seed' ? 'seed' : 'manual' } : s))); },
       generateStyle: async (prompt) => {
         const workspaceId = activeWorkspace.id;
@@ -185,25 +237,19 @@ export function DesignerProvider({ children }: { children: ReactNode }) {
       addAnim: () => { const a = blankAnim(nextId('anim'), `Custom ${String(anims.filter((x) => x.source === 'manual').length + 1)}`); setAnims((p) => [...p, a]); setActiveAnimId(a.id); },
       duplicateAnim: (id) => { const src = anims.find((a) => a.id === id) ?? activeAnim; const a: AnimSpec = { ...src, id: nextId('anim'), name: `${src.name} copy`, source: 'manual' }; setAnims((p) => [...p, a]); setActiveAnimId(a.id); },
       renameAnim: (id, name) => { setAnims((p) => p.map((a) => (a.id === id ? { ...a, name } : a))); },
-      removeAnim: (id) => { setAnims((p) => p.filter((a) => a.id !== id)); if (activeAnimId === id) setActiveAnimId(FADE_ANIM.id); },
+      removeAnim: (id) => { setAnims((p) => p.filter((a) => a.id !== id)); if (activeAnimId === id) setActiveAnimId(FADE_ANIM.id); void deletePersisted(id); },
       setAnim: (patch) => { setAnims((p) => p.map((a) => (a.id === activeAnimId ? { ...a, ...patch, source: a.source === 'seed' ? 'seed' : 'manual' } : a))); },
       activeThemeName, activeStyleName,
       useInProject: async (kind) => {
         const workspaceId = activeWorkspace.id;
         if (!workspaceId) return false;
-        let artifact: { kind: string; name: string; description: string; content: unknown; source: string } | null = null;
-        if (kind === 'theme') {
-          const t = themes.find((x) => x.id === activeThemeId);
-          if (t) artifact = { kind: 'theme', name: t.name, description: t.description, content: { light: t.light, dark: t.dark }, source: t.source };
-        } else {
-          const s = styles.find((x) => x.id === activeStyleId);
-          if (s) artifact = { kind: 'style', name: s.name, description: s.description, content: s, source: s.source };
-        }
+        const artifact = activeArtifact(kind);
         if (!artifact) return false;
         const [e1, saved] = await tryCatch(() => apiRequest({ name: 'workspaces/designerLibrary', version: 'v1', data: { workspaceId, op: 'save', artifact } }));
         if (e1 || saved?.status !== 'success') return false;
         const id = saved.result.id;
         if (!id) return false;
+        adoptId(kind, kind === 'theme' ? activeThemeId : activeStyleId, id);
         const [e2, act] = await tryCatch(() => apiRequest({ name: 'workspaces/designerLibrary', version: 'v1', data: { workspaceId, op: 'setActive', artifactId: id } }));
         if (e2 || act?.status !== 'success') return false;
         refetch();
@@ -213,17 +259,11 @@ export function DesignerProvider({ children }: { children: ReactNode }) {
       saveToLibrary: async (kind) => {
         const workspaceId = activeWorkspace.id;
         if (!workspaceId) return false;
-        let artifact: { kind: string; name: string; description: string; content: unknown; source: string } | null = null;
-        if (kind === 'theme') {
-          const t = themes.find((x) => x.id === activeThemeId);
-          if (t) artifact = { kind: 'theme', name: t.name, description: t.description, content: { light: t.light, dark: t.dark }, source: t.source };
-        } else {
-          const s = styles.find((x) => x.id === activeStyleId);
-          if (s) artifact = { kind: 'style', name: s.name, description: s.description, content: s, source: s.source };
-        }
+        const artifact = activeArtifact(kind);
         if (!artifact) return false;
         const [err, saved] = await tryCatch(() => apiRequest({ name: 'workspaces/designerLibrary', version: 'v1', data: { workspaceId, op: 'save', artifact } }));
         if (err || saved?.status !== 'success') return false;
+        if (saved.result.id) adoptId(kind, kind === 'theme' ? activeThemeId : activeStyleId, saved.result.id);
         refetch();
         return true;
       },
@@ -232,9 +272,10 @@ export function DesignerProvider({ children }: { children: ReactNode }) {
         const workspaceId = activeWorkspace.id;
         const a = anims.find((x) => x.id === activeAnimId);
         if (!workspaceId || !a) return false;
-        const artifact = { kind: 'animation', name: a.name, description: a.description, content: a, source: a.source };
+        const artifact = { ...(isObjectId(a.id) ? { id: a.id } : {}), kind: 'animation', name: a.name, description: a.description, content: a, source: a.source };
         const [err, saved] = await tryCatch(() => apiRequest({ name: 'workspaces/designerLibrary', version: 'v1', data: { workspaceId, op: 'save', artifact } }));
         if (err || saved?.status !== 'success') return false;
+        if (saved.result.id) adoptId('animation', a.id, saved.result.id);
         refetch();
         return true;
       },
@@ -249,6 +290,7 @@ export function DesignerProvider({ children }: { children: ReactNode }) {
         return true;
       },
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deletePersisted/adoptId close over stable setters + activeWorkspace.id/refetch, which ARE listed.
   }, [themes, activeThemeId, mode, styles, activeStyleId, anims, activeAnimId, activeWorkspace.id, refetch, activeThemeName, activeStyleName]);
 
   return <Ctx value={ctx}>{children}</Ctx>;

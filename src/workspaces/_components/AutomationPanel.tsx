@@ -1,7 +1,9 @@
-//? Automation panel (#2) — manage WorkspaceTriggers: list them (name · event → action · approval),
-//? enable/disable, delete, and create a new one. A trigger fires an action when its event happens
-//? (a ticket is created, a stage is entered, …) or on a cron schedule; `requiresApproval` gates the
-//? action behind a human-accepted suggestion. Deliberately compact — the common `notify` /
+//? Automation panel (#2) — manage EVENT-driven WorkspaceTriggers: list them (name · event → action ·
+//? approval), enable/disable, delete, and create a new one. A trigger fires an action when its event
+//? happens (a ticket is created, a stage is entered, …); `requiresApproval` gates the action behind a
+//? human-accepted suggestion. CRON triggers have ONE owner — the Schedules page (F-019): it validates the
+//? expression (a typo'd cron used to save silently and never fire) and this panel used to list and
+//? create the same rows with an unvalidated text field. Cron rows show here only as a count that links out. Deliberately compact — the common `notify` /
 //? `emit-signal` / `start-stage` actions get first-class fields; richer params are a follow-up. The
 //? outputs an agent-role produces land in the notification bell (the ArtifactViewer).
 
@@ -10,7 +12,7 @@ import { useState } from 'react';
 import { useTranslator } from '@luckystack/core/client';
 
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
-import { menuHandler } from 'src/_functions/menuHandler';
+import { confirmDeleteTrigger } from '../_functions/confirmDeleteTrigger';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import { WsButton, IconButton, InfoTip } from './primitives';
 import { EmptyPicker } from './SetupNotice';
@@ -19,8 +21,8 @@ import Icon from './Icon';
 import type { TriggerActionKind, TriggerEventKind } from '../_data/types';
 
 //? #83 — stage.on_signal (a WorkspaceSignal was emitted) + stage.on_approval (a gated automation was approved)
-//? are now real fired events, so a trigger can chain off them.
-const EVENTS: TriggerEventKind[] = ['ticket.created', 'stage.on_enter', 'stage.on_complete', 'stage.on_signal', 'stage.on_approval', 'ticket.merged', 'suggestion.accepted', 'cron'];
+//? are now real fired events, so a trigger can chain off them. No 'cron' here — see the header.
+const EVENTS: TriggerEventKind[] = ['ticket.created', 'stage.on_enter', 'stage.on_complete', 'stage.on_signal', 'stage.on_approval', 'ticket.merged', 'suggestion.accepted'];
 //? #50/#88 — 'invoke-agent-role' is now event-attachable (was cron-only on the Scheduled page).
 //? #90 — run-command (operator-gated in-container shell) + invoke-workspace-ai (a non-coding AI Q&A) are
 //? now real executors, so they're offered here. run-command always opens an approval before it runs.
@@ -30,7 +32,7 @@ const EVENT_KEY: Record<string, string> = {
   'ticket.created': 'workspaces.automation.evTicketCreated', 'ticket.merged': 'workspaces.automation.evTicketMerged',
   'stage.on_enter': 'workspaces.automation.evStageEnter', 'stage.on_complete': 'workspaces.automation.evStageComplete',
   'stage.on_signal': 'workspaces.automation.evStageSignal', 'stage.on_approval': 'workspaces.automation.evStageApproval',
-  'suggestion.accepted': 'workspaces.automation.evSuggestionAccepted', cron: 'workspaces.automation.evCron',
+  'suggestion.accepted': 'workspaces.automation.evSuggestionAccepted',
 };
 const ACTION_KEY: Record<string, string> = {
   notify: 'workspaces.automation.acNotify', 'emit-signal': 'workspaces.automation.acEmitSignal', 'start-stage': 'workspaces.automation.acStartStage', webhook: 'workspaces.automation.acWebhook',
@@ -41,7 +43,9 @@ const acKey = (a: string): string => ACTION_KEY[a] ?? 'workspaces.automation.acN
 
 export default function AutomationPanel() {
   const translate = useTranslator();
-  const { triggers, saveTrigger, toggleTrigger, deleteTrigger, runTrigger, agentRoles, stages } = useWorkspaces();
+  const { triggers: allTriggers, saveTrigger, toggleTrigger, deleteTrigger, runTrigger, agentRoles, stages, navigate } = useWorkspaces();
+  const triggers = allTriggers.filter((t) => t.on !== 'cron');
+  const cronCount = allTriggers.length - triggers.length;
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
   const [on, setOn] = useState<TriggerEventKind>('ticket.created');
@@ -54,7 +58,6 @@ export default function AutomationPanel() {
   const [targetStage, setTargetStage] = useState('');
   const [matchStage, setMatchStage] = useState('');   // #91 — '' = any stage
   const [debounce, setDebounce] = useState('');        // #91 — seconds; '' = no debounce
-  const [cron, setCron] = useState('0 9 * * *');
   const [webhookUrl, setWebhookUrl] = useState('');
   const [command, setCommand] = useState('');       // #90 — run-command shell (runs in the ticket container)
   const [aiPrompt, setAiPrompt] = useState('');      // #90 — invoke-workspace-ai prompt
@@ -76,23 +79,21 @@ export default function AutomationPanel() {
     if (action === 'webhook') { params.url = webhookUrl.trim(); }
     if (action === 'run-command') { params.command = command.trim(); }
     if (action === 'invoke-workspace-ai') { params.prompt = aiPrompt.trim(); }
-    //? #91 — optional match facet (stage) + debounce, only meaningful for event triggers (not cron).
-    const match = on !== 'cron' && matchStage ? { stageIds: [matchStage] } : undefined;
+    //? #91 — optional match facet (stage) + debounce.
+    const match = matchStage ? { stageIds: [matchStage] } : undefined;
     const debounceSec = Number(debounce);
-    const debounceMs = on !== 'cron' && debounce.trim() && Number.isFinite(debounceSec) && debounceSec > 0 ? Math.round(debounceSec * 1000) : undefined;
+    const debounceMs = debounce.trim() && Number.isFinite(debounceSec) && debounceSec > 0 ? Math.round(debounceSec * 1000) : undefined;
     saveTrigger({
       name: name.trim(), on, action, requiresApproval, params,
-      ...(on === 'cron' ? { cron } : {}),
       ...(match ? { match } : {}),
       ...(debounceMs === undefined ? {} : { debounceMs }),
     });
     reset();
   };
 
-  //? #93 — a mis-tap should not destroy a trigger silently; confirm first.
+  //? #93 — a mis-tap should not destroy a trigger silently; confirm first (shared helper).
   const confirmDelete = async (id: string, triggerName: string): Promise<void> => {
-    const ok = await menuHandler.confirm({ title: translate({ key: 'workspaces.automation.deleteConfirmTitle' }), content: translate({ key: 'workspaces.automation.deleteConfirmBody', params: [{ key: 'name', value: triggerName }] }) });
-    if (ok) deleteTrigger(id);
+    if (await confirmDeleteTrigger(translate, triggerName)) deleteTrigger(id);
   };
 
   //? #96 — one-line plain-language preview ("when <event> → <action>") so the user can sanity-check the
@@ -110,7 +111,7 @@ export default function AutomationPanel() {
       default: { return ''; }
     }
   })();
-  const previewEvent = on === 'cron' ? translate({ key: 'workspaces.automation.previewCron', params: [{ key: 'cron', value: cron }] }) : translate({ key: evKey(on) });
+  const previewEvent = translate({ key: evKey(on) });
   const preview = translate({ key: 'workspaces.automation.previewTemplate', params: [{ key: 'event', value: previewEvent }, { key: 'detail', value: previewDetail }] });
 
   return (
@@ -137,6 +138,19 @@ export default function AutomationPanel() {
 
       {triggers.length === 0 && !creating && (
         <div className="text-sm text-muted py-6 text-center">{translate({ key: 'workspaces.automation.empty' })}</div>
+      )}
+
+      {/* Cron rows belong to Schedules — a read-only count that links there, never a second editor. */}
+      {cronCount > 0 && (
+        <button
+          type="button" onClick={() => { navigate('scheduled'); }}
+          className="mb-3 w-full flex items-center gap-2 rounded-xl border border-container1-border bg-container2/40 px-3 py-2.5 text-sm text-muted hover:text-common hover:bg-container2 cursor-pointer transition-colors"
+        >
+          <Icon name="clock" className="text-primary" />
+          <span className="flex-1 text-left">{translate({ key: 'workspaces.automation.cronCountRow', params: [{ key: 'count', value: String(cronCount) }] })}</span>
+          <span className="text-primary">{translate({ key: 'workspaces.automation.cronCountLink' })}</span>
+          <Icon name="arrow-right-long" className="text-xs text-primary" />
+        </button>
       )}
 
       <div className="flex flex-col gap-2">
@@ -183,17 +197,6 @@ export default function AutomationPanel() {
             </div>
           </div>
           {/* #94 — each conditional action/event field block animates in/out instead of popping as `action`/`on` change. */}
-          <Collapse open={on === 'cron'}>
-            <div className={`flex items-center gap-2`}>
-              <input value={cron} onChange={(e) => { setCron(e.target.value); }} placeholder="0 9 * * *" className="flex-1 min-w-0 h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm font-mono text-title focus:outline-none focus:border-primary" />
-              <InfoTip
-                align="end"
-                label={translate({ key: 'workspaces.tips.automations.cronLabel' })}
-                title={translate({ key: 'workspaces.tips.automations.cronTitle' })}
-                body={translate({ key: 'workspaces.tips.automations.cronBody' })}
-              />
-            </div>
-          </Collapse>
           <Collapse open={action === 'notify'}>
             <div className="flex flex-col gap-3">
               <input value={title} onChange={(e) => { setTitle(e.target.value); }} placeholder={translate({ key: 'workspaces.automation.notifyTitlePlaceholder' })} className="h-9 px-3 rounded-lg border border-container1-border bg-container1 text-sm text-title focus:outline-none focus:border-primary" />

@@ -707,7 +707,12 @@
       "manageAiSkills": "Vaardigheid schrijven",
       "handoverPrompt": "Wat je doorgeeft aan de volgende stage",
       "handoverPromptHint": "Draait aan het EIND van de sessie van deze stage en bepaalt de samenvatting die hij schrijft. Laat je 'm leeg, dan bepaalt de AI zelf wat het doorgeven waard is.",
-      "handoverPromptPlaceholder": "In gewone taal: wat moet de volgende stage van jou weten?"
+      "handoverPromptPlaceholder": "In gewone taal: wat moet de volgende stage van jou weten?",
+      "unsavedChanges": "Niet-opgeslagen wijzigingen",
+      "remoteUpdated": "Deze stage is elders gewijzigd terwijl jij aan het bewerken was.",
+      "discardEdits": "Mijn wijzigingen weggooien en die laden",
+      "networkNotEnforcedTitle": "Nog niet afgedwongen",
+      "networkNotEnforcedBody": "Egress wordt nu host-breed geregeld door de WS_EGRESS / WS_EGRESS_ALLOW-omgeving (één allowlist voor elke stage). Deze per-stage instellingen worden opgeslagen maar veranderen niet wat de container kan bereiken."
     },
     "settings": {
       "saving": "Opslaan…",
@@ -751,7 +756,8 @@
       "goto_carryOver": "Bewerk op het tabblad Overdracht",
       "tipTitle": "Hoe deze prompt is opgebouwd",
       "tipPosition": "Dit veld is {{channel}} {{n}} van {{total}}.",
-      "tipThisField": " — dit veld"
+      "tipThisField": " — dit veld",
+      "goto_skillsStage": "Kies op het Context-tabblad van deze stage"
     },
     "tips": {
       "automations": {
@@ -1539,7 +1545,16 @@
         "failed": "mislukt",
         "unsupported": "niet testbaar"
       },
-      "integrationNameRequired": "Geef de integratie een naam."
+      "integrationNameRequired": "Geef de integratie een naam.",
+      "forgeScopeTitle": "Workspace-standaard",
+      "forgeScopeBody": "Deze forge-instellingen (provider, basis-URL, API-token) zijn de workspace-brede STANDAARD: issue-sync, merge requests en webhooks gebruiken ze voor elk project zonder eigen koppeling. De eigen koppeling van een project wint altijd.",
+      "forgeOverrideActive": "Project “{{project}}” overschrijft dit met een eigen {{mode}}-koppeling{{url}} — die gebruiken sync/MR/webhook echt.",
+      "forgeOverrideNone": "Project “{{project}}” heeft geen eigen koppeling, dus deze standaard geldt ervoor.",
+      "forgeOverrideLink": "Projectkoppelingen · Instellingen › Developer",
+      "baseUrlConfigured": "Ingesteld: {{host}}",
+      "forgeApiToken": "Forge API-token",
+      "cloneToken": "Clone-token (git over HTTPS, alleen dit project)",
+      "ownerActionsOnly": "Eigendom overdragen en de workspace verwijderen vereisen de owner-actions-permissie, die jouw rol niet heeft — deze acties zijn verborgen in plaats van aangeboden en geweigerd."
     },
     "skills": {
       "title": "Vaardigheden",
@@ -2472,7 +2487,15 @@
       "aiAgentTab": "ai-agent",
       "aiAgentTailHint": "Alleen-lezen weergave van de live output van de agent — dezelfde stream als de inline preview op Overzicht.",
       "liveAgentOpenTerminal": "Openen in Terminal",
-      "branchChipLabel": "{{branch}} · werkbranch"
+      "branchChipLabel": "{{branch}} · werkbranch",
+      "changesLoadingFiles": "Worktree-bestanden lezen…",
+      "changesNeedContainer": "De bewerkbare wijzigingen hebben de draaiende container van het ticket nodig — activeer het ticket (of gebruik Diff-weergave, die de branch-diff leest).",
+      "diffLoading": "Branch-diff laden…",
+      "diffNoBranch": "Dit ticket heeft nog geen werkbranch — wijzigingen verschijnen zodra de agent een stage start.",
+      "shellTab": "shell",
+      "terminalNoContainerTitle": "Geen container voor dit ticket",
+      "terminalNoContainerSub": "De terminal is een shell in de draaiende container van het ticket. Activeer het ticket (start een stage) en hij verschijnt hier; de Terminals-pagina toont elke draaiende container.",
+      "terminalShellHint": "Eén shell op /work in de container van dit ticket — geconfigureerde runtime/stage-processen zijn hier niet gekoppeld; start ze vanuit deze shell of volg ze op de Terminals-pagina."
     },
     "terminals": {
       "subtitle": "Een live shell in elke draaiende ticket-container — kijk mee met de AI of grijp zelf in.",
@@ -2758,7 +2781,8 @@
       "refinedWith": "verfijnd: “{{refine}}”",
       "regenerateWithRefine": "Opnieuw genereren — verfijnd: “{{refine}}”",
       "refineUsed": "Verfijnd met: {{text}}",
-      "brandSetFrom": "Laatst ingesteld vanuit {{source}}"
+      "brandSetFrom": "Laatst ingesteld vanuit {{source}}",
+      "marketerMoved": "Marketing-assets (copy, e-mails, ads, social, namen, thumbnails, videoscripts) staan op Marketing"
     },
     "uiReview": {
       "emptyTitle": "Nog geen UI-feedback.",
@@ -3128,7 +3152,9 @@
       "previewRunCommand": "voer \"{{command}}\" uit",
       "previewWebhook": "roep de webhook {{url}} aan",
       "previewCron": "op schema \"{{cron}}\"",
-      "previewTemplate": "Wanneer {{event}} → {{detail}}"
+      "previewTemplate": "Wanneer {{event}} → {{detail}}",
+      "cronCountRow": "{{count}} geplande taak/taken draaien op een timer",
+      "cronCountLink": "Gepland"
     },
     "automations": {
       "title": "Automatiseringen",
@@ -3276,7 +3302,9 @@
       "archiveConfirmContent": "Ze schuiven van het actieve board af.",
       "noAi": "Geen AI",
       "creatorAssignee": "Aanmaker · toegewezene",
-      "clearSelection": "Selectie wissen"
+      "clearSelection": "Selectie wissen",
+      "filterArchived": "Gearchiveerd",
+      "restore": "Terugzetten"
     },
     "placeholder": {
       "comingNext": "{{title}} — komt hierna",
@@ -3321,7 +3349,9 @@
       "board": "Board",
       "logoInitial": "W",
       "appName": "Workspaces",
-      "switchWorkspace": "Wissel van workspace"
+      "switchWorkspace": "Wissel van workspace",
+      "projects": "Projecten",
+      "services": "Services"
     },
     "wsShell": {
       "back": "Terug",

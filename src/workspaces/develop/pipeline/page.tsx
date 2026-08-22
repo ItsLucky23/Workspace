@@ -5,7 +5,7 @@
 //? react to pipeline events. Mirrors the genormaliseerd PipelineStage model + child collections and
 //? the rendered claudeSettings — see handoff/DATAMODEL.md §2 + CLAUDE_SETTINGS_MAP.md.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
@@ -16,7 +16,6 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Icon, { type IconName } from '../../_components/Icon';
 import { EmptyState, InfoTip, PopMenu, Tabs, Toggle, WsButton, type TabDef } from '../../_components/primitives';
 import { useTrailSegment } from '../../_components/sections';
-import { HOOK_CATALOG } from '../../_data/seed';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { PresetMenu, blueprintFor, usePipelinePresets } from './presets';
 import { CarryoverTab, CommandsTab, ContextTab, GeneralTab, HooksTab, IntegrationsTab, ModelTab, NetworkTab, ProcessTab, VisibilityTab } from './stageTabs';
@@ -43,7 +42,9 @@ function blankStage(projectId: string, id: string, name: string, order: number, 
     processes: [], visibleStageIds: [],
     modelCfg: { autoEscalate: false, base: { model: bp?.model ?? 'sonnet', effort: bp?.effort ?? 'medium', maxTurns: bp?.maxTurns ?? 12 }, rules: [] },
     network: { enabled: true, mode: 'whitelist', categories: ['package-registries', 'source-hosts'], domains: [] },
-    hooks: Object.fromEntries(HOOK_CATALOG.map((h) => [h.key, true] as const)),
+    //? F-008 — `{}` like the conductor writes it: the engine enables a hook unless it is explicitly false,
+    //? and the Hooks tab renders `?? true`, so the optimistic copy no longer flips after the refetch.
+    hooks: {},
   };
 }
 
@@ -78,15 +79,53 @@ export default function Pipeline() {
 
   const [warnings, setWarnings] = useState<StageWarning[]>([]);
 
-  //? Re-seed the editable copy whenever the live snapshot loads/changes (initial
-  //? load + after a save round-trips through the Conductor + refetch).
-  //? The stale-selection guard that used to live here is now inherent: the selection is read from the
-  //? URL and validated against the stages that exist, so a deleted stage falls back on its own.
-  useEffect(() => { setStages(stageConfigs); }, [stageConfigs]);
+  //? F-009 — unsaved edits survive a snapshot refetch. Every write by any room member (and the user's
+  //? own action on another surface) triggers a debounced refetch that hands this page a NEW stageConfigs
+  //? array; re-seeding the whole editable copy from it silently wiped whatever was typed but not yet
+  //? saved. So: a stage the user has edited is DIRTY; on refetch, non-dirty stages take the live version
+  //? (added/removed stages follow the live list), dirty ones keep the local draft and — when the live
+  //? version moved underneath — show a "changed elsewhere" notice with an explicit discard, instead of
+  //? being overwritten. Save clears the flag; the refetch then carries the saved version.
+  const [dirty, setDirty] = useState<Set<string>>(() => new Set());
+  const [remoteChanged, setRemoteChanged] = useState<Set<string>>(() => new Set());
+  const lastSeen = useRef<Map<string, string>>(new Map());
+  useEffect(() => {
+    setStages((local) => stageConfigs.map((live) => {
+      const mine = local.find((st) => st.id === live.id);
+      return (mine && dirty.has(live.id)) ? { ...mine, order: live.order } : live;
+    }));
+    const seen = new Map(stageConfigs.map((st) => [st.id, JSON.stringify(st)] as const));
+    setRemoteChanged((prev) => {
+      const next = new Set(prev);
+      for (const id of dirty) {
+        const before = lastSeen.current.get(id);
+        const now = seen.get(id);
+        if (before !== undefined && now !== undefined && before !== now) next.add(id);
+      }
+      for (const id of next) if (!seen.has(id)) next.delete(id);
+      return next;
+    });
+    lastSeen.current = seen;
+    setDirty((prev) => { const next = new Set([...prev].filter((id) => seen.has(id))); return next.size === prev.size ? prev : next; });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- merge runs on LIVE changes only; `dirty` is read, never a trigger (it would re-merge on every keystroke).
+  }, [stageConfigs]);
 
   const s = stages.find((x) => x.id === selectedId) ?? stages[0];
-  const update = (patch: Partial<PipelineStageCfg>) => { setStages((p) => p.map((st) => (st.id === selectedId ? { ...st, ...patch } : st))); };
-  const save = () => { if (s) saveStageConfig(s); };
+  const update = (patch: Partial<PipelineStageCfg>) => {
+    setStages((p) => p.map((st) => (st.id === selectedId ? { ...st, ...patch } : st)));
+    setDirty((prev) => (prev.has(selectedId) ? prev : new Set([...prev, selectedId])));
+  };
+  const clearDirty = (id: string) => {
+    setDirty((prev) => { if (!prev.has(id)) return prev; const next = new Set(prev); next.delete(id); return next; });
+    setRemoteChanged((prev) => { if (!prev.has(id)) return prev; const next = new Set(prev); next.delete(id); return next; });
+  };
+  const save = () => { if (s) { saveStageConfig(s); clearDirty(s.id); } };
+  const discardEdits = () => {
+    if (!s) return;
+    const live = stageConfigs.find((st) => st.id === s.id);
+    if (live) setStages((p) => p.map((st) => (st.id === live.id ? live : st)));
+    clearDirty(s.id);
+  };
 
   const move = (dir: -1 | 1) => { setStages((p) => {
     const i = p.findIndex((x) => x.id === selectedId);
@@ -284,6 +323,12 @@ export default function Pipeline() {
                 <input value={s.name} onChange={(e) => { update({ name: e.target.value }); }} className="text-base font-semibold text-title bg-transparent focus:outline-none border-b border-transparent focus:border-primary min-w-0 flex-1 basis-44" />
                 <div className="flex items-center gap-2 shrink-0 ml-auto">
                   <Toggle on={s.aiEnabled} onChange={(v) => { update({ aiEnabled: v }); }} label={s.aiEnabled ? translate({ key: 'workspaces.pipeline.aiOn' }) : translate({ key: 'workspaces.pipeline.noAi' })} />
+                  {dirty.has(s.id) && (
+                    <span className="inline-flex items-center gap-1.5 text-xs text-warning" title={translate({ key: 'workspaces.pipeline.unsavedChanges' })}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-warning" />
+                      <span className="hidden sm:inline">{translate({ key: 'workspaces.pipeline.unsavedChanges' })}</span>
+                    </span>
+                  )}
                   <WsButton icon="check" onClick={save}>{translate({ key: 'workspaces.pipeline.saveStage' })}</WsButton>
                   <PopMenu
                     ariaLabel={translate({ key: 'workspaces.pipeline.stageActions' })}
@@ -296,6 +341,14 @@ export default function Pipeline() {
                   />
                 </div>
               </div>
+
+              {remoteChanged.has(s.id) && (
+                <div className="mx-4 md:mx-5 mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-common">
+                  <Icon name="triangle-exclamation" className="text-warning" />
+                  <span className="flex-1">{translate({ key: 'workspaces.pipeline.remoteUpdated' })}</span>
+                  <button type="button" onClick={discardEdits} className="text-xs text-primary hover:underline cursor-pointer">{translate({ key: 'workspaces.pipeline.discardEdits' })}</button>
+                </div>
+              )}
 
               <div className="px-4 md:px-5 pt-2 flex items-center gap-2">
                 <div className="min-w-0 flex-1">

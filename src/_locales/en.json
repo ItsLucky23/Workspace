@@ -707,7 +707,12 @@
       "manageAiSkills": "Write a skill",
       "handoverPrompt": "What you hand to the next stage",
       "handoverPromptHint": "Runs at the END of this stage's session and shapes the summary it writes. Leave it empty and the AI decides for itself what is worth passing on.",
-      "handoverPromptPlaceholder": "In plain language: what does the next stage need to know from you?"
+      "handoverPromptPlaceholder": "In plain language: what does the next stage need to know from you?",
+      "unsavedChanges": "Unsaved changes",
+      "remoteUpdated": "This stage was changed elsewhere while you were editing.",
+      "discardEdits": "Discard my edits and load it",
+      "networkNotEnforcedTitle": "Not enforced yet",
+      "networkNotEnforcedBody": "Egress is currently controlled host-wide by the WS_EGRESS / WS_EGRESS_ALLOW environment (one allowlist for every stage). These per-stage settings are saved but do not change what the container can reach."
     },
     "settings": {
       "saving": "Saving…",
@@ -751,7 +756,8 @@
       "goto_carryOver": "Edit on the Carry-over tab",
       "tipTitle": "How this prompt is composed",
       "tipPosition": "This field is {{channel}} {{n}} of {{total}}.",
-      "tipThisField": " — this field"
+      "tipThisField": " — this field",
+      "goto_skillsStage": "Pick on this stage's Context tab"
     },
     "tips": {
       "automations": {
@@ -1539,7 +1545,16 @@
         "failed": "failed",
         "unsupported": "not testable"
       },
-      "integrationNameRequired": "Give the integration a name."
+      "integrationNameRequired": "Give the integration a name.",
+      "forgeScopeTitle": "Workspace default",
+      "forgeScopeBody": "These forge settings (provider, base URL, API token) are the workspace-wide DEFAULT: issue sync, merge requests and webhooks use them for any project without its own connection. A project's own connection always wins.",
+      "forgeOverrideActive": "Project “{{project}}” overrides this with its own {{mode}} connection{{url}} — it is what sync/MR/webhook flows actually use.",
+      "forgeOverrideNone": "Project “{{project}}” has no connection of its own, so this default applies to it.",
+      "forgeOverrideLink": "Project connections · Settings › Developer",
+      "baseUrlConfigured": "Configured: {{host}}",
+      "forgeApiToken": "Forge API token",
+      "cloneToken": "Clone token (git over HTTPS, this project only)",
+      "ownerActionsOnly": "Transferring ownership and deleting the workspace need the owner-actions permission, which your role does not hold — these actions are hidden rather than offered and refused."
     },
     "skills": {
       "title": "Skills",
@@ -2472,7 +2487,15 @@
       "aiAgentTab": "ai-agent",
       "aiAgentTailHint": "Read-only tail of the agent's live output — this is the same stream as the inline preview on Overview.",
       "liveAgentOpenTerminal": "Open in Terminal",
-      "branchChipLabel": "{{branch}} · working branch"
+      "branchChipLabel": "{{branch}} · working branch",
+      "changesLoadingFiles": "Reading the worktree files…",
+      "changesNeedContainer": "The editable changes need the ticket's running container — activate the ticket (or use Diff view, which reads the branch diff).",
+      "diffLoading": "Loading the branch diff…",
+      "diffNoBranch": "This ticket has no working branch yet — changes appear once the agent starts a stage.",
+      "shellTab": "shell",
+      "terminalNoContainerTitle": "No container for this ticket",
+      "terminalNoContainerSub": "The terminal is a shell inside the ticket's running container. Activate the ticket (start a stage) and it appears here; the Terminals page lists every running container.",
+      "terminalShellHint": "One shell at /work in this ticket's container — configured runtime/stage processes are not attached here; run them from this shell or watch them on the Terminals page."
     },
     "terminals": {
       "subtitle": "A live shell inside each running ticket container — watch the AI work, or step in and type yourself.",
@@ -2758,7 +2781,8 @@
       "refinedWith": "refined: “{{refine}}”",
       "regenerateWithRefine": "Regenerate — refined: “{{refine}}”",
       "refineUsed": "Refined with: {{text}}",
-      "brandSetFrom": "Last set from {{source}}"
+      "brandSetFrom": "Last set from {{source}}",
+      "marketerMoved": "Marketing assets (copy, emails, ads, social, names, thumbnails, video scripts) live on Marketing"
     },
     "uiReview": {
       "emptyTitle": "No UI feedback yet.",
@@ -3128,7 +3152,9 @@
       "previewRunCommand": "run \"{{command}}\"",
       "previewWebhook": "call the webhook {{url}}",
       "previewCron": "on schedule \"{{cron}}\"",
-      "previewTemplate": "When {{event}} → {{detail}}"
+      "previewTemplate": "When {{event}} → {{detail}}",
+      "cronCountRow": "{{count}} scheduled task(s) run on a timer",
+      "cronCountLink": "Scheduled"
     },
     "automations": {
       "title": "Automations",
@@ -3276,7 +3302,9 @@
       "archiveConfirmContent": "They move out of the active board.",
       "noAi": "No AI",
       "creatorAssignee": "Creator · assignee",
-      "clearSelection": "Clear selection"
+      "clearSelection": "Clear selection",
+      "filterArchived": "Archived",
+      "restore": "Restore"
     },
     "placeholder": {
       "comingNext": "{{title}} — coming next",
@@ -3321,7 +3349,9 @@
       "board": "Board",
       "logoInitial": "W",
       "appName": "Workspaces",
-      "switchWorkspace": "Switch workspace"
+      "switchWorkspace": "Switch workspace",
+      "projects": "Projects",
+      "services": "Services"
     },
     "wsShell": {
       "back": "Back",

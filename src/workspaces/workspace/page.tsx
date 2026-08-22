@@ -25,6 +25,7 @@ import { LayerNote, useLayerTip } from '../_components/EffectivePromptPreview';
 import { Collapse } from '../_components/motion';
 import { AvatarBubble, IconButton, InfoTip, PopMenu, Tabs, Toggle, WsButton, type PopMenuItem, type TabDef } from '../_components/primitives';
 import { EmptyPicker } from '../_components/SetupNotice';
+import { CAP } from '../_data/capabilities';
 import { PageSections, useTrailSegment } from '../_components/sections';
 import { RepoInventoryPanel, RepoScriptPicker, useRepoIntrospection } from './repoIntrospection';
 import { RunProcessList, anyRowIncomplete, rowCommand, seedProcesses } from './runProcesses';
@@ -59,8 +60,11 @@ function removeMenu(member: Member, translate: ReturnType<typeof useTranslator>,
 function MembersTab() {
   const translate = useTranslator();
   const { memberRoles, setMemberRole, permRoles, activeWorkspace, members, removeMember } = useWorkspaces();
-  //? You assign any non-Owner role; ownership changes via the danger zone only.
-  const roleItems = permRoles.filter((r) => !r.locked).map((r) => ({ id: r.name, value: r.name, item: r.name }));
+  //? You assign any non-Owner role; ownership changes via the danger zone only. `locked` means the
+  //? permission MATRIX is read-only (built-ins), not that the role is unassignable — filtering on it
+  //? left a default workspace with zero pickable roles. Items carry the KEY: the conductor's
+  //? change-role looks roles up by key, and memberRoles holds the raw key.
+  const roleItems = permRoles.filter((r) => r.key !== 'owner').map((r) => ({ id: r.key, value: r.key, item: r.name }));
 
   const columns: TableColumn<Member>[] = [
     {
@@ -200,8 +204,9 @@ function InvitesTab() {
   const [inviting, setInviting] = useState(false);
   const [email, setEmail] = useState('');
   const [roleKey, setRoleKey] = useState('');
-  //? Ownership only changes via the danger zone — invites offer non-Owner roles only.
-  const roleItems = permRoles.filter((r) => !r.locked).map((r) => ({ id: r.key, value: r.key, item: r.name }));
+  //? Ownership only changes via the danger zone — invites offer non-Owner roles only (built-in
+  //? Admin/Member included: `locked` only guards the matrix).
+  const roleItems = permRoles.filter((r) => r.key !== 'owner').map((r) => ({ id: r.key, value: r.key, item: r.name }));
 
   const cancel = () => { setInviting(false); setEmail(''); setRoleKey(''); };
   const submit = () => {
@@ -561,14 +566,26 @@ function IntegrationsTab() {
   );
 }
 
+//? The forge DEFAULT for the workspace + the inbound webhook. Single-owner split (F-018/F-026, ADR 0036):
+//? per-project ForgeConnection (Settings › Developer › Connections) is the authority — server/git/forgeResolve
+//? reads it FIRST and falls back to these workspace fields. Neither surface used to mention the other, so a
+//? token typed here could be silently shadowed by a project connection. The tab now says what it is (the
+//? default), shows the ACTIVE project's resolved state read-only, and links to the override editor.
+const forgeDefaultUrl = (forge: 'gitlab' | 'github'): string => (forge === 'github' ? 'https://api.github.com' : 'https://gitlab.com');
 function GitLabTab() {
   const translate = useTranslator();
-  const { activeWorkspace, saveGitlab, resyncForge, rotateWebhookSecret } = useWorkspaces();
+  const { activeWorkspace, activeProject, saveGitlab, resyncForge, rotateWebhookSecret, focusSetup } = useWorkspaces();
   const [forge, setForge] = useState<'gitlab' | 'github'>(activeWorkspace.forgeType === 'github' ? 'github' : 'gitlab');
-  const [baseUrl, setBaseUrl] = useState(() => (activeWorkspace.forgeType === 'github' ? 'https://api.github.com' : 'https://gitlab.com'));
+  //? F-025 — seeded from the STORED base URL (exposed in the snapshot; it is not a secret). The field used to
+  //? start at the hardcoded default, so opening the tab to paste a new token and hitting Save overwrote a
+  //? self-hosted URL with gitlab.com.
+  const storedBaseUrl = (activeWorkspace.forgeBaseUrl ?? '').trim();
+  const [baseUrl, setBaseUrl] = useState(() => (storedBaseUrl.length > 0 ? storedBaseUrl : forgeDefaultUrl(forge)));
   //? Never pre-filled from the (write-only, encrypted) stored token — an empty
   //? value tells `saveGitlab` to keep the existing token unchanged.
   const [token, setToken] = useState('');
+  const projectOverride = activeProject?.forgeMode !== undefined;
+  const overrideUrl = (activeProject?.forgeBaseUrl ?? '').trim();
   const forgeItems = [
     { id: 'gitlab', value: 'gitlab', item: translate({ key: 'workspaces.workspaceSettings.forgeGitlab' }) },
     { id: 'github', value: 'github', item: translate({ key: 'workspaces.workspaceSettings.forgeGithub' }) },
@@ -593,17 +610,32 @@ function GitLabTab() {
   const webhookLastEventAt = activeWorkspace.webhookLastEventAt ?? '';
   return (
     <div className="max-w-2xl mx-auto w-full flex flex-col gap-4">
-      <FormSection title={translate({ key: 'workspaces.workspaceSettings.tabGitlab' })} desc={translate({ key: 'workspaces.workspaceSettings.gitlabDescription' })}>
+      <FormSection title={translate({ key: 'workspaces.workspaceSettings.forgeScopeTitle' })} desc={translate({ key: 'workspaces.workspaceSettings.forgeScopeBody' })}>
+        {/* The resolved state for the ACTIVE project — what the sync/MR/webhook flows will actually use. */}
+        {activeProject && (
+          <div className="px-5 py-3 flex flex-wrap items-center gap-2 text-xs text-muted border-b border-divider">
+            <Icon name={projectOverride ? 'circle-info' : 'circle-check'} className={projectOverride ? 'text-warning' : 'text-correct'} />
+            <span className="flex-1 min-w-0">
+              {projectOverride
+                ? translate({ key: 'workspaces.workspaceSettings.forgeOverrideActive', params: [{ key: 'project', value: activeProject.name }, { key: 'mode', value: activeProject.forgeMode === 'github' ? translate({ key: 'workspaces.workspaceSettings.forgeGithub' }) : translate({ key: 'workspaces.workspaceSettings.forgeGitlab' }) }, { key: 'url', value: overrideUrl.length > 0 ? ` (${overrideUrl})` : '' }] })
+                : translate({ key: 'workspaces.workspaceSettings.forgeOverrideNone', params: [{ key: 'project', value: activeProject.name }] })}
+            </span>
+            <button type="button" onClick={() => { focusSetup({ view: 'settings', tab: 'developer' }); }} className="text-primary hover:underline cursor-pointer inline-flex items-center gap-1 shrink-0">
+              {translate({ key: 'workspaces.workspaceSettings.forgeOverrideLink' })} <Icon name="arrow-right-long" className="text-[10px]" />
+            </button>
+          </div>
+        )}
         <SettingRow
           label={translate({ key: 'workspaces.workspaceSettings.forgeProvider' })}
-          control={<Dropdown width="full" size="sm" items={forgeItems} value={forgeItems.find((i) => i.id === forge)} onChange={(it) => { setForge(it.id === 'github' ? 'github' : 'gitlab'); if (it.id === 'github') setBaseUrl('https://api.github.com'); }} />}
+          control={<Dropdown width="full" size="sm" items={forgeItems} value={forgeItems.find((i) => i.id === forge)} onChange={(it) => { const next = it.id === 'github' ? 'github' : 'gitlab'; setForge(next); if (baseUrl === forgeDefaultUrl(forge)) setBaseUrl(forgeDefaultUrl(next)); }} />}
         />
         <SettingRow
           label={translate({ key: 'workspaces.workspaceSettings.baseUrl' })}
+          {...(storedBaseUrl.length > 0 ? { help: translate({ key: 'workspaces.workspaceSettings.baseUrlConfigured', params: [{ key: 'host', value: storedBaseUrl }] }) } : {})}
           control={<input value={baseUrl} onChange={(e) => { setBaseUrl(e.target.value); }} className={fieldCls} />}
         />
         <SettingRow
-          label={translate({ key: 'workspaces.workspaceSettings.accessToken' })}
+          label={translate({ key: 'workspaces.workspaceSettings.forgeApiToken' })}
           //? #22 — the live-verify round-trip is a deliberate no-op (owner decision); the dead Verify
           //? button was removed so the token field doesn't render a click with zero feedback.
           control={<input type="password" value={token} onChange={(e) => { setToken(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.tokenPlaceholder' })} className={`${fieldCls} font-mono`} />}
@@ -1086,7 +1118,7 @@ function RepositoryTab() {
           control={<input value={gitUrl} onChange={(e) => { setGitUrl(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.repoUrlPlaceholder' })} className={fieldCls} />}
         />
         <SettingRow
-          label={translate({ key: 'workspaces.workspaceSettings.accessToken' })}
+          label={translate({ key: 'workspaces.workspaceSettings.cloneToken' })}
           control={<input type="password" value={token} onChange={(e) => { setToken(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.tokenPlaceholder' })} className={`${fieldCls} font-mono`} />}
         />
         <div className="px-5 py-4 flex flex-wrap gap-2">
@@ -1118,7 +1150,10 @@ function RepositoryTab() {
 
 function DangerTab() {
   const translate = useTranslator();
-  const { activeWorkspace, members, transferOwnership, deleteWorkspace, cloneWorkspace } = useWorkspaces();
+  const { activeWorkspace, members, transferOwnership, deleteWorkspace, cloneWorkspace, can, myPerms } = useWorkspaces();
+  //? F-028 — transfer-ownership + delete-workspace require ownerActions server-side (rbac.ts); a built-in
+  //? Admin holds no such bit, so the buttons were dead. Hidden (with a one-line reason) instead of refused.
+  const ownerActions = myPerms.length > 0 ? can(CAP.ownerActions) : activeWorkspace.role === 'owner';
   const [transferTarget, setTransferTarget] = useState('');
   const memberItems = members.filter((m) => m.id !== activeWorkspace.ownerId).map((m) => ({ id: m.id, value: m.id, item: m.name }));
 
@@ -1151,7 +1186,10 @@ function DangerTab() {
 
   return (
     <div className="max-w-2xl mx-auto w-full rounded-2xl border border-wrong/40 bg-wrong/5 p-5 flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
+      {!ownerActions && (
+        <div className="flex items-start gap-2 text-xs text-muted"><Icon name="circle-info" className="mt-0.5 shrink-0" /><span>{translate({ key: 'workspaces.workspaceSettings.ownerActionsOnly' })}</span></div>
+      )}
+      {ownerActions && <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-sm font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.transferOwnership' })}</div>
           <div className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.transferOwnershipDesc' })}</div>
@@ -1175,8 +1213,8 @@ function DangerTab() {
             <WsButton variant="secondary" onClick={startTransfer}>{translate({ key: 'workspaces.workspaceSettings.transfer' })}</WsButton>
           </div>
         )}
-      </div>
-      <div className="h-px bg-wrong/20" />
+      </div>}
+      {ownerActions && <div className="h-px bg-wrong/20" />}
       {/* GAP_SCAN G2 — start a second workspace from this one's setup instead of re-onboarding from zero.
           Copies configuration only: no tickets, no content, no credentials, no members. */}
       <div className="flex items-center justify-between gap-3">
@@ -1186,14 +1224,18 @@ function DangerTab() {
         </div>
         <WsButton variant="secondary" icon="copy" onClick={startClone}>{translate({ key: 'workspaces.workspaceSettings.clone' })}</WsButton>
       </div>
-      <div className="h-px bg-wrong/20" />
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="text-sm font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.deleteWorkspace' })}</div>
-          <div className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.deleteWorkspaceDesc' })}</div>
-        </div>
-        <WsButton variant="danger" onClick={startDelete}>{translate({ key: 'workspaces.workspaceSettings.delete' })}</WsButton>
-      </div>
+      {ownerActions && (
+        <>
+          <div className="h-px bg-wrong/20" />
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.deleteWorkspace' })}</div>
+              <div className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.deleteWorkspaceDesc' })}</div>
+            </div>
+            <WsButton variant="danger" onClick={startDelete}>{translate({ key: 'workspaces.workspaceSettings.delete' })}</WsButton>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -1528,35 +1570,47 @@ export const template = 'workspaces';
 
 export default function WorkspaceSettings() {
   const translate = useTranslator();
-  const { activeWorkspace, renameWorkspace } = useWorkspaces();
+  const { activeWorkspace, renameWorkspace, can, myPerms } = useWorkspaces();
   const [renaming, setRenaming] = useState(false);
   const [nameInput, setNameInput] = useState(activeWorkspace.name);
   const [showWizard, setShowWizard] = useState(false);
   //? Repository / GitLab / Workflow are Development-lane setup — hide them for a
   //? content/design-only workspace (no repo/Dockerfile prompt when you didn't ask for code).
   const devEnabled = isModuleEnabled(activeWorkspace.enabledSections, 'development');
-  //? Simplify: workspace settings is an admin surface. A plain member sees only Members (view the team); every
-  //? config/admin tab (permissions, modules, AI behaviour, env secrets, integrations, invites, dev setup, danger)
-  //? is gated on role (fail-open: unresolved role ≠ 'member'). Dev tabs additionally require the dev module.
-  const isAdmin = activeWorkspace.role !== 'member';
-  const adminTabs: TabDef[] = [
+  //? F-028 — tabs are gated on the caller's resolved CAPABILITIES (snapshot `myPerms`, the same vector the
+  //? server's hasCapability checks), not on the flattened role: `role` collapses every custom role to 'member',
+  //? which locked a custom role holding workspaceSettings out of the tabs the server would let it use, while a
+  //? built-in Admin (no ownerActions) saw Transfer/Delete the server always refuses.
+  //?   config tabs (permissions, modules, AI, env, integrations, audit, dev setup) → workspaceSettings
+  //?   invites → manageMembers · danger (transfer/delete) → ownerActions; clone → workspaceSettings.
+  //? Fail-open only where the matrix is absent (an empty myPerms = snapshot not loaded), matching the old rule.
+  const hasPerms = myPerms.length > 0;
+  const canSettings = hasPerms ? can(CAP.workspaceSettings) : activeWorkspace.role !== 'member';
+  const canInvite = hasPerms ? can(CAP.manageMembers) : activeWorkspace.role !== 'member';
+  const configTabs: TabDef[] = [
     { id: 'permissions', label: translate({ key: 'workspaces.workspaceSettings.tabPermissions' }), icon: 'circle-check' },
     { id: 'modules', label: translate({ key: 'workspaces.workspaceSettings.tabModules' }), icon: 'table-cells-large' },
     { id: 'aibehavior', label: translate({ key: 'workspaces.workspaceSettings.tabAi' }), icon: 'robot' },
     { id: 'env', label: translate({ key: 'workspaces.workspaceSettings.tabEnv' }), icon: 'sliders' },
     { id: 'integrations', label: translate({ key: 'workspaces.workspaceSettings.tabIntegrations' }), icon: 'database' },
-    { id: 'invites', label: translate({ key: 'workspaces.workspaceSettings.tabInvites' }), icon: 'plus' },
+  ];
+  const inviteTab: TabDef = { id: 'invites', label: translate({ key: 'workspaces.workspaceSettings.tabInvites' }), icon: 'plus' };
+  const laterConfigTabs: TabDef[] = [
     { id: 'audit', label: translate({ key: 'workspaces.workspaceSettings.tabAudit' }), icon: 'clock-rotate-left' },
     ...(devEnabled ? [
       { id: 'repository', label: translate({ key: 'workspaces.workspaceSettings.tabRepository' }), icon: 'code-branch' as const },
       { id: 'gitlab', label: translate({ key: 'workspaces.workspaceSettings.tabGitlab' }), icon: 'diagram-project' as const },
       { id: 'workflow', label: translate({ key: 'workspaces.workspaceSettings.tabWorkflow' }), icon: 'code-merge' as const },
     ] : []),
+    //? Danger hosts clone (workspaceSettings) too, so the tab itself follows settings; the owner-only
+    //? sections inside hide themselves (DangerTab) for a role without ownerActions.
     { id: 'danger', label: translate({ key: 'workspaces.workspaceSettings.tabDanger' }), icon: 'triangle-exclamation' },
   ];
   const tabs: TabDef[] = [
     { id: 'members', label: translate({ key: 'workspaces.workspaceSettings.tabMembers' }), icon: 'users' },
-    ...(isAdmin ? adminTabs : []),
+    ...(canSettings ? configTabs : []),
+    ...(canInvite ? [inviteTab] : []),
+    ...(canSettings ? laterConfigTabs : []),
   ];
 
   //? ADR 0312 — the tab IS the URL (`/workspaces/workspace/repository`), so it is linkable, survives a
@@ -1605,7 +1659,9 @@ export default function WorkspaceSettings() {
                 unkeyed SectionsTab kept the PREVIOUS workspace's toggles in state and Save wrote them
                 onto the new one. Its siblings were already keyed; this one was missed. */}
             {activeTab === 'modules' && <SectionsTab key={activeWorkspace.id} />}
-        {activeTab === 'aibehavior' && <AiBehaviorTab />}
+        {/* F-027 — keyed like its siblings: the tab seeds its instruction/language state once, so an
+            unkeyed instance showed the PREVIOUS workspace's text after a switch and autosaved it into the new one. */}
+        {activeTab === 'aibehavior' && <AiBehaviorTab key={activeWorkspace.id} />}
         {activeTab === 'env' && <EnvTab />}
         {activeTab === 'integrations' && <IntegrationsTab />}
         {activeTab === 'invites' && <InvitesTab />}

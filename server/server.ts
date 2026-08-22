@@ -193,6 +193,13 @@ import { serveFavicon, serveFile } from './prod/serveFile';
     const moved = migrateLegacyRepoLayout([...firstByWs].map(([workspaceId, projectId]) => ({ workspaceId, projectId })));
     if (moved > 0) console.log(`[R3-b] migrated ${String(moved)} legacy workspace repo(s) into their first project's slot`);
   })().catch((e: unknown) => { console.error('[R3-b] legacy repo migration error:', e); });
+  //? F-001 — one-time migration of the dead `__provider_key_gemini` store into an AiConnection (the only
+  //? store the text dispatch reads). Idempotent; best-effort — never blocks boot.
+  void (async () => {
+    const { migrateLegacyGeminiKeys } = await import('./ai/connections');
+    const created = await migrateLegacyGeminiKeys();
+    if (created > 0) console.log(`[ai-connections] migrated ${String(created)} legacy Gemini key(s) into gemini-api connections`);
+  })().catch((e: unknown) => { console.error('[ai-connections] legacy Gemini key migration error:', e); });
   //? (scheduled-publish, metrics-ingest, automation-cron, demo-watch now run via the @luckystack/cron overlay
   //? — see `luckystack/cron/jobs.ts`, ADR 0022.)
   //? Q2: index the product self-knowledge corpus (global, idempotent on the corpus hash) once at boot,

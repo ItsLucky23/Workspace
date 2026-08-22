@@ -707,7 +707,12 @@
       "manageAiSkills": "Fähigkeit schreiben",
       "handoverPrompt": "Was du an die nächste Stufe übergibst",
       "handoverPromptHint": "Läuft am ENDE der Sitzung dieser Stufe und prägt die Zusammenfassung, die sie schreibt. Lässt du es leer, entscheidet die KI selbst, was weitergegeben gehört.",
-      "handoverPromptPlaceholder": "In klarer Sprache: Was muss die nächste Stufe von dir wissen?"
+      "handoverPromptPlaceholder": "In klarer Sprache: Was muss die nächste Stufe von dir wissen?",
+      "unsavedChanges": "Ungespeicherte Änderungen",
+      "remoteUpdated": "Diese Stufe wurde anderswo geändert, während du sie bearbeitet hast.",
+      "discardEdits": "Meine Änderungen verwerfen und sie laden",
+      "networkNotEnforcedTitle": "Noch nicht durchgesetzt",
+      "networkNotEnforcedBody": "Egress wird derzeit hostweit über die Umgebung WS_EGRESS / WS_EGRESS_ALLOW gesteuert (eine Allowlist für jede Stufe). Diese Einstellungen pro Stufe werden gespeichert, ändern aber nicht, was der Container erreichen kann."
     },
     "settings": {
       "saving": "Wird gespeichert…",
@@ -751,7 +756,8 @@
       "goto_carryOver": "Im Reiter Übergabe bearbeiten",
       "tipTitle": "Wie dieser Prompt aufgebaut ist",
       "tipPosition": "Dieses Feld ist {{channel}} {{n}} von {{total}}.",
-      "tipThisField": " — dieses Feld"
+      "tipThisField": " — dieses Feld",
+      "goto_skillsStage": "Auf dem Kontext-Tab dieser Stufe wählen"
     },
     "tips": {
       "automations": {
@@ -1539,7 +1545,16 @@
         "failed": "fehlgeschlagen",
         "unsupported": "nicht testbar"
       },
-      "integrationNameRequired": "Gib der Integration einen Namen."
+      "integrationNameRequired": "Gib der Integration einen Namen.",
+      "forgeScopeTitle": "Workspace-Standard",
+      "forgeScopeBody": "Diese Forge-Einstellungen (Anbieter, Basis-URL, API-Token) sind der workspace-weite STANDARD: Issue-Sync, Merge Requests und Webhooks nutzen sie für jedes Projekt ohne eigene Verbindung. Die eigene Verbindung eines Projekts gewinnt immer.",
+      "forgeOverrideActive": "Projekt „{{project}}“ überschreibt dies mit einer eigenen {{mode}}-Verbindung{{url}} — die nutzen Sync/MR/Webhook tatsächlich.",
+      "forgeOverrideNone": "Projekt „{{project}}“ hat keine eigene Verbindung, also gilt dieser Standard dafür.",
+      "forgeOverrideLink": "Projektverbindungen · Einstellungen › Developer",
+      "baseUrlConfigured": "Konfiguriert: {{host}}",
+      "forgeApiToken": "Forge-API-Token",
+      "cloneToken": "Clone-Token (git über HTTPS, nur dieses Projekt)",
+      "ownerActionsOnly": "Eigentum übertragen und den Workspace löschen erfordern die Owner-Actions-Berechtigung, die deine Rolle nicht hat — diese Aktionen sind ausgeblendet statt angeboten und verweigert."
     },
     "skills": {
       "title": "Fähigkeiten",
@@ -2472,7 +2487,15 @@
       "aiAgentTab": "ai-agent",
       "aiAgentTailHint": "Schreibgeschützte Ansicht der Live-Ausgabe des Agenten — derselbe Stream wie die Inline-Vorschau unter Übersicht.",
       "liveAgentOpenTerminal": "In Terminal öffnen",
-      "branchChipLabel": "{{branch}} · Arbeitsbranch"
+      "branchChipLabel": "{{branch}} · Arbeitsbranch",
+      "changesLoadingFiles": "Worktree-Dateien werden gelesen…",
+      "changesNeedContainer": "Die bearbeitbaren Änderungen brauchen den laufenden Container des Tickets — aktiviere das Ticket (oder nutze die Diff-Ansicht, die den Branch-Diff liest).",
+      "diffLoading": "Branch-Diff wird geladen…",
+      "diffNoBranch": "Dieses Ticket hat noch keinen Arbeitsbranch — Änderungen erscheinen, sobald der Agent eine Stage startet.",
+      "shellTab": "shell",
+      "terminalNoContainerTitle": "Kein Container für dieses Ticket",
+      "terminalNoContainerSub": "Das Terminal ist eine Shell im laufenden Container des Tickets. Aktiviere das Ticket (starte eine Stufe), dann erscheint es hier; die Terminals-Seite listet jeden laufenden Container.",
+      "terminalShellHint": "Eine Shell unter /work im Container dieses Tickets — konfigurierte Runtime-/Stufenprozesse sind hier nicht angebunden; starte sie aus dieser Shell oder beobachte sie auf der Terminals-Seite."
     },
     "terminals": {
       "subtitle": "Eine Live-Shell in jedem laufenden Ticket-Container — sieh der KI zu oder greif selbst ein.",
@@ -2758,7 +2781,8 @@
       "refinedWith": "verfeinert: „{{refine}}“",
       "regenerateWithRefine": "Neu generieren — verfeinert: „{{refine}}“",
       "refineUsed": "Verfeinert mit: {{text}}",
-      "brandSetFrom": "Zuletzt gesetzt aus {{source}}"
+      "brandSetFrom": "Zuletzt gesetzt aus {{source}}",
+      "marketerMoved": "Marketing-Assets (Texte, E-Mails, Anzeigen, Social, Namen, Thumbnails, Videoskripte) liegen unter Marketing"
     },
     "uiReview": {
       "emptyTitle": "Noch kein UI-Feedback.",
@@ -3128,7 +3152,9 @@
       "previewRunCommand": "\"{{command}}\" ausführen",
       "previewWebhook": "Webhook {{url}} aufrufen",
       "previewCron": "nach Zeitplan \"{{cron}}\"",
-      "previewTemplate": "Wenn {{event}} → {{detail}}"
+      "previewTemplate": "Wenn {{event}} → {{detail}}",
+      "cronCountRow": "{{count}} geplante Aufgabe(n) laufen nach Zeitplan",
+      "cronCountLink": "Geplant"
     },
     "automations": {
       "title": "Automatisierungen",
@@ -3276,7 +3302,9 @@
       "archiveConfirmContent": "Sie wandern aus dem aktiven Board.",
       "noAi": "Keine AI",
       "creatorAssignee": "Ersteller · Zuständiger",
-      "clearSelection": "Auswahl aufheben"
+      "clearSelection": "Auswahl aufheben",
+      "filterArchived": "Archiviert",
+      "restore": "Wiederherstellen"
     },
     "placeholder": {
       "comingNext": "{{title}} — kommt als Nächstes",
@@ -3321,7 +3349,9 @@
       "board": "Board",
       "logoInitial": "W",
       "appName": "Workspaces",
-      "switchWorkspace": "Workspace wechseln"
+      "switchWorkspace": "Workspace wechseln",
+      "projects": "Projekte",
+      "services": "Dienste"
     },
     "wsShell": {
       "back": "Zurück",

@@ -23,6 +23,7 @@ import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { ensureWorkspaceBuiltins, scheduleWorkspaceBuiltinIndexing } from '../bootstrap/workspaceBuiltins';
 import { addConnection, recordTest, removeConnection } from '../ai/connections';
+import { isAiProviderId } from '../ai/workspaceAssignments';
 import { aiProviderById } from '../ai/registry';
 import { isPipelinePreset, createDefaultPipeline, stageBlueprint, baseStageStatuses, stagesForPreset, stageCreateData, blueprintForStage, fallbackStageKey, defaultStageKeys, isStageKind } from '../bootstrap/defaultPipeline';
 import { cloneWorkspace } from '../bootstrap/cloneWorkspace';
@@ -1753,6 +1754,15 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       for (const r of await ticketIdsForKeys(action.workspaceId, keys)) await recordTicketEvent(action.workspaceId, r.id, 'status-change', userId, 'archived the ticket');
       return ticketRowsForKeys(action.workspaceId, keys);
     }
+    //? F-015 — the inverse of archive/bulk-archive. The archive confirm promised "restorable later";
+    //? until now no op set archived:false, so an archived ticket was gone from every view for good.
+    case 'unarchive': {
+      const keys = strArr(target, 'ticketIds');
+      if (keys.length === 0) return [];
+      await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, data: { archived: false } });
+      for (const r of await ticketIdsForKeys(action.workspaceId, keys)) await recordTicketEvent(action.workspaceId, r.id, 'status-change', userId, 'restored the ticket from the archive');
+      return ticketRowsForKeys(action.workspaceId, keys);
+    }
     case 'bulk-move': {
       const keys = [...new Set(strArr(target, 'ticketIds'))];
       const stageId = str(payload, 'stageId');
@@ -2764,6 +2774,9 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const feature = str(payload, 'feature');
       const providerId = str(payload, 'providerId');
       if (!feature) return [];
+      //? F-017 — reject an unknown id instead of storing it: a stored-but-ignored override is exactly the
+      //? "looks saved, silently falls back" failure this op used to produce.
+      if (providerId && providerId !== 'default' && !isAiProviderId(providerId)) return { ok: false, error: 'ai.unknownProvider' };
       const key = `__ai_provider_${feature}`;
       await (!providerId || providerId === 'default'
         ? prisma.envVar.deleteMany({ where: { workspaceId: action.workspaceId, key } })

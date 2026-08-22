@@ -593,7 +593,8 @@ export function CreateWorkspaceForm({ onCreate }: { onCreate: (name: string, ena
 //? templates + onCreateFromTemplate are PASSED IN (not via useWorkspaces): this form renders inside the
 //? menuHandler portal, which lives ABOVE the WorkspacesProvider (MenuHandlerProvider > Router), so calling
 //? useWorkspaces() here throws. The call site (ProjectSwitcher, inside the provider) injects both.
-function CreateProjectForm({ onCreate, templates, onCreateFromTemplate }: { onCreate: (input: { name: string; gitUrl?: string; preset?: string }) => void; templates: { key: string; label: string; description: string }[]; onCreateFromTemplate: (input: { name: string; template: string; brief?: string; preset?: string }) => void }) {
+//? Exported for the mobile drawer (F-023) — the same form the TopBar's ProjectSwitcher opens.
+export function CreateProjectForm({ onCreate, templates, onCreateFromTemplate }: { onCreate: (input: { name: string; gitUrl?: string; preset?: string }) => void; templates: { key: string; label: string; description: string }[]; onCreateFromTemplate: (input: { name: string; template: string; brief?: string; preset?: string }) => void }) {
   const translate = useTranslator();
   const [mode, setMode] = useState<'template' | 'link'>('template');
   const [name, setName] = useState('');
@@ -985,7 +986,7 @@ export function AIPanel({ onClose }: { onClose: () => void }) {
                   icon="robot"
                   title={translate({ key: 'workspaces.setup.ai.title' })}
                   body={translate({ key: 'workspaces.setup.ai.why' })}
-                  fix={{ cap: 'workspaceSettings', view: 'content/settings', tab: 'admin', cta: translate({ key: 'workspaces.setup.ai.cta' }) }}
+                  fix={{ cap: 'workspaceSettings', view: 'workspace', tab: 'aibehavior', section: 'backends', cta: translate({ key: 'workspaces.setup.ai.cta' }) }}
                   hint={translate({ key: 'workspaces.setup.ai.hint' })}
                 />
               )}
