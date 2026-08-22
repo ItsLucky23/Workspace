@@ -5898,3 +5898,23 @@ finding de volledige evidence + fix-hint + checkbox + Result-regel als voortgang
 
 **Notes:** partitie is sluitend geverifieerd (125/125 precies één keer toegewezen). De worktree-setup
 (`git worktree add …`) staat in de README en is een user-actie.
+
+## 2026-08-22 18:20 — Worktree-setup fix-ronde + lint-baseline-fix
+
+**User prompt:** "doe jij de worktrees en alles aanmaken zodat ik dalijk alleen in de folder moet
+cd'en, agent openen en een command van jouw moet copy pasten."
+
+**Wat ik deed:** (1) rapport + handoffs gecommit (`07389ff`); (2) drie worktrees aangemaakt:
+`C:\code\Workspace-fix1` (`fix/audit-crit-high`), `-fix2` (`fix/audit-develop`), `-fix3`
+(`fix/audit-content-shell`); (3) per worktree gekopieerd: `.env.local`, `.secret-manager-token`,
+`src/_sockets/*.generated.ts`, `src/docs/*.generated.json` (allemaal gitignored maar nodig voor
+lint/build); (4) `npm ci` + `npm run prisma:generate` per worktree. De verse-cache-lint in de
+worktrees onthulde één latente main-fout die lokaal door `.eslintcache` gemaskeerd werd:
+`server/ai/workspaceAssignments.ts:14` no-op `as string[]`-assertion (AiProviderId = string) →
+gefixt als `Set` + `.has()` (`45916fb`, lint+build groen), alle drie branches ge-fast-forward.
+
+**Files touched:** `server/ai/workspaceAssignments.ts` (2 regels).
+
+**Verificatie:** fix1 verse lint schoon + `npm run test:unit` 125/125; fix2 verse lint bewees eerder
+repo-breed exact die éne fout. Let op: `server/media/workspaceKeys.ts:31` heeft hetzelfde
+assertion-patroon maar daar is MediaProviderId een echte union — bewust niet aangeraakt.
