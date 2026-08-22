@@ -1,6 +1,6 @@
 {
-  "hash": "7be400f8c6f5af01",
-  "chunkCount": 255,
+  "hash": "178a155ba6a9fc43",
+  "chunkCount": 256,
   "chunks": [
     {
       "id": "cap-001",
@@ -1531,6 +1531,12 @@
       "kind": "decision",
       "title": "An integration test reports what it verified, not that it passed",
       "text": "ADR 0320: An integration test reports what it verified, not that it passed. Workspace settings lets you declare an integration — MongoDB, Postgres, Redis, Kafka, an HTTP API — by picking a type and pointing each of its fields at an env var. Nothing ever connected to it. The first time a wrong host or a stale password was discovered was inside a pipeline run, in an agent's container, where the error surfaces as a stage failure rather than as \"your connection string is wrong\". The owner: *\"bij workspace/integrations wil ik graag iets maken dat voor alle pre defined tools zoals mongodb dat waar mogelijk we een ping call toevoegen of iets om de integration daadwerkelijk te testen.\"* The hard part is \"waar mogelijk\". Of the nine predefined types, exactly one (Redis) has a client library already in this project. Adding `mongodb`, `pg`, `mysql2`, `kafkajs` and `amqplib` for the sake of a settings-page button is a real dependency decision, not an implementation detail. Decision: **A test reports the strongest thing it actually verified, in its own word.** | Verdict | Means | How it is reached | |---|---|---| | `ok` | The protocol answered and the credentials were accepted | Redis `PING` (real, via `ioredis`); an HTTP/Elasticsearch `GET` returning 2xx/3xx | | `reachable` | The host resolves and the port accepts a connection. **Credentials not verified.** | A TCP dial to the host+port parsed out of the connection string | | `failed` | It did not work | Refused/timed-out connection, or "
+    },
+    {
+      "id": "adr-0321",
+      "kind": "decision",
+      "title": "The coding agent is any subscription CLI in a PTY — never metered",
+      "text": "ADR 0321: The coding agent is any subscription CLI in a PTY — never metered.  Decision: "
     }
   ]
 }

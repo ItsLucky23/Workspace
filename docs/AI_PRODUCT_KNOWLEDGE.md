@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `7be400f8c6f5af01` · 17 capabilities · 238 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `178a155ba6a9fc43` · 17 capabilities · 239 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -264,3 +264,4 @@
 - `adr-0318` A skill is switched on by the stage that wants it, not globally
 - `adr-0319` The handover is written by the stage that finishes, not the one that starts
 - `adr-0320` An integration test reports what it verified, not that it passed
+- `adr-0321` The coding agent is any subscription CLI in a PTY — never metered

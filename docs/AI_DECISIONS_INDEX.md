@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (238)
+## Decisions (239)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -251,6 +251,7 @@
 | 0318 | A skill is switched on by the stage that wants it, not globally | 🟢 accepted | ai, skills, pipeline, ux | — | `docs/decisions/0318-a-skill-is-switched-on-by-the-stage-that-wants-it-not-globally.md` |
 | 0319 | The handover is written by the stage that finishes, not the one that starts | 🟢 accepted | pipeline, prompts, ux, orchestrator | — | `docs/decisions/0319-the-handover-is-written-by-the-stage-that-finishes-not-the-one-that-starts.md` |
 | 0320 | An integration test reports what it verified, not that it passed | 🟢 accepted | integrations, settings, ux, security | — | `docs/decisions/0320-an-integration-test-reports-what-it-verified-not-that-it-passed.md` |
+| 0321 | The coding agent is any subscription CLI in a PTY — never metered | 🟢 accepted | ai-providers, pipeline, billing, invariant-6 | — | `docs/decisions/0321-coding-agent-is-any-subscription-cli-in-a-pty-never-metered.md` |
 
 ## Summaries
 
@@ -2187,6 +2188,14 @@ The project owns a **list** of runtime processes. Each entry starts in the ticke
 **Governs** (`//? @adr 0320`): `server/integrations/probe.ts`
 
 → `docs/decisions/0320-an-integration-test-reports-what-it-verified-not-that-it-passed.md`
+
+### 0321 — The coding agent is any subscription CLI in a PTY — never metered
+
+**0321** · accepted · tags: ai-providers, pipeline, billing, invariant-6 · 2026-08-22
+
+_(no Decision section found — fill it in)_
+
+→ `docs/decisions/0321-coding-agent-is-any-subscription-cli-in-a-pty-never-metered.md`
 
 ## Code governed by decisions
 

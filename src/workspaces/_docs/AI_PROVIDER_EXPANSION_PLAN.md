@@ -73,9 +73,9 @@ Allowing `pipeline-agent` on a metered API backend (e.g. GPT via API when no sub
 - **Na merge Agent 1:** Fase 1 + 2 can run (small; could even be one cheap-agent package with the same handoff format).
 - **Fase 3** is its own program: spike → adapter → per-stage picker; start only after OPEN VRAAG B + the invariant-6 decision.
 
-## OPEN VRAAG (owner)
+## BESLIST (owner, 2026-08-22 — ADR 0321)
 
-- **A.** Azure OpenAI in de catalogus? (alleen zinvol bij daadwerkelijk gebruik)
-- **B.** Fase 3 doen, en zo ja: OpenAI Codex CLI eerst, dan Gemini CLI? (vereist invariant-6-generalisatie + ADR)
-- **C.** Fase 4 (metered API als coding-agent, met budget-cap + consent) — willen we dit überhaupt?
-- **D.** Prioriteit: Fase 1+2 direct na de fix-ronde inplannen als extra handoff-pakket voor een goedkope agent, of eerst de hele fix-ronde afmaken?
+- **A.** Azure OpenAI: **nee**, overslaan (pas bij concrete behoefte).
+- **B.** Fase 3: **ja — OpenAI Codex CLI eerst**, Gemini CLI later. Invariant 6 generaliseert naar "interactieve vendor-CLI in PTY op subscription-seat"; CLAUDE.md-edit bij de start van Fase 3.
+- **C.** Fase 4: **nee** — geen metered-API-coding, ook niet als opt-in. Fase 4 vervalt.
+- **D.** Fase 1+2: **direct na merge van fix-ronde Agent 1**, als vierde handoff-pakket voor een goedkope agent.
