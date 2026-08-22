@@ -5850,3 +5850,51 @@ letterlijk niets. Naam wordt nu geseed uit het voorgeselecteerde type, en een le
 **Nog steeds open, niet gefikst:** meerdere settings-writes zijn fire-and-forget over de socket zonder
 enige bevestiging ("Stage opslaan", "Variabele toevoegen"). Voor een mens niet merkbaar, maar het is de
 derde keer dat mijn eigen e2e erover struikelt.
+
+## 2026-08-22 17:15 — Ultracode 8-agent UI/functionele audit (rapport-only)
+
+**User prompt:** "ga nu met ultracode je eigen plan en indeling af" — de eerder afgesproken 8-agent
+review-ronde over heel `src/workspaces`: alles wat niet werkt, dubbel is of verwarrend is in detail
+rapporteren; níks fixen (fixes volgen met goedkopere modellen).
+
+**Wat ik deed:** ultracode-workflow met 8 parallelle Fable-agents (6 gebieds-agents:
+workspace-settings / werk-lane / machine-lane / tools / content / shell+shared, + 2 cross-cutting:
+duplicaten-eigenaarschap en data-waarheid provider→controlApi→Prisma). 8/8 klaar, ~1,96M subagent-
+tokens, 514 tool-calls. Output geconsolideerd via script naar één rapport met stabiele finding-IDs.
+
+**Resultaat:** 125 bevindingen — 3 critical (team-management dood door locked-role-filter;
+Documents-module onopenbaar door un-prefixed navigate-pad; Gemini-key split-brain over twee disjuncte
+stores), 25 high, 49 medium, 48 low. 4 cross-agent-bevestigde paren gededupliceerd (F-006≡F-014,
+F-018≡F-026, F-005≡F-020, F-002≡F-021). Gecureerde top-10 fix-batches bovenaan het rapport; per
+gebied ook een verifiedOk-lijst van flows die aantoonbaar wél werken.
+
+**Files touched:** `src/workspaces/_docs/UI_FUNCTIONAL_AUDIT_2026-08-22.md` (nieuw, het rapport) —
+verder geen code aangeraakt (rapport-only ronde, baseline `55ff5b7`).
+
+**Notes:** fix-ronde kan het rapport top-down afwerken; batch 1–3 zijn de criticals. Browser-only
+interactiebugs vallen buiten deze statische ronde — aparte agent-browser-ronde als vervolg
+voorgesteld.
+
+## 2026-08-22 17:45 — Handoff-files voor de 3-agent fix-ronde
+
+**User prompt:** maak handoff-files/prompts voor: (1) slimme Fable-AI die alle critical+high fixt,
+(2)+(3) snelle goedkope AI's voor de rest; alle drie tegelijk actief, met sequencing waar anders
+conflicts zouden ontstaan.
+
+**Wat ik deed:** conflict-analyse over de 125 audit-bevindingen (welke files raakt de crit/high-agent)
+→ 40 van de 97 medium/low bleken in Fable-files te liggen. Opzet: 3 git-worktrees/branches, agent 2+3
+elk een Fase A (28 resp. 26 punten, parallel-veilig — files die agent 1 nooit raakt) en Fase B (21
+resp. 22 punten, pas ná merge van agent 1 + rebase). Vier files gegenereerd in
+`src/workspaces/_docs/fix-round-2026-08-22/`: `README.md` (coördinatie, worktree-setup, merge-volgorde
+1→2→3, locale-union-regel), `AGENT_1_FABLE.md` (28 crit/high in 10 batches, incl. F-013 die in de
+eerste top-10-curatie ontbrak — rapport-tabel ook bijgewerkt), `AGENT_2_DEVELOP.md` (49: develop-module
++ WorkspacesProvider + terminals), `AGENT_3_CONTENT_SHELL.md` (48: content + settings + shell-UI +
+workspace-settings-restjes). Elke handoff is self-contained: projectcontext, 10 ground rules
+(surgical/lint+build/i18n-append-only/skip-protocol), exclusieve file-ownership-lijst per fase, en per
+finding de volledige evidence + fix-hint + checkbox + Result-regel als voortgangsadministratie.
+
+**Files touched:** `src/workspaces/_docs/fix-round-2026-08-22/{README,AGENT_1_FABLE,AGENT_2_DEVELOP,AGENT_3_CONTENT_SHELL}.md`
+(nieuw), `src/workspaces/_docs/UI_FUNCTIONAL_AUDIT_2026-08-22.md` (batch-10-rij: F-013 toegevoegd).
+
+**Notes:** partitie is sluitend geverifieerd (125/125 precies één keer toegewezen). De worktree-setup
+(`git worktree add …`) staat in de README en is een user-actie.
