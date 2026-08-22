@@ -10,8 +10,8 @@ import { getPrismaClient, tryCatch } from '@luckystack/core';
 import type { AiFeature, AiProviderId } from './types';
 
 export const AI_OVERRIDE_PREFIX = '__ai_provider_';
-const PROVIDER_IDS: AiProviderId[] = ['claude-cli', 'gemini-api'];
-export const isAiProviderId = (v: string): v is AiProviderId => (PROVIDER_IDS as string[]).includes(v);
+const PROVIDER_IDS = new Set<AiProviderId>(['claude-cli', 'gemini-api']);
+export const isAiProviderId = (v: string): v is AiProviderId => PROVIDER_IDS.has(v);
 
 export async function loadWorkspaceAiOverrides(workspaceId?: string): Promise<Partial<Record<AiFeature, AiProviderId>>> {
   if (!workspaceId) return {};

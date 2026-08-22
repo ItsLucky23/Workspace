@@ -6,13 +6,13 @@
 > Don't read every index every session. Pick the profile matching your task, LOAD only its
 > artifacts, and QUERY the rest via the `@luckystack/mcp` tools instead of reading whole files.
 
-## Artifact sizes (total ≈ 229,868 tokens if all loaded)
+## Artifact sizes (total ≈ 229,776 tokens if all loaded)
 
 | Artifact | Est. tokens | Bytes | Purpose |
 | --- | --- | --- | --- |
 | `contract` — `CLAUDE.md` | 11,809 | 47,234 | Always-on rules (read every session). |
 | `quick-index` — `docs/AI_QUICK_INDEX.md` | _(absent)_ | — | Framework surfaces + package map. |
-| `capabilities` — `docs/AI_CAPABILITIES.md` | 5,557 | 22,228 | Existing helpers/exports — check before authoring. |
+| `capabilities` — `docs/AI_CAPABILITIES.md` | 5,465 | 21,861 | Existing helpers/exports — check before authoring. |
 | `project-index` — `docs/AI_PROJECT_INDEX.md` | 9,403 | 37,610 | Routes/pages/helpers/components + test coverage. |
 | `decisions` — `docs/AI_DECISIONS_INDEX.md` | 69,610 | 278,438 | Why-it-is-this-way (ADRs). |
 | `lessons` — `docs/AI_LESSONS_INDEX.md` | 8,385 | 33,538 | Known pitfalls (what failed). |
@@ -29,7 +29,7 @@ Per task type: the minimal artifact set to load + the MCP tools to query for eve
 
 _Adding an API/sync route: reuse before authoring, copy the canonical shape._
 
-- **Load** (≈ 19,319 tokens): `contract`, `capabilities`, `examples`, `runbooks`
+- **Load** (≈ 19,227 tokens): `contract`, `capabilities`, `examples`, `runbooks`
 - **Query via MCP** (don't read whole): `find_route`, `get_capability`, `get_example('auth-api-route')`, `blast_radius`
 
 ### `new-page`
