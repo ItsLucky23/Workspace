@@ -166,6 +166,7 @@ const relativePath = (pathname: string): string => pathname.replace(/^\/workspac
 
 function pathForTrail(view: WsView, trail: readonly string[] = []): string {
   const base = pathForView(view);
+  if (view === 'terminals' && trail[0]) return `${base}?ticket=${encodeURIComponent(trail[0])}`;
   if (!TRAIL_ROOTS.includes(relativePath(base))) return base;
   const clean = trail.filter((s) => s.length > 0).map((s) => encodeURIComponent(s));
   return clean.length > 0 ? `${base}/${clean.join('/')}` : base;
@@ -218,7 +219,7 @@ const VIEW_LABELS: Record<string, string> = {
   sources: 'Sources', pipeline: 'Pipeline', automations: 'Automations', components: 'Components', usage: 'Usage', studio: 'Studio',
   designer: 'Designer', interviewer: 'Interviewer', marketing: 'Marketing', scheduled: 'Scheduled',
   knowledge: 'Knowledge', content: 'Content', 'scheduled-posts': 'Scheduled posts', settings: 'Account', workspace: 'Workspace',
-  documents: 'Documents',
+  documents: 'Documents', answers: 'Answers', ai: 'AI',
 };
 function viewLabel(view: WsView): string {
   return isTicketView(view) ? view : (VIEW_LABELS[view] ?? 'Board');
@@ -241,6 +242,20 @@ function useIsMobile(): boolean {
 //? re-send and get silently dropped. `randomUUID` is available in every secure
 //? context (https + localhost/127.0.0.1).
 function nextReqId(): string { return globalThis.crypto.randomUUID(); }
+
+function reportRequestFailure(response: unknown): boolean {
+  if (response !== null && typeof response === 'object' && 'status' in response && response.status === 'error') {
+    const errorCode = 'errorCode' in response && typeof response.errorCode === 'string' ? response.errorCode : 'workspaces.syncFailed';
+    notify.error({ key: errorCode });
+    return true;
+  }
+  return false;
+}
+
+function observeSync(request: Promise<unknown>): void {
+  void request.then((response) => { reportRequestFailure(response); }, () => { notify.error({ key: 'workspaces.syncFailed' }); });
+}
+
 //? A local counter for UI-only ids (chat messages) — never sent to the server.
 let reqCounter = 0;
 
@@ -470,7 +485,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       const scoped = incoming.filter((ticket) => ticket.projectId === s.activeProjectId);
       if (scoped.length === 0) return s;
       const byId = new Map(s.tickets.map((ticket) => [ticket.id, ticket]));
-      for (const ticket of scoped) byId.set(ticket.id, ticket);
+      for (const ticket of scoped) {
+        const previous = byId.get(ticket.id);
+        byId.set(ticket.id, { ...ticket, ...(ticket.costLabel === undefined && previous?.costLabel !== undefined ? { costLabel: previous.costLabel } : {}) });
+      }
       return { ...s, tickets: [...byId.values()] };
     });
   }, []);
@@ -919,7 +937,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
 
   //? archive/restore/delete of a context doc returns the same full doc list, so the delta is
   //? handled identically to addInfoDoc — every client in the room replaces its list (ADR 0310).
-  useMemo(() => upsertSyncEventCallback({
+  useEffect(() => upsertSyncEventCallback({
     name: 'workspaces/infoDocAdmin', version: 'v1',
     callback: ({ serverOutput }) => {
       if (serverOutput.status !== 'success') return;
@@ -988,7 +1006,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   //? the merge-callback above updates the UI for everyone (no refetch).
   const quickAddApi = useCallback((input: { title: string; sprintId?: string; description?: string; labels?: string[]; assigneeId?: string; priority?: TicketPriority; startWithAi?: boolean }) => {
     const scope = currentProjectScope();
-    if (!scope) return;
+    if (!scope) { notify.warning({ key: 'workspaces.board.needsProject' }); return; }
     const { workspaceId: room, projectId } = scope;
     void syncRequest({
       name: 'workspaces/quickAdd', version: 'v1',
@@ -1234,7 +1252,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   //? `apiRequest(...)` promise and refetches the snapshot once it settles. Takes a
   //? Promise (NOT a route name), so it never erases apiRequest's route/version
   //? inference — the literal `name:` at each call site keeps the payload fully typed.
-  const afterWrite = useCallback((p: Promise<unknown>) => { void p.then(() => { refetch(); }); }, [refetch]);
+  const afterWrite = useCallback((p: Promise<unknown>) => {
+    void p.then((response) => { if (!reportRequestFailure(response)) refetch(); }, () => { notify.error({ key: 'workspaces.syncFailed' }); });
+  }, [refetch]);
 
   // UI-only state (not yet server-backed).
   const [openTabs, setOpenTabs] = useState<string[]>([]);
@@ -1338,6 +1358,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     const room = scope.workspaceId;
     if (p.op === 'bulk-move' && p.ticketKeys && p.stageId) {
       const receipt = await syncRequest({ name: 'workspaces/bulkMove', version: 'v1', data: { ticketIds: p.ticketKeys, stageId: p.stageId, projectId: p.projectId, clientRequestId: nextReqId() }, receiver: room });
+      if (receipt.status === 'success') {
+        setStageOverrides(() => Object.fromEntries(p.ticketKeys.map((ticketId) => [ticketId, p.stageId])));
+      }
       return receipt.status === 'success';
     }
     if (p.op === 'assign' && p.ticketKeys && p.assigneeId) {
@@ -1624,17 +1647,20 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       acceptInvite: (token) => { afterWrite(apiRequest({ name: 'workspaces/acceptInvite', version: 'v1', data: { inviteToken: token, clientRequestId: nextReqId() } })); },
       sprintCreate: sprintCreateApi,
       editSprint: editSprintApi,
-      renameWorkspace: (name) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/renameWorkspace', version: 'v1', data: { name, clientRequestId: nextReqId() }, receiver: room }); },
+      renameWorkspace: (name) => { const room = snap.activeWorkspaceId; if (room) observeSync(syncRequest({ name: 'workspaces/renameWorkspace', version: 'v1', data: { name, clientRequestId: nextReqId() }, receiver: room })); },
       deleteWorkspace: () => {
-        afterWrite(apiRequest({ name: 'workspaces/deleteWorkspace', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', clientRequestId: nextReqId() } }));
-        desiredSnapshotTarget.current = { workspaceId: undefined, projectId: undefined };
-        setWantWorkspaceId(undefined);
-        setWantProjectId(undefined);
-        setLoading(true);
+        void apiRequest({ name: 'workspaces/deleteWorkspace', version: 'v1', data: { workspaceId: snap.activeWorkspaceId ?? '', clientRequestId: nextReqId() } }).then((response) => {
+          if (reportRequestFailure(response)) return;
+          desiredSnapshotTarget.current = { workspaceId: undefined, projectId: undefined };
+          setWantWorkspaceId(undefined);
+          setWantProjectId(undefined);
+          setLoading(true);
+          refetch();
+        }, () => { notify.error({ key: 'workspaces.syncFailed' }); });
       },
       saveGitlab: (baseUrl, token, forgeType) => {
         const room = snap.activeWorkspaceId;
-        if (room) void syncRequest({ name: 'workspaces/gitlabSettings', version: 'v1', data: { baseUrl, ...(token ? { token } : {}), ...(forgeType ? { forgeType } : {}), clientRequestId: nextReqId() }, receiver: room });
+        if (room) observeSync(syncRequest({ name: 'workspaces/gitlabSettings', version: 'v1', data: { baseUrl, ...(token ? { token } : {}), ...(forgeType ? { forgeType } : {}), clientRequestId: nextReqId() }, receiver: room }));
       },
       //? #27 — only the initiating browser receives this write-once value. The snapshot keeps
       //? `webhookConfigured` metadata, so neither a refetch nor room broadcast can leak it.
@@ -1653,7 +1679,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       //? existed; this wires the client dispatch). The Conductor authorizes source membership (B-23).
       copyWorkspaceAssets: (sourceWorkspaceId) => {
         const room = snap.activeWorkspaceId;
-        if (room && sourceWorkspaceId) void syncRequest({ name: 'workspaces/copyWorkspaceAssets', version: 'v1', data: { sourceWorkspaceId, clientRequestId: nextReqId() }, receiver: room });
+        if (room && sourceWorkspaceId) observeSync(syncRequest({ name: 'workspaces/copyWorkspaceAssets', version: 'v1', data: { sourceWorkspaceId, clientRequestId: nextReqId() }, receiver: room }));
       },
       //? Reindex the workspace's institutional memory (RAG). One-click via the existing projectAdmin op-router.
       indexMemory: () => {
@@ -1671,12 +1697,12 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       //? cap; no id/create = the legacy first-cap edit/create. Only the provided fields are sent.
       editBudget: (input) => {
         const room = snap.activeWorkspaceId;
-        if (room) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'edit-budget', ...input, clientRequestId: nextReqId() }, receiver: room });
+        if (room) observeSync(syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'edit-budget', ...input, clientRequestId: nextReqId() }, receiver: room }));
       },
       //? Resume spending after a budget freeze (resets the window's spent to 0).
       resumeSpend: () => {
         const room = snap.activeWorkspaceId;
-        if (room) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'resume-spend', clientRequestId: nextReqId() }, receiver: room });
+        if (room) observeSync(syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'resume-spend', clientRequestId: nextReqId() }, receiver: room }));
       },
       //? Pull the active project's open forge issues (GitLab|GitHub) + upsert them as tickets (ADR 0036).
       resyncForge: () => {
@@ -1734,7 +1760,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       //? K2 — register an uploaded doc (md/txt) as a context-doc InfoSource the AI can use.
       addInfoDoc: (name, content) => {
         const room = snap.activeWorkspaceId;
-        if (room) void syncRequest({ name: 'workspaces/addInfoDoc', version: 'v1', data: { name, content, clientRequestId: nextReqId() }, receiver: room });
+        if (room) observeSync(syncRequest({ name: 'workspaces/addInfoDoc', version: 'v1', data: { name, content, clientRequestId: nextReqId() }, receiver: room }));
       },
       infoDocAdmin: (docId, action) => {
         const room = snap.activeWorkspaceId;
@@ -1750,30 +1776,30 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         if (!role || role.locked === true) return;
         const room = snap.activeWorkspaceId;
         const perms = role.perms.map((v, j) => (j === ci ? !v : v));
-        if (room) void syncRequest({ name: 'workspaces/roleUpdate', version: 'v1', data: { roleKey: role.key, perms, clientRequestId: nextReqId() }, receiver: room });
+        if (room) observeSync(syncRequest({ name: 'workspaces/roleUpdate', version: 'v1', data: { roleKey: role.key, perms, clientRequestId: nextReqId() }, receiver: room }));
       },
       addRole: (name) => {
         const room = snap.activeWorkspaceId;
         const key = name.trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-+|-+$/g, '') || `role-${String(snap.roles.length + 1)}`;
         const perms = (snap.roles[0]?.perms ?? []).map(() => false);
-        if (room) void syncRequest({ name: 'workspaces/roleCreate', version: 'v1', data: { key, label: name, perms, clientRequestId: nextReqId() }, receiver: room });
+        if (room) observeSync(syncRequest({ name: 'workspaces/roleCreate', version: 'v1', data: { key, label: name, perms, clientRequestId: nextReqId() }, receiver: room }));
       },
       memberRoles: Object.fromEntries(snap.members.map((m) => [m.id, m.roleKey ?? m.role])),
-      setMemberRole: (mid, role) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/changeRole', version: 'v1', data: { memberId: mid, roleKey: role, clientRequestId: nextReqId() }, receiver: room }); },
-      inviteMember: (email, roleKey) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/invite', version: 'v1', data: { email, roleKey, clientRequestId: nextReqId() }, receiver: room }); },
-      revokeInvite: (inviteId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/revokeInvite', version: 'v1', data: { inviteId, clientRequestId: nextReqId() }, receiver: room }); },
-      removeMember: (memberId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/removeMember', version: 'v1', data: { memberId, clientRequestId: nextReqId() }, receiver: room }); },
-      transferOwnership: (memberId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/transferOwnership', version: 'v1', data: { memberId, clientRequestId: nextReqId() }, receiver: room }); },
+      setMemberRole: (mid, role) => { const room = snap.activeWorkspaceId; if (room) observeSync(syncRequest({ name: 'workspaces/changeRole', version: 'v1', data: { memberId: mid, roleKey: role, clientRequestId: nextReqId() }, receiver: room })); },
+      inviteMember: (email, roleKey) => { const room = snap.activeWorkspaceId; if (room) observeSync(syncRequest({ name: 'workspaces/invite', version: 'v1', data: { email, roleKey, clientRequestId: nextReqId() }, receiver: room })); },
+      revokeInvite: (inviteId) => { const room = snap.activeWorkspaceId; if (room) observeSync(syncRequest({ name: 'workspaces/revokeInvite', version: 'v1', data: { inviteId, clientRequestId: nextReqId() }, receiver: room })); },
+      removeMember: (memberId) => { const room = snap.activeWorkspaceId; if (room) observeSync(syncRequest({ name: 'workspaces/removeMember', version: 'v1', data: { memberId, clientRequestId: nextReqId() }, receiver: room })); },
+      transferOwnership: (memberId) => { const room = snap.activeWorkspaceId; if (room) observeSync(syncRequest({ name: 'workspaces/transferOwnership', version: 'v1', data: { memberId, clientRequestId: nextReqId() }, receiver: room })); },
       envVars: snap.envVars,
-      saveEnvVar: (v) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveEnv', version: 'v1', data: { key: v.key, value: v.value, secret: v.secret, clientRequestId: nextReqId() }, receiver: room }); },
-      removeEnvVar: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/removeEnv', version: 'v1', data: { envId: id, clientRequestId: nextReqId() }, receiver: room }); },
+      saveEnvVar: (v) => { const room = snap.activeWorkspaceId; if (room) observeSync(syncRequest({ name: 'workspaces/saveEnv', version: 'v1', data: { key: v.key, value: v.value, secret: v.secret, clientRequestId: nextReqId() }, receiver: room })); },
+      removeEnvVar: (id) => { const room = snap.activeWorkspaceId; if (room) observeSync(syncRequest({ name: 'workspaces/removeEnv', version: 'v1', data: { envId: id, clientRequestId: nextReqId() }, receiver: room })); },
       integrationTools: snap.integrations,
       saveIntegrationTool: (t) => {
         const room = snap.activeWorkspaceId;
         const known = snap.integrations.some((x) => x.id === t.id);
-        if (room) void syncRequest({ name: 'workspaces/saveIntegration', version: 'v1', data: { ...(known ? { integrationId: t.id } : {}), name: t.name, type: t.type, fields: t.fields, mcp: t.mcp, clientRequestId: nextReqId() }, receiver: room });
+        if (room) observeSync(syncRequest({ name: 'workspaces/saveIntegration', version: 'v1', data: { ...(known ? { integrationId: t.id } : {}), name: t.name, type: t.type, fields: t.fields, mcp: t.mcp, clientRequestId: nextReqId() }, receiver: room }));
       },
-      removeIntegrationTool: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/removeIntegration', version: 'v1', data: { integrationId: id, clientRequestId: nextReqId() }, receiver: room }); },
+      removeIntegrationTool: (id) => { const room = snap.activeWorkspaceId; if (room) observeSync(syncRequest({ name: 'workspaces/removeIntegration', version: 'v1', data: { integrationId: id, clientRequestId: nextReqId() }, receiver: room })); },
       testIntegrationTool: async (id) => {
         const room = snap.activeWorkspaceId;
         if (!room) return { ok: false };
@@ -1854,7 +1880,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       //? than merging a single-row delta.
       applyPipelinePreset: (projectId, preset, mode) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/pipelinePreset', version: 'v1', data: { projectId, preset, mode, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       gitConfig: snap.gitConfig,
-      saveGitConfig: (cfg) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveGitConfig', version: 'v1', data: { gitConfig: cfg, clientRequestId: nextReqId() }, receiver: room }); },
+      saveGitConfig: (cfg) => { const room = snap.activeWorkspaceId; if (room) observeSync(syncRequest({ name: 'workspaces/saveGitConfig', version: 'v1', data: { gitConfig: cfg, clientRequestId: nextReqId() }, receiver: room })); },
       //? Module gating: optimistically flip the active workspace's enabledSections (instant
       //? nav re-render) then persist via the [save-sections] control-op; the broadcast
       //? reconciles idempotently.
@@ -1862,7 +1888,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         const room = snap.activeWorkspaceId;
         if (!room) return;
         setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === room ? { ...w, enabledSections } : w)) }));
-        void syncRequest({ name: 'workspaces/saveSections', version: 'v1', data: { enabledSections, clientRequestId: nextReqId() }, receiver: room });
+        observeSync(syncRequest({ name: 'workspaces/saveSections', version: 'v1', data: { enabledSections, clientRequestId: nextReqId() }, receiver: room }));
       },
       //? E5 — user-defined AI tasks (create/update, delete, run). Run stays propose/generate (output only).
       saveCustomTask: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/customTask', version: 'v1', data: { op: 'save-custom-task', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
@@ -1911,14 +1937,14 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         const room = snap.activeWorkspaceId;
         if (!room) return;
         setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === room ? { ...w, autonomyLevel } : w)) }));
-        void syncRequest({ name: 'workspaces/saveAutonomy', version: 'v1', data: { autonomyLevel, clientRequestId: nextReqId() }, receiver: room });
+        observeSync(syncRequest({ name: 'workspaces/saveAutonomy', version: 'v1', data: { autonomyLevel, clientRequestId: nextReqId() }, receiver: room }));
       },
       //? Q4 + K4 + P2 — the workspace-wide AI-behaviour settings (optimistic flip + persist).
       saveAiInstruction: (aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl) => {
         const room = snap.activeWorkspaceId;
         if (!room) return;
         setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === room ? { ...w, aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl } : w)) }));
-        void syncRequest({ name: 'workspaces/saveAiInstruction', version: 'v1', data: { aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl, clientRequestId: nextReqId() }, receiver: room });
+        observeSync(syncRequest({ name: 'workspaces/saveAiInstruction', version: 'v1', data: { aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl, clientRequestId: nextReqId() }, receiver: room }));
       },
       //? P1 — set which provider runs a feature ('default' clears the override).
       aiOverrides: snap.aiOverrides,
@@ -1927,7 +1953,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       pats: snap.pats,
       saveAiProvider: (feature, providerId) => {
         const room = snap.activeWorkspaceId;
-        if (room) void syncRequest({ name: 'workspaces/saveAiProvider', version: 'v1', data: { feature, providerId, clientRequestId: nextReqId() }, receiver: room });
+        if (room) observeSync(syncRequest({ name: 'workspaces/saveAiProvider', version: 'v1', data: { feature, providerId, clientRequestId: nextReqId() }, receiver: room }));
       },
       workspacePaused: snap.workspacePaused,
       pauseTicket: (ticketKey) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/agentControl', version: 'v1', data: { op: 'pause', ticketKey, clientRequestId: nextReqId() }, receiver: room }); },
@@ -1995,7 +2021,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       deleteTrigger: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-delete', triggerId: id, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       runTrigger: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-run', triggerId: id, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? Fire a content-generation control-op (U2) — Conductor executes (B-23); the snapshot refetch brings the new asset/state back.
-      runContentOp: (op, contentProjectId, payload) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op, contentProjectId, ...payload, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      runContentOp: (op, contentProjectId, payload) => {
+        const room = snap.activeWorkspaceId;
+        if (room) void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op, contentProjectId, ...payload, clientRequestId: nextReqId() }, receiver: room }).then((response) => { if (!reportRequestFailure(response)) refetch(); }, () => { notify.error({ key: 'workspaces.syncFailed' }); });
+      },
       //? #125 — create a content piece from a brief (mirrors the chat-proposal create-content path).
       createContentPiece: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-from-brief', title: input.title, brief: input.brief, format: input.format ?? 'faceless', clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? Media €-budget settings (U3) — cap/alert/enabled via edit-media-budget (B-23).

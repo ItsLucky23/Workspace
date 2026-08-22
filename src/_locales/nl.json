@@ -2520,7 +2520,9 @@
       "restoreTitle": "Terug naar rooster",
       "resizeTitle": "Sleep om de hoogte aan te passen",
       "newShell": "Nieuwe shell",
-      "newShellPlaceholder": "Naam van de shell…"
+      "newShellPlaceholder": "Naam van de shell…",
+      "notConnected": "Geen verbinding met de backend-socket — start de server en log in.",
+      "processExited": "[proces gestopt met code {{code}}]"
     },
     "sources": {
       "subtitle": "Contextdocumenten worden vóór elke AI-run volledig geladen · skills & MCP-tools worden op aanvraag aangeroepen.",
@@ -2572,7 +2574,10 @@
       "delete": "Definitief verwijderen",
       "deleteConfirmTitle": "{{name}} verwijderen?",
       "deleteConfirmContent": "Dit verwijdert het document en de inhoud definitief. Archiveren houdt het herstelbaar.",
-      "archivedCount": "Gearchiveerd ({{n}})"
+      "archivedCount": "Gearchiveerd ({{n}})",
+      "emptyFile": "Dit bestand is leeg en is niet geüpload.",
+      "uploadQueued": "Upload staat klaar.",
+      "reindexFailed": "Het herindexeren is niet afgerond. Probeer het opnieuw."
     },
     "mr": {
       "runCi": "CI draaien",
@@ -3165,7 +3170,52 @@
       "tagline": "Elk UI-component dat we leveren, live onder jouw designthema.",
       "openInDesigner": "Openen in Designer",
       "previewOnly": "Alleen preview",
-      "previewOnlyBody": "Een thema of licht/donker kiezen verandert hier alleen wat JIJ in deze galerij ziet — het wordt nooit opgeslagen en verandert nooit waarmee de coding-agent bouwt."
+      "previewOnlyBody": "Een thema of licht/donker kiezen verandert hier alleen wat JIJ in deze galerij ziet — het wordt nooit opgeslagen en verandert nooit waarmee de coding-agent bouwt.",
+      "demoPrimary": "Primair",
+      "demoSecondary": "Secundair",
+      "demoGhost": "Ghost",
+      "demoDanger": "Gevaar",
+      "demoDisabled": "Uitgeschakeld",
+      "demoSignedIn": "Ingelogd als Ada",
+      "demoProfile": "Profiel",
+      "demoSignOut": "Uitloggen",
+      "demoPopover": "Popover",
+      "demoNewItem": "Nieuw item",
+      "demoDefault": "Standaard",
+      "demoFocus": "Focus",
+      "demoLoading": "Laden",
+      "demoFocused": "Gefocust",
+      "demoError": "Fout",
+      "demoDropdownMd": "Dropdown · md",
+      "demoDropdownSearch": "Dropdown · lg · zoeken",
+      "demoMultiSelect": "Meervoudige selectie",
+      "demoText": "Tekst",
+      "demoNumber": "Getal",
+      "demoPassword": "Wachtwoord",
+      "demoSearch": "Zoeken",
+      "demoSearchPlaceholder": "Typ om te filteren…",
+      "demoEmailNotifications": "E-mailmeldingen",
+      "demoCompactMode": "Compacte modus",
+      "demoAgreeTerms": "Ik ga akkoord met de voorwaarden",
+      "demoSubscribe": "Abonneren",
+      "demoDueDate": "Vervaldatum",
+      "demoBoard": "Board",
+      "demoList": "Lijst",
+      "demoWorkspaceToggle": "Workspace-schakelaar",
+      "demoOverview": "Overzicht",
+      "demoActivity": "Activiteit",
+      "demoSettings": "Instellingen",
+      "demoEdit": "Bewerken",
+      "demoDuplicate": "Dupliceren",
+      "demoDelete": "Verwijderen",
+      "demoInfoDot": "Informatie",
+      "demoApple": "Appel",
+      "demoBanana": "Banaan",
+      "demoCherry": "Kers",
+      "demoFrontend": "Frontend",
+      "demoBackend": "Backend",
+      "demoDesign": "Design",
+      "demoSelected": "{{n}} geselecteerd"
     },
     "code": {
       "title": "Code",
@@ -3199,6 +3249,7 @@
       "agentNeedsRepo": "Er kan nog geen agent draaien — deze workspace heeft geen gekoppelde repository. Koppel er één via Instellingen → Workspace → Git, en controleer de AI-instellingen.",
       "unassigned": "Niet toegewezen",
       "terminal": "terminal",
+      "needsProject": "Selecteer of maak eerst een project voordat je een ticket toevoegt.",
       "overWipLimit": "Boven WIP-limiet",
       "aiDrivenStage": "AI-gedreven stage",
       "noTickets": "Geen tickets",
@@ -3364,7 +3415,8 @@
       "offline": "Geen verbinding — je acties worden bewaard en verstuurd zodra je weer online bent.",
       "offlineReconnected": "Weer verbonden.",
       "offlineQueued": "in de wacht",
-      "offlineRetry": "Nu opnieuw proberen"
+      "offlineRetry": "Nu opnieuw proberen",
+      "syncFailed": "De wijziging kon niet worden opgeslagen. Probeer het opnieuw."
     },
     "documents": {
       "useTemplate": "Gebruik een sjabloon",
@@ -3457,7 +3509,8 @@
       "compare": "Vergelijken",
       "done": "Klaar - kijk in je theme-bibliotheek / review-inbox.",
       "failed": "Mislukt - is de vision-AI geconfigureerd?",
-      "useLive": "gebruik live site"
+      "useLive": "gebruik live site",
+      "clearImage": "Screenshot wissen"
     },
     "comments": {
       "replyNote": "De AI schrijft alleen een concept-antwoord als jij erom vraagt — versturen blijft altijd jouw klik.",
@@ -3557,7 +3610,8 @@
       "waitedDays": "{{n}}d wachtend",
       "moreOpen": "+{{n}} meer",
       "staleTooltip": "Meer dan 2 uur wachtend — de pipeline zit hierop vast.",
-      "sameAsTicket": "Hier antwoorden doet precies hetzelfde als antwoorden op het ticket."
+      "sameAsTicket": "Hier antwoorden doet precies hetzelfde als antwoorden op het ticket.",
+      "claimedBy": "{{name}} beantwoordt dit"
     },
     "runtime": {
       "processesLabel": "Wat start deze app",

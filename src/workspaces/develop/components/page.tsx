@@ -1,6 +1,6 @@
-//? intent: Components — the live reference gallery of every UI component the product ships, rendered under
-//? a selectable design theme. A DEV component-library reference (moved out of the Designer into its own
-//? destination): pick a theme + light/dark and preview how your design system renders across buttons,
+//? intent: Components — a curated showcase of the shared UI component kit, rendered under a selectable
+//? design theme. A DEV component-library reference (moved out of the Designer into its own destination):
+//? pick a theme + light/dark and preview how your design system renders across buttons,
 //? inputs, overlays, data and foundations. Reuses the Designer's Components section + shared state.
 
 import { useTranslator } from '@luckystack/core/client';
@@ -17,8 +17,9 @@ import Components from '../designer/sections/Components';
 export const template = 'workspaces';
 
 export default function ComponentsPage() {
+  const { activeWorkspace } = useWorkspaces();
   return (
-    <DesignerProvider>
+    <DesignerProvider key={activeWorkspace.id}>
       <ComponentsShell />
     </DesignerProvider>
   );

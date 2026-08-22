@@ -39,7 +39,7 @@ function cardMenuItems(ticket: Ticket, ctx: ReturnType<typeof useWorkspaces>, tr
   const paused = ticket.status === 'paused';
   return [
     { label: translate({ key: 'workspaces.board.openTicket' }), icon: 'up-right-from-square', onClick: () => { ctx.openTicket(ticket.id); } },
-    { label: translate({ key: 'workspaces.board.openTerminal' }), icon: 'terminal', onClick: () => { ctx.pushTo('terminals'); } },
+    { label: translate({ key: 'workspaces.board.openTerminal' }), icon: 'terminal', onClick: () => { ctx.navigate('terminals', [ticket.id]); } },
     //? #9 — manual stage move (opens a stage picker).
     { label: translate({ key: 'workspaces.board.moveToStage' }), icon: 'arrow-right-arrow-left', onClick: () => { void menuHandler.open(<StageMovePicker ticket={ticket} ctx={ctx} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); } },
     { label: translate({ key: 'workspaces.board.addReference' }), icon: 'link', onClick: () => { void menuHandler.open(<ArtifactLinkPicker ticketKey={ticket.id} ctx={ctx} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); } },
@@ -128,7 +128,7 @@ export function KanbanCard({ ticket }: { ticket: Ticket }) {
         {linked.length > 0 ? <AvatarStack users={linked} size={20} /> : <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.board.unassigned' })}</span>}
         <div className={`flex items-center gap-2`}>
           {ticket.costLabel && <span className={`rounded-md bg-container2 px-1.5 py-0.5 text-[11px] font-mono text-muted`}>{ticket.costLabel}</span>}
-          {ticket.hasTerminal && (
+          {(ctx.agentTerm[ticket.id] ?? '').length > 0 && (
             <span className={`inline-flex items-center gap-1 text-[11px] text-primary`}>
               <span className={`w-1.5 h-1.5 rounded-full bg-primary motion-safe:animate-pulse`} /> {translate({ key: 'workspaces.board.terminal' })}
             </span>

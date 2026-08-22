@@ -259,16 +259,30 @@ export default function Sources() {
   const liveDocs = docs.filter((d) => d.archived !== true);
   const archivedDocs = docs.filter((d) => d.archived === true);
   const [reindexing, setReindexing] = useState(false);
+  const reindexTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   //? K2 — upload a doc (md/txt) → read its text client-side → register it as a context-doc InfoSource.
   const fileRef = useRef<HTMLInputElement>(null);
   const onUploadDoc = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    void file.text().then((text) => { if (text.trim().length > 0) addInfoDoc(file.name, text); });
+    void file.text().then((text) => {
+      if (text.trim().length === 0) { notify.error({ key: 'workspaces.sources.emptyFile' }); return; }
+      addInfoDoc(file.name, text);
+      notify.success({ key: 'workspaces.sources.uploadQueued' });
+    });
   };
   const openUpload = () => { fileRef.current?.click(); };
-  const startReindex = () => { setReindexing(true); scanIndex(); };
+  const startReindex = () => {
+    if (reindexTimeoutRef.current !== null) clearTimeout(reindexTimeoutRef.current);
+    setReindexing(true);
+    scanIndex();
+    reindexTimeoutRef.current = setTimeout(() => {
+      reindexTimeoutRef.current = null;
+      setReindexing(false);
+      notify.error({ key: 'workspaces.sources.reindexFailed' });
+    }, 120_000);
+  };
   //? Jump from a stage chip to that stage's Pipeline config; closing the dialog first so the
   //? navigation doesn't leave it stranded open behind the new page.
   //?
@@ -284,7 +298,16 @@ export default function Sources() {
     else focusSetup({ view: 'pipeline' });
   };
   //? Clear the pending state once the reindex delta lands (the RAG status updates).
-  useEffect(() => { setReindexing(false); }, [ragIndex]);
+  useEffect(() => {
+    if (reindexTimeoutRef.current !== null) {
+      clearTimeout(reindexTimeoutRef.current);
+      reindexTimeoutRef.current = null;
+    }
+    setReindexing(false);
+  }, [ragIndex]);
+  useEffect(() => () => {
+    if (reindexTimeoutRef.current !== null) clearTimeout(reindexTimeoutRef.current);
+  }, []);
 
   const tabs: TabDef[] = [
     { id: 'docs', label: translate({ key: 'workspaces.sources.tabDocs' }), icon: 'file-lines', count: docs.length },

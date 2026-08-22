@@ -13,7 +13,8 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import { WsButton } from '../../_components/primitives';
-import type { Member, Sprint } from '../../_data/types';
+import type { Member, Sprint, TicketPriority } from '../../_data/types';
+import { PRIORITY_LABEL_KEY, PRIORITY_ORDER } from '../../_functions/priority';
 
 const fieldCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 
@@ -81,7 +82,7 @@ export function SprintForm({ onCreate }: { onCreate: (name: string) => void }) {
 //? props since the menu renders outside the Workspaces provider. `initialSprintId`
 //? preselects a sprint when opened from a sprint's own "add ticket" row.
 export function NewBacklogTicketForm({ quickAdd, sprints, members, initialSprintId }: {
-  quickAdd: (input: { title: string; sprintId?: string; description?: string; labels?: string[]; assigneeId?: string }) => void;
+  quickAdd: (input: { title: string; sprintId?: string; description?: string; labels?: string[]; assigneeId?: string; priority?: TicketPriority; startWithAi?: boolean }) => void;
   sprints: Sprint[];
   members: Member[];
   initialSprintId?: string;
@@ -92,6 +93,8 @@ export function NewBacklogTicketForm({ quickAdd, sprints, members, initialSprint
   const [labelsText, setLabelsText] = useState('');
   const [sprintId, setSprintId] = useState(initialSprintId ?? 'backlog');
   const [assigneeId, setAssigneeId] = useState('unassigned');
+  const [priority, setPriority] = useState<TicketPriority>('normal');
+  const [startWithAi, setStartWithAi] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { inputRef.current?.focus(); }, []);
   const sprintItems: DropdownItem[] = [
@@ -102,6 +105,7 @@ export function NewBacklogTicketForm({ quickAdd, sprints, members, initialSprint
     { id: 'unassigned', value: 'unassigned', item: translate({ key: 'workspaces.board.unassigned' }) },
     ...members.map((m) => ({ id: m.id, value: m.id, item: m.name })),
   ];
+  const priorityItems: DropdownItem[] = PRIORITY_ORDER.map((p) => ({ id: p, value: p, item: translate({ key: PRIORITY_LABEL_KEY[p] }) }));
   const submit = () => {
     const t = title.trim();
     if (!t) return;
@@ -112,6 +116,8 @@ export function NewBacklogTicketForm({ quickAdd, sprints, members, initialSprint
       ...(description.trim().length > 0 ? { description: description.trim() } : {}),
       ...(labels.length > 0 ? { labels } : {}),
       ...(assigneeId === 'unassigned' ? {} : { assigneeId }),
+      ...(priority === 'normal' ? {} : { priority }),
+      ...(startWithAi ? { startWithAi: true } : {}),
     });
     void menuHandler.close();
   };
@@ -143,6 +149,16 @@ export function NewBacklogTicketForm({ quickAdd, sprints, members, initialSprint
         placeholder={translate({ key: 'workspaces.backlog.labelsPlaceholder' })}
         className={fieldCls}
       />
+      <div className={`flex flex-col gap-3`}>
+        <div className={`flex flex-col gap-1`}>
+          <span className={`text-xs text-muted`}>{translate({ key: 'workspaces.priority.label' })}</span>
+          <Dropdown items={priorityItems} value={priorityItems.find((item) => item.id === priority)} onChange={(item) => { setPriority(PRIORITY_ORDER.find((p) => p === item.id) ?? 'normal'); }} />
+        </div>
+        <label className={`flex items-center gap-2 text-sm text-common cursor-pointer`}>
+          <input type="checkbox" checked={startWithAi} onChange={(e) => { setStartWithAi(e.target.checked); }} className={`accent-primary`} />
+          {translate({ key: 'workspaces.board.startWithAi' })}
+        </label>
+      </div>
       <div className={`flex items-center justify-end gap-2`}>
         <WsButton variant="ghost" onClick={() => void menuHandler.close()}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
         <WsButton icon="plus" onClick={submit}>{translate({ key: 'workspaces.shell.create' })}</WsButton>

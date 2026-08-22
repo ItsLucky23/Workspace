@@ -150,13 +150,15 @@ function InspirationForm() {
       )}
       <div className="flex flex-wrap items-center gap-2">
         <div className={`${inputCls} flex items-center gap-2 min-w-44`}>
-          <span className="text-muted">{ownImage.startsWith('http') ? ownImage.replace(/^https?:\/\//, '').slice(0, 28) : translate({ key: 'workspaces.inspire.ownPlaceholder' })}</span>
+          <span className="text-muted truncate">{ownImage ? ownImage.split('/').at(-1) ?? ownImage : translate({ key: 'workspaces.inspire.ownPlaceholder' })}</span>
+          {ownImage && <button type="button" onClick={() => { setOwnImage(''); setResult(null); }} aria-label={translate({ key: 'workspaces.inspire.clearImage' })} className="text-muted hover:text-wrong cursor-pointer shrink-0"><Icon name="xmark" /></button>}
           <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*" labelKey="workspaces.inspire.uploadShot" icon="up-right-from-square" onUploaded={(uploaded) => { setOwnImage(uploaded); setResult(null); }} />
           {/* C8 — one tap fills our DEPLOYED page; the compare op screenshots the URL server-side. */}
           {liveEnv?.url !== undefined && <button type="button" onClick={() => { setOwnImage(liveEnv.url ?? ''); setResult(null); }} className="text-xs text-primary hover:underline cursor-pointer shrink-0">{translate({ key: 'workspaces.inspire.useLive' })}</button>}
         </div>
         <div className={`${inputCls} flex items-center gap-2 min-w-44`}>
-          <span className="text-muted">{translate({ key: 'workspaces.inspire.inspPlaceholder' })}</span>
+          <span className="text-muted truncate">{inspirationImage ? inspirationImage.split('/').at(-1) ?? inspirationImage : translate({ key: 'workspaces.inspire.inspPlaceholder' })}</span>
+          {inspirationImage && <button type="button" onClick={() => { setInspirationImage(''); setResult(null); }} aria-label={translate({ key: 'workspaces.inspire.clearImage' })} className="text-muted hover:text-wrong cursor-pointer shrink-0"><Icon name="xmark" /></button>}
           <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*" labelKey="workspaces.inspire.uploadShot" icon="up-right-from-square" onUploaded={(uploaded) => { setInspirationImage(uploaded); setResult(null); }} />
         </div>
         <WsButton variant="secondary" icon={busy === 'compare' ? 'spinner' : 'table-columns'} disabled={busy !== null || !activeProjectId || ownImage.length === 0 || inspirationImage.length === 0} className={busy === 'compare' ? '[&_svg]:animate-spin' : ''} onClick={() => { if (!activeProjectId) return; call('compare', () => apiRequest({ name: 'workspaces/designerInspiration', version: 'v1', data: { workspaceId: activeWorkspace.id, op: 'compare', projectId: activeProjectId, ownUrl: ownImage, inspirationUrl: inspirationImage, clientRequestId: globalThis.crypto.randomUUID() } })); }}>{translate({ key: 'workspaces.inspire.compare' })}</WsButton>
