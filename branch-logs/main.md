@@ -5940,3 +5940,23 @@ de user-gated generalisatie van invariant 6.
 **Files touched:** `src/workspaces/_docs/AI_PROVIDER_EXPANSION_PLAN.md` (nieuw, plan-only).
 
 **Notes:** fase 1+2 conflicteren met Agent 1's files → pas na diens merge. Geen code aangeraakt.
+
+## 2026-08-22 20:10 — Fix-ronde gemerged (1→2→3) + pakket 4 klaar
+
+**User prompt:** "alle 3 de agents zijn klaar."
+
+**Wat ik deed:** branches geïnspecteerd (agent 1: 28/28 in 10 batch-commits; agent 2: Fase A 3 commits;
+agent 3: Fase A 3 commits; alle worktrees schoon) en in volgorde gemerged naar main (`49c74c6`,
+`68c1520`, `9cbe57b`). Conflicten: gegenereerde artefacten (theirs, hook regenereert), branch-logs/
+INDEX (union), en één semantisch conflict in `WorkspacesProvider.tsx` — agent 1's `roleKey ?? m.role`
+(F-024) × agent 2's `observeSync`-wrappers: unie van beide genomen. Lint gaf daarna 2 "error typed"-
+fouten → stale gitignored type-maps (agent 1's nieuwe `unarchive`-route + `roleKey`-veld) →
+`npm run generateArtifacts` → alles groen: lint schoon, build groen, unit 128/128, ai:lint schoon.
+Fix2/fix3 ge-fast-forward naar main + verse generated files gekopieerd (Fase B kan starten). Pakket 4
+geschreven: `fix-round-2026-08-22/AGENT_4_PROVIDERS.md` (plan-fase 1+2 / ADR 0321, 6 items Fase A
+server-side + 1 item Fase B na agent 3, ownership-grenzen t.o.v. agent 3's Fase B-files).
+
+**Files touched:** merges + `AGENT_4_PROVIDERS.md` (nieuw); conflictresoluties zoals hierboven.
+
+**Notes:** agent 1 meldde 1 out-of-scope-skip (file van agent 3) — zit in diens handoff. Live sweep +
+browser-check nog niet gedraaid (dev-runtimes uit); doen na Fase B.
