@@ -16,6 +16,7 @@ import type { ChatProposal } from '../../src/workspaces/_data/types';
 import { listServicePresets } from '../container/servicePresets';
 import { isSectionEnabled, type WorkspaceModuleId } from '../../src/workspaces/_data/modules';
 import { OP_CAPABILITY } from '../control/rbac';
+import { AI_PROVIDER_CATALOG } from './providers/catalog';
 
 //? The context slice generic validation checks references against (structural subset of
 //? workspaceChat's Ctx — no import to avoid a runtime cycle).
@@ -219,10 +220,11 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   },
   'save-ai-provider': {
     mode: 'enabled',
-    hint: "switch which AI provider runs ONE non-coding feature ('use Gemini for MR reviews'). params: feature (script|docs-generate|studio-designer|studio-marketer|designer-theme|interviewer|mr-review|root-cause|plan-critique), providerId (default clears the override | claude-cli | gemini-api). The CODING agent is not switchable.",
+    hint: `switch which AI provider runs ONE non-coding feature ('use Gemini for MR reviews'). params: feature (script|docs-generate|studio-designer|studio-marketer|designer-theme|interviewer|mr-review|root-cause|plan-critique), providerId (default clears the override | ${Object.keys(AI_PROVIDER_CATALOG).join(' | ')}). The CODING agent is not switchable.`,
     params: {
       feature: { kind: 'enum', required: true, values: ['script', 'docs-generate', 'studio-designer', 'studio-marketer', 'designer-theme', 'interviewer', 'mr-review', 'root-cause', 'plan-critique'] },
-      providerId: { kind: 'enum', required: true, values: ['default', 'claude-cli', 'gemini-api'] },
+      //? F-017 — every catalog backend, not a stale pair (the picker + dispatch allow the same set).
+      providerId: { kind: 'enum', required: true, values: ['default', ...Object.keys(AI_PROVIDER_CATALOG)] },
     },
   },
   'save-autonomy': {

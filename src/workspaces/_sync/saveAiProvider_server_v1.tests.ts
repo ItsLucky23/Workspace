@@ -47,13 +47,37 @@ async function poll<T>(fn: () => Promise<T | null>, timeoutMs = 4000, stepMs = 5
 
 export const customTests: CustomTestCase[] = [
   {
+    //? F-017 — an id outside the provider catalog is REJECTED, never stored: a stored-but-ignored override
+    //? made the picker look applied while dispatch kept using the default.
+    name: 'an unknown providerId is rejected and nothing is persisted',
+    run: async (ctx: TestContext) => {
+      const { userId, workspaceId } = await loginSeededUser(ctx, 'saveaiprovider_c0');
+      try {
+        await joinRoom(ctx, workspaceId);
+        const feature = `bogus-${String(Date.now())}`;
+        const res = await ctx.callSync<SaveAiProviderInput, SaveAiProviderResponse>(
+          { feature, providerId: 'not-a-provider', clientRequestId: `sap-c0-${String(Date.now())}` },
+          { receiver: workspaceId },
+        );
+        ctx.expect.eq(res.status, 'error', 'saveAiProvider rejects an unknown provider id');
+        await wait(300);
+        const envVar = await ctx.prisma.envVar.findFirst({ where: { workspaceId, key: `__ai_provider_${feature}` } });
+        ctx.expect.ok(envVar === null, 'no override row was written for the unknown id');
+      } finally {
+        await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
+      }
+    },
+  },
+  {
     name: 'happy path persists an EnvVar override (Prisma post-condition)',
     run: async (ctx: TestContext) => {
       const { userId, workspaceId } = await loginSeededUser(ctx, 'saveaiprovider_c1');
       try {
         await joinRoom(ctx, workspaceId);
         const feature = `refine-${String(Date.now())}`;
-        const providerId = 'gemini';
+        //? A CATALOG id (server/ai/providers/catalog.ts). 'gemini' used to pass here and was then silently
+        //? dropped at dispatch — exactly the stored-but-ignored override F-017 closes.
+        const providerId = 'gemini-api';
         const res = await ctx.callSync<SaveAiProviderInput, SaveAiProviderResponse>(
           { feature, providerId, clientRequestId: `sap-c1-${String(Date.now())}` },
           { receiver: workspaceId },

@@ -7,10 +7,15 @@
 
 import { getPrismaClient, tryCatch } from '@luckystack/core';
 
+import { AI_PROVIDER_CATALOG } from './providers/catalog';
 import type { AiFeature, AiProviderId } from './types';
 
 export const AI_OVERRIDE_PREFIX = '__ai_provider_';
-const PROVIDER_IDS = new Set<AiProviderId>(['claude-cli', 'gemini-api']);
+//? F-017 — derived from the provider CATALOG (ADR 0007), not a hardcoded pair. The settings picker offers every
+//? connected backend, and the stored override echoed back as applied — but a stale ['claude-cli','gemini-api']
+//? set here silently dropped openai-api/anthropic-api/openrouter/… at dispatch, so the choice looked saved and
+//? was ignored. One source of truth: if it is in the catalog it is routable.
+const PROVIDER_IDS = new Set<AiProviderId>(Object.keys(AI_PROVIDER_CATALOG));
 export const isAiProviderId = (v: string): v is AiProviderId => PROVIDER_IDS.has(v);
 
 export async function loadWorkspaceAiOverrides(workspaceId?: string): Promise<Partial<Record<AiFeature, AiProviderId>>> {

@@ -5,7 +5,7 @@
     "nodes": 454,
     "edges": 684,
     "symbols": 857,
-    "callEdges": 283
+    "callEdges": 284
   },
   "nodes": [
     {
@@ -13042,6 +13042,10 @@
     {
       "from": "workspaces/_sync/saveAiProvider_server_v1.tests.ts::run",
       "to": "workspaces/_sync/saveAiProvider_server_v1.tests.ts::poll"
+    },
+    {
+      "from": "workspaces/_sync/saveAiProvider_server_v1.tests.ts::run",
+      "to": "workspaces/_sync/saveAiProvider_server_v1.tests.ts::wait"
     },
     {
       "from": "workspaces/_sync/saveAutonomy_server_v1.tests.ts::poll",

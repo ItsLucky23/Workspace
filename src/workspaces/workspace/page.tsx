@@ -1636,7 +1636,9 @@ export default function WorkspaceSettings() {
                 unkeyed SectionsTab kept the PREVIOUS workspace's toggles in state and Save wrote them
                 onto the new one. Its siblings were already keyed; this one was missed. */}
             {activeTab === 'modules' && <SectionsTab key={activeWorkspace.id} />}
-        {activeTab === 'aibehavior' && <AiBehaviorTab />}
+        {/* F-027 — keyed like its siblings: the tab seeds its instruction/language state once, so an
+            unkeyed instance showed the PREVIOUS workspace's text after a switch and autosaved it into the new one. */}
+        {activeTab === 'aibehavior' && <AiBehaviorTab key={activeWorkspace.id} />}
         {activeTab === 'env' && <EnvTab />}
         {activeTab === 'integrations' && <IntegrationsTab />}
         {activeTab === 'invites' && <InvitesTab />}

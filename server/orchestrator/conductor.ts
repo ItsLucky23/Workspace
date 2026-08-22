@@ -23,6 +23,7 @@ import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { ensureWorkspaceBuiltins, scheduleWorkspaceBuiltinIndexing } from '../bootstrap/workspaceBuiltins';
 import { addConnection, recordTest, removeConnection } from '../ai/connections';
+import { isAiProviderId } from '../ai/workspaceAssignments';
 import { aiProviderById } from '../ai/registry';
 import { isPipelinePreset, createDefaultPipeline, stageBlueprint, baseStageStatuses, stagesForPreset, stageCreateData, blueprintForStage, fallbackStageKey, defaultStageKeys, isStageKind } from '../bootstrap/defaultPipeline';
 import { cloneWorkspace } from '../bootstrap/cloneWorkspace';
@@ -2764,6 +2765,9 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const feature = str(payload, 'feature');
       const providerId = str(payload, 'providerId');
       if (!feature) return [];
+      //? F-017 — reject an unknown id instead of storing it: a stored-but-ignored override is exactly the
+      //? "looks saved, silently falls back" failure this op used to produce.
+      if (providerId && providerId !== 'default' && !isAiProviderId(providerId)) return { ok: false, error: 'ai.unknownProvider' };
       const key = `__ai_provider_${feature}`;
       await (!providerId || providerId === 'default'
         ? prisma.envVar.deleteMany({ where: { workspaceId: action.workspaceId, key } })
