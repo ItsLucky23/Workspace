@@ -5918,3 +5918,25 @@ gefixt als `Set` + `.has()` (`45916fb`, lint+build groen), alle drie branches ge
 **Verificatie:** fix1 verse lint schoon + `npm run test:unit` 125/125; fix2 verse lint bewees eerder
 repo-breed exact die éne fout. Let op: `server/media/workspaceKeys.ts:31` heeft hetzelfde
 assertion-patroon maar daar is MediaProviderId een echte union — bewust niet aangeraakt.
+
+## 2026-08-22 19:00 — AI-provider-uitbreidingsplan
+
+**User prompt:** "ik lees nog steeds overal claude-cli en gemini-api; ik wil ook andere AI-tools
+supporten zoals andere subscriptions (bijv. openai/gpt) en veel andere apis en models — verwerk dit
+in een plan."
+
+**Wat ik deed:** provider-laag doorgelicht. Bevinding: de abstractie is verder dan de perceptie —
+`server/ai/providers/catalog.ts` heeft al 9 backends over 3 transports (incl. OpenAI, OpenRouter,
+Groq, DeepSeek, Mistral, local/Ollama) en `registry.ts` dispatcht provider-agnostisch met queue/
+circuit/spend. Het "alles is claude/gemini"-gevoel komt van 4 hardcode-restanten: (1) dispatch-
+allowlist van 2 in `workspaceAssignments.ts` (= audit-F-017, al bij fix-ronde Agent 1 batch 8),
+(2) `opCatalog.ts` enum, (3) defaults zonder fallback-keten in `assignments.ts`, (4) de PTY-coding-
+agent spawnt letterlijk `claude` (`stageRunner.ts:254`, invariant 6). Plan geschreven:
+`src/workspaces/_docs/AI_PROVIDER_EXPANSION_PLAN.md` — 5 fasen (routing/fallback+per-feature-model ·
+catalogus+dynamische modellijsten · CodingCliAdapter voor andere subscription-CLI's mét billing-spike-
+gate · optionele metered-coding-opt-in · multimodaal/media-pariteit) + 4 OPEN VRAAG-punten, waaronder
+de user-gated generalisatie van invariant 6.
+
+**Files touched:** `src/workspaces/_docs/AI_PROVIDER_EXPANSION_PLAN.md` (nieuw, plan-only).
+
+**Notes:** fase 1+2 conflicteren met Agent 1's files → pas na diens merge. Geen code aangeraakt.
