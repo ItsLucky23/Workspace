@@ -90,7 +90,7 @@ export function toTicket(t: DbTicket): Ticket {
   return {
     id: t.key, workspaceId: t.workspaceId, projectId: t.projectId, title: t.title, description: t.description ?? undefined,
     stageId: t.stageId, status: asStatus(t.status), labels: t.labels, creatorId: t.creatorId ?? undefined, assigneeId: t.assigneeId ?? undefined,
-    viewers: [], hasTerminal: false, branch: t.branch ?? undefined, mr: t.mrUrl ?? undefined, issue: t.issueUrl ?? undefined,
+    viewers: [], hasTerminal: asStatus(t.status) === 'busy', branch: t.branch ?? undefined, mr: t.mrUrl ?? undefined, issue: t.issueUrl ?? undefined,
     sprintId: t.sprintId ?? undefined, serviceId: t.serviceId, carryOver: t.carryOver ?? undefined, needsInput: t.needsInput ?? undefined, archived: t.archived,
     ...(advisory.length > 0 ? { advisoryQuestions: advisory } : {}),
     ...(openQuestionCount > 1 ? { openQuestionCount } : {}),

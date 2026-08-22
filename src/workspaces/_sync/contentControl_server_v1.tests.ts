@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import type { CustomTestCase, TestContext } from '@luckystack/test-runner';
 
 import { loginSeededUser, cleanupWorkspace, joinRoom } from '../../../tests/_helpers.mjs';
-import { docker } from '../../../server/container/runtime';
+import { docker, dockerAvailable } from '../../../server/container/runtime';
 import { MEDIA_DIR } from '../../../server/media/store';
 import { saveConnection } from '../../../server/content/publishOAuth';
 
@@ -285,6 +285,45 @@ export const customTests: CustomTestCase[] = [
         await ctx.prisma.socialComment.deleteMany({ where: { workspaceId } });
         await ctx.prisma.channel.deleteMany({ where: { workspaceId } });
         await ctx.prisma.envVar.deleteMany({ where: { workspaceId } });
+        await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
+      }
+    },
+  },
+  {
+    name: 'content image and thumbnail ops persist real assets through the content ID envelope',
+    run: async (ctx: TestContext) => {
+      const { userId, workspaceId } = await loginSeededUser(ctx, 'contentcontrol_c10');
+      try {
+        await joinRoom(ctx, workspaceId);
+        const project = await ctx.prisma.project.findFirst({ where: { workspaceId } });
+        ctx.expect.ok(project !== null, 'the seeded demo workspace ships at least one Project');
+        if (!project) return;
+        const piece = await ctx.prisma.contentProject.create({ data: { workspaceId, projectId: project.id, title: `Image envelope ${String(Date.now())}`, brief: 'x' } });
+        const source = await ctx.prisma.contentAsset.create({ data: { workspaceId, contentProjectId: piece.id, kind: 'image', url: '/media/envelope-source.png', status: 'ready' } });
+
+        const editRes = await ctx.callSync<ContentControlInput, ContentControlResponse>(
+          { op: 'content-edit-image', clientRequestId: `cc-c10-edit-${String(Date.now())}`, contentProjectId: piece.id, assetId: source.id, prompt: 'make the sky purple' },
+          { receiver: workspaceId },
+        );
+        ctx.expect.eq(editRes.status, 'success', 'content-edit-image returns success');
+        const edited = await poll(() => ctx.prisma.contentAsset.findFirst({ where: { workspaceId, contentProjectId: piece.id, parentId: source.id } }));
+        ctx.expect.ok(edited !== null, 'content-edit-image persisted a new asset through the payload contentProjectId');
+        ctx.expect.eq(edited?.kind, 'image', 'the edited asset is an image');
+
+        if (!(await dockerAvailable())) {
+          console.log('[contentcontrol_c10] Docker unavailable — skipping the thumbnail post-condition.');
+          return;
+        }
+        const thumbnailRes = await ctx.callSync<ContentControlInput, ContentControlResponse>(
+          { op: 'content-gen-thumbnail', clientRequestId: `cc-c10-thumb-${String(Date.now())}`, contentProjectId: piece.id, headline: 'A real headline' },
+          { receiver: workspaceId },
+        );
+        ctx.expect.eq(thumbnailRes.status, 'success', 'content-gen-thumbnail returns success');
+        const thumbnail = await poll(() => ctx.prisma.contentAsset.findFirst({ where: { workspaceId, contentProjectId: piece.id, kind: 'thumbnail' } }), 15_000);
+        ctx.expect.ok(thumbnail !== null, 'content-gen-thumbnail persisted a thumbnail through the payload contentProjectId');
+      } finally {
+        await ctx.prisma.contentAsset.deleteMany({ where: { workspaceId } });
+        await ctx.prisma.contentProject.deleteMany({ where: { workspaceId } });
         await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
       }
     },
