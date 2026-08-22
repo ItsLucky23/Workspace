@@ -64,16 +64,16 @@ You will also touch (expected, fine): server-side readers/ops named in the evide
 
 ### Batch 2 — Documents module unopenable (un-prefixed navigate path → error page)
 
-- [ ] **F-002** · CRITICAL · `broken-flow` — Clicking any document row lands on the framework error page instead of the document editor — the entire Documents module is unopenable from its own list.
+- [x] **F-002** · CRITICAL · `broken-flow` — Clicking any document row lands on the framework error page instead of the document editor — the entire Documents module is unopenable from its own list.
   - **Where:** `src/workspaces/content/documents/page.tsx:141`
   - **Evidence (already traced, trust it but re-verify the anchor):** The row's onClick calls the ctx navigate(`documents/${d.id}`). WorkspacesProvider.pathForView (Shell provider, lines 155-160) finds no VIEW_CATEGORY entry for 'documents/<id>' and emits the flat path /workspaces/documents/<id>. main.tsx registers only exact page paths (plus splats for the four TRAIL_ROOTS: workspace, settings, develop/pipeline, content/settings); the real route is /workspaces/content/documents/:docid, so the flat path falls to the '*' catch-all which renders ErrorPage in the 'plain' template — the workspaces shell disappears entirely. Regression from the fdc5afe/category URL restructure: sibling code in content/page.tsx:241 correctly uses the category-prefixed 'content/insights' path.
   - **Fix:** In content/documents/page.tsx:141 change navigate(`documents/${d.id}`) to navigate(`content/documents/${d.id}`) (pathForView's flat fallback then produces the registered /workspaces/content/documents/<id> route). Apply the same change to SearchPalette.tsx:146. Alternatively teach pathForView to map a 'documents/...' prefix to the content category.
-  - **Result:** _(fill in: fixed <commit> / skipped: <reason> / already-fixed)_
-- [ ] **F-021** · HIGH · `broken-flow` — Opening a document from the ⌘K search palette lands on the error page.
+  - **Result:** fixed eb051ed — documents/page.tsx:141 navigates `content/documents/<id>` (pathForView flat fallback → registered route). Manual: row click opens the editor inside the shell.
+- [x] **F-021** · HIGH · `broken-flow` — Opening a document from the ⌘K search palette lands on the error page.
   - **Where:** `src/workspaces/_components/SearchPalette.tsx:146`
   - **Evidence (already traced, trust it but re-verify the anchor):** go(`documents/${d.id}`) → ctx.navigate → pathForView emits flat /workspaces/documents/<id> which matches no registered route (real route is /workspaces/content/documents/:docid) → '*' catch-all ErrorPage. Same root cause as the documents-list bug.
   - **Fix:** Change go(`documents/${d.id}`) to go(`content/documents/${d.id}`).
-  - **Result:** _(fill in: fixed <commit> / skipped: <reason> / already-fixed)_
+  - **Result:** fixed eb051ed — SearchPalette go(`content/documents/<id>`), same root cause.
 
 ### Batch 3 — AI-key split-brain (Gemini key in two disjoint stores; readiness + CTAs point at the dead one)
 
