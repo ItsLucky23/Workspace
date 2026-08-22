@@ -2,10 +2,10 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 454,
-    "edges": 684,
-    "symbols": 857,
-    "callEdges": 284
+    "nodes": 456,
+    "edges": 686,
+    "symbols": 865,
+    "callEdges": 288
   },
   "nodes": [
     {
@@ -1857,6 +1857,16 @@
       "id": "workspaces/_sync/uiReviewCreate_server_v1.ts",
       "kind": "sync",
       "route": "sync/workspaces/uiReviewCreate/v1"
+    },
+    {
+      "id": "workspaces/_sync/unarchive_server_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_sync/unarchive_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/unarchive/v1"
     },
     {
       "id": "workspaces/_sync/workspaceDirty_server_v1.ts",
@@ -3822,6 +3832,10 @@
     },
     {
       "from": "workspaces/develop/backlog/page.tsx",
+      "to": "workspaces/_data/capabilities.ts"
+    },
+    {
+      "from": "workspaces/develop/backlog/page.tsx",
       "to": "workspaces/_data/types.ts"
     },
     {
@@ -4927,6 +4941,10 @@
     {
       "from": "workspaces/workspace/page.tsx",
       "to": "workspaces/_components/SetupWizard.tsx"
+    },
+    {
+      "from": "workspaces/workspace/page.tsx",
+      "to": "workspaces/_data/capabilities.ts"
     },
     {
       "from": "workspaces/workspace/page.tsx",
@@ -6979,7 +6997,7 @@
       "id": "workspaces/_data/capabilities.ts",
       "kind": "other",
       "dependents": 36,
-      "directDependents": 2
+      "directDependents": 4
     },
     {
       "id": "workspaces/_components/SetupNotice.tsx",
@@ -12162,6 +12180,54 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_sync/unarchive_server_v1.tests.ts::<module>",
+      "file": "workspaces/_sync/unarchive_server_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/unarchive_server_v1.tests.ts::fn",
+      "file": "workspaces/_sync/unarchive_server_v1.tests.ts",
+      "name": "fn",
+      "kind": "fn"
+    },
+    {
+      "id": "workspaces/_sync/unarchive_server_v1.tests.ts::poll",
+      "file": "workspaces/_sync/unarchive_server_v1.tests.ts",
+      "name": "poll",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/unarchive_server_v1.tests.ts::run",
+      "file": "workspaces/_sync/unarchive_server_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "workspaces/_sync/unarchive_server_v1.tests.ts::seedTwoTickets",
+      "file": "workspaces/_sync/unarchive_server_v1.tests.ts",
+      "name": "seedTwoTickets",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/unarchive_server_v1.tests.ts::wait",
+      "file": "workspaces/_sync/unarchive_server_v1.tests.ts",
+      "name": "wait",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/unarchive_server_v1.ts::<module>",
+      "file": "workspaces/_sync/unarchive_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/unarchive_server_v1.ts::main",
+      "file": "workspaces/_sync/unarchive_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_sync/workspaceDirty_server_v1.ts::<module>",
       "file": "workspaces/_sync/workspaceDirty_server_v1.ts",
       "name": "<module>",
@@ -13316,6 +13382,22 @@
       "to": "workspaces/_sync/uiReviewCreate_server_v1.tests.ts::poll"
     },
     {
+      "from": "workspaces/_sync/unarchive_server_v1.tests.ts::poll",
+      "to": "workspaces/_sync/unarchive_server_v1.tests.ts::fn"
+    },
+    {
+      "from": "workspaces/_sync/unarchive_server_v1.tests.ts::poll",
+      "to": "workspaces/_sync/unarchive_server_v1.tests.ts::wait"
+    },
+    {
+      "from": "workspaces/_sync/unarchive_server_v1.tests.ts::run",
+      "to": "workspaces/_sync/unarchive_server_v1.tests.ts::poll"
+    },
+    {
+      "from": "workspaces/_sync/unarchive_server_v1.tests.ts::run",
+      "to": "workspaces/_sync/unarchive_server_v1.tests.ts::seedTwoTickets"
+    },
+    {
       "from": "workspaces/_sync/workspaceDirty_server_v1.ts::main",
       "to": "workspaces/_sync/workspaceDirty_server_v1.ts::goneFlag"
     },
@@ -14317,6 +14399,20 @@
     "workspaces/_sync/uiReviewCreate_server_v1.tests.ts::wait": [
       "workspaces/_sync/uiReviewCreate_server_v1.tests.ts::poll",
       "workspaces/_sync/uiReviewCreate_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/unarchive_server_v1.tests.ts::fn": [
+      "workspaces/_sync/unarchive_server_v1.tests.ts::poll",
+      "workspaces/_sync/unarchive_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/unarchive_server_v1.tests.ts::poll": [
+      "workspaces/_sync/unarchive_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/unarchive_server_v1.tests.ts::seedTwoTickets": [
+      "workspaces/_sync/unarchive_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/unarchive_server_v1.tests.ts::wait": [
+      "workspaces/_sync/unarchive_server_v1.tests.ts::poll",
+      "workspaces/_sync/unarchive_server_v1.tests.ts::run"
     ],
     "workspaces/_sync/workspaceDirty_server_v1.ts::goneFlag": [
       "workspaces/_sync/workspaceDirty_server_v1.ts::main"

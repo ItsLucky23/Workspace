@@ -462,6 +462,11 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     const ticketIds = strArr(p, 'ticketKeys'); if (!ticketIds || ticketIds.length === 0) return;
     void syncRequest({ name: 'workspaces/bulkArchive', version: 'v1', data: { ticketIds, clientRequestId: x.nextReqId() }, receiver: x.room });
   },
+  //? F-015 — the inverse of bulk-archive.
+  unarchive: (p, x) => {
+    const ticketIds = strArr(p, 'ticketKeys'); if (!ticketIds || ticketIds.length === 0) return;
+    void syncRequest({ name: 'workspaces/unarchive', version: 'v1', data: { ticketIds, clientRequestId: x.nextReqId() }, receiver: x.room });
+  },
   'sprint-create': (p, x) => {
     const name = str(p, 'name'); if (!name) return;
     const active = bool(p, 'active');

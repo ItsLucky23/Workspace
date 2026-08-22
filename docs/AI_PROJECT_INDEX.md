@@ -78,7 +78,7 @@
 | `api/workspaces/workspaceExport/v1` | POST | login | 6 | — | yes | — | Workspaces — [workspace-export] (H4) a tenant-scoped JSON export of the workspace's own data (portability / |
 | `api/workspaces/workspaceImport/v1` | POST | login | 3 | ItsLucky23 | yes | — | Workspaces — [workspace-import] (gap-fix) the missing counterpart of workspace-export: bring a |
 
-## Sync routes (70)
+## Sync routes (71)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -151,6 +151,7 @@
 | `sync/workspaces/triggerAction/v1` | yes | — | login | — | yes | — | Workspaces — [trigger-*] automation-trigger writes via `_sync` (#2). One route for the three |
 | `sync/workspaces/uiReviewAction/v1` | yes | — | login | ItsLucky23 | yes | — | Workspaces — [ui-review-to-ticket / ui-review-dismiss] (U2 gap-fix) act on an open "unfuck the UI" |
 | `sync/workspaces/uiReviewCreate/v1` | yes | — | login | — | yes | — | Workspaces — [ui-review-create] (U1) persist a "unfuck the UI" review request: uploaded screenshots + ticked |
+| `sync/workspaces/unarchive/v1` | yes | — | login | ItsLucky23 | yes | — | Workspaces — [unarchive] REALTIME write via `_sync` (F-015). Restores archived ticket(s): |
 | `sync/workspaces/workspaceDirty/v1` | yes | — | login | ItsLucky23 | **no** | — | @docs owner ItsLucky23 |
 
 ## Ownership & coverage
@@ -159,10 +160,10 @@
 
 | Owner | Routes |
 | --- | --- |
-| `ItsLucky23` | 28 |
+| `ItsLucky23` | 29 |
 | _(unowned)_ | 108 |
 
-**Test coverage**: 134/136 routes have a per-route `.tests.ts`.
+**Test coverage**: 135/137 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 

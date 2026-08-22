@@ -255,6 +255,8 @@ export interface WorkspacesCtx {
   bulkAssign: (ids: string[], assigneeId: string) => void;
   bulkSprint: (ids: string[], sprintId: string) => void;
   bulkArchive: (ids: string[]) => void;
+  //? F-015 — restore archived tickets (inverse of archive/bulkArchive); gated on workTickets server-side.
+  unarchiveTickets: (ids: string[]) => void;
   //? Sources — enable/disable a skill (Fase 2 covers reindex/add/remove).
   toggleSkill: (id: string, on: boolean) => void;
   //? Pipeline (7a.2) — full per-stage config from the DB composites.

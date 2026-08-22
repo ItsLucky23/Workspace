@@ -20,11 +20,14 @@ import { Collapse, SPRING_SOFT } from '../../_components/motion';
 import { AvatarStack, EmptyState, FOCUS_RING, IconButton, InfoTip, LabelChip, PopMenu, Segmented, StatusPill, WsButton, type PopMenuItem } from '../../_components/primitives';
 import { EmptyPicker } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
+import { CAP } from '../../_data/capabilities';
 import type { Ticket, TicketStatus } from '../../_data/types';
 import { BulkActionsBar, type BulkPicker, type PickerItem } from './BulkBar';
 import { NewBacklogTicketForm, SprintEditForm, SprintForm } from './forms';
 
-type Quick = 'all' | 'unrefined' | 'needs-input' | 'done';
+//? F-015 — 'archived' is the restore view: the archive confirm promises "restorable later", and the board
+//? comment pointed at a backlog Archived view that did not exist.
+type Quick = 'all' | 'unrefined' | 'needs-input' | 'done' | 'archived';
 
 //? Compact relative time ("just now" / "5m" / "3h" / "2d" / "1w") from an ISO
 //? timestamp — the REAL ticket recency (`lastActivityAt`, falling back to createdAt),
@@ -48,7 +51,7 @@ export const template = 'workspaces';
 
 export default function Backlog() {
   const translate = useTranslator();
-  const { openTicket, tickets, members, sprints, stages, bulkMove, bulkStatus, bulkAssign, bulkSprint, bulkArchive, sprintCreate, editSprint, quickAdd, navigate } = useWorkspaces();
+  const { openTicket, tickets, members, sprints, stages, bulkMove, bulkStatus, bulkAssign, bulkSprint, bulkArchive, unarchiveTickets, sprintCreate, editSprint, quickAdd, navigate, can } = useWorkspaces();
   const [q, setQ] = useState('');
   const [quick, setQuick] = useState<Quick>('all');
   const [person, setPerson] = useState<string>('all');
@@ -60,9 +63,10 @@ export default function Backlog() {
   const openNewTicket = (initialSprintId?: string) => { void menuHandler.open(<NewBacklogTicketForm quickAdd={quickAdd} sprints={sprints} members={members} initialSprintId={initialSprintId} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
 
   const filtered = useMemo(() => tickets.filter((t) => {
-    //? Soft-archived tickets stay out of the backlog list (same contract as the board; the
-    //? archive op promises "disappears from board and backlog, restorable later").
-    if (t.archived === true) return false;
+    //? Soft-archived tickets stay out of the backlog list (same contract as the board; the archive op
+    //? promises "disappears from board and backlog, restorable later") — EXCEPT on the Archived view,
+    //? which shows exactly them so they can be restored.
+    if ((t.archived === true) !== (quick === 'archived')) return false;
     if (q && !(`${t.id} ${t.title}`.toLowerCase().includes(q.toLowerCase()))) return false;
     if (quick === 'unrefined' && t.stageId !== 'unrefined') return false;
     if (quick === 'needs-input' && t.status !== 'needs-input') return false;
@@ -99,7 +103,9 @@ export default function Backlog() {
     { id: 'unrefined', label: translate({ key: 'workspaces.backlog.filterUnrefined' }) },
     { id: 'needs-input', label: translate({ key: 'workspaces.backlog.filterNeedsInput' }) },
     { id: 'done', label: translate({ key: 'workspaces.backlog.done' }) },
+    { id: 'archived', label: translate({ key: 'workspaces.backlog.filterArchived' }) },
   ];
+  const canRestore = can(CAP.workTickets);
 
   //? Bulk action bar (13) — picker items resolve against the current `selected`
   //? set, then apply the [control-API] bulk op + reset the selection.
@@ -288,7 +294,7 @@ export default function Backlog() {
                     >
                       {rows.length === 0 && <div className={`px-4 py-4 text-sm text-muted text-center`}>{translate({ key: 'workspaces.backlog.noTickets' })}</div>}
                       {rows.map((t) => (
-                        <Row key={t.id} ticket={t} selectMode={selectMode} selected={selected.has(t.id)} onToggle={() => { toggleRow(t.id); }} onOpen={() => { openTicket(t.id); }} />
+                        <Row key={t.id} ticket={t} selectMode={selectMode} selected={selected.has(t.id)} onToggle={() => { toggleRow(t.id); }} onOpen={() => { openTicket(t.id); }} {...(t.archived === true && canRestore ? { onRestore: () => { unarchiveTickets([t.id]); } } : {})} />
                       ))}
                       <button type="button" onClick={() => { openNewTicket(sprint.id === 'backlog' ? undefined : sprint.id); }}
                         className={`w-full flex items-center gap-2 px-4 py-2.5 border-t border-divider text-sm text-muted hover:bg-container2/40 cursor-pointer transition-colors ${FOCUS_RING}`}>
@@ -323,8 +329,8 @@ export default function Backlog() {
 //? wrapping meta line (id · status · avatars · time) — instead of forcing horizontal
 //? scroll (the old min-w-[44rem] wrapper is gone). Row click opens the ticket; the
 //? select-mode checkbox stops propagation so toggling never fires openTicket.
-function Row({ ticket, selectMode, selected, onToggle, onOpen }: {
-  ticket: Ticket; selectMode: boolean; selected: boolean; onToggle: () => void; onOpen: () => void;
+function Row({ ticket, selectMode, selected, onToggle, onOpen, onRestore }: {
+  ticket: Ticket; selectMode: boolean; selected: boolean; onToggle: () => void; onOpen: () => void; onRestore?: () => void;
 }) {
   const translate = useTranslator();
   const { stages, ticketMembers } = useWorkspaces();
@@ -360,6 +366,12 @@ function Row({ ticket, selectMode, selected, onToggle, onOpen }: {
       {/* AvatarStack semantics: first avatar = creator, second = assignee (ticketMembers). */}
       <span className={`hidden sm:flex w-16 shrink-0 justify-end`} title={translate({ key: 'workspaces.backlog.creatorAssignee' })}>{linked.length > 0 ? <AvatarStack users={linked} size={20} /> : <span className={`text-xs text-muted`}>—</span>}</span>
       <span className={`hidden sm:block text-xs text-muted w-10 shrink-0 text-right`}>{relativeTime(ticket.lastActivityAt)}</span>
+      {/* F-015 — an archived row's one action: put it back on the board. */}
+      {onRestore && (
+        <span onClick={(e) => { e.stopPropagation(); }} className={`shrink-0`}>
+          <WsButton variant="secondary" icon="rotate-left" onClick={onRestore}>{translate({ key: 'workspaces.backlog.restore' })}</WsButton>
+        </span>
+      )}
     </div>
   );
 }

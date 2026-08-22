@@ -97,6 +97,11 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'archive several tickets at once (soft; hidden from board/backlog). params: ticketKeys (list)',
     params: { ticketKeys: { kind: 'ticketKeys', required: true } },
   },
+  unarchive: {
+    mode: 'enabled',
+    hint: 'restore archived ticket(s) to the board/backlog (the inverse of archive). params: ticketKeys (list)',
+    params: { ticketKeys: { kind: 'ticketKeys', required: true } },
+  },
   'sprint-create': {
     mode: 'enabled',
     hint: 'create a new sprint. params: name, active? (default false — activate it immediately)',
@@ -899,7 +904,7 @@ export const OP_MODULE: Partial<Record<ControlOp, WorkspaceModuleId>> = {
   'service-provision': 'development', 'service-teardown': 'development',
   'preview-up': 'development', 'preview-down': 'development',
   //? Parity wave — board/sprint/MR/service ops follow their enabled siblings into `development`.
-  archive: 'development', 'bulk-status': 'development', 'bulk-sprint': 'development', 'bulk-archive': 'development',
+  archive: 'development', 'bulk-status': 'development', 'bulk-sprint': 'development', 'bulk-archive': 'development', unarchive: 'development',
   'sprint-create': 'development', 'sprint-edit': 'development',
   'ticket-link-artifact': 'development', 'ticket-unlink-artifact': 'development',
   'mr-create': 'development', 'mr-comment': 'development', 'mr-approve': 'development', 'mr-merge': 'development', 'mr-resolve': 'development',

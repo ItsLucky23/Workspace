@@ -606,6 +606,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     name: 'workspaces/bulkArchive', version: 'v1',
     callback: ({ serverOutput }) => { if (serverOutput.status === 'success') mergeTickets(serverOutput.tickets); },
   }), [upsertSyncEventCallback, mergeTickets]);
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/unarchive', version: 'v1',
+    callback: ({ serverOutput }) => { if (serverOutput.status === 'success') mergeTickets(serverOutput.tickets); },
+  }), [upsertSyncEventCallback, mergeTickets]);
 
   //? add-comment delta → merge the new note into the ticket's thread (dedupe by id).
   useEffect(() => upsertSyncEventCallback({
@@ -1835,6 +1839,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       bulkAssign: (ids, assigneeId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkAssign', version: 'v1', data: { ticketIds: ids, assigneeId, clientRequestId: nextReqId() }, receiver: room }); },
       bulkSprint: (ids, sprintId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkSprint', version: 'v1', data: { ticketIds: ids, sprintId, clientRequestId: nextReqId() }, receiver: room }); },
       bulkArchive: (ids) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/bulkArchive', version: 'v1', data: { ticketIds: ids, clientRequestId: nextReqId() }, receiver: room }); },
+      unarchiveTickets: (ids) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/unarchive', version: 'v1', data: { ticketIds: ids, clientRequestId: nextReqId() }, receiver: room }); },
       toggleSkill: (id, on) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/skillToggle', version: 'v1', data: { sourceId: id, on, clientRequestId: nextReqId() }, receiver: room }); },
       stageConfigs: snap.stageConfigs,
       saveStageConfig: (cfg) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveStageConfig', version: 'v1', data: { stageId: cfg.id, projectId: cfg.projectId, cfg, clientRequestId: nextReqId() }, receiver: room }); },

@@ -1754,6 +1754,15 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       for (const r of await ticketIdsForKeys(action.workspaceId, keys)) await recordTicketEvent(action.workspaceId, r.id, 'status-change', userId, 'archived the ticket');
       return ticketRowsForKeys(action.workspaceId, keys);
     }
+    //? F-015 — the inverse of archive/bulk-archive. The archive confirm promised "restorable later";
+    //? until now no op set archived:false, so an archived ticket was gone from every view for good.
+    case 'unarchive': {
+      const keys = strArr(target, 'ticketIds');
+      if (keys.length === 0) return [];
+      await prisma.ticket.updateMany({ where: { workspaceId: action.workspaceId, key: { in: keys } }, data: { archived: false } });
+      for (const r of await ticketIdsForKeys(action.workspaceId, keys)) await recordTicketEvent(action.workspaceId, r.id, 'status-change', userId, 'restored the ticket from the archive');
+      return ticketRowsForKeys(action.workspaceId, keys);
+    }
     case 'bulk-move': {
       const keys = [...new Set(strArr(target, 'ticketIds'))];
       const stageId = str(payload, 'stageId');

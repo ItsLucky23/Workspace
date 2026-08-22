@@ -14,12 +14,12 @@ import { AvatarBubble, IconButton } from '../_components/primitives';
 import { isSectionEnabled } from '../_data/modules';
 import { menuHandler } from 'src/_functions/menuHandler';
 
-import { CreateWorkspaceForm, GROUP_ORDER, NAV_BOTTOM, NAV_ITEMS } from './Shell';
+import { CreateProjectForm, CreateWorkspaceForm, GROUP_ORDER, NAV_BOTTOM, NAV_ITEMS } from './Shell';
 import { isTicketView, useWorkspaces } from './WorkspacesContext';
 
 export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
   const translate = useTranslator();
-  const { view, navigate, openTicket, currentUser, activeWorkspace, workspaces, setActiveWorkspace, createWorkspace, notifications, unreadNotifications, markNotificationRead, markAllNotificationsRead } = useWorkspaces();
+  const { view, navigate, openTicket, currentUser, activeWorkspace, workspaces, setActiveWorkspace, createWorkspace, notifications, unreadNotifications, markNotificationRead, markAllNotificationsRead, toggleAi, projects, activeProjectId, setActiveProject, createProject, createFromTemplate, templates } = useWorkspaces();
   const [drawer, setDrawer] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const onTicket = isTicketView(view);
@@ -116,8 +116,10 @@ export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
                     </div>
                   );
                 })}
+                {/* F-022 — 'ai' is the panel toggle, not a route (there is no /workspaces/ai); the rail and the
+                    bottom bar special-case it, the drawer navigated to the error page. */}
                 {NAV_BOTTOM.filter((it) => isSectionEnabled(activeWorkspace.enabledSections, it.id)).map((it) => (
-                  <button key={it.id} type="button" onClick={() => { navigate(it.id); setDrawer(false); }}
+                  <button key={it.id} type="button" onClick={() => { if (it.id === 'ai') toggleAi(); else navigate(it.id); setDrawer(false); }}
                     className={`flex items-center gap-3 rounded-xl h-11 px-3 text-sm font-medium transition-colors cursor-pointer ${view === it.id ? 'bg-container2 text-title' : 'text-common hover:bg-container2'}`}>
                     <span className="w-5 text-center"><Icon name={it.icon} /></span> {it.label}
                   </button>
@@ -128,6 +130,26 @@ export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
               {/* B2 — the workspace section is no longer gated on having 2+: a phone can now CREATE a
                   second/third workspace, which previously required a desktop (the switcher lived in a
                   `hidden md:flex` header). */}
+              {/* F-023 — phone-first product, desktop-only ProjectSwitcher: the drawer now lists the workspace's
+                  projects (tap = switch) and can create one via the same form the TopBar opens. */}
+              {projects.length > 0 && (
+                <div className="shrink-0 border-t border-divider pt-2 flex flex-col gap-1 max-h-44 overflow-y-auto">
+                  <span className="px-3 text-[11px] font-semibold uppercase tracking-wide text-muted">{translate({ key: 'workspaces.mobileChrome.projects' })}</span>
+                  {projects.map((p) => (
+                    <button key={p.id} type="button" onClick={() => { setActiveProject(p.id); setDrawer(false); }}
+                      className={`flex items-center gap-2.5 rounded-xl h-10 px-3 text-sm font-medium transition-colors cursor-pointer ${p.id === activeProjectId ? 'bg-container2 text-title' : 'text-common hover:bg-container2'}`}>
+                      <span className="w-6 h-6 flex items-center justify-center shrink-0"><Icon name="diagram-project" className="text-xs text-secondary" /></span>
+                      <span className="truncate">{p.name}</span>
+                      {p.id === activeProjectId && <Icon name="check" className="ml-auto text-xs text-primary" />}
+                    </button>
+                  ))}
+                  <button type="button" onClick={() => { setDrawer(false); void menuHandler.open(<CreateProjectForm onCreate={createProject} templates={templates} onCreateFromTemplate={createFromTemplate} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); }}
+                    className="flex items-center gap-2.5 rounded-xl h-11 px-3 text-sm font-medium text-common hover:bg-container2 transition-colors cursor-pointer">
+                    <span className="w-6 h-6 flex items-center justify-center shrink-0"><Icon name="plus" /></span>
+                    <span className="truncate">{translate({ key: 'workspaces.shell.createProject' })}</span>
+                  </button>
+                </div>
+              )}
               <div className="shrink-0 border-t border-divider pt-2 flex flex-col gap-1 max-h-56 overflow-y-auto">
                   <span className="px-3 text-[11px] font-semibold uppercase tracking-wide text-muted">{translate({ key: 'workspaces.mobileChrome.switchWorkspace' })}</span>
                   {workspaces.map((w) => (

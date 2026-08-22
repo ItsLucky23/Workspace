@@ -25,6 +25,7 @@ import { LayerNote, useLayerTip } from '../_components/EffectivePromptPreview';
 import { Collapse } from '../_components/motion';
 import { AvatarBubble, IconButton, InfoTip, PopMenu, Tabs, Toggle, WsButton, type PopMenuItem, type TabDef } from '../_components/primitives';
 import { EmptyPicker } from '../_components/SetupNotice';
+import { CAP } from '../_data/capabilities';
 import { PageSections, useTrailSegment } from '../_components/sections';
 import { RepoInventoryPanel, RepoScriptPicker, useRepoIntrospection } from './repoIntrospection';
 import { RunProcessList, anyRowIncomplete, rowCommand, seedProcesses } from './runProcesses';
@@ -1149,7 +1150,10 @@ function RepositoryTab() {
 
 function DangerTab() {
   const translate = useTranslator();
-  const { activeWorkspace, members, transferOwnership, deleteWorkspace, cloneWorkspace } = useWorkspaces();
+  const { activeWorkspace, members, transferOwnership, deleteWorkspace, cloneWorkspace, can, myPerms } = useWorkspaces();
+  //? F-028 — transfer-ownership + delete-workspace require ownerActions server-side (rbac.ts); a built-in
+  //? Admin holds no such bit, so the buttons were dead. Hidden (with a one-line reason) instead of refused.
+  const ownerActions = myPerms.length > 0 ? can(CAP.ownerActions) : activeWorkspace.role === 'owner';
   const [transferTarget, setTransferTarget] = useState('');
   const memberItems = members.filter((m) => m.id !== activeWorkspace.ownerId).map((m) => ({ id: m.id, value: m.id, item: m.name }));
 
@@ -1182,7 +1186,10 @@ function DangerTab() {
 
   return (
     <div className="max-w-2xl mx-auto w-full rounded-2xl border border-wrong/40 bg-wrong/5 p-5 flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
+      {!ownerActions && (
+        <div className="flex items-start gap-2 text-xs text-muted"><Icon name="circle-info" className="mt-0.5 shrink-0" /><span>{translate({ key: 'workspaces.workspaceSettings.ownerActionsOnly' })}</span></div>
+      )}
+      {ownerActions && <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-sm font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.transferOwnership' })}</div>
           <div className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.transferOwnershipDesc' })}</div>
@@ -1206,8 +1213,8 @@ function DangerTab() {
             <WsButton variant="secondary" onClick={startTransfer}>{translate({ key: 'workspaces.workspaceSettings.transfer' })}</WsButton>
           </div>
         )}
-      </div>
-      <div className="h-px bg-wrong/20" />
+      </div>}
+      {ownerActions && <div className="h-px bg-wrong/20" />}
       {/* GAP_SCAN G2 — start a second workspace from this one's setup instead of re-onboarding from zero.
           Copies configuration only: no tickets, no content, no credentials, no members. */}
       <div className="flex items-center justify-between gap-3">
@@ -1217,14 +1224,18 @@ function DangerTab() {
         </div>
         <WsButton variant="secondary" icon="copy" onClick={startClone}>{translate({ key: 'workspaces.workspaceSettings.clone' })}</WsButton>
       </div>
-      <div className="h-px bg-wrong/20" />
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="text-sm font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.deleteWorkspace' })}</div>
-          <div className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.deleteWorkspaceDesc' })}</div>
-        </div>
-        <WsButton variant="danger" onClick={startDelete}>{translate({ key: 'workspaces.workspaceSettings.delete' })}</WsButton>
-      </div>
+      {ownerActions && (
+        <>
+          <div className="h-px bg-wrong/20" />
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-title">{translate({ key: 'workspaces.workspaceSettings.deleteWorkspace' })}</div>
+              <div className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.deleteWorkspaceDesc' })}</div>
+            </div>
+            <WsButton variant="danger" onClick={startDelete}>{translate({ key: 'workspaces.workspaceSettings.delete' })}</WsButton>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -1559,35 +1570,47 @@ export const template = 'workspaces';
 
 export default function WorkspaceSettings() {
   const translate = useTranslator();
-  const { activeWorkspace, renameWorkspace } = useWorkspaces();
+  const { activeWorkspace, renameWorkspace, can, myPerms } = useWorkspaces();
   const [renaming, setRenaming] = useState(false);
   const [nameInput, setNameInput] = useState(activeWorkspace.name);
   const [showWizard, setShowWizard] = useState(false);
   //? Repository / GitLab / Workflow are Development-lane setup — hide them for a
   //? content/design-only workspace (no repo/Dockerfile prompt when you didn't ask for code).
   const devEnabled = isModuleEnabled(activeWorkspace.enabledSections, 'development');
-  //? Simplify: workspace settings is an admin surface. A plain member sees only Members (view the team); every
-  //? config/admin tab (permissions, modules, AI behaviour, env secrets, integrations, invites, dev setup, danger)
-  //? is gated on role (fail-open: unresolved role ≠ 'member'). Dev tabs additionally require the dev module.
-  const isAdmin = activeWorkspace.role !== 'member';
-  const adminTabs: TabDef[] = [
+  //? F-028 — tabs are gated on the caller's resolved CAPABILITIES (snapshot `myPerms`, the same vector the
+  //? server's hasCapability checks), not on the flattened role: `role` collapses every custom role to 'member',
+  //? which locked a custom role holding workspaceSettings out of the tabs the server would let it use, while a
+  //? built-in Admin (no ownerActions) saw Transfer/Delete the server always refuses.
+  //?   config tabs (permissions, modules, AI, env, integrations, audit, dev setup) → workspaceSettings
+  //?   invites → manageMembers · danger (transfer/delete) → ownerActions; clone → workspaceSettings.
+  //? Fail-open only where the matrix is absent (an empty myPerms = snapshot not loaded), matching the old rule.
+  const hasPerms = myPerms.length > 0;
+  const canSettings = hasPerms ? can(CAP.workspaceSettings) : activeWorkspace.role !== 'member';
+  const canInvite = hasPerms ? can(CAP.manageMembers) : activeWorkspace.role !== 'member';
+  const configTabs: TabDef[] = [
     { id: 'permissions', label: translate({ key: 'workspaces.workspaceSettings.tabPermissions' }), icon: 'circle-check' },
     { id: 'modules', label: translate({ key: 'workspaces.workspaceSettings.tabModules' }), icon: 'table-cells-large' },
     { id: 'aibehavior', label: translate({ key: 'workspaces.workspaceSettings.tabAi' }), icon: 'robot' },
     { id: 'env', label: translate({ key: 'workspaces.workspaceSettings.tabEnv' }), icon: 'sliders' },
     { id: 'integrations', label: translate({ key: 'workspaces.workspaceSettings.tabIntegrations' }), icon: 'database' },
-    { id: 'invites', label: translate({ key: 'workspaces.workspaceSettings.tabInvites' }), icon: 'plus' },
+  ];
+  const inviteTab: TabDef = { id: 'invites', label: translate({ key: 'workspaces.workspaceSettings.tabInvites' }), icon: 'plus' };
+  const laterConfigTabs: TabDef[] = [
     { id: 'audit', label: translate({ key: 'workspaces.workspaceSettings.tabAudit' }), icon: 'clock-rotate-left' },
     ...(devEnabled ? [
       { id: 'repository', label: translate({ key: 'workspaces.workspaceSettings.tabRepository' }), icon: 'code-branch' as const },
       { id: 'gitlab', label: translate({ key: 'workspaces.workspaceSettings.tabGitlab' }), icon: 'diagram-project' as const },
       { id: 'workflow', label: translate({ key: 'workspaces.workspaceSettings.tabWorkflow' }), icon: 'code-merge' as const },
     ] : []),
+    //? Danger hosts clone (workspaceSettings) too, so the tab itself follows settings; the owner-only
+    //? sections inside hide themselves (DangerTab) for a role without ownerActions.
     { id: 'danger', label: translate({ key: 'workspaces.workspaceSettings.tabDanger' }), icon: 'triangle-exclamation' },
   ];
   const tabs: TabDef[] = [
     { id: 'members', label: translate({ key: 'workspaces.workspaceSettings.tabMembers' }), icon: 'users' },
-    ...(isAdmin ? adminTabs : []),
+    ...(canSettings ? configTabs : []),
+    ...(canInvite ? [inviteTab] : []),
+    ...(canSettings ? laterConfigTabs : []),
   ];
 
   //? ADR 0312 — the tab IS the URL (`/workspaces/workspace/repository`), so it is linkable, survives a

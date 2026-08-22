@@ -53,6 +53,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'bulk-assign': CAP.workTickets,
   'bulk-sprint': CAP.manageSprints,
   'bulk-archive': CAP.workTickets,
+  unarchive: CAP.workTickets,
   'sprint-create': CAP.manageSprints,
   'sprint-edit': CAP.manageSprints,
   'create-workspace': null,

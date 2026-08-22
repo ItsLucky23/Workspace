@@ -1553,7 +1553,8 @@
       "forgeOverrideLink": "Projektverbindungen · Einstellungen › Developer",
       "baseUrlConfigured": "Konfiguriert: {{host}}",
       "forgeApiToken": "Forge-API-Token",
-      "cloneToken": "Clone-Token (git über HTTPS, nur dieses Projekt)"
+      "cloneToken": "Clone-Token (git über HTTPS, nur dieses Projekt)",
+      "ownerActionsOnly": "Eigentum übertragen und den Workspace löschen erfordern die Owner-Actions-Berechtigung, die deine Rolle nicht hat — diese Aktionen sind ausgeblendet statt angeboten und verweigert."
     },
     "skills": {
       "title": "Fähigkeiten",
@@ -2490,7 +2491,11 @@
       "changesLoadingFiles": "Worktree-Dateien werden gelesen…",
       "changesNeedContainer": "Die bearbeitbaren Änderungen brauchen den laufenden Container des Tickets — aktiviere das Ticket (oder nutze die Diff-Ansicht, die den Branch-Diff liest).",
       "diffLoading": "Branch-Diff wird geladen…",
-      "diffNoBranch": "Dieses Ticket hat noch keinen Arbeitsbranch — Änderungen erscheinen, sobald der Agent eine Stage startet."
+      "diffNoBranch": "Dieses Ticket hat noch keinen Arbeitsbranch — Änderungen erscheinen, sobald der Agent eine Stage startet.",
+      "shellTab": "shell",
+      "terminalNoContainerTitle": "Kein Container für dieses Ticket",
+      "terminalNoContainerSub": "Das Terminal ist eine Shell im laufenden Container des Tickets. Aktiviere das Ticket (starte eine Stufe), dann erscheint es hier; die Terminals-Seite listet jeden laufenden Container.",
+      "terminalShellHint": "Eine Shell unter /work im Container dieses Tickets — konfigurierte Runtime-/Stufenprozesse sind hier nicht angebunden; starte sie aus dieser Shell oder beobachte sie auf der Terminals-Seite."
     },
     "terminals": {
       "subtitle": "Eine Live-Shell in jedem laufenden Ticket-Container — sieh der KI zu oder greif selbst ein.",
@@ -3297,7 +3302,9 @@
       "archiveConfirmContent": "Sie wandern aus dem aktiven Board.",
       "noAi": "Keine AI",
       "creatorAssignee": "Ersteller · Zuständiger",
-      "clearSelection": "Auswahl aufheben"
+      "clearSelection": "Auswahl aufheben",
+      "filterArchived": "Archiviert",
+      "restore": "Wiederherstellen"
     },
     "placeholder": {
       "comingNext": "{{title}} — kommt als Nächstes",
@@ -3342,7 +3349,9 @@
       "board": "Board",
       "logoInitial": "W",
       "appName": "Workspaces",
-      "switchWorkspace": "Workspace wechseln"
+      "switchWorkspace": "Workspace wechseln",
+      "projects": "Projekte",
+      "services": "Dienste"
     },
     "wsShell": {
       "back": "Zurück",
