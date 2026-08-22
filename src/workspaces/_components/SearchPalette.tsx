@@ -143,7 +143,7 @@ export default function SearchPalette({ open, onClose }: { open: boolean; onClos
                     {tickets.map((t) => <TicketRow key={t.id} t={t} onClick={() => { openTicket(t.id); }} />)}
                     {documents.length > 0 && <Section title={translate({ key: 'workspaces.search.documents' })} />}
                     {documents.map((d) => (
-                      <button key={d.id} type="button" onClick={() => { go(`documents/${d.id}`); }} className="w-full flex items-center gap-3 rounded-lg px-2.5 py-2 hover:bg-container2 cursor-pointer text-left">
+                      <button key={d.id} type="button" onClick={() => { go(`content/documents/${d.id}`); }} className="w-full flex items-center gap-3 rounded-lg px-2.5 py-2 hover:bg-container2 cursor-pointer text-left">
                         <span className="w-5 text-center text-muted"><Icon name="file-lines" /></span>
                         <div className="min-w-0 flex-1"><div className="text-sm text-title truncate">{d.title}</div><div className="text-xs text-muted truncate">{d.content.split('\n').find((l) => l.trim().length > 0) ?? ''}</div></div>
                       </button>
