@@ -544,7 +544,8 @@
       "welcome": "Willkommen bei Workspaces",
       "subtitle": "Erstelle einen Workspace, um zu starten, oder nimm unten eine Einladung an.",
       "createHeading": "Workspace erstellen",
-      "invitesHeading": "Deine Einladungen"
+      "invitesHeading": "Deine Einladungen",
+      "pipelineTier": "Pipeline-Tiefe"
     },
     "pipeline": {
       "tabStages": "Stages",
@@ -1753,7 +1754,7 @@
       "activity": "Aktivität",
       "sources": "Quellen",
       "pipeline": "Pipeline",
-      "scheduled": "Geplant",
+      "scheduled": "Automatisierungsläufe",
       "scheduled-posts": "Geplante Beiträge",
       "content": "Content",
       "marketing": "Marketing",
@@ -3378,6 +3379,7 @@
       "uploadedLabel": "Hochgeladen",
       "exportTitle": "Exportieren",
       "exporting": "Exportiert…",
+      "exportTimedOut": "Der Export wurde nicht abgeschlossen. Prüfe den Server und versuche es erneut.",
       "format": {
         "md": "Markdown",
         "html": "HTML",
@@ -3413,8 +3415,8 @@
       "archivedBadge": "Archiviert",
       "searchPlaceholder": "Dokumente durchsuchen…",
       "aiProviderChip": "Verwendet {{provider}}",
-      "aiProviderInfoTitle": "Fester Anbieter",
-      "aiProviderInfo": "Dokument-KI läuft immer auf Gemini – das ist fest eingestellt und wird nicht von Pipeline-Stage-Personas oder der funktionsspezifischen Provider-Liste beeinflusst. Sie übernimmt aber deine Workspace-KI-Anweisung und aktivierten Skills, die du unter Workspace → KI verwaltest."
+      "aiProviderInfoTitle": "Aufgelöster Anbieter",
+      "aiProviderInfo": "Dies ist der für die Dokumentgenerierung in diesem Workspace aufgelöste Anbieter. Deine Workspace-KI-Anweisung und aktivierten Skills werden weiterhin übernommen und unter Workspace → KI verwaltet."
     },
     "inspire": {
       "title": "Inspiration",

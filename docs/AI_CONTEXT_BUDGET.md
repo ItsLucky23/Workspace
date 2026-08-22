@@ -6,7 +6,7 @@
 > Don't read every index every session. Pick the profile matching your task, LOAD only its
 > artifacts, and QUERY the rest via the `@luckystack/mcp` tools instead of reading whole files.
 
-## Artifact sizes (total ≈ 229,776 tokens if all loaded)
+## Artifact sizes (total ≈ 229,946 tokens if all loaded)
 
 | Artifact | Est. tokens | Bytes | Purpose |
 | --- | --- | --- | --- |
@@ -19,7 +19,7 @@
 | `runbooks` — `docs/AI_RUNBOOKS.md` | 1,177 | 4,706 | Task-shaped golden paths. |
 | `examples` — `docs/AI_EXAMPLES_INDEX.md` | 776 | 3,104 | Canonical example corpus index. |
 | `product` — `docs/AI_PRODUCT_OVERVIEW.md` | 4,973 | 19,893 | What the app + each page is FOR. |
-| `graph` — `docs/ai-graph.json` | 118,180 | 472,721 | Dependency graph — prefer the MCP tools over reading whole. |
+| `graph` — `docs/ai-graph.json` | 118,350 | 473,401 | Dependency graph — prefer the MCP tools over reading whole. |
 
 ## Retrieval profiles
 

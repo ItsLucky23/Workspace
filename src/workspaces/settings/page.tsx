@@ -267,9 +267,12 @@ function ExperimentsPanel({ workspaceId }: { workspaceId: string }) {
     if (variantA.trim().length === 0 || variantB.trim().length === 0) return;
     savePromptExperiment({ feature, name: name.trim() || feature, variantA: variantA.trim(), variantB: variantB.trim() });
     setName(''); setVariantA(''); setVariantB('');
-    setTimeout(refresh, 600);
+    refreshAfterWrite();
   };
-  const stop = (id: string): void => { stopPromptExperiment(id); setTimeout(refresh, 600); };
+  const refreshAfterWrite = (): void => {
+    for (const delay of [600, 2000, 5000]) globalThis.setTimeout(refresh, delay);
+  };
+  const stop = (id: string): void => { stopPromptExperiment(id); refreshAfterWrite(); };
 
   const featureItems: DropdownItem[] = EXPERIMENT_FEATURES.map((f) => ({ id: f, value: f, item: f }));
   const fieldCls = 'rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring';
@@ -363,7 +366,7 @@ function PatPanel({ workspaceId }: { workspaceId: string }) {
         <input value={name} onChange={(e) => { setName(e.target.value); }} placeholder={translate({ key: 'workspaces.pat.namePh' })} className="h-8 px-2 rounded-lg border border-container1-border bg-container2/50 text-xs text-title focus:outline-none focus:border-primary flex-1 min-w-32" />
         <label className="flex items-center gap-1 text-xs text-common cursor-pointer"><input type="checkbox" checked={scopeTickets} onChange={(e) => { setScopeTickets(e.target.checked); }} />{PAT_SCOPE_TICKETS}</label>
         <label className="flex items-center gap-1 text-xs text-common cursor-pointer"><input type="checkbox" checked={scopeContent} onChange={(e) => { setScopeContent(e.target.checked); }} />{PAT_SCOPE_CONTENT}</label>
-        <WsButton variant="secondary" onClick={issue}>{translate({ key: 'workspaces.pat.issue' })}</WsButton>
+        <WsButton variant="secondary" disabled={!scopeTickets && !scopeContent} onClick={issue}>{translate({ key: 'workspaces.pat.issue' })}</WsButton>
       </div>
       <div className="pt-3">
         <Table columns={columns} rows={pats} rowKey={(t) => t.id} empty={translate({ key: 'workspaces.pat.empty' })} />
@@ -483,7 +486,7 @@ export default function AccountSettings() {
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="px-4 md:px-6 py-3 md:py-4">
-        <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: 'workspaces.account.heading' })}</h1>
+        <h1 className="text-xl md:text-2xl font-semibold text-title">{translate({ key: tab === 'account' ? 'workspaces.account.heading' : `workspaces.settingsTabs.${tab}` })}</h1>
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-8">
         <div className="max-w-2xl mx-auto w-full flex flex-col gap-4">

@@ -43,17 +43,20 @@ function MobileFabSheet({ open, onClose }: { open: boolean; onClose: () => void 
   const translate = useTranslator();
   const { view, activeWorkspace, quickAdd, createContentPiece, navigate } = useWorkspaces();
   const [title, setTitle] = useState('');
-  const devOn = isSectionEnabled(activeWorkspace.enabledSections, 'board');
-  const kind: 'ticket' | 'piece' = CONTENT_FAB_VIEWS.has(view) || !devOn ? 'piece' : 'ticket';
+  const contentOn = isSectionEnabled(activeWorkspace.enabledSections, 'content');
+  const kind: 'ticket' | 'piece' = contentOn && CONTENT_FAB_VIEWS.has(view) ? 'piece' : 'ticket';
+  const firstEnabled = NAV_ITEMS.find((item) => isSectionEnabled(activeWorkspace.enabledSections, item.id));
   const submit = () => {
     const t = title.trim();
     if (t.length === 0) return;
     if (kind === 'ticket') {
       quickAdd({ title: t });
-      if (view !== 'board' && view !== 'backlog') navigate('board');
     } else {
       createContentPiece({ title: t, brief: t });
       if (view !== 'content') navigate('content');
+    }
+    if (kind === 'ticket' && view !== 'board' && view !== 'backlog') {
+      navigate(firstEnabled?.id ?? 'board');
     }
     onClose();
   };

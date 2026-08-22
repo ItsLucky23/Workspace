@@ -15,18 +15,14 @@ import { Collapse } from '../_components/motion';
 import { ClickableCard, EmptyState, FOCUS_RING, IconButton, InfoTip, PopMenu, WsButton, type PopMenuItem } from '../_components/primitives';
 import { EmptyPicker } from '../_components/SetupNotice';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
-import type { ContentAssetSummary, ContentPieceSummary, SocialCommentSummary } from '../_data/types';
-import { backendUrl } from '../../../config';
-
-//? `/media/<file>` is served by the backend; hosted urls pass through (mirrors the piece page's helper).
-function assetHref(url: string): string {
-  return url.startsWith('/media/') ? `${backendUrl}${url}` : url;
-}
+import type { ContentPieceSummary, ContentSnapshot, SocialCommentSummary } from '../_data/types';
+import { assetHref } from './[pieceId]/assetHref';
 
 //? The library card's preview: image / silent video frame / a kind icon for audio-ish assets.
-function LibraryThumb({ asset, pieceTitle }: { asset: ContentAssetSummary; pieceTitle: string }) {
-  if (asset.kind === 'image') return <img src={assetHref(asset.url)} alt={pieceTitle} className={`w-full h-full object-cover`} />;
-  if (asset.kind === 'render' || asset.kind === 'video') return <video src={assetHref(asset.url)} muted playsInline className={`w-full h-full object-cover`} />;
+function LibraryThumb({ asset, pieceTitle }: { asset: Pick<ContentSnapshot['assetLibrary'][number], 'kind' | 'url'>; pieceTitle: string }) {
+  const href = assetHref(asset.url);
+  if (asset.kind === 'image' && href) return <img src={href} alt={pieceTitle} className={`w-full h-full object-cover`} />;
+  if ((asset.kind === 'render' || asset.kind === 'video') && href) return <video src={href} muted playsInline className={`w-full h-full object-cover`} />;
   return <Icon name="wave-square" className={`text-2xl text-muted`} />;
 }
 
@@ -144,7 +140,7 @@ function PanelHeader({ icon, label, badge, onClose, closeTitle }: { icon: string
 type ContentView = 'board' | 'comments' | 'library' | 'archived';
 
 export default function Content() {
-  const { content, navigate, focusSetup, createContentPiece, runContentOp, copilotPrefill, consumeCopilotPrefill, refreshComments, markCommentsRead, replyToComment, activeWorkspace } = useWorkspaces();
+  const { content, navigate, focusSetup, createContentPiece, runContentOp, copilotPrefill, consumeCopilotPrefill, refreshComments, markCommentsRead, replyToComment, activeWorkspace, setAssetStarred } = useWorkspaces();
   const translate = useTranslator();
   const [view, setView] = useState<ContentView>('board');
   const openNewPiece = () => { void menuHandler.open(<NewPieceForm onCreate={createContentPiece} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
@@ -174,19 +170,12 @@ export default function Content() {
   const archivedPieces = useMemo(() => content.pieces.filter((p) => p.archived), [content.pieces]);
   const liveEmpty = content.pieces.every((p) => p.archived);
 
-  //? Gap-fix — the WORKSPACE-WIDE media library: every ready asset across all pieces (they were
-  //? locked inside their own piece; even the timeline's picker only saw the current piece's assets).
+  //? G4 — use the same workspace-wide library as the document picker: starred assets first,
+  //? then newest, with one shared star marker across every surface.
   const [libraryKind, setLibraryKind] = useState('all');
-  const libraryAssets = useMemo(() => {
-    const rows: { asset: ContentAssetSummary; pieceId: string; pieceTitle: string }[] = [];
-    for (const p of content.pieces) for (const a of p.assets) {
-      if (a.status !== 'ready' || a.stub || !a.url.startsWith('/media/')) continue;
-      rows.push({ asset: a, pieceId: p.id, pieceTitle: p.title });
-    }
-    return rows.toReversed(); //? newest pieces last in snapshot → show newest first
-  }, [content.pieces]);
-  const libraryKinds = useMemo(() => ['all', ...new Set(libraryAssets.map((r) => r.asset.kind))], [libraryAssets]);
-  const libraryFiltered = libraryKind === 'all' ? libraryAssets : libraryAssets.filter((r) => r.asset.kind === libraryKind);
+  const libraryAssets = content.assetLibrary;
+  const libraryKinds = useMemo(() => ['all', ...new Set(libraryAssets.map((asset) => asset.kind))], [libraryAssets]);
+  const libraryFiltered = libraryKind === 'all' ? libraryAssets : libraryAssets.filter((asset) => asset.kind === libraryKind);
 
   //? If a secondary view's data empties out from under it (last piece restored / library drained), fall
   //? back to the board instead of stranding the user on a blank panel whose trigger no longer renders.
@@ -401,15 +390,18 @@ export default function Content() {
               ))}
             </div>
             <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3`}>
-              {libraryFiltered.map(({ asset, pieceId, pieceTitle }) => (
+              {libraryFiltered.map((asset) => (
                 <div key={asset.id} className={`rounded-xl border border-container1-border bg-container1 overflow-hidden flex flex-col`}>
-                  <button type="button" onClick={() => { navigate(`content/${pieceId}`); }} aria-label={pieceTitle} className={`aspect-video bg-container2 flex items-center justify-center overflow-hidden cursor-pointer ${FOCUS_RING}`}>
-                    <LibraryThumb asset={asset} pieceTitle={pieceTitle} />
+                  <button type="button" onClick={() => { navigate(`content/${asset.pieceId}`); }} aria-label={asset.pieceTitle} className={`aspect-video bg-container2 flex items-center justify-center overflow-hidden cursor-pointer ${FOCUS_RING}`}>
+                    <LibraryThumb asset={asset} pieceTitle={asset.pieceTitle} />
                   </button>
                   <div className={`p-2 flex flex-col gap-1.5`}>
                     <div className={`flex items-center gap-1.5 text-[11px] text-muted`}>
                       <span className={`rounded-full bg-container2 px-1.5 py-0.5`}>{asset.kind}</span>
-                      <span className={`truncate`}>{pieceTitle}</span>
+                      <span className={`truncate flex-1`}>{asset.pieceTitle}</span>
+                      <button type="button" onClick={() => { setAssetStarred(asset.id, !asset.starred); }} title={translate({ key: 'workspaces.content.libraryStar' })} className={`text-[11px] cursor-pointer shrink-0 ${asset.starred ? 'text-warning' : 'text-disabled hover:text-muted'}`}>
+                        <Icon name="star" />
+                      </button>
                     </div>
                     <LibraryUsePicker pieces={content.pieces.filter((p) => !p.archived)} onPick={(targetId) => { runContentOp('content-import-asset', targetId, { url: asset.url, kind: asset.kind === 'video' || asset.kind === 'render' ? 'video' : 'image' }); notify.success({ key: 'workspaces.content.libraryImported' }); }} translate={translate} />
                   </div>
