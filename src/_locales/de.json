@@ -2472,7 +2472,11 @@
       "aiAgentTab": "ai-agent",
       "aiAgentTailHint": "Schreibgeschützte Ansicht der Live-Ausgabe des Agenten — derselbe Stream wie die Inline-Vorschau unter Übersicht.",
       "liveAgentOpenTerminal": "In Terminal öffnen",
-      "branchChipLabel": "{{branch}} · Arbeitsbranch"
+      "branchChipLabel": "{{branch}} · Arbeitsbranch",
+      "changesLoadingFiles": "Worktree-Dateien werden gelesen…",
+      "changesNeedContainer": "Die bearbeitbaren Änderungen brauchen den laufenden Container des Tickets — aktiviere das Ticket (oder nutze die Diff-Ansicht, die den Branch-Diff liest).",
+      "diffLoading": "Branch-Diff wird geladen…",
+      "diffNoBranch": "Dieses Ticket hat noch keinen Arbeitsbranch — Änderungen erscheinen, sobald der Agent eine Stage startet."
     },
     "terminals": {
       "subtitle": "Eine Live-Shell in jedem laufenden Ticket-Container — sieh der KI zu oder greif selbst ein.",

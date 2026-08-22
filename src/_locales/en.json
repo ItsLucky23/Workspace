@@ -2472,7 +2472,11 @@
       "aiAgentTab": "ai-agent",
       "aiAgentTailHint": "Read-only tail of the agent's live output — this is the same stream as the inline preview on Overview.",
       "liveAgentOpenTerminal": "Open in Terminal",
-      "branchChipLabel": "{{branch}} · working branch"
+      "branchChipLabel": "{{branch}} · working branch",
+      "changesLoadingFiles": "Reading the worktree files…",
+      "changesNeedContainer": "The editable changes need the ticket's running container — activate the ticket (or use Diff view, which reads the branch diff).",
+      "diffLoading": "Loading the branch diff…",
+      "diffNoBranch": "This ticket has no working branch yet — changes appear once the agent starts a stage."
     },
     "terminals": {
       "subtitle": "A live shell inside each running ticket container — watch the AI work, or step in and type yourself.",

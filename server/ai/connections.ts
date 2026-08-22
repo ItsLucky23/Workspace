@@ -108,7 +108,7 @@ export async function migrateLegacyGeminiKeys(): Promise<number> {
     if (apiKey.length === 0) continue;
     const meta = metaFor('gemini-api');
     const [err, res] = await tryCatch(() => addConnection({ workspaceId: row.workspaceId, providerId: 'gemini-api', model: meta?.defaultModel ?? '', apiKey }));
-    if (!err && res.ok) created += 1;
+    if (!err && res?.ok) created += 1;
   }
   return created;
 }

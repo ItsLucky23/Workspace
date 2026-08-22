@@ -2,8 +2,8 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 452,
-    "edges": 677,
+    "nodes": 453,
+    "edges": 680,
     "symbols": 857,
     "callEdges": 283
   },
@@ -2064,6 +2064,11 @@
       "route": null
     },
     {
+      "id": "workspaces/develop/board/[ticketId]/ticketDiff.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "kind": "other",
       "route": null
@@ -3860,6 +3865,10 @@
     },
     {
       "from": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "to": "workspaces/develop/board/[ticketId]/ticketDiff.ts"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "to": "workspaces/develop/board/ArtifactLinkPicker.tsx"
     },
     {
@@ -3977,6 +3986,14 @@
     {
       "from": "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/ticketDiff.ts",
+      "to": "_components/editor/CodeEditorPanel.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/ticketDiff.ts",
+      "to": "workspaces/_data/types.ts"
     },
     {
       "from": "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
@@ -5213,7 +5230,8 @@
     "_components/editor/CodeEditorPanel.tsx": [
       "editor-demo/page.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
-      "workspaces/develop/board/[ticketId]/page.tsx"
+      "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/[ticketId]/ticketDiff.ts"
     ],
     "_components/editor/editorThemes.ts": [
       "_components/editor/CodeEditorPanel.tsx",
@@ -5225,6 +5243,7 @@
       "workspaces/develop/board/[ticketId]/editor/page.tsx",
       "workspaces/develop/board/[ticketId]/liveEditor.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/[ticketId]/ticketDiff.ts",
       "workspaces/develop/code/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
@@ -5233,6 +5252,7 @@
       "editor-demo/page.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/[ticketId]/ticketDiff.ts",
       "workspaces/develop/code/page.tsx"
     ],
     "_components/editor/fileTree.ts": [
@@ -5242,6 +5262,7 @@
       "editor-demo/page.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/[ticketId]/ticketDiff.ts",
       "workspaces/develop/code/page.tsx"
     ],
     "_components/editor/languages.ts": [
@@ -5250,6 +5271,7 @@
       "editor-demo/page.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/[ticketId]/ticketDiff.ts",
       "workspaces/develop/code/page.tsx"
     ],
     "_components/editor/MonacoEditor.tsx": [
@@ -5257,6 +5279,7 @@
       "editor-demo/page.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/[ticketId]/ticketDiff.ts",
       "workspaces/develop/code/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
@@ -5266,6 +5289,7 @@
       "editor-demo/page.tsx",
       "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/[ticketId]/ticketDiff.ts",
       "workspaces/develop/code/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
@@ -6251,6 +6275,7 @@
       "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/editor/page.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/[ticketId]/ticketDiff.ts",
       "workspaces/develop/board/boardFilters.ts",
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/code/page.tsx",
@@ -6381,6 +6406,7 @@
       "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx",
       "workspaces/develop/board/[ticketId]/editor/page.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/board/[ticketId]/ticketDiff.ts",
       "workspaces/develop/board/boardFilters.ts",
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/code/page.tsx",
@@ -6680,6 +6706,10 @@
     "workspaces/develop/board/[ticketId]/TerminalPanel.tsx": [
       "workspaces/develop/board/[ticketId]/page.tsx"
     ],
+    "workspaces/develop/board/[ticketId]/ticketDiff.ts": [
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "workspaces/develop/board/[ticketId]/page.tsx"
+    ],
     "workspaces/develop/board/[ticketId]/TimeTravelForm.tsx": [
       "workspaces/develop/board/[ticketId]/page.tsx"
     ],
@@ -6826,14 +6856,14 @@
     {
       "id": "workspaces/_functions/controlApi.ts",
       "kind": "other",
-      "dependents": 111,
+      "dependents": 112,
       "directDependents": 10
     },
     {
       "id": "workspaces/_data/types.ts",
       "kind": "other",
-      "dependents": 102,
-      "directDependents": 55
+      "dependents": 103,
+      "directDependents": 56
     },
     {
       "id": "workspaces/_components/Icon.tsx",
@@ -6932,16 +6962,16 @@
       "directDependents": 4
     },
     {
+      "id": "_components/editor/editorThemes.ts",
+      "kind": "component",
+      "dependents": 12,
+      "directDependents": 9
+    },
+    {
       "id": "workspaces/develop/designer/styles.ts",
       "kind": "other",
       "dependents": 12,
       "directDependents": 6
-    },
-    {
-      "id": "_components/editor/editorThemes.ts",
-      "kind": "component",
-      "dependents": 11,
-      "directDependents": 9
     },
     {
       "id": "_sockets/apiRequest.ts",
@@ -6968,10 +6998,10 @@
       "directDependents": 2
     },
     {
-      "id": "_sockets/syncRequest.ts",
-      "kind": "other",
+      "id": "_components/editor/fileTree.ts",
+      "kind": "component",
       "dependents": 8,
-      "directDependents": 4
+      "directDependents": 5
     }
   ],
   "symbols": [

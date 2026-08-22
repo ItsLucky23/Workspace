@@ -2472,7 +2472,11 @@
       "aiAgentTab": "ai-agent",
       "aiAgentTailHint": "Alleen-lezen weergave van de live output van de agent — dezelfde stream als de inline preview op Overzicht.",
       "liveAgentOpenTerminal": "Openen in Terminal",
-      "branchChipLabel": "{{branch}} · werkbranch"
+      "branchChipLabel": "{{branch}} · werkbranch",
+      "changesLoadingFiles": "Worktree-bestanden lezen…",
+      "changesNeedContainer": "De bewerkbare wijzigingen hebben de draaiende container van het ticket nodig — activeer het ticket (of gebruik Diff-weergave, die de branch-diff leest).",
+      "diffLoading": "Branch-diff laden…",
+      "diffNoBranch": "Dit ticket heeft nog geen werkbranch — wijzigingen verschijnen zodra de agent een stage start."
     },
     "terminals": {
       "subtitle": "Een live shell in elke draaiende ticket-container — kijk mee met de AI of grijp zelf in.",
