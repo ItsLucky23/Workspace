@@ -25,5 +25,5 @@ export const main = async ({ clientInput, user, functions, roomCode }: SyncParam
     target: { memberId }, payload: { roleKey }, clientRequestId,
   });
   if (!res.ok) return { status: 'error', errorCode: res.errorCode };
-  return { status: 'success', memberId, role: asRole(roleKey) };
+  return { status: 'success', memberId, role: asRole(roleKey), roleKey };
 };

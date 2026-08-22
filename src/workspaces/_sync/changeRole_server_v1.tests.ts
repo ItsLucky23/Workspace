@@ -17,6 +17,7 @@ interface ChangeRoleInput {
 interface ChangeRoleOk {
   status: 'success';
   memberId: string;
+  roleKey: string;
 }
 interface ChangeRoleErr {
   status: 'error';
@@ -53,6 +54,9 @@ export const customTests: CustomTestCase[] = [
           { receiver: workspaceId },
         );
         ctx.expect.eq(res.status, 'success', 'changeRole returns status "success"');
+        //? F-024: the ack carries the RAW roleKey — the provider's member delta + the Members-tab
+        //? dropdown key on it (custom roles would otherwise flatten to 'member' and never display).
+        if (res.status === 'success') ctx.expect.eq(res.roleKey, 'admin', 'ack echoes the raw roleKey for the client-side member delta');
 
         const updated = await poll(async () => {
           const row = await ctx.prisma.workspaceMember.findFirst({ where: { workspaceId, userId: target.userId } });

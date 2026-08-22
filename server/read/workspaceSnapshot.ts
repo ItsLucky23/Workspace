@@ -420,7 +420,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       const u = userById.get(m.userId);
       const avatar = u && u.avatar.length > 0 ? u.avatar : undefined;
       const avatarFallback = u && u.avatarFallback.length > 0 ? u.avatarFallback : '#6366F1';
-      return { id: m.userId, name: u?.name ?? u?.email ?? 'Member', email: u?.email ?? '', avatar, avatarFallback, role: asRole(m.roleKey) };
+      return { id: m.userId, name: u?.name ?? u?.email ?? 'Member', email: u?.email ?? '', avatar, avatarFallback, role: asRole(m.roleKey), roleKey: m.roleKey };
     });
 
     const ticketCountBySprint = new Map<string, number>();

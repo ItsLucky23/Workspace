@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `7be400f8c6f5af01` · 17 capabilities · 238 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `0cf4fce0f64dea81` · 17 capabilities · 238 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -26,173 +26,173 @@
 
 ## Decisions (why it is the way it is)
 
-- `adr-0001` Embed per-stage config as composite types, keep loose ObjectId refs, and omit the framework-provided identity models in the Workspaces V1 Prisma schema
-- `adr-0002` In Fase 1 the control-API enqueues to an in-process serial Conductor; the Redis signal-log + lease land in Fase 2
-- `adr-0004` App-owned AES-256-GCM encryption for per-workspace secrets
-- `adr-0005` The write path splits into per-action typed `_api` routes (not `_sync`) — realtime `_sync` deltas deferred to a browser-testable session
-- `adr-0006` In-workspace writes broadcast a per-action `_sync` delta the client merges (no refetch)
-- `adr-0007` Pluggable AI-provider layer — features resolve a backend at dispatch, never hardcode one
-- `adr-0008` Container runtime model — clone-into-volume, name-based idempotency, off-chain provisioning
-- `adr-0009` Register-flow AI operations — direct _api, draft-then-review, pure-context prompting
-- `adr-0010` Per-container VS Code editor with a projected per-user profile (extensions + auth)
-- `adr-0011` Git/workflow customization is split into structured per-workspace config vs skill/context-doc guidance, and the preview reverse-proxy is a pluggable Caddy/nginx provider
-- `adr-0012` The AI engine and a human's live editor never run on a ticket's container at once (edit-lock), and stale proxy routes self-heal on boot
-- `adr-0013` Engine control-plane completion — push-on-approval, pause/kill controls, off-chain realtime broadcast, and preview exposure
-- `adr-0014` Market-hardening — GitLab issue ingestion, a concurrent-turn CapacityManager, edge-auth on subdomains, and Sentry error tracking
+- `adr-0001` 0001-workspaces-v1-schema-shape
+- `adr-0002` 0002-fase1-inprocess-conductor
+- `adr-0004` 0004-app-owned-secret-encryption
+- `adr-0005` 0005-per-action-typed-api-write-routes
+- `adr-0006` 0006-realtime-sync-delta-transport
+- `adr-0007` 0007-pluggable-ai-provider-layer
+- `adr-0008` 0008-container-runtime-model
+- `adr-0009` 0009-register-flow-ai-operations
+- `adr-0010` 0010-per-container-editor-with-user-profile
+- `adr-0011` 0011-pluggable-proxy-and-git-workflow-config
+- `adr-0012` 0012-editor-engine-edit-lock-and-proxy-boot-reconcile
+- `adr-0013` 0013-engine-control-plane-completion
+- `adr-0014` 0014-market-hardening-gitlab-ingestion-capacity-edge-auth
 - `adr-0015` 0015-multi-instance-safety-deel-a
-- `adr-0016` Egress control on worker containers — an internal network + an allowlist forward proxy
-- `adr-0017` RAG codebase intelligence — pluggable embeddings + a cosine-scan retrieval injected into the agent context
-- `adr-0018` Built-in merge-request review — diff + line-anchored threads + stale-on-new-head approvals + merge
-- `adr-0019` Ticket priority (one field, `urgent` = hotfix tier) + notification preferences
+- `adr-0016` 0016-egress-control
+- `adr-0017` 0017-rag-codebase-intelligence
+- `adr-0018` 0018-builtin-mr-review
+- `adr-0019` 0019-ticket-priority-notification-preferences
 - `adr-0020` 0020-capacity-manager-hard-cap
-- `adr-0021` Real git-merge for the built-in MR review (approval-gated, conflict-safe, revertible)
+- `adr-0021` 0021-real-git-merge
 - `adr-0022` 0022-crash-recovery-watchdog
-- `adr-0023` In-container pty-agent — durable scrollback + crash-resume for container terminals
-- `adr-0024` Close client gaps — needs-input answer-to-AI + realtime presence
-- `adr-0025` Cost/usage tracking — record token estimates, display only (no hard stop)
-- `adr-0026` Observability — structured logging, metrics, health probes, flow insights
-- `adr-0027` Automation / plugin-engine — WorkspaceTrigger + ActionExecutor + AgentRole registry
-- `adr-0028` Token self-handoff — controlled handoff → reset → reload on budget
-- `adr-0029` Forge-provider abstraction (GitLab + GitHub) + webhook ingest
-- `adr-0030` Editor loose ends — profile encryption-at-rest + Open VSX gallery
-- `adr-0031` Multi-instance Deel B — coordination verified under concurrency + live 2-instance
-- `adr-0032` Self-host installer + DR — compose stack, bootstrap, runbook
-- `adr-0033` Studio — AI design + marketing module (brief → artifacts via provider layer + AgentRoles)
-- `adr-0034` Tool-module ↔ pipeline coupling (design-system, interview findings, ticket↔artifact)
-- `adr-0035` Multi-project / multi-service workspaces (reverses D12 "one project per workspace")
-- `adr-0036` GitHubForge + per-project forge connection (un-defer)
-- `adr-0037` Persistent environments (dev/staging/prod) + deploy control-op
-- `adr-0038` Deploy/CD — promote ladder + downloadable build export
-- `adr-0039` Built-in CI + quality gates (green/red blocking merge & promote)
-- `adr-0040` Security & dependency scanning — first-class CI job types
-- `adr-0041` AI MR-review pass (propose→accept, never writes/approves)
-- `adr-0042` AI-assisted rollback — root-cause role → propose→accept forward-revert + tracking ticket
-- `adr-0043` User-app DB support + gated migrations
-- `adr-0044` Reasoning first-class — per-stage think-budget (surfaced) + plan-critique gate
-- `adr-0045` RAG sharpen — institutional memory + wire into surfaces + re-index on merge
-- `adr-0046` Greenfield scaffolding — curated stack templates + project-from-template
-- `adr-0047` Delivery analytics — on-request fold over the append-only log (tokens, not €)
-- `adr-0048` Review ergonomics — cross-ticket answer-queue + presence soft-claim
-- `adr-0049` Content-platform pivot — Workspaces as an all-in-1 AI content platform on the shared engine
-- `adr-0050` Content-platform data model — projectType lane + 9 content models (F0.1)
-- `adr-0051` Media €-budget + pre-generation guard (F0.2)
-- `adr-0052` Media provider abstraction + stub adapters (F0.3)
-- `adr-0053` Cross-cutting style/preset system (F0.4)
-- `adr-0054` Generic content-pipeline — fixed stage sequence + control-ops (F1.1)
-- `adr-0055` Content script + beats generation with a stub fallback (F1.2)
-- `adr-0056` Voiceover generation — metered path + per-beat timing (F1.3)
-- `adr-0057` Per-beat image generation (F1.4)
-- `adr-0058` Assembly / render — the complete downloadable output (F1.5)
-- `adr-0059` Reference-driven photorealistic image generation (F2.1, #1 feature)
-- `adr-0060` Short-form clip generation (F2.2)
-- `adr-0061` Reference-video analysis → blueprint that seeds a script (F2.3)
-- `adr-0062` Shared single-asset gen + avatar (F2.4)
-- `adr-0063` Music + SFX generation (F2.5)
-- `adr-0064` 3D-concepting generation (F2.6)
-- `adr-0065` Publishing behind the B-23 approval gate + YouTube (F3.1)
-- `adr-0066` TikTok publishing + IG/LinkedIn future-ready (F3.2)
-- `adr-0067` Content automation + conversational entry (F3.3)
-- `adr-0068` Main-navbar grouping (F4.1)
-- `adr-0069` Content lane in the snapshot (F4.2)
-- `adr-0070` AI-drives-UI copilot — propose a directive, never write (F4.3)
-- `adr-0071` Per-channel brand-RAG + content-analytics (F5.1)
-- `adr-0072` Depth program — real gen/render/publish + UI + platform hardening
-- `adr-0073` Tenant-isolation guard via an ai:lint rule (not a full tenantDb fold)
-- `adr-0074` Secret encryption is fail-closed — WORKSPACES_ENC_KEY is mandatory
-- `adr-0075` Server-side merge/rollback pushes the target to origin
-- `adr-0076` Preview/editor serve paths wait for readiness (no fire-and-forget)
-- `adr-0077` Forge issue-sync paginates + retries; git push retries
-- `adr-0078` Real CI YAML parse + PTY prompt-ready detection
-- `adr-0079` Real Fal.ai media generation behind available() (stub = no-key fallback)
-- `adr-0080` Real ElevenLabs voice/sfx + Suno music behind available()
-- `adr-0081` Real structured LLM parsing for script + reference-video blueprint
-- `adr-0082` Real ffmpeg (Docker) render pipeline + media download route
-- `adr-0083` Real YouTube + TikTok publishing (OAuth + upload) behind the B-23 gate
-- `adr-0084` Content UI — reachable board reading the content snapshot
-- `adr-0085` Content piece detail + generation controls firing control-ops
-- `adr-0086` Content settings — provider keys + €-budget + setup flow
-- `adr-0087` Content insights dashboard + style library + brand editor
-- `adr-0088` KEY_SETUP_GUIDE + Depth Program complete
-- `adr-0089` tsc is a delivery gate; Prisma-Json writes go through jsonInput, never a cast
-- `adr-0090` Tests run a stub provider world by default; live-AI is opt-in via enableLiveProviders()
-- `adr-0091` The media registry consumes per-workspace keys + overrides, threaded through the provider
-- `adr-0092` Publishing is reachable via an OAuth connect flow + an in-app publish trigger
-- `adr-0093` Live-AI verification + the media-provider fixes it surfaced
-- `adr-0094` Premium feel comes from a shared motion layer, not per-page ad-hoc animation
-- `adr-0095` Music generation uses the api.sunoapi.org contract (resolves the 0093 open question)
-- `adr-0096` The fal transport gets a per-fetch timeout + a clean poll-timeout; triposr's blocker is fal queue congestion
-- `adr-0097` Workspaces pick MODULES at creation (Dev / Content / Design) — nav gates on a per-section set, not a repo/Dockerfile-first setup
-- `adr-0098` Media generation is queue-aware — the UI shows "in queue · position N" and only starts its elapsed timer when the job leaves the provider queue
-- `adr-0099` All media flows share one queue-aware lifecycle helper; content state syncs to the whole workspace with reconnect + staleness safety nets
-- `adr-0100` Media cost is shown BEFORE the user spends — per-action € estimate + per-piece spend surfaced from the snapshot
-- `adr-0101` A persistent brand/product context grounds every creative generation
-- `adr-0102` A style manager UI surfaces the save-style op — users author reusable named styles + pick them, not magic strings
-- `adr-0103` A workspace-wide AI instruction is prepended to every AI completion, at one choke-point
-- `adr-0104` The per-workspace Gemini key actually drives the text features; media vs AI keys are split honestly
-- `adr-0105` The stage persona (system prompt) + definition-of-done are editable in the pipeline UI
-- `adr-0106` Users upload their own image/video (a real /media/upload endpoint) and import it as a first-class asset
-- `adr-0107` Users upload their own knowledge docs (context-doc InfoSources) — the dead Sources upload is real
-- `adr-0108` The creative AI grounds on the user's enabled context-docs (deterministic, key-less); semantic RAG is a follow-up
-- `adr-0109` A per-workspace output language directive steers every AI generation
-- `adr-0110` A per-workspace AI provider-per-feature picker finally feeds the resolveAssignment override seam
-- `adr-0111` Per-workspace Gemini model + temperature tuning (Claude has no such knob — PTY-billed)
-- `adr-0112` Per-request + per-workspace media model choice (low-poly / fast vs quality)
-- `adr-0113` Regenerate + variations on a produced content asset (with a tweak), via the queue-aware lifecycle
-- `adr-0114` Content asset version lineage — a variation points at its source (parentId); compare/revert is a follow-up
-- `adr-0115` Studio artifact regenerate takes a free-text refine instruction (not a blind re-roll)
-- `adr-0116` Web push + PWA — env-VAPID, a service worker, and push piggybacked on notifications
-- `adr-0117` Push fans out on the automation + AI-suggestion notification sites (A1 fast-follow)
-- `adr-0118` Per-type web-push opt-out (assignment / automation / AI-suggestion), default on
-- `adr-0119` Per-workspace autonomy level modulates the per-stage approval gate ("ask me less")
-- `adr-0120` The watchdog re-pings the assignee about a stale open question (A5, first half)
-- `adr-0121` Parametrized render formats (incl. 9:16 vertical) + .srt/.vtt caption export
-- `adr-0122` Post scheduling — a leader-gated loop fires PublishJobs at their scheduledAt
-- `adr-0123` Logo watermark overlay in the render plan (O4); intro/outro concat deferred
-- `adr-0124` Per-platform publish variants (caption / hashtags / privacy) in the upload payload
-- `adr-0125` An outbound webhook automation action (X2, outbound half)
-- `adr-0126` Custom Gemini base URL (bring-your-own endpoint) — X4, AI-provider half
-- `adr-0127` The user's MCP integration command is mounted into the container .mcp.json (X1)
-- `adr-0128` Brand-kit portability — export/import the brand library as portable JSON (R3, brand half)
-- `adr-0129` Per-request cheap "preview" (dry-run) for media generation (S1)
-- `adr-0130` Undo — content-unarchive (soft-undo) + content-unpublish (retract a post) (S2)
-- `adr-0131` User-defined custom AI tasks — break the "can't invent a task" ceiling within the invariants (E5)
-- `adr-0132` The inpaint MediaFeature — region-edit backend (E1, server half)
-- `adr-0133` Reusable output templates (named format specs) — O5
-- `adr-0134` Style-set portability — export/import a workspace's user styles as JSON (R1, style slice)
-- `adr-0135` Cross-workspace copy — copy styles + brand between workspaces (R2)
-- `adr-0136` Public API via scoped Personal Access Tokens over the control-API (X3)
-- `adr-0137` content-inpaint op — thread a mask through the content flow to the inpaint feature (E1, wiring half)
-- `adr-0138` The image region editor — Fabric.js mask-draw → inpaint (E1, canvas half)
-- `adr-0139` Image editor essentials — brightness/contrast/saturation → a new asset (E2)
-- `adr-0140` Video timeline — beat reorder + trim drives the render plan (E3, backend half)
-- `adr-0141` Audio mix plan — voice + ducked music + sfx → one mixed track (E4, mix half)
-- `adr-0142` Guided first-run setup wizard (S3, wizard half)
-- `adr-0143` Premium-UX pass — keyboard-dismiss + the §0b invariants hold across the new surfaces (S4)
-- `adr-0144` Honesty fixes — stop reporting stub uploads/renders as success; real claude-CLI check; a live render proof
-- `adr-0145` L2 O-A/O-B — the conversational front door (Assistant creates + decomposes, not just reshuffles)
-- `adr-0146` V1 — the video-timeline scene model (VideoScene + content-save-scenes)
-- `adr-0147` V2 — real multi-clip video render (buildVideoStitchPlan + renderScenes)
-- `adr-0148` V3 — long-video decomposition (content-decompose-video)
-- `adr-0149` V4 — range-refine (content-refine-range)
-- `adr-0150` D1 — the real YouTube byte-upload (resumable, all three legs)
-- `adr-0151` D2 — TikTok async publish (status polling)
-- `adr-0152` O-C — content pipeline orchestration (content-run-pipeline)
-- `adr-0153` V5/V6 — the video timeline editor UI
-- `adr-0154` O-D — "start with AI" auto-activation
-- `adr-0155` B1 — client-side crop + resize in the image editor
-- `adr-0156` P-B — structured approve/reject/choice cards for needs-input
-- `adr-0157` D4 — prod build-export (bundle) + external deploy-hook
-- `adr-0158` D3 — demo-host (main on a DNS) + auto-redeploy watcher
-- `adr-0159` G1 — greenfield: real repo + seed file-tree generation
-- `adr-0160` G2 — greenfield template-wizard UI
-- `adr-0161` V5 completion — the timeline audio track (waveform + voice/duck sliders)
-- `adr-0162` W1 — multi-question sets via denormalized JSON on the ticket (not the relational QuestionSet models)
-- `adr-0163` W2 — non-blocking (advisory) questions via the done-envelope, resolved with a divergence→revision loop
-- `adr-0164` T1 — preview an arbitrary git ref via an ephemeral, ref-scoped container (un-defer preview-at-ref)
-- `adr-0165` S1 — any-stack via a multi-base catalog sharing one agent base (relaxed Dockerfile-trust guard)
-- `adr-0166` K1 — third-party services via a sanitized, per-workspace-namespaced docker-compose engine
-- `adr-0167` H1 — an append-only admin/security audit log for governance ops
-- `adr-0168` H5 — fair (round-robin) capacity draining across workspaces
+- `adr-0023` 0023-in-container-pty-agent
+- `adr-0024` 0024-client-gaps-answer-input-presence
+- `adr-0025` 0025-cost-usage-tracking
+- `adr-0026` 0026-observability
+- `adr-0027` 0027-automation-plugin-engine
+- `adr-0028` 0028-token-self-handoff
+- `adr-0029` 0029-forge-provider-abstraction
+- `adr-0030` 0030-editor-loose-ends
+- `adr-0031` 0031-multi-instance-verification
+- `adr-0032` 0032-self-host-installer-dr
+- `adr-0033` 0033-studio-design-marketing-module
+- `adr-0034` 0034-tool-module-pipeline-coupling
+- `adr-0035` 0035-multi-project-multi-service
+- `adr-0036` 0036-github-forge-per-project
+- `adr-0037` 0037-environments-persistent-server
+- `adr-0038` 0038-deploy-cd-downloadable-builds
+- `adr-0039` 0039-builtin-ci-quality-gates
+- `adr-0040` 0040-security-dependency-scanning
+- `adr-0041` 0041-ai-mr-review
+- `adr-0042` 0042-ai-assisted-rollback
+- `adr-0043` 0043-user-app-db-migrations
+- `adr-0044` 0044-reasoning-plan-critique
+- `adr-0045` 0045-rag-institutional-memory
+- `adr-0046` 0046-greenfield-scaffolding
+- `adr-0047` 0047-delivery-analytics
+- `adr-0048` 0048-review-ergonomics
+- `adr-0049` 0049-content-platform-pivot
+- `adr-0050` 0050-content-data-model
+- `adr-0051` 0051-media-budget-guard
+- `adr-0052` 0052-media-provider-abstraction
+- `adr-0053` 0053-style-preset-system
+- `adr-0054` 0054-content-pipeline
+- `adr-0055` 0055-content-script-generation
+- `adr-0056` 0056-content-voiceover
+- `adr-0057` 0057-content-beat-images
+- `adr-0058` 0058-content-assembly
+- `adr-0059` 0059-reference-image
+- `adr-0060` 0060-short-form-clips
+- `adr-0061` 0061-reference-video-analysis
+- `adr-0062` 0062-media-asset-avatar
+- `adr-0063` 0063-music-sfx
+- `adr-0064` 0064-model-3d
+- `adr-0065` 0065-publish-gate
+- `adr-0066` 0066-publish-tiktok
+- `adr-0067` 0067-content-automation
+- `adr-0068` 0068-nav-grouping
+- `adr-0069` 0069-content-snapshot-ui
+- `adr-0070` 0070-copilot
+- `adr-0071` 0071-content-memory-analytics
+- `adr-0072` 0072-depth-program
+- `adr-0073` 0073-tenant-scope-lint-guard
+- `adr-0074` 0074-encryption-fail-closed
+- `adr-0075` 0075-mr-push-to-origin
+- `adr-0076` 0076-container-readiness-probes
+- `adr-0077` 0077-forge-retry-pagination
+- `adr-0078` 0078-real-ci-yaml-pty-ready
+- `adr-0079` 0079-real-fal-media-gen
+- `adr-0080` 0080-real-voice-music-gen
+- `adr-0081` 0081-real-llm-parsing
+- `adr-0082` 0082-real-ffmpeg-render
+- `adr-0083` 0083-real-publishing-oauth
+- `adr-0084` 0084-content-ui-reach
+- `adr-0085` 0085-content-create-ui
+- `adr-0086` 0086-content-settings-setup
+- `adr-0087` 0087-content-insights-brand
+- `adr-0088` 0088-key-setup-guide
+- `adr-0089` 0089-typecheck-gate-and-json-input
+- `adr-0090` 0090-deterministic-test-provider-world
+- `adr-0091` 0091-per-workspace-media-keys
+- `adr-0092` 0092-publishing-oauth-connect-flow
+- `adr-0093` 0093-live-ai-verification
+- `adr-0094` 0094-premium-motion-layer
+- `adr-0095` 0095-suno-api-integration
+- `adr-0096` 0096-fal-transport-robustness
+- `adr-0097` 0097-workspace-modules
+- `adr-0098` 0098-queue-aware-media-generation
+- `adr-0099` 0099-queue-aware-all-flows-and-workspace-sync
+- `adr-0100` 0100-media-cost-transparency
+- `adr-0101` 0101-brand-product-grounding
+- `adr-0102` 0102-style-manager
+- `adr-0103` 0103-workspace-ai-instruction
+- `adr-0104` 0104-gemini-workspace-key
+- `adr-0105` 0105-stage-persona-in-ui
+- `adr-0106` 0106-media-upload-import
+- `adr-0107` 0107-doc-upload-infosource
+- `adr-0108` 0108-creative-knowledge-grounding
+- `adr-0109` 0109-output-language
+- `adr-0110` 0110-text-provider-per-feature
+- `adr-0111` 0111-gemini-model-temperature
+- `adr-0112` 0112-media-model-choice
+- `adr-0113` 0113-content-regenerate-variations
+- `adr-0114` 0114-content-version-lineage
+- `adr-0115` 0115-studio-refine
+- `adr-0116` 0116-web-push-pwa
+- `adr-0117` 0117-push-fanout-notifications
+- `adr-0118` 0118-push-per-type-preferences
+- `adr-0119` 0119-autonomy-dials
+- `adr-0120` 0120-needs-input-reping
+- `adr-0121` 0121-export-formats-captions
+- `adr-0122` 0122-post-scheduling
+- `adr-0123` 0123-branding-watermark
+- `adr-0124` 0124-per-platform-publish-variants
+- `adr-0125` 0125-outbound-webhook-action
+- `adr-0126` 0126-custom-gemini-endpoint
+- `adr-0127` 0127-mcp-integration-wiring
+- `adr-0128` 0128-brand-kit-portability
+- `adr-0129` 0129-cheap-preview
+- `adr-0130` 0130-undo-unpublish
+- `adr-0131` 0131-custom-ai-tasks
+- `adr-0132` 0132-inpaint-feature
+- `adr-0133` 0133-output-templates
+- `adr-0134` 0134-style-set-portability
+- `adr-0135` 0135-cross-workspace-copy
+- `adr-0136` 0136-public-api-pats
+- `adr-0137` 0137-content-inpaint-op
+- `adr-0138` 0138-image-region-editor
+- `adr-0139` 0139-image-editor-essentials
+- `adr-0140` 0140-video-timeline-reorder
+- `adr-0141` 0141-audio-mix-plan
+- `adr-0142` 0142-setup-wizard
+- `adr-0143` 0143-premium-ux-sweep
+- `adr-0144` 0144-honesty-fixes
+- `adr-0145` 0145-conversational-intake-copilot
+- `adr-0146` 0146-video-scene-model
+- `adr-0147` 0147-multi-clip-video-render
+- `adr-0148` 0148-long-video-decomposition
+- `adr-0149` 0149-range-refine
+- `adr-0150` 0150-youtube-byte-upload
+- `adr-0151` 0151-tiktok-status-polling
+- `adr-0152` 0152-content-pipeline-orchestration
+- `adr-0153` 0153-video-timeline-editor
+- `adr-0154` 0154-auto-activation
+- `adr-0155` 0155-image-crop-resize
+- `adr-0156` 0156-structured-approvals
+- `adr-0157` 0157-prod-build-export-deploy-hook
+- `adr-0158` 0158-demo-host-auto-redeploy
+- `adr-0159` 0159-greenfield-repo-gen
+- `adr-0160` 0160-greenfield-wizard-ui
+- `adr-0161` 0161-timeline-audio-track
+- `adr-0162` 0162-multi-question-denormalized-json
+- `adr-0163` 0163-non-blocking-advisory-questions
+- `adr-0164` 0164-ref-preview-ephemeral-container
+- `adr-0165` 0165-multi-base-stack-catalog
+- `adr-0166` 0166-compose-engine-services
+- `adr-0167` 0167-governance-audit-log
+- `adr-0168` 0168-fair-capacity-draining
 - `adr-0250` 0250-product-self-knowledge-corpus
 - `adr-0251` 0251-product-knowledge-rag-corpus
 - `adr-0252` 0252-wire-product-knowledge-into-ai
@@ -227,40 +227,40 @@
 - `adr-0281` 0281-per-service-ci-and-unit-scope
 - `adr-0282` 0282-assistant-parity-tranche
 - `adr-0283` 0283-skill-delete-chat-proposable
-- `adr-0284` Blocked features explain themselves — a snapshot `readiness` block + resolved `myPerms` drive a permission-aware "what's missing / how to fix it" notice
-- `adr-0285` Every workspace write converges live for every room member via one Conductor-tail `workspaceDirty` broadcast
-- `adr-0286` Switching workspace/project is instant via a client stale-while-revalidate snapshot cache + idle prefetch
-- `adr-0287` Host administration, workspace governance, and browser terminals are separate fail-closed security planes
-- `adr-0288` Unrestricted Docker Compose runs only on an external per-workspace sandbox
-- `adr-0289` Conductor route-write migration seam
-- `adr-0290` Tenant-scoped proxy, media and egress boundaries
-- `adr-0291` Budgeted capability-aware Workspace-AI tools
-- `adr-0292` Typed route jobs use bounded replay and runtime claims
-- `adr-0293` Workspace-AI has no ambiguous later operations
-- `adr-0294` Move cheap-mode, scene-continuity and default TTS voice from host env to per-workspace media prefs
-- `adr-0295` Consolidate semantic duplicates, not domain history
-- `adr-0296` Global writes use encrypted durable Conductor jobs
-- `adr-0297` Compose runner uses one Proxmox QEMU sandbox per workspace
-- `adr-0298` Compose runner supports Incus QEMU sandboxes on ARM64
-- `adr-0299` Compose-runner deadlines include the public reverse proxy
-- `adr-0300` Session cookie domain bridge is narrow and temporary
-- `adr-0301` Terminal access uses session, RBAC and exact container identity
-- `adr-0302` Stage push crosses the container boundary as a credential-free Git bundle
-- `adr-0303` Destructive project cleanup reuses existing ControlOps and exact runtime identity
-- `adr-0304` Pi 5 uses the GPIO character-device stack, not legacy pigpiod
-- `adr-0305` Release lockfile is generated with the production npm version
-- `adr-0306` LuckyStack upgrades jump straight to the newest patch of a minor
-- `adr-0307` The UI identity lives in the token layer, not in components
-- `adr-0308` AI prompt layers stack strictly, and are shown as one effective prompt
-- `adr-0309` Settings autosave per row, and one canonical account page
-- `adr-0310` Each duplicated concept gets one owning surface
-- `adr-0311` AI prompt layers are two channels, not one stack
-- `adr-0312` Sub-navigation and explanation live in the URL and in three shared primitives
-- `adr-0313` Repository introspection is shown to the user, not only to the AI
-- `adr-0314` Onboarding is a standing checklist, not a tour
-- `adr-0315` A pipeline preset is a living choice, not a creation-time one
-- `adr-0316` One first-run surface on the board, and it collapses rather than disappears
+- `adr-0284` 0284-setup-readiness-and-permission-aware-fix-routing
+- `adr-0285` 0285-workspace-dirty-realtime-convergence
+- `adr-0286` 0286-client-snapshot-cache-stale-while-revalidate
+- `adr-0287` 0287-host-and-tenant-security-boundaries
+- `adr-0288` 0288-unrestricted-compose-requires-per-workspace-external-sandbox
+- `adr-0289` 0289-conductor-route-write-migration-seam
+- `adr-0290` 0290-tenant-scoped-proxy-media-and-egress-boundaries
+- `adr-0291` 0291-budgeted-capability-aware-workspace-ai-tools
+- `adr-0292` 0292-typed-route-jobs-use-bounded-replay-and-runtime-claims
+- `adr-0293` 0293-workspace-ai-has-no-ambiguous-later-operations
+- `adr-0294` 0294-per-workspace-media-generation-defaults
+- `adr-0295` 0295-consolidate-semantic-duplicates-not-domain-history
+- `adr-0296` 0296-global-writes-use-encrypted-durable-conductor-jobs
+- `adr-0297` 0297-compose-runner-uses-proxmox-qemu-sandboxes
+- `adr-0298` 0298-compose-runner-supports-incus-qemu-on-arm64
+- `adr-0299` 0299-compose-runner-deadlines-include-the-public-proxy
+- `adr-0300` 0300-session-cookie-domain-bridge-is-narrow-and-temporary
+- `adr-0301` 0301-terminal-access-uses-session-rbac-and-exact-container-identity
+- `adr-0302` 0302-stage-push-crosses-container-boundary-as-a-git-bundle
+- `adr-0303` 0303-destructive-project-cleanup-reuses-existing-control-ops
+- `adr-0304` 0304-pi-5-uses-gpio-character-device-not-legacy-pigpiod
+- `adr-0305` 0305-release-lockfile-is-generated-with-production-npm
+- `adr-0306` 0306-luckystack-upgrades-jump-straight-to-the-newest-patch
+- `adr-0307` 0307-the-ui-identity-lives-in-the-token-layer-not-in-components
+- `adr-0308` 0308-ai-prompt-layers-stack-strictly-and-are-shown-as-one-effective-prompt
+- `adr-0309` 0309-settings-autosave-per-row-and-one-canonical-account-page
+- `adr-0310` 0310-each-duplicated-concept-gets-one-owning-surface
+- `adr-0311` 0311-ai-prompt-layers-are-two-channels-not-one-stack
+- `adr-0312` 0312-sub-navigation-and-explanation-live-in-the-url-and-in-three-shared-primitives
+- `adr-0313` 0313-repository-introspection-is-shown-to-the-user-not-only-to-the-ai
+- `adr-0314` 0314-onboarding-is-a-standing-checklist-not-a-tour
+- `adr-0315` 0315-a-pipeline-preset-is-a-living-choice-not-a-creation-time-one
+- `adr-0316` 0316-one-first-run-surface-on-the-board-and-it-collapses-rather-than-disappears
 - `adr-0317` 0317-the-runtime-is-a-list-of-processes-not-one-command
-- `adr-0318` A skill is switched on by the stage that wants it, not globally
-- `adr-0319` The handover is written by the stage that finishes, not the one that starts
-- `adr-0320` An integration test reports what it verified, not that it passed
+- `adr-0318` 0318-a-skill-is-switched-on-by-the-stage-that-wants-it-not-globally
+- `adr-0319` 0319-the-handover-is-written-by-the-stage-that-finishes-not-the-one-that-starts
+- `adr-0320` 0320-an-integration-test-reports-what-it-verified-not-that-it-passed

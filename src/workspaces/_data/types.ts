@@ -30,7 +30,8 @@ export interface Member {
   email: string;
   avatar?: string;        // uploaded image filename / url (User.avatar)
   avatarFallback: string; // colour for the initials fallback (User.avatarFallback)
-  role: Role;             // WorkspaceMember.role
+  role: Role;             // WorkspaceMember.role (flattened to owner|admin|member)
+  roleKey?: string;       // WorkspaceMember.roleKey — raw key, so custom roles display as themselves
 }
 
 //? The linked-repo status for the active workspace (register-flow step A). `linked`

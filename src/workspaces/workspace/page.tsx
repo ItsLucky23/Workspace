@@ -59,8 +59,11 @@ function removeMenu(member: Member, translate: ReturnType<typeof useTranslator>,
 function MembersTab() {
   const translate = useTranslator();
   const { memberRoles, setMemberRole, permRoles, activeWorkspace, members, removeMember } = useWorkspaces();
-  //? You assign any non-Owner role; ownership changes via the danger zone only.
-  const roleItems = permRoles.filter((r) => !r.locked).map((r) => ({ id: r.name, value: r.name, item: r.name }));
+  //? You assign any non-Owner role; ownership changes via the danger zone only. `locked` means the
+  //? permission MATRIX is read-only (built-ins), not that the role is unassignable — filtering on it
+  //? left a default workspace with zero pickable roles. Items carry the KEY: the conductor's
+  //? change-role looks roles up by key, and memberRoles holds the raw key.
+  const roleItems = permRoles.filter((r) => r.key !== 'owner').map((r) => ({ id: r.key, value: r.key, item: r.name }));
 
   const columns: TableColumn<Member>[] = [
     {
@@ -200,8 +203,9 @@ function InvitesTab() {
   const [inviting, setInviting] = useState(false);
   const [email, setEmail] = useState('');
   const [roleKey, setRoleKey] = useState('');
-  //? Ownership only changes via the danger zone — invites offer non-Owner roles only.
-  const roleItems = permRoles.filter((r) => !r.locked).map((r) => ({ id: r.key, value: r.key, item: r.name }));
+  //? Ownership only changes via the danger zone — invites offer non-Owner roles only (built-in
+  //? Admin/Member included: `locked` only guards the matrix).
+  const roleItems = permRoles.filter((r) => r.key !== 'owner').map((r) => ({ id: r.key, value: r.key, item: r.name }));
 
   const cancel = () => { setInviting(false); setEmail(''); setRoleKey(''); };
   const submit = () => {

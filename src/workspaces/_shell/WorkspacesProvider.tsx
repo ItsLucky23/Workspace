@@ -808,8 +808,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     name: 'workspaces/changeRole', version: 'v1',
     callback: ({ serverOutput }) => {
       if (serverOutput.status !== 'success') return;
-      const { memberId, role } = serverOutput;
-      setSnap((s) => ({ ...s, members: s.members.map((m) => (m.id === memberId ? { ...m, role } : m)) }));
+      const { memberId, role, roleKey } = serverOutput;
+      setSnap((s) => ({ ...s, members: s.members.map((m) => (m.id === memberId ? { ...m, role, roleKey } : m)) }));
     },
   }), [upsertSyncEventCallback]);
   useEffect(() => upsertSyncEventCallback({
@@ -827,7 +827,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       const { newOwnerId, previousOwnerId } = serverOutput;
       setSnap((s) => ({
         ...s,
-        members: s.members.map((m) => (m.id === newOwnerId ? { ...m, role: 'owner' } : (m.id === previousOwnerId ? { ...m, role: 'admin' } : m))),
+        members: s.members.map((m) => (m.id === newOwnerId ? { ...m, role: 'owner', roleKey: 'owner' } : (m.id === previousOwnerId ? { ...m, role: 'admin', roleKey: 'admin' } : m))),
         workspaces: s.workspaces.map((w) => (w.id === s.activeWorkspaceId ? { ...w, ownerId: newOwnerId } : w)),
       }));
     },
@@ -1282,8 +1282,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     const s = session;
     const inMembers = s ? snap.members.find((m) => m.id === s.id) : undefined;
     if (inMembers) return inMembers;
-    if (s) return { id: s.id, name: s.name ?? s.email, email: s.email, avatar: s.avatar.length > 0 ? s.avatar : undefined, avatarFallback: s.avatarFallback.length > 0 ? s.avatarFallback : '#6366F1', role: 'owner' };
-    return { id: '', name: '', email: '', avatarFallback: '#6366F1', role: 'member' };
+    if (s) return { id: s.id, name: s.name ?? s.email, email: s.email, avatar: s.avatar.length > 0 ? s.avatar : undefined, avatarFallback: s.avatarFallback.length > 0 ? s.avatarFallback : '#6366F1', role: 'owner', roleKey: 'owner' };
+    return { id: '', name: '', email: '', avatarFallback: '#6366F1', role: 'member', roleKey: 'member' };
   }, [session, snap.members]);
 
   const membersById = useMemo(() => Object.fromEntries(snap.members.map((m) => [m.id, m])), [snap.members]);
@@ -1754,7 +1754,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         const perms = (snap.roles[0]?.perms ?? []).map(() => false);
         if (room) void syncRequest({ name: 'workspaces/roleCreate', version: 'v1', data: { key, label: name, perms, clientRequestId: nextReqId() }, receiver: room });
       },
-      memberRoles: Object.fromEntries(snap.members.map((m) => [m.id, m.role])),
+      memberRoles: Object.fromEntries(snap.members.map((m) => [m.id, m.roleKey ?? m.role])),
       setMemberRole: (mid, role) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/changeRole', version: 'v1', data: { memberId: mid, roleKey: role, clientRequestId: nextReqId() }, receiver: room }); },
       inviteMember: (email, roleKey) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/invite', version: 'v1', data: { email, roleKey, clientRequestId: nextReqId() }, receiver: room }); },
       revokeInvite: (inviteId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/revokeInvite', version: 'v1', data: { inviteId, clientRequestId: nextReqId() }, receiver: room }); },
