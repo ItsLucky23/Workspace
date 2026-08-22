@@ -17,3 +17,12 @@
 - Ticked and recorded F-030, F-032, F-034, F-035, F-063, F-072, F-081, F-082, F-115, F-118, F-119, and F-120 in the Agent 3 handoff.
 **Files touched**: `src/workspaces/content/[pieceId]/AssetCard.tsx`, `src/workspaces/content/[pieceId]/page.tsx`, `src/workspaces/content/documents/[docId]/page.tsx`, `src/workspaces/content/page.tsx`, `src/workspaces/_shell/Onboarding.tsx`, `src/workspaces/_shell/WorkspacesShell.tsx`, `src/workspaces/settings/page.tsx`, `src/_locales/en.json`, `src/_locales/nl.json`, `src/_locales/de.json`, `src/_locales/fr.json`, `src/workspaces/_docs/fix-round-2026-08-22/AGENT_3_CONTENT_SHELL.md`
 **Notes / decisions**: F-063, F-072, and F-032 are explicitly recorded as partial because their immediate full-result wiring requires Phase-B-owned files. No Phase B file was edited.
+
+## 2026-08-22 18:52 — Phase A handoff closure
+**User prompt (summary)**: Finish Phase A only, tick every Phase A checkbox, fill every Result line, and stop before Phase B.
+**What I did**:
+- Marked the remaining ownership-blocked Phase A findings as skipped with explicit reasons.
+- Added the out-of-scope observations, including the missing requested filename and the Phase-B boundary.
+- Verified programmatically that Phase A has zero unchecked findings and Phase B has zero checked findings.
+**Files touched**: `src/workspaces/_docs/fix-round-2026-08-22/AGENT_3_CONTENT_SHELL.md`
+**Notes / decisions**: This is a tracking-only closure; no Phase B implementation was started.
