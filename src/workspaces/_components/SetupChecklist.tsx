@@ -103,7 +103,7 @@ export default function SetupChecklist() {
 
   const steps: ChecklistStep[] = [
     //? The AI key comes first for every workspace: without it nothing generates, whatever the module.
-    { id: 'aiKey', icon: 'robot', done: readiness.aiText, cap: 'workspaceSettings', target: { view: 'content/settings', tab: 'admin' } },
+    { id: 'aiKey', icon: 'robot', done: readiness.aiText, cap: 'workspaceSettings', target: { view: 'workspace', tab: 'aibehavior', section: 'backends' } },
     ...(devEnabled ? [
       { id: 'repo', icon: 'code-branch', done: readiness.repoLinked, cap: 'workspaceSettings' as CapKey, target: { view: 'workspace' as WsView, tab: 'repository', section: 'link' } },
       //? Absorbed from the board's first-steps banner: an ACT, not a setting, and measurable — this

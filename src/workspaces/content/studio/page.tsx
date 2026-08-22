@@ -170,7 +170,7 @@ export function StudioSurface({ variant = 'studio' }: { variant?: 'studio' | 'ma
             icon="robot"
             title={translate({ key: 'workspaces.setup.ai.title' })}
             body={translate({ key: 'workspaces.setup.ai.why' })}
-            fix={{ cap: 'workspaceSettings', view: 'content/settings', tab: 'admin', cta: translate({ key: 'workspaces.setup.ai.cta' }) }}
+            fix={{ cap: 'workspaceSettings', view: 'workspace', tab: 'aibehavior', section: 'backends', cta: translate({ key: 'workspaces.setup.ai.cta' }) }}
             hint={translate({ key: 'workspaces.setup.ai.hint' })}
           />
         </div>

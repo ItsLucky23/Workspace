@@ -632,6 +632,9 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       repoLinked: repo.linked,
       publishingConnected: publishTargets.some((t) => t.connected),
       providerKeys,
+      //? Text readiness mirrors the dispatch source: a keyed api-key connection (claude-cli's subscription row
+      //? has no key — the host probe inside buildReadiness covers it).
+      hasTextConnection: aiConnections.some((c) => c.kind === 'api-key' && c.hasKey),
     });
     //? The caller's RESOLVED capabilities in this workspace — the raw role key (not `asRole`-flattened, so a
     //? custom role resolves to its own perms) mapped to its `WorkspaceRole.perms`. Mirrors the server's

@@ -16,15 +16,14 @@ import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { SavedNote } from './SavedNote';
 import { fieldCls, PUBLISH_PLATFORMS } from './shared';
 
-//? Q5 — media providers (image/video/3d + voice/sfx + music) vs the AI TEXT provider (Gemini, used by the
-//? script/analysis features). Split honestly so the user knows what each key drives.
+//? Q5 — media providers (image/video/3d + voice/sfx + music) only. The AI TEXT backend (Gemini, Claude,
+//? …) is NOT a key row here: its single owner is Workspace → AI → Backends (AiConnection, ADR 0007).
+//? A Gemini row used to live here too, writing `__provider_key_gemini` — a store the text dispatch never
+//? read, so the key "saved" while generation kept failing (F-001/F-004).
 const MEDIA_PROVIDERS: { id: string; nameKey: string; descKey: string }[] = [
   { id: 'fal', nameKey: 'workspaces.content.providerFal', descKey: 'workspaces.content.providerFalDesc' },
   { id: 'elevenlabs', nameKey: 'workspaces.content.providerEleven', descKey: 'workspaces.content.providerElevenDesc' },
   { id: 'suno', nameKey: 'workspaces.content.providerSuno', descKey: 'workspaces.content.providerSunoDesc' },
-];
-const AI_PROVIDERS: { id: string; nameKey: string; descKey: string }[] = [
-  { id: 'gemini', nameKey: 'workspaces.content.providerGemini', descKey: 'workspaces.content.providerGeminiDesc' },
 ];
 
 //? One write-only key row via the shared SettingRow grammar (was its own bespoke label/desc/input
@@ -54,26 +53,18 @@ function KeyRow({ name, desc, onSave }: { name: string; desc: string; onSave: (k
   );
 }
 
-//? Provider keys — stored ENCRYPTED, never shown back. Media providers and the AI text provider
-//? (Gemini — drives the script/analysis features, Q5) get their own FormSection so the split reads as
-//? two groups, not a sub-heading glued mid-card. Both save via the dual-shape saveMediaProvider
-//? ({providerId, apiKey} for keys; {feature, model} is the model-override shape below).
+//? Provider keys — stored ENCRYPTED, never shown back. Media providers only; the text backend lives on
+//? Workspace → AI → Backends (see the note on MEDIA_PROVIDERS). Saves via the dual-shape
+//? saveMediaProvider ({providerId, apiKey} for keys; {feature, model} is the model-override shape below).
 function KeysCard() {
   const translate = useTranslator();
   const { saveMediaProvider } = useWorkspaces();
   return (
-    <>
-      <FormSection title={translate({ key: 'workspaces.content.keysTitle' })} desc={translate({ key: 'workspaces.content.keysTeach' })}>
-        {MEDIA_PROVIDERS.map((p) => (
-          <KeyRow key={p.id} name={translate({ key: p.nameKey })} desc={translate({ key: p.descKey })} onSave={(key) => { saveMediaProvider({ providerId: p.id, apiKey: key }); }} />
-        ))}
-      </FormSection>
-      <FormSection title={translate({ key: 'workspaces.content.aiKeysTitle' })} desc={translate({ key: 'workspaces.content.aiKeysDesc' })}>
-        {AI_PROVIDERS.map((p) => (
-          <KeyRow key={p.id} name={translate({ key: p.nameKey })} desc={translate({ key: p.descKey })} onSave={(key) => { saveMediaProvider({ providerId: p.id, apiKey: key }); }} />
-        ))}
-      </FormSection>
-    </>
+    <FormSection title={translate({ key: 'workspaces.content.keysTitle' })} desc={translate({ key: 'workspaces.content.keysTeach' })}>
+      {MEDIA_PROVIDERS.map((p) => (
+        <KeyRow key={p.id} name={translate({ key: p.nameKey })} desc={translate({ key: p.descKey })} onSave={(key) => { saveMediaProvider({ providerId: p.id, apiKey: key }); }} />
+      ))}
+    </FormSection>
   );
 }
 
