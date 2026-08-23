@@ -9,7 +9,7 @@
 > and the private per-dev `~/.claude` memory. The AI records these automatically — see
 > `docs/LESSONS_PROTOCOL.md`.
 
-## Lessons (29)
+## Lessons (30)
 
 | # | Lesson | Severity | Area | Tags | File |
 | --- | --- | --- | --- | --- | --- |
@@ -42,6 +42,7 @@
 | 0027 | Do not rebuild platform-neutral Vite assets on the Pi | 🟡 medium | deployment, raspberry-pi, frontend | — | `docs/lessons/0027-do-not-rebuild-platform-neutral-vite-assets-on-the-pi.md` |
 | 0028 | An explanation surface not pinned to its code goes confidently wrong | 🟠 high | ai, ux, documentation, testing | — | `docs/lessons/0028-an-explanation-surface-not-pinned-to-its-code-goes-confidently-wrong.md` |
 | 0029 | Lint and build do not typecheck the client — run tsc on tsconfig.json before calling a merge green | 🟠 high | tooling | — | `docs/lessons/0029-lint-and-build-do-not-typecheck-the-client.md` |
+| 0030 | Never key a memo or effect on useTranslator()'s function identity — it is new every render | 🟠 high | frontend | — | `docs/lessons/0030-never-memo-on-the-translator-function-identity.md` |
 
 ## Takeaways
 
@@ -276,3 +277,11 @@ When adding a surface that EXPLAINS backend behaviour (ordering, precedence, "wh
 _(no How-to-avoid / Lesson section found — fill it in)_
 
 → `docs/lessons/0029-lint-and-build-do-not-typecheck-the-client.md`
+
+### 0030 — Never key a memo or effect on useTranslator()'s function identity — it is new every render
+
+**0030** · high · frontend · 2026-08-23
+
+_(no How-to-avoid / Lesson section found — fill it in)_
+
+→ `docs/lessons/0030-never-memo-on-the-translator-function-identity.md`

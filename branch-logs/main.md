@@ -5995,3 +5995,36 @@ surgical gefixt; tsc 0 fouten, lint OK, unit 130/130. Lesson 0029 vastgelegd.
 
 **Voorstel (niet toegepast, owner-beslissing):** client-typecheck toevoegen aan `npm run build` of de
 pre-push-hook.
+
+## 2026-08-23 — Agent 5 gemerged + live e2e-verificatie: 6 pre-existing productbugs gefixt, alles groen
+
+**User prompt:** pakket 5 output geplakt → "doe jij de laatste fixes en een live e2e verification".
+
+**Wat ik deed:** `fix/audit-leftovers` gemerged (13/13, fast-forward). Statisch groen (lint/tsc/build/unit
+130/130). Live verificatie met draaiende runtimes (`test:ws` → sweep → Playwright) vond 20 rode files;
+na triage: 9 verouderde test-asserties (bewust veranderde contracten) én **6 echte bugs die al vóór de
+fix-ronde in de code zaten** — allemaal gefixt:
+1. P4-1-fallback routeerde audio/vision-turns naar de text-only Claude CLI en viel voor élke workspace
+   terug op de host-seat → modaliteits-gating (`catalog.modalities`) + fall-through alleen over
+   workspace-verbonden backends (`3011241`).
+2. OpenAI-compatible transport (`f6c12be`) liet beeld/audio-input vallen → `image_url`/`input_audio`-
+   parts teruggebouwd; live Gemini-STT transcribeert weer woordelijk (`3011241`).
+3. Prisma-op-Mongo `archivedAt: null` sloot nooit-gearchiveerde docs uit → context-docs groundden sinds
+   ADR 0310 níets meer (ook niet voor de coding-agent) → `null OR isSet:false` (`3011241`).
+4. fal kreeg relatieve `/media/...`-URL's → elke referentie-gestuurde beeldbewerking 422 → data-URI /
+   signed link + 422-detail in de fout (`ac0ec3b`); eerste live fal-edit vanaf lokaal bestand werkt.
+5. Render-loop: `welcomeChat` gememoiseerd op `translate`-identiteit → "Maximum update depth" op elke
+   pagina, 11 rode Playwright-specs (`5470f99`, lesson 0030).
+6. Test-harness: `GEMINI_API_KEY` ≠ `WS_GEMINI_API_KEY` voor de text-transports (live STT-pad).
+Plus stale tests bijgewerkt (ADR 0312/0317/0319, F-057, F-001-contract, harness-envelope, 256px fixture).
+
+**Eindstand:** test:ws 332/332 · sweep 469/470 (1 live-fal latency-flake onder suite-load, solo 8/8) ·
+Playwright 42/42 · lint/tsc(client+server)/build/ai:lint schoon. Runtimes draaien nog (4787/5391).
+
+**Files touched:** server/ai/{registry,providers/catalog,providers/openaiCompatible}.ts,
+server/content/knowledgeContext.ts, server/orchestrator/stageRunner.ts, server/media/providers/fal.ts,
+src/workspaces/_shell/WorkspacesProvider.tsx, tests/_helpers.mts, 9 test-/spec-files, lesson 0030.
+
+**Open:** contentControl-sweepcase is onder volle suite-load een latency-flake (live fal) — overweeg een
+ruimere timeout of stub-modus voor die ene case. `contentAutomation` eerder één keer flaky door cron-tick-
+interferentie tussen test-workspaces (solo + run 2 groen).

@@ -6,16 +6,16 @@
 > Don't read every index every session. Pick the profile matching your task, LOAD only its
 > artifacts, and QUERY the rest via the `@luckystack/mcp` tools instead of reading whole files.
 
-## Artifact sizes (total ≈ 234,912 tokens if all loaded)
+## Artifact sizes (total ≈ 234,943 tokens if all loaded)
 
 | Artifact | Est. tokens | Bytes | Purpose |
 | --- | --- | --- | --- |
 | `contract` — `CLAUDE.md` | 11,809 | 47,234 | Always-on rules (read every session). |
 | `quick-index` — `docs/AI_QUICK_INDEX.md` | _(absent)_ | — | Framework surfaces + package map. |
-| `capabilities` — `docs/AI_CAPABILITIES.md` | 5,569 | 22,276 | Existing helpers/exports — check before authoring. |
+| `capabilities` — `docs/AI_CAPABILITIES.md` | 5,477 | 21,909 | Existing helpers/exports — check before authoring. |
 | `project-index` — `docs/AI_PROJECT_INDEX.md` | 9,446 | 37,785 | Routes/pages/helpers/components + test coverage. |
 | `decisions` — `docs/AI_DECISIONS_INDEX.md` | 69,745 | 278,981 | Why-it-is-this-way (ADRs). |
-| `lessons` — `docs/AI_LESSONS_INDEX.md` | 8,509 | 34,034 | Known pitfalls (what failed). |
+| `lessons` — `docs/AI_LESSONS_INDEX.md` | 8,631 | 34,524 | Known pitfalls (what failed). |
 | `runbooks` — `docs/AI_RUNBOOKS.md` | 1,177 | 4,706 | Task-shaped golden paths. |
 | `examples` — `docs/AI_EXAMPLES_INDEX.md` | 776 | 3,104 | Canonical example corpus index. |
 | `product` — `docs/AI_PRODUCT_OVERVIEW.md` | 4,969 | 19,876 | What the app + each page is FOR. |
@@ -29,7 +29,7 @@ Per task type: the minimal artifact set to load + the MCP tools to query for eve
 
 _Adding an API/sync route: reuse before authoring, copy the canonical shape._
 
-- **Load** (≈ 19,331 tokens): `contract`, `capabilities`, `examples`, `runbooks`
+- **Load** (≈ 19,239 tokens): `contract`, `capabilities`, `examples`, `runbooks`
 - **Query via MCP** (don't read whole): `find_route`, `get_capability`, `get_example('auth-api-route')`, `blast_radius`
 
 ### `new-page`
@@ -50,7 +50,7 @@ _Auditing: lean on the why-record + risky hubs, not every page intent._
 
 _Chasing a bug: check known pitfalls first, then trace impact via the graph._
 
-- **Load** (≈ 20,318 tokens): `contract`, `lessons`
+- **Load** (≈ 20,440 tokens): `contract`, `lessons`
 - **Query via MCP** (don't read whole): `find_lesson`, `who_calls`, `who_imports`, `blast_radius`
 
 ### `doc-fix`
