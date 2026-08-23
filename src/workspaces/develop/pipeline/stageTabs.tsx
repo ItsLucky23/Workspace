@@ -550,6 +550,10 @@ export function CarryoverTab({ s, update, bp }: TabProps) {
 /* ----------------------------------------------------------------- Model & Effort */
 function ChoiceControls({ choice, onChange }: { choice: StageModelChoice; onChange: (p: Partial<StageModelChoice>) => void }) {
   const translate = useTranslator();
+  //? ADR 0322 — the tiers are abstract; the workspace's coding-agent config says which concrete model the
+  //? picked tier runs on, so show that resolution right here instead of leaving "haiku" to be guessed at.
+  const { codingAgent } = useWorkspaces();
+  const resolvedModel = `→ ${codingAgent.tierModels[choice.model]}`;
   const modelOpts: { id: StageModelTier; label: string }[] = [{ id: 'haiku', label: translate({ key: 'workspaces.pipeline.modelHaiku' }) }, { id: 'sonnet', label: translate({ key: 'workspaces.pipeline.modelSonnet' }) }, { id: 'opus', label: translate({ key: 'workspaces.pipeline.modelOpus' }) }];
   const effortOpts: { id: StageEffort; label: string }[] = [{ id: 'low', label: translate({ key: 'workspaces.pipeline.effortLow' }) }, { id: 'medium', label: translate({ key: 'workspaces.pipeline.effortMed' }) }, { id: 'high', label: translate({ key: 'workspaces.pipeline.effortHigh' }) }, { id: 'xhigh', label: translate({ key: 'workspaces.pipeline.effortXHigh' }) }, { id: 'max', label: translate({ key: 'workspaces.pipeline.effortMax' }) }];
   return (
@@ -557,6 +561,7 @@ function ChoiceControls({ choice, onChange }: { choice: StageModelChoice; onChan
       <Segmented<StageModelTier> value={choice.model} onChange={(v) => { onChange({ model: v }); }} options={modelOpts} />
       <Segmented<StageEffort> value={choice.effort} onChange={(v) => { onChange({ effort: v }); }} options={effortOpts} />
       <div className="flex items-center gap-1.5"><span className="text-xs text-muted">{translate({ key: 'workspaces.pipeline.turns' })}</span><input type="number" min={1} value={choice.maxTurns} onChange={(e) => { onChange({ maxTurns: Number(e.target.value) }); }} className={`w-16 ${inputCls}`} /></div>
+      <span className="text-xs text-meta font-mono" title={translate({ key: 'workspaces.pipeline.tierResolves' })}>{resolvedModel}</span>
     </div>
   );
 }

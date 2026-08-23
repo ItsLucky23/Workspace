@@ -92,7 +92,7 @@ export const CHAT_ENABLED_OPS = [
   'trigger-save', 'trigger-toggle', 'trigger-delete', 'skill-toggle', 'ai-skill-delete',
   'create-info-source', 'info-source-archive', 'info-source-delete', 'link-repo',
   // workspace settings + budgets
-  'save-sections', 'save-ai-instruction', 'save-ai-provider', 'save-autonomy', 'save-stage-config',
+  'save-sections', 'save-ai-instruction', 'save-ai-provider', 'save-coding-agent', 'save-autonomy', 'save-stage-config',
   'edit-budget', 'resume-spend', 'edit-media-budget',
   // inbox / findings / ui-review / styles / references / tasks / output templates / design tokens
   'comments-refresh', 'comments-mark-read', 'finding-to-ticket', 'finding-dismiss', 'ui-review-create',

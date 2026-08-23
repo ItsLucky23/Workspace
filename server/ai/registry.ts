@@ -15,6 +15,7 @@ import { loadWorkspaceAiOverrides } from './workspaceAssignments';
 import { recordAiRun } from './activity';
 import { recordTurnSpend } from '../spend/record';
 import { claudeCliProvider } from './providers/claudeCli';
+import { codexCliProvider } from './providers/piCli';
 import { AI_PROVIDER_CATALOG, AI_PROVIDER_LIST, providerModalities, type AiModality } from './providers/catalog';
 import { listConnections } from './connections';
 import { openAiCompatibleProvider } from './providers/openaiCompatible';
@@ -68,6 +69,7 @@ export function aiProviderById(id: string): AiProvider | undefined {
 //? API — are named explicitly, because each is a real implementation.
 const PROVIDERS: Record<string, AiProvider> = Object.fromEntries(AI_PROVIDER_LIST.map((meta) => {
   if (meta.transport === 'claude-cli') return [meta.id, claudeCliProvider];
+  if (meta.transport === 'pi-cli') return [meta.id, codexCliProvider];
   if (meta.transport === 'anthropic') return [meta.id, anthropicApiProvider];
   return [meta.id, openAiCompatibleProvider(meta)];
 }));

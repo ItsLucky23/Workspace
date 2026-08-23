@@ -1,5 +1,27 @@
 # Branch log — `main`
 
+## 2026-08-23 — Coding-agent abstractie: Claude Code + pi-agent, Codex-subscription support (ADR 0322)
+
+**User prompt:** providers helemaal uitwerken; Codex via de **pi agent** (niet Codex CLI); alleen Claude + Codex subscriptions; Claude = keuze Claude Code/pi, Codex = pi geforceerd; zelf e2e testen. (Zelfde prompt bevat ook: handoff-map weg [al gecommit], test:all versnellen, docs opschonen — aparte taken.)
+
+**Gebouwd (fase 2-6 van `src/workspaces/_docs/CODING_AGENT_PROGRAM.md`; fase 1 = host-spike GREEN eerder vandaag):**
+- **Adapter-seam** `server/orchestrator/codingAgents/` (nieuw): `types.ts` (`CodingAgentAdapter` — turnArgs/prepareHost/projectAuth/authenticated/afterTurn/readyMatches), `config.ts` (`__coding_agent` EnvVar, `harnessFor` Codex⇒pi geforceerd, `normalizeCodingAgent`, tier→model-map per seat/harness), `claudeCode.ts` (bestaand gedrag uit stageRunner verhuisd), `piAgent.ts` (pi argv, auth-projectie + **OAuth copy-back** na elke turn — pi roteert refresh-tokens in place, TUI-ready-markers), `index.ts`.
+- **stageRunner** consumeert de adapter (`driveContainerTurn(opts.adapter)`, seat-gate vóór PTY, `killClaudeByContainer` op `processMatch`, `prepareHost` vóór container-launch); `runtime.ts` mount `pi-auth.json` mee + `PI_CODING_AGENT_DIR`.
+- **pi-extensie** `docker/pi/workspaces.ts` (nieuw, in de image gebakken): mirrort de 3 Claude-hooks (Stop/PostToolUse/PreCompact) op pi-events naar dezélfde capture-files + handhaaft de stage-`permissions.deny`-set (pi heeft geen eigen permission-systeem).
+- **Config-op** `save-coding-agent` (conductor + opCatalog + RBAC workspaceSettings + chatOps/chatDispatch) + `_sync/saveCodingAgent_server_v1.ts` + `codingAgentDelta`-mapper; snapshot + readiness (`codingAgent: {claudeCode, piAgent, codexAuth}`).
+- **UI**: `CodingAgentSection` op de workspace-AI-pagina (seat-picker, harness geforceerd/keuze, **rode extra-usage-warning** voor Claude-via-pi = OPEN VRAAG A, tier→model-inputs + suggesties, SetupNotice-gates), stage-editor toont resolved model per tier; i18n ×4.
+- **One-shot** `codex-cli` provider (`server/ai/providers/piCli.ts`, transport `pi-cli`): niet-coding features kunnen ook de Codex-seat gebruiken (`pi --mode json -p`).
+- **Image**: `workspaces/base:0.1.0` in place herbuild — pi 0.84.2 gepind (`--ignore-scripts`) + extensie op `/opt/workspaces/pi/`; claude-pin ongewijzigd; in-container geverifieerd.
+- **Docs**: ADR 0322, CLAUDE.md invariant 6 herschreven (twee-seat-vorm), `AI_PROVIDER_EXPANSION_PLAN` Fase 3 gesloten, `KEY_SETUP_GUIDE` coding-agent-sectie, programma-status 1-6 ✅.
+
+**Verify:** `codingAgents.test.mts` **43/43** (nieuw), sync-route **3/3**, effectMatrix-row covered, aiProviders 128/128 + 9 aangrenzende suites groen, lint 0 errors, build ✓, ai:lint schoon, beide tsc's schoon. **LIVE e2e `piAgentStage.test.mts` 10/10**: échte Codex-turn in de container (marker terug), extensie-capture + session-id, `--session-id`-resume herinnert de marker in dezélfde sessie, OAuth copy-back naar de host-projectie. **Files touched:** ~30 (nieuw: `server/orchestrator/codingAgents/*` ×5, `docker/pi/workspaces.ts`, `server/ai/providers/piCli.ts`, `_sync/saveCodingAgent_server_v1.{ts,tests.ts}`, `tests/{unit/codingAgents,integration/piAgentStage}.test.mts`, ADR 0322). **Developer-actie:** backend is al herstart (draait op :4787); language-images (`base-php` e.d.) erven pi pas bij hun eigen rebuild. **Open:** OPEN VRAAG A (Claude-via-pi metered: warned-allowed of blokkeren?).
+
+## 2026-08-23 — workspaces-handoff opgeruimd: BUILD_PROGRAM/BUILD_LOG → src/workspaces/_docs
+
+**User prompt:** workspace handoff mag weg; BUILD_PROGRAM.md/BUILD_LOG.md naar `src/workspaces/_docs/` en de map weg.
+
+**Gedaan (commit `94f3c0c`):** beide files verhuisd met HISTORISCH-banner, `workspaces-handoff/` verwijderd, CLAUDE.md-verwijzing (regel ~387) herschreven. **Files touched:** `src/workspaces/_docs/BUILD_PROGRAM.md`, `BUILD_LOG.md` (nieuw op die plek), `CLAUDE.md`, hele `workspaces-handoff/`-map weg.
+
 ## 2026-07-21 — 2 uitgestelde punten verwerkt: LRU-cache-cap + P7 granulaire content-piece-deltas
 
 **User prompt:** verwerk deze 2 punten — P7 (content-nudge → granulaire deltas) + cache-eviction (LRU-cap).

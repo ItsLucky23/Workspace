@@ -1,6 +1,6 @@
 {
-  "hash": "178a155ba6a9fc43",
-  "chunkCount": 256,
+  "hash": "713822675f556de4",
+  "chunkCount": 257,
   "chunks": [
     {
       "id": "cap-001",
@@ -1537,6 +1537,12 @@
       "kind": "decision",
       "title": "The coding agent is any subscription CLI in a PTY — never metered",
       "text": "ADR 0321: The coding agent is any subscription CLI in a PTY — never metered.  Decision: "
+    },
+    {
+      "id": "adr-0322",
+      "kind": "decision",
+      "title": "Coding-agent seats are Claude and Codex; pi is the Codex harness (forced), optional for Claude (warned)",
+      "text": "ADR 0322: Coding-agent seats are Claude and Codex; pi is the Codex harness (forced), optional for Claude (warned).  Decision: "
     }
   ]
 }

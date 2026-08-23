@@ -12,7 +12,7 @@ import { assert, eq, report } from '../_helpers.mts';
 
 /* ------------------------------------------------------------ the catalog is honest */
 
-const TRANSPORTS = new Set(['claude-cli', 'openai-compatible', 'anthropic']);
+const TRANSPORTS = new Set(['claude-cli', 'openai-compatible', 'anthropic', 'pi-cli']);
 for (const meta of AI_PROVIDER_LIST) {
   //? A backend whose transport has no implementation is the "looks connected, fails at the first
   //? turn" defect this page exists to prevent — the one thing this file must make impossible.

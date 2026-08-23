@@ -78,7 +78,7 @@
 | `api/workspaces/workspaceExport/v1` | POST | login | 6 | — | yes | — | Workspaces — [workspace-export] (H4) a tenant-scoped JSON export of the workspace's own data (portability / |
 | `api/workspaces/workspaceImport/v1` | POST | login | 3 | ItsLucky23 | yes | — | Workspaces — [workspace-import] (gap-fix) the missing counterpart of workspace-export: bring a |
 
-## Sync routes (71)
+## Sync routes (72)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -129,6 +129,7 @@
 | `sync/workspaces/saveAiInstruction/v1` | yes | — | login | — | yes | — | Workspaces — [save-ai-instruction] REALTIME write via `_sync` (FREEDOM_PROGRAM Q4). Persists the |
 | `sync/workspaces/saveAiProvider/v1` | yes | — | login | — | yes | — | Workspaces — [save-ai-provider] REALTIME write via `_sync` (FREEDOM_PROGRAM P1). Persists a per-workspace |
 | `sync/workspaces/saveAutonomy/v1` | yes | — | login | — | yes | — | Workspaces — [save-autonomy] REALTIME write via `_sync` (FREEDOM_PROGRAM A4). Persists the workspace's |
+| `sync/workspaces/saveCodingAgent/v1` | yes | — | login | — | yes | — | Workspaces — [save-coding-agent] REALTIME write via `_sync` (ADR 0322). Persists which subscription seat |
 | `sync/workspaces/saveEnv/v1` | yes | — | login | — | yes | — | Workspaces — [save-env] REALTIME write via `_sync`. Upserts an env var, then |
 | `sync/workspaces/saveGitConfig/v1` | yes | — | login | — | yes | — | Workspaces — [save-git-config] REALTIME write via `_sync`. Persists the workspace's git |
 | `sync/workspaces/saveIntegration/v1` | yes | — | login | — | yes | — | Workspaces — [save-integration] REALTIME write via `_sync`. Creates or (when |
@@ -161,9 +162,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 30 |
-| _(unowned)_ | 107 |
+| _(unowned)_ | 108 |
 
-**Test coverage**: 135/137 routes have a per-route `.tests.ts`.
+**Test coverage**: 136/138 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 

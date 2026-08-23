@@ -9,11 +9,13 @@
 
 import { dockerAvailable } from '../container/runtime';
 import { claudeCliAvailable } from '../ai/providers/claudeCli';
+import { piCliAvailable } from '../ai/providers/piCli';
+import { hostPiAuthHas } from '../orchestrator/codingAgents/piAgent';
 import { AI_PROVIDER_CATALOG } from '../ai/providers/catalog';
 import type { WorkspaceReadiness } from '../../src/workspaces/_data/types';
 
 //? Host-global readiness (identical for every workspace on this instance) — the part worth caching.
-interface HostReadiness { docker: boolean; claudeCli: boolean; push: boolean; secretManager: boolean }
+interface HostReadiness { docker: boolean; claudeCli: boolean; piAgent: boolean; codexAuth: boolean; push: boolean; secretManager: boolean }
 
 const HOST_TTL_MS = 30_000;
 let hostCache: { at: number; value: HostReadiness } | null = null;
@@ -26,6 +28,8 @@ export async function hostReadiness(now: number): Promise<HostReadiness> {
   const value: HostReadiness = {
     docker,
     claudeCli: claudeCliAvailable(),
+    piAgent: piCliAvailable(),
+    codexAuth: hostPiAuthHas('openai-codex'),
     push: (process.env.WS_VAPID_PUBLIC ?? '').trim().length > 0 && (process.env.WS_VAPID_PRIVATE ?? '').trim().length > 0,
     secretManager: (process.env.WORKSPACES_ENC_KEY ?? '').trim().length > 0,
   };
@@ -75,5 +79,6 @@ export async function buildReadiness(now: number, input: WorkspaceReadinessInput
     docker: host.docker,
     push: host.push,
     secretManager: host.secretManager,
+    codingAgent: { claudeCode: host.claudeCli, piAgent: host.piAgent, codexAuth: host.codexAuth },
   };
 }

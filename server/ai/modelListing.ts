@@ -69,7 +69,7 @@ async function fetchJson(url: string, headers: Record<string, string>, timeoutMs
 export async function fetchProviderModels(providerId: string, apiKey: string, timeoutMs = 15_000): Promise<ModelListResult> {
   const meta = AI_PROVIDER_CATALOG[providerId];
   if (meta === undefined) return { ok: false, models: [], error: 'ai.unknownProvider' };
-  if (meta.transport === 'claude-cli') return { ok: false, models: [], error: 'ai.modelsUnsupported' };
+  if (meta.transport === 'claude-cli' || meta.transport === 'pi-cli') return { ok: false, models: [], error: 'ai.modelsUnsupported' };
   const url = modelsUrl(providerBaseUrl(meta));
   if (meta.transport === 'anthropic') {
     const [error, body] = await fetchJson(url, { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }, timeoutMs, 'anthropic');

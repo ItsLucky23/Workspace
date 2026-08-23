@@ -24,10 +24,10 @@ import { menuHandler } from 'src/_functions/menuHandler';
 
 import Icon from '../_components/Icon';
 import { FormSection, INPUT_CLS_FULL as inputCls, SettingRow } from '../_components/settings';
-import { EmptyPicker } from '../_components/SetupNotice';
+import { EmptyPicker, SetupNotice } from '../_components/SetupNotice';
 import { WsButton } from '../_components/primitives';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
-import type { AiConnection, AiProviderOption } from '../_data/types';
+import type { AiConnection, AiProviderOption, CodingAgentConfig, CodingHarness, CodingSubscription, StageModelTier } from '../_data/types';
 
 
 //? The escape hatch on the model picker: the catalog is a starting point, not a whitelist. A model
@@ -267,6 +267,114 @@ function AddConnection() {
       <div className={`px-5 py-4 flex items-center gap-3`}>
         <WsButton icon="plus" onClick={() => { void add(); }} disabled={busy}>{translate({ key: 'workspaces.aiProviders.connect' })}</WsButton>
         {error.length > 0 && <span className={`text-xs text-wrong`}>{error}</span>}
+      </div>
+    </FormSection>
+  );
+}
+
+/* --------------------------------------------------------------- coding agent (ADR 0322) */
+//? Which subscription seat writes the CODE — the interactive agent typing in the ticket container — and
+//? through which harness. Separate from the connections above: those route the product's text features;
+//? this one picks the CLI in the PTY. The seat rule (Codex ⇒ pi) and the tier-model fallback live in the
+//? Conductor (`normalizeCodingAgent`); this form mirrors them for immediate feedback only.
+
+const CODING_TIERS: readonly StageModelTier[] = ['haiku', 'sonnet', 'opus'];
+//? Client mirror of the server's DEFAULT_TIER_MODELS / MODEL_SUGGESTIONS (config.ts is server-only). A
+//? drifted mirror is cosmetic: the Conductor normalises whatever is sent.
+const CODING_TIER_DEFAULTS: Record<string, Record<StageModelTier, string>> = {
+  'claude/claude-code': { haiku: 'haiku', sonnet: 'sonnet', opus: 'opus' },
+  'claude/pi-agent': { haiku: 'claude-haiku-4-5', sonnet: 'claude-sonnet-5', opus: 'claude-opus-5' },
+  'codex/pi-agent': { haiku: 'gpt-5.4-mini', sonnet: 'gpt-5.6-luna', opus: 'gpt-5.6-sol' },
+};
+const CODING_MODEL_SUGGESTIONS: Record<string, string[]> = {
+  'claude/claude-code': ['opus', 'sonnet', 'haiku'],
+  'claude/pi-agent': ['claude-opus-5', 'claude-sonnet-5', 'claude-fable-5', 'claude-haiku-4-5'],
+  'codex/pi-agent': ['gpt-5.6-sol', 'gpt-5.6-luna', 'gpt-5.6-terra', 'gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.3-codex-spark'],
+};
+
+export function CodingAgentSection() {
+  const translate = useTranslator();
+  const { codingAgent, saveCodingAgent, readiness } = useWorkspaces();
+  const [draft, setDraft] = useState<CodingAgentConfig>(codingAgent);
+  //? The broadcast delta is the confirmation: it replaces snap.codingAgent, which resyncs the draft.
+  useEffect(() => { setDraft(codingAgent); }, [codingAgent]);
+
+  const ready = readiness.codingAgent;
+  const pair = `${draft.subscription}/${draft.harness}`;
+  const suggestions = CODING_MODEL_SUGGESTIONS[pair] ?? [];
+
+  const pickSubscription = (subscription: CodingSubscription): void => {
+    //? Codex is only reachable through pi (server-enforced); switching seats resets the tier map to that
+    //? pair's defaults — a Claude alias like `sonnet` means nothing to the Codex provider.
+    const harness: CodingHarness = subscription === 'codex' ? 'pi-agent' : draft.harness;
+    setDraft({ subscription, harness, tierModels: CODING_TIER_DEFAULTS[`${subscription}/${harness}`] ?? draft.tierModels });
+  };
+  const pickHarness = (harness: CodingHarness): void => {
+    setDraft((d) => ({ ...d, harness, tierModels: CODING_TIER_DEFAULTS[`${d.subscription}/${harness}`] ?? d.tierModels }));
+  };
+
+  const subItems = (['claude', 'codex'] as const).map((s) => ({ id: s, value: s, item: translate({ key: `workspaces.codingAgent.sub_${s}` }) }));
+  const harnessItems = (['claude-code', 'pi-agent'] as const).map((h) => ({ id: h, value: h, item: translate({ key: `workspaces.codingAgent.harness_${h}` }) }));
+
+  //? Host-level gaps for the CURRENT draft — infra-only notices (no in-app fix; the hint is the host command).
+  const gaps: { key: 'needClaudeCli' | 'needPi' | 'needCodexAuth' }[] = [
+    ...(draft.harness === 'claude-code' && !ready.claudeCode ? [{ key: 'needClaudeCli' as const }] : []),
+    ...(draft.harness === 'pi-agent' && !ready.piAgent ? [{ key: 'needPi' as const }] : []),
+    ...(draft.subscription === 'codex' && !ready.codexAuth ? [{ key: 'needCodexAuth' as const }] : []),
+  ];
+
+  return (
+    <FormSection title={translate({ key: 'workspaces.codingAgent.title' })} desc={translate({ key: 'workspaces.codingAgent.desc' })}>
+      <SettingRow
+        label={translate({ key: 'workspaces.codingAgent.subscription' })}
+        help={translate({ key: 'workspaces.codingAgent.subscriptionHelp' })}
+        control={<Dropdown width="full" items={subItems} value={subItems.find((s) => s.id === draft.subscription)} onChange={(it) => { pickSubscription(it.value as CodingSubscription); }} />}
+      />
+      <SettingRow
+        label={translate({ key: 'workspaces.codingAgent.harness' })}
+        help={translate({ key: draft.subscription === 'codex' ? 'workspaces.codingAgent.harnessForced' : 'workspaces.codingAgent.harnessHelp' })}
+        control={draft.subscription === 'codex'
+          ? <div className={`text-sm text-common`}>{translate({ key: 'workspaces.codingAgent.harness_pi-agent' })}</div>
+          : <Dropdown width="full" items={harnessItems} value={harnessItems.find((h) => h.id === draft.harness)} onChange={(it) => { pickHarness(it.value as CodingHarness); }} />}
+      />
+      {/* OPEN VRAAG A — allowed but loudly warned: a Claude seat through pi bills per token as EXTRA USAGE
+          on top of the plan, not against the plan's quota. */}
+      {draft.subscription === 'claude' && draft.harness === 'pi-agent' && (
+        <div className={`mx-5 mb-1 rounded-lg border border-wrong/40 bg-wrong/10 px-3 py-2 text-xs text-wrong leading-relaxed`}>
+          {translate({ key: 'workspaces.codingAgent.piMeteredWarning' })}
+        </div>
+      )}
+      {gaps.map((g) => (
+        <div key={g.key} className={`px-5 pb-2`}>
+          <SetupNotice
+            variant="card"
+            icon="terminal"
+            title={translate({ key: `workspaces.codingAgent.${g.key}Title` })}
+            body={translate({ key: `workspaces.codingAgent.${g.key}Body` })}
+            hint={<span className={`font-mono`}>{translate({ key: `workspaces.codingAgent.${g.key}Hint` })}</span>}
+          />
+        </div>
+      ))}
+      {CODING_TIERS.map((tier) => (
+        <SettingRow
+          key={tier}
+          label={translate({ key: `workspaces.codingAgent.tier_${tier}` })}
+          help={translate({ key: `workspaces.codingAgent.tierHelp_${tier}` })}
+          control={(
+            <input
+              value={draft.tierModels[tier]}
+              onChange={(e) => { setDraft((d) => ({ ...d, tierModels: { ...d.tierModels, [tier]: e.target.value } })); }}
+              placeholder={CODING_TIER_DEFAULTS[pair]?.[tier] ?? ''}
+              className={`${inputCls} font-mono`}
+            />
+          )}
+        />
+      ))}
+      <div className={`px-5 pt-1 text-xs text-meta leading-relaxed`}>
+        {translate({ key: 'workspaces.codingAgent.suggestions' })} <span className={`font-mono`}>{suggestions.join(' · ')}</span>
+      </div>
+      <div className={`px-5 py-4`}>
+        <WsButton icon="check" onClick={() => { saveCodingAgent(draft); }}>{translate({ key: 'workspaces.codingAgent.save' })}</WsButton>
       </div>
     </FormSection>
   );

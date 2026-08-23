@@ -47,6 +47,13 @@ Remnants 1+2 are **already assigned to fix-round Agent 1, Batch 8 (F-017)** — 
 
 ### Fase 3 — Tweede coding-CLI: andere subscriptions voor de PIPELINE-agent (the big one)
 
+> **✅ AFGEROND 2026-08-23 — anders dan hieronder gepland (ADR 0322).** De owner koos niet de Codex CLI maar de
+> **pi coding agent** als tweede harness: seats = Claude + Codex (ChatGPT) only; Codex ⇒ pi geforceerd, Claude ⇒
+> keuze Claude Code (default) of pi (extra-usage-waarschuwing). Gebouwd: `server/orchestrator/codingAgents/*`
+> (adapter-seam), `docker/pi/workspaces.ts` (capture-extensie), `save-coding-agent` op + UI-sectie, `codex-cli`
+> one-shot backend. Zie `CODING_AGENT_PROGRAM.md` voor het volledige ontwerp + fasen. De tekst hieronder is het
+> historische plan.
+
 Today the code-writing pipeline agent is hardwired to the interactive `claude` CLI in a node-pty (invariant 6 — subscription billing, never headless). Supporting e.g. **OpenAI Codex CLI** (ChatGPT subscription) or **Gemini CLI** as the coding agent means a per-CLI implementation, exactly as the catalog comment warns: session resume, structured-output capture, permissions/settings injection, container install + host sign-in.
 
 1. **`CodingCliAdapter` seam.** Extract from `stageRunner.ts`/`claudeCli.ts` what is Claude-specific: binary + turn args (`--model`, resume flag), session-id capture, the stop/structured-capture hook mechanism (`claudeStopCapture.mjs`, `type:http` hooks), settings file the CLI reads at session start (per-stage permissions!), login/seat check. One adapter per CLI; `stageRunner` and `modelSelect` consume the adapter.

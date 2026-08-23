@@ -7,7 +7,7 @@
 import { createContext, use } from 'react';
 
 import type {
-  ActivityEvent, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, CopilotDirective, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
+  ActivityEvent, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, CodingAgentConfig, CopilotDirective, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
   PipelineStageCfg, RagIndexStatus, RepoInfo, AiSkillEntry, DocumentEntry, DocumentTemplateEntry, DocumentTemplateSection, SkillEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
@@ -277,6 +277,9 @@ export interface WorkspacesCtx {
   //? Workflow (hosting-proxy plan) — per-workspace git strategy + push policy.
   gitConfig: GitConfig;
   saveGitConfig: (cfg: GitConfig) => void;
+  //? ADR 0322 — which subscription seat + harness writes the code, plus the stage-tier → model map.
+  codingAgent: CodingAgentConfig;
+  saveCodingAgent: (cfg: CodingAgentConfig) => void;
   //? Module gating — persist the workspace's enabled nav-section set (modules.ts).
   saveSections: (enabledSections: string[]) => void;
   //? A4 — the workspace autonomy level ('gate-every' | 'gate-key-stages' | 'full-auto').

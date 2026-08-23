@@ -235,6 +235,15 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
       model: { kind: 'string' },
     },
   },
+  'save-coding-agent': {
+    mode: 'enabled',
+    hint: "choose which SUBSCRIPTION seat and harness write the code in the pipeline (ADR 0322). params: subscription (claude | codex), harness (claude-code | pi-agent — a Codex seat always runs on pi; for a Claude seat pi is allowed but Anthropic bills it as per-token extra usage, so prefer claude-code), haikuModel / sonnetModel / opusModel (optional: the concrete model id each stage TIER maps to on that harness, e.g. codex: gpt-5.4-mini / gpt-5.6-luna / gpt-5.6-sol).",
+    params: {
+      subscription: { kind: 'enum', required: true, values: ['claude', 'codex'] },
+      harness: { kind: 'enum', values: ['claude-code', 'pi-agent'] },
+      haikuModel: { kind: 'string' }, sonnetModel: { kind: 'string' }, opusModel: { kind: 'string' },
+    },
+  },
   'save-autonomy': {
     mode: 'enabled',
     hint: 'set how often the human must approve pipeline stages: gate-every (approve each stage) | gate-key-stages (default) | full-auto (no human gates — propose with care and say so in the reply). params: autonomyLevel',

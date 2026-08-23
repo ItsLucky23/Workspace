@@ -789,6 +789,13 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     if (!feature || !providerId) return;
     void syncRequest({ name: 'workspaces/saveAiProvider', version: 'v1', data: { feature, providerId, ...(model === undefined ? {} : { model }), clientRequestId: x.nextReqId() }, receiver: x.room });
   },
+  'save-coding-agent': (p, x) => {
+    const subscription = str(p, 'subscription'); if (!subscription) return;
+    const harness = str(p, 'harness');
+    const tiers = { haiku: str(p, 'haikuModel'), sonnet: str(p, 'sonnetModel'), opus: str(p, 'opusModel') };
+    const tierModels = Object.fromEntries(Object.entries(tiers).filter(([, v]) => v !== undefined)) as Record<string, string>;
+    void syncRequest({ name: 'workspaces/saveCodingAgent', version: 'v1', data: { subscription, ...(harness === undefined ? {} : { harness }), ...(Object.keys(tierModels).length === 0 ? {} : { tierModels }), clientRequestId: x.nextReqId() }, receiver: x.room });
+  },
   'save-autonomy': (p, x) => {
     const autonomyLevel = str(p, 'autonomyLevel'); if (!autonomyLevel) return;
     void syncRequest({ name: 'workspaces/saveAutonomy', version: 'v1', data: { autonomyLevel, clientRequestId: x.nextReqId() }, receiver: x.room });

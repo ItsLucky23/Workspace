@@ -159,6 +159,7 @@ Every typed sync route in this project. Sourced from `_ProjectSyncTypeMap` in `s
 | `workspaces/saveAiInstruction/v1` | — | — | ✓ |
 | `workspaces/saveAiProvider/v1` | — | — | ✓ |
 | `workspaces/saveAutonomy/v1` | — | — | ✓ |
+| `workspaces/saveCodingAgent/v1` | — | — | ✓ |
 | `workspaces/saveEnv/v1` | — | — | ✓ |
 | `workspaces/saveGitConfig/v1` | — | — | ✓ |
 | `workspaces/saveIntegration/v1` | — | — | ✓ |

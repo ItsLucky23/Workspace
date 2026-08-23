@@ -35,6 +35,14 @@ RUN install -m 0755 -d /etc/apt/keyrings \
 RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CLI_VERSION} node-pty
 ENV NODE_PATH=/usr/local/lib/node_modules
 
+#? The pi coding agent (ADR 0322) — the SECOND harness: drives a Codex (ChatGPT) seat, optionally a Claude
+#? seat. Same pin discipline as claude (never @latest); --ignore-scripts: its postinstall only builds optional
+#? native deps we don't use in the PTY. The baked extension writes the same capture files Claude's hooks do.
+ARG PI_AGENT_VERSION=0.84.2
+LABEL org.workspaces.pi-version="${PI_AGENT_VERSION}"
+RUN npm install -g --ignore-scripts @earendil-works/pi-coding-agent@${PI_AGENT_VERSION}
+COPY docker/pi/ /opt/workspaces/pi/
+
 #? Trust any mounted checkout: the worktree volume + the RO /mirror are host-uid-owned,
 #? so git's dubious-ownership guard would refuse them. `safe.directory=*` is ONLY honored
 #? from system/global config (NOT `-c` — git ignores that by design), so it must be baked.

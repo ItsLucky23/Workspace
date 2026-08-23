@@ -24,6 +24,7 @@ import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { ensureWorkspaceBuiltins, scheduleWorkspaceBuiltinIndexing } from '../bootstrap/workspaceBuiltins';
 import { addConnection, recordTest, removeConnection } from '../ai/connections';
 import { AI_OVERRIDE_PREFIX, formatAiOverride, isAiProviderId, parseAiOverride } from '../ai/workspaceAssignments';
+import { CODING_AGENT_KEY, CODING_HARNESSES, CODING_SUBSCRIPTIONS, formatCodingAgent, normalizeCodingAgent } from './codingAgents/config';
 import { aiProviderById } from '../ai/registry';
 import { isPipelinePreset, createDefaultPipeline, stageBlueprint, baseStageStatuses, stagesForPreset, stageCreateData, blueprintForStage, fallbackStageKey, defaultStageKeys, isStageKind } from '../bootstrap/defaultPipeline';
 import { cloneWorkspace } from '../bootstrap/cloneWorkspace';
@@ -122,7 +123,7 @@ import { applyAutomationEvent, fireEvent } from '../automation/triggers';
 import { fireCronTrigger } from '../automation/cron';
 import { executeGatedAction, executeTriggerAction, runTriggerAction } from '../automation/executor';
 import type { ControlOp } from '../../src/workspaces/_functions/controlApi';
-import { TICKET_PRIORITIES, type TicketPriority } from '../../src/workspaces/_data/types';
+import { TICKET_PRIORITIES, type TicketPriority, type CodingHarness, type CodingSubscription } from '../../src/workspaces/_data/types';
 import { CRASH_REPLAYABLE_INTERNAL_OPS, INTERNAL_OP_NAMES, internalActionFromSignal, internalActionReplayKeys, isInternalOp, type AgentRecoveryTransitionInternalAction, type InternalAction, type InternalOp, type StageDeferUpdateInternalAction } from './internalOps';
 import { applyEntityCas, dockerfileEntityKey, ENTITY_VERSION_KEYS, projectImageEntityKey, readEntityVersion, worktreeFileEntityKey } from './entityVersion';
 import {
@@ -2768,6 +2769,21 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       if (!res.ok) return { ok: false, error: 'ai.connectionNotFound' };
       //? The moved features come back so the UI can report what the confirm dialog promised.
       return { ok: true, moved: res.moved };
+    }
+    case 'save-coding-agent': {
+      //? ADR 0322 — the coding agent: seat (claude|codex) + harness (claude-code|pi-agent) + tier → model map,
+      //? ONE EnvVar (`__coding_agent`, JSON). `normalizeCodingAgent` is the single rule-keeper: a Codex seat is
+      //? forced onto pi here, so no client or assistant payload can store a combination the runner cannot run.
+      const raw = payload;
+      if (!CODING_SUBSCRIPTIONS.includes(str(raw, 'subscription') as CodingSubscription)) return { ok: false, error: 'codingAgent.invalidSubscription' };
+      if (raw.harness !== undefined && !CODING_HARNESSES.includes(str(raw, 'harness') as CodingHarness)) return { ok: false, error: 'codingAgent.invalidHarness' };
+      //? Two payload shapes: the UI sends `tierModels`; the assistant's flat params (haikuModel …) fold into it.
+      const flat = { haiku: str(raw, 'haikuModel'), sonnet: str(raw, 'sonnetModel'), opus: str(raw, 'opusModel') };
+      const tierModels = raw.tierModels ?? (Object.values(flat).some((v) => v !== undefined) ? flat : undefined);
+      const cfg = normalizeCodingAgent({ ...raw, ...(tierModels === undefined ? {} : { tierModels }) });
+      const value = formatCodingAgent(cfg);
+      await prisma.envVar.upsert({ where: { workspaceId_key: { workspaceId: action.workspaceId, key: CODING_AGENT_KEY } }, create: { workspaceId: action.workspaceId, key: CODING_AGENT_KEY, value, secret: false }, update: { value } });
+      return { ok: true, codingAgent: cfg };
     }
     case 'save-ai-provider': {
       //? P1 — a per-workspace AI provider override per feature (EnvVar `__ai_provider_<feature>`). 'default'

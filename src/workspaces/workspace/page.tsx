@@ -29,7 +29,7 @@ import { PageSections, useTrailSegment } from '../_components/sections';
 import { RepoInventoryPanel, RepoScriptPicker, useRepoIntrospection } from './repoIntrospection';
 import { RunProcessList, anyRowIncomplete, rowCommand, seedProcesses } from './runProcesses';
 import { SkillsSection } from './skillsEditor';
-import { AiProvidersSection } from './aiProviders';
+import { AiProvidersSection, CodingAgentSection } from './aiProviders';
 import { FormSection, INPUT_CLS_FULL as fieldCls, INPUT_CLS_FULL_MONO as inputCls, SavePill, SettingRow, useAutosave } from '../_components/settings';
 import { resolveAiLayers } from '../_functions/aiLayers';
 import { INTEGRATION_TYPES, RBAC_CAPABILITIES, ROLE_DISPLAY } from '../_data/seed';
@@ -1552,6 +1552,8 @@ function AiBehaviorTab() {
           ElevenLabs and Suno — so this page read as "Gemini's settings" and the one thing you had to
           do was somewhere else entirely. Media providers stay with media; this one runs the product. */}
       <AiProvidersSection />
+      {/* ADR 0322 — which subscription seat + harness writes the code in the ticket container. */}
+      <CodingAgentSection />
       {/* P1 — which AI backend runs each feature (persists on change). */}
       <FormSection
         title={translate({ key: 'workspaces.workspaceSettings.aiProviderTitle' })}

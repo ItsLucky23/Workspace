@@ -73,6 +73,20 @@ There are two places, and either works:
 
 ---
 
+## Coding agent (no API key — subscription sign-in on the host)
+
+The pipeline's CODE-writing agent never runs on an API key (ADR 0322). It bills a **subscription seat**,
+signed in on the **host**, and the ticket container borrows that login:
+
+- **Claude (Pro/Max)** — install + sign in the Claude CLI on the host: `npm i -g @anthropic-ai/claude-code`,
+  then run `claude` once and log in. Default harness: **Claude Code** (spends the plan's included quota).
+- **Codex (ChatGPT)** — install the pi agent on the host: `npm i -g @earendil-works/pi-coding-agent`, then
+  run `pi` and `/login` with provider `openai-codex`. A Codex seat always runs through **pi**.
+- Pick the seat + harness per workspace under **Workspace → AI → Coding agent**. ⚠️ A Claude seat through
+  pi is billed per token as **extra usage** on top of the plan — the UI warns; prefer Claude Code.
+
+---
+
 ## Rendering (no key — Docker)
 
 The final video is assembled locally with **ffmpeg in a Docker container** (`WS_FFMPEG_IMAGE`, default

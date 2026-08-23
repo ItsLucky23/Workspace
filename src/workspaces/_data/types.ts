@@ -57,6 +57,7 @@ export interface WorkspaceReadiness {
   docker: boolean;                                       // the host Docker daemon is reachable (containers/CI/preview/deploy)
   push: boolean;                                         // server VAPID keys are set (web-push subscribe)
   secretManager: boolean;                                // the encryption key is configured (stored secrets are readable)
+  codingAgent: CodingAgentReadiness;                     // which coding harnesses/seats the host can actually run
 }
 
 //? ---------------------------------------------------------------- git workflow config
@@ -994,8 +995,27 @@ export interface QuestionSet {
 //? block (model/effort/max-turns/budget/hooks). See handoff/DATAMODEL.md §2 +
 //? handoff/CLAUDE_SETTINGS_MAP.md. Editable locally in the prototype.
 
-// provider-specific; a future capability registry replaces these (Q-MP-CAPREG).
+//? Three abstract model TIERS (storage keys unchanged since V1). The workspace's CodingAgentConfig maps each
+//? tier onto a concrete model id for its harness (claude-code: haiku/sonnet/opus; pi on Codex: gpt-5.x ids).
 export type StageModelTier = 'haiku' | 'sonnet' | 'opus';
+
+//? ---------------------------------------------------------------- coding agent (CODING_AGENT_PROGRAM.md)
+//? Which subscription seat pays for the code-writing pipeline agent, and which interactive harness runs in the
+//? container PTY. Codex ⇒ pi (forced, server-side). Claude ⇒ Claude Code by default; pi is allowed but Anthropic
+//? bills third-party harnesses as per-token "extra usage" (warned in the UI, ADR 0322).
+export type CodingSubscription = 'claude' | 'codex';
+export type CodingHarness = 'claude-code' | 'pi-agent';
+export interface CodingAgentConfig {
+  subscription: CodingSubscription;
+  harness: CodingHarness;
+  tierModels: Record<StageModelTier, string>;
+}
+//? Host-level readiness of the two harnesses (presence only, never a credential).
+export interface CodingAgentReadiness {
+  claudeCode: boolean;   // `claude` binary + login on the host
+  piAgent: boolean;      // `pi` binary on the host
+  codexAuth: boolean;    // `~/.pi/agent/auth.json` holds an openai-codex OAuth entry
+}
 // provider-specific; a future capability registry replaces these (Q-MP-CAPREG).
 export type StageEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 export type CommandMode = 'allow' | 'ask' | 'deny';

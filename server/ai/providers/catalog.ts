@@ -16,7 +16,9 @@
 //?    be the "looks connected, fails at the first turn" failure this page was made to remove.
 //? @adr 0007
 
-export type AiTransport = 'claude-cli' | 'openai-compatible' | 'anthropic';
+//? `pi-cli` (ADR 0322) = the second subscription transport: pi on the Codex seat, headless-json for one-shot
+//? features (the coding agent uses the same seat interactively — see orchestrator/codingAgents).
+export type AiTransport = 'claude-cli' | 'pi-cli' | 'openai-compatible' | 'anthropic';
 
 //? What a backend can actually take as INPUT. A request carrying images needs 'vision', one carrying
 //? audio needs 'audio' — routing a speech-to-text turn at a text-only backend produced "no audio clip
@@ -71,6 +73,13 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
   //? ---------------------------------------------------------------- subscription
   'claude-cli': {
     id: 'claude-cli', label: 'Claude Code', kind: 'subscription', transport: 'claude-cli',
+    models: [], defaultModel: '', baseUrl: '', keyUrl: '', baseUrlEnv: '',
+  },
+  //? Codex (ChatGPT Plus/Pro) through pi — signed in on the host with `pi` → `/login`. Like Claude Code it
+  //? is a seat, not a key: no model picker on connect (a feature route may still pin `codex-cli:<model>`;
+  //? the coding-agent tiers have their own map). Text-only on the one-shot path.
+  'codex-cli': {
+    id: 'codex-cli', label: 'Codex (ChatGPT subscription)', kind: 'subscription', transport: 'pi-cli',
     models: [], defaultModel: '', baseUrl: '', keyUrl: '', baseUrlEnv: '',
   },
 

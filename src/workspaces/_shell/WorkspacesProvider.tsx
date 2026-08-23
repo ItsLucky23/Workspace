@@ -33,7 +33,7 @@ import type {
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink, UiReviewSummary,
   ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, ContentSnapshot,
-  WorkspaceReadiness, PatSummary, AiConnection, AiProviderOption,
+  WorkspaceReadiness, PatSummary, AiConnection, AiProviderOption, CodingAgentConfig,
 } from '../_data/types';
 import { isTicketView, WorkspacesContextProvider, type WorkspacesCtx, type WsView } from './WorkspacesContext';
 import { shouldApplySnapshotResponse, snapshotTargetsMatch, type SnapshotTarget } from './snapshotRequest';
@@ -114,6 +114,8 @@ interface Snap {
   //? Setup readiness + the caller's resolved capabilities (new-user UX): drives the "what's missing / who can
   //? fix it" notices. `myPerms` is positional over CAP; `myRoleKey` is the raw (non-flattened) role key.
   readiness: WorkspaceReadiness;
+  //? ADR 0322 — the workspace's coding-agent seat (subscription + harness + tier→model map).
+  codingAgent: CodingAgentConfig;
   myPerms: boolean[];
   myRoleKey: string;
   //? Preload gap-fix (X3) — the caller's own Personal Access Tokens (metadata only).
@@ -145,7 +147,8 @@ const EMPTY_SNAP: Snap = {
   ticketArtifactLinks: [],
   chat: [],
   sshKeys: [],
-  readiness: { repoLinked: false, aiText: false, media: { fal: false, elevenlabs: false, suno: false }, publishing: false, docker: false, push: false, secretManager: false },
+  readiness: { repoLinked: false, aiText: false, media: { fal: false, elevenlabs: false, suno: false }, publishing: false, docker: false, push: false, secretManager: false, codingAgent: { claudeCode: false, piAgent: false, codexAuth: false } },
+  codingAgent: { subscription: 'claude', harness: 'claude-code', tierModels: { haiku: 'haiku', sonnet: 'sonnet', opus: 'opus' } },
   myPerms: [], myRoleKey: 'member',
   pats: [],
 };
@@ -989,6 +992,16 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       if (serverOutput.status !== 'success') return;
       const gitConfig = serverOutput.gitConfig;
       setSnap((s) => ({ ...s, gitConfig }));
+    },
+  }), [upsertSyncEventCallback]);
+
+  //? ADR 0322 — coding-agent delta → replace snap.codingAgent (same shape as the gitConfig delta).
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/saveCodingAgent', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      const codingAgent = serverOutput.codingAgent;
+      setSnap((s) => ({ ...s, codingAgent }));
     },
   }), [upsertSyncEventCallback]);
 
@@ -1898,6 +1911,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       applyPipelinePreset: (projectId, preset, mode) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/pipelinePreset', version: 'v1', data: { projectId, preset, mode, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       gitConfig: snap.gitConfig,
       saveGitConfig: (cfg) => { const room = snap.activeWorkspaceId; if (room) observeSync(syncRequest({ name: 'workspaces/saveGitConfig', version: 'v1', data: { gitConfig: cfg, clientRequestId: nextReqId() }, receiver: room })); },
+      //? ADR 0322 — coding-agent seat + harness + tier→model map (delta callback replaces snap.codingAgent).
+      codingAgent: snap.codingAgent,
+      saveCodingAgent: (cfg) => { const room = snap.activeWorkspaceId; if (room) observeSync(syncRequest({ name: 'workspaces/saveCodingAgent', version: 'v1', data: { subscription: cfg.subscription, harness: cfg.harness, tierModels: cfg.tierModels, clientRequestId: nextReqId() }, receiver: room })); },
       //? Module gating: optimistically flip the active workspace's enabledSections (instant
       //? nav re-render) then persist via the [save-sections] control-op; the broadcast
       //? reconciles idempotently.

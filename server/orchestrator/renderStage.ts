@@ -32,7 +32,8 @@ export interface StageRenderCtx {
   //? The RESOLVED model choice for this turn (base or an escalation rule, modelSelect). Drives the
   //? settings.json `model` backstop + the MAX_THINKING_TOKENS effort budget; the spawn's `--model`
   //? flag (stageRunner) is the authoritative half of the same wiring.
-  modelChoice?: StageModelChoice;
+  //? `model` = the RESOLVED model for the harness (a tier alias on Claude Code, a literal id elsewhere — ADR 0322).
+  modelChoice?: Omit<StageModelChoice, 'model'> & { model: string };
   //? ADR 0311 — the workspace-wide AI steering (`Workspace.aiInstruction` + the output-language
   //? directive), resolved by stageRunner via ai/registry's `workspaceAiPrefix`. It opens the
   //? system-prompt channel, exactly as it prefixes the system prompt on the one-shot path. Until

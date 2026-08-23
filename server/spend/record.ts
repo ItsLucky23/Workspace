@@ -130,7 +130,7 @@ const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export interface SpendRow { ticketId: string | null; tokensIn: number; tokensOut: number; createdAt: Date; providerId?: string | null; feature?: string | null; costEstimate?: number; userId?: string | null }
 
 //? Human labels for the known AI providers (the raw id is the fallback for anything new/unknown).
-const PROVIDER_LABELS: Record<string, string> = { 'claude-cli': 'Claude (CLI)', 'gemini-api': 'Gemini API' };
+const PROVIDER_LABELS: Record<string, string> = { 'claude-cli': 'Claude (CLI)', 'codex-cli': 'Codex (pi)', 'gemini-api': 'Gemini API' };
 
 //? Aggregate spend PER AI (provider + feature/role) — the per-AI usage breakdown. Rows with no provider
 //? land in an 'unknown' bucket; `subscription` marks the Claude PTY coding agent (Max subscription — token
@@ -141,7 +141,7 @@ export function aggregateByAi(rows: SpendRow[]): AiUsage[] {
     const providerId = r.providerId ?? 'unknown';
     const feature = r.feature ?? 'unknown';
     const key = `${providerId}::${feature}`;
-    const cur = per.get(key) ?? { providerId, providerLabel: PROVIDER_LABELS[providerId] ?? providerId, feature, tokensIn: 0, tokensOut: 0, turns: 0, costEstimate: 0, subscription: providerId === 'claude-cli' };
+    const cur = per.get(key) ?? { providerId, providerLabel: PROVIDER_LABELS[providerId] ?? providerId, feature, tokensIn: 0, tokensOut: 0, turns: 0, costEstimate: 0, subscription: providerId === 'claude-cli' || providerId === 'codex-cli' };
     cur.tokensIn += r.tokensIn; cur.tokensOut += r.tokensOut; cur.turns += 1; cur.costEstimate += r.costEstimate ?? 0;
     per.set(key, cur);
   }

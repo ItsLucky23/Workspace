@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (239)
+## Decisions (240)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -252,6 +252,7 @@
 | 0319 | The handover is written by the stage that finishes, not the one that starts | 🟢 accepted | pipeline, prompts, ux, orchestrator | — | `docs/decisions/0319-the-handover-is-written-by-the-stage-that-finishes-not-the-one-that-starts.md` |
 | 0320 | An integration test reports what it verified, not that it passed | 🟢 accepted | integrations, settings, ux, security | — | `docs/decisions/0320-an-integration-test-reports-what-it-verified-not-that-it-passed.md` |
 | 0321 | The coding agent is any subscription CLI in a PTY — never metered | 🟢 accepted | ai-providers, pipeline, billing, invariant-6 | — | `docs/decisions/0321-coding-agent-is-any-subscription-cli-in-a-pty-never-metered.md` |
+| 0322 | Coding-agent seats are Claude and Codex; pi is the Codex harness (forced), optional for Claude (warned) | 🟢 accepted | ai-providers, pipeline, billing, invariant-6, pi-agent, codex | — | `docs/decisions/0322-coding-agent-seats-claude-and-codex-with-pi-as-the-codex-harness.md` |
 
 ## Summaries
 
@@ -2197,6 +2198,16 @@ _(no Decision section found — fill it in)_
 
 → `docs/decisions/0321-coding-agent-is-any-subscription-cli-in-a-pty-never-metered.md`
 
+### 0322 — Coding-agent seats are Claude and Codex; pi is the Codex harness (forced), optional for Claude (warned)
+
+**0322** · accepted · tags: ai-providers, pipeline, billing, invariant-6, pi-agent, codex · 2026-08-23
+
+_(no Decision section found — fill it in)_
+
+**Governs** (`//? @adr 0322`): `server/ai/providers/piCli.ts`, `server/orchestrator/codingAgents/claudeCode.ts`, `server/orchestrator/codingAgents/config.ts`, `server/orchestrator/codingAgents/index.ts`, `server/orchestrator/codingAgents/piAgent.ts`, `server/orchestrator/codingAgents/types.ts`
+
+→ `docs/decisions/0322-coding-agent-seats-claude-and-codex-with-pi-as-the-codex-harness.md`
+
 ## Code governed by decisions
 
 > Reverse links from a `//? @adr NNNN` tag in source back to the ADR that explains it.
@@ -2209,6 +2220,7 @@ _(no Decision section found — fill it in)_
 | `server/ai/providers/anthropicApi.ts` | 0007 | Pluggable AI-provider layer — features resolve a backend at dispatch, never hardcode one |
 | `server/ai/providers/catalog.ts` | 0007 | Pluggable AI-provider layer — features resolve a backend at dispatch, never hardcode one |
 | `server/ai/providers/openaiCompatible.ts` | 0007 | Pluggable AI-provider layer — features resolve a backend at dispatch, never hardcode one |
+| `server/ai/providers/piCli.ts` | 0322 | Coding-agent seats are Claude and Codex; pi is the Codex harness (forced), optional for Claude (warned) |
 | `server/ai/skills.ts` | 0270 | universeel skill model met apply points |
 | `server/container/runtimeProcesses.ts` | 0317 | The runtime is a list of processes, not one command |
 | `server/content/commentInbox.ts` | 0273 | comment inbox read only youtube tiktok |
@@ -2217,6 +2229,11 @@ _(no Decision section found — fill it in)_
 | `server/documents/docs.ts` | 0271 | documents module markdown bron plus render targets |
 | `server/documents/export.ts` | 0271 | documents module markdown bron plus render targets |
 | `server/integrations/probe.ts` | 0320 | An integration test reports what it verified, not that it passed |
+| `server/orchestrator/codingAgents/claudeCode.ts` | 0322 | Coding-agent seats are Claude and Codex; pi is the Codex harness (forced), optional for Claude (warned) |
+| `server/orchestrator/codingAgents/config.ts` | 0322 | Coding-agent seats are Claude and Codex; pi is the Codex harness (forced), optional for Claude (warned) |
+| `server/orchestrator/codingAgents/index.ts` | 0322 | Coding-agent seats are Claude and Codex; pi is the Codex harness (forced), optional for Claude (warned) |
+| `server/orchestrator/codingAgents/piAgent.ts` | 0322 | Coding-agent seats are Claude and Codex; pi is the Codex harness (forced), optional for Claude (warned) |
+| `server/orchestrator/codingAgents/types.ts` | 0322 | Coding-agent seats are Claude and Codex; pi is the Codex harness (forced), optional for Claude (warned) |
 | `server/voice/voice.ts` | 0275 | voice interface provider abstracted stt plus tts |
 | `src/workspaces/_components/EffectivePromptPreview.tsx` | 0311 | AI prompt layers are two channels, not one stack |
 | `src/workspaces/_components/SetupChecklist.tsx` | 0314 | Onboarding is a standing checklist, not a tour |

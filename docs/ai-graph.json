@@ -2,10 +2,10 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 460,
+    "nodes": 462,
     "edges": 718,
-    "symbols": 870,
-    "callEdges": 292
+    "symbols": 877,
+    "callEdges": 296
   },
   "nodes": [
     {
@@ -1652,6 +1652,16 @@
       "id": "workspaces/_sync/saveAutonomy_server_v1.ts",
       "kind": "sync",
       "route": "sync/workspaces/saveAutonomy/v1"
+    },
+    {
+      "id": "workspaces/_sync/saveCodingAgent_server_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_sync/saveCodingAgent_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/saveCodingAgent/v1"
     },
     {
       "id": "workspaces/_sync/saveEnv_server_v1.tests.ts",
@@ -11587,6 +11597,48 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_sync/saveCodingAgent_server_v1.tests.ts::<module>",
+      "file": "workspaces/_sync/saveCodingAgent_server_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/saveCodingAgent_server_v1.tests.ts::fn",
+      "file": "workspaces/_sync/saveCodingAgent_server_v1.tests.ts",
+      "name": "fn",
+      "kind": "fn"
+    },
+    {
+      "id": "workspaces/_sync/saveCodingAgent_server_v1.tests.ts::poll",
+      "file": "workspaces/_sync/saveCodingAgent_server_v1.tests.ts",
+      "name": "poll",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/saveCodingAgent_server_v1.tests.ts::run",
+      "file": "workspaces/_sync/saveCodingAgent_server_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "workspaces/_sync/saveCodingAgent_server_v1.tests.ts::wait",
+      "file": "workspaces/_sync/saveCodingAgent_server_v1.tests.ts",
+      "name": "wait",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/saveCodingAgent_server_v1.ts::<module>",
+      "file": "workspaces/_sync/saveCodingAgent_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/saveCodingAgent_server_v1.ts::main",
+      "file": "workspaces/_sync/saveCodingAgent_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_sync/saveEnv_server_v1.tests.ts::<module>",
       "file": "workspaces/_sync/saveEnv_server_v1.tests.ts",
       "name": "<module>",
@@ -13455,6 +13507,22 @@
       "to": "workspaces/_sync/saveAutonomy_server_v1.tests.ts::poll"
     },
     {
+      "from": "workspaces/_sync/saveCodingAgent_server_v1.tests.ts::poll",
+      "to": "workspaces/_sync/saveCodingAgent_server_v1.tests.ts::fn"
+    },
+    {
+      "from": "workspaces/_sync/saveCodingAgent_server_v1.tests.ts::poll",
+      "to": "workspaces/_sync/saveCodingAgent_server_v1.tests.ts::wait"
+    },
+    {
+      "from": "workspaces/_sync/saveCodingAgent_server_v1.tests.ts::run",
+      "to": "workspaces/_sync/saveCodingAgent_server_v1.tests.ts::poll"
+    },
+    {
+      "from": "workspaces/_sync/saveCodingAgent_server_v1.tests.ts::run",
+      "to": "workspaces/_sync/saveCodingAgent_server_v1.tests.ts::wait"
+    },
+    {
       "from": "workspaces/_sync/saveEnv_server_v1.tests.ts::poll",
       "to": "workspaces/_sync/saveEnv_server_v1.tests.ts::fn"
     },
@@ -14515,6 +14583,17 @@
     "workspaces/_sync/saveAutonomy_server_v1.tests.ts::wait": [
       "workspaces/_sync/saveAutonomy_server_v1.tests.ts::poll",
       "workspaces/_sync/saveAutonomy_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/saveCodingAgent_server_v1.tests.ts::fn": [
+      "workspaces/_sync/saveCodingAgent_server_v1.tests.ts::poll",
+      "workspaces/_sync/saveCodingAgent_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/saveCodingAgent_server_v1.tests.ts::poll": [
+      "workspaces/_sync/saveCodingAgent_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/saveCodingAgent_server_v1.tests.ts::wait": [
+      "workspaces/_sync/saveCodingAgent_server_v1.tests.ts::poll",
+      "workspaces/_sync/saveCodingAgent_server_v1.tests.ts::run"
     ],
     "workspaces/_sync/saveEnv_server_v1.tests.ts::fn": [
       "workspaces/_sync/saveEnv_server_v1.tests.ts::poll",

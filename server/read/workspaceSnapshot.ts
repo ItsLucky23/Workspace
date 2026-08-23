@@ -45,11 +45,12 @@ import type {
   WorkspaceTrigger, TriggerEventKind, TriggerActionKind,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary,
   ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, WorkspaceAnalytics, ContentSnapshot, ContentAssetSummary, VideoSceneSummary,
-  ChatMessage, PatSummary,
+  ChatMessage, PatSummary, CodingAgentConfig,
 } from '../../src/workspaces/_data/types';
 import { getMediaBudgetStatus } from '../media/budget';
 import { mediaCostTable } from '../media/registry';
 import { buildReadiness } from './readiness';
+import { CODING_AGENT_KEY, DEFAULT_CODING_AGENT, parseStoredCodingAgent } from '../orchestrator/codingAgents/config';
 
 
 //? Read a string field off a Json value (for the brand-library palette/typography JSON).
@@ -180,6 +181,8 @@ export interface WorkspaceSnapshot {
   //? P4-7 — the built-in feature → backend defaults (assignments.ts), so the routing picker can say WHICH
   //? backend "Default" resolves to instead of the word alone.
   aiFeatureDefaults: Record<string, string>;
+  //? ADR 0322 — which subscription seat + harness drives the coding pipeline agent (+ the tier → model map).
+  codingAgent: CodingAgentConfig;
   //? E5 — user-defined custom AI tasks (name + template + last output).
   customTasks: { id: string; name: string; promptTemplate: string; lastOutput: string | null; lastRunAt: number | null }[];
   //? O5 — reusable output specs (name + render format + watermark position).
@@ -267,7 +270,8 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activ
   projects: [], services: [], serviceStacks: [], dbConnections: [], migrations: [], environments: [], buildArtifacts: [], templates: listTemplates(),
   members: [], tickets: [], stages: [], stageConfigs: [], aiOverrides: [], aiConnections: [], aiProviderCatalog: [], aiFeatureDefaults: {}, customTasks: [], outputTemplates: [], aiSkills: [], documents: [], documentTemplates: [], sprints: [], suggestions: [], budget: null, budgets: [],
   docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [],
-  readiness: { repoLinked: false, aiText: false, media: { fal: false, elevenlabs: false, suno: false }, publishing: false, docker: false, push: false, secretManager: false },
+  readiness: { repoLinked: false, aiText: false, media: { fal: false, elevenlabs: false, suno: false }, publishing: false, docker: false, push: false, secretManager: false, codingAgent: { claudeCode: false, piAgent: false, codexAuth: false } },
+  codingAgent: DEFAULT_CODING_AGENT,
   myPerms: [], myRoleKey: 'member',
   repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG, workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0, byAi: [], byUser: [] },
@@ -711,6 +715,9 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       //? P4-1/P4-2 — includes the `_default` pseudo-feature row; a `providerId:model` value is split so the
       //? client sees the provider + optional model as separate fields (never the raw stored string).
       aiOverrides: envRows.filter((e) => e.key.startsWith(AI_OVERRIDE_PREFIX)).map((e) => ({ feature: e.key.slice(AI_OVERRIDE_PREFIX.length), ...(parseAiOverride(e.value) ?? { providerId: e.value }) })),
+      //? ADR 0322 — the coding agent (seat + harness + tier map), normalised so the client never sees a
+      //? partial or Codex/claude-code combination.
+      codingAgent: parseStoredCodingAgent(envRows.find((e) => e.key === CODING_AGENT_KEY)?.value ?? null),
       //? E5 — user-defined custom AI tasks.
       customTasks: customTaskRows.map((t) => ({ id: t.id, name: t.name, promptTemplate: t.promptTemplate, lastOutput: t.lastOutput, lastRunAt: t.lastRunAt ? t.lastRunAt.getTime() : null })),
       //? O5 — reusable output specs.

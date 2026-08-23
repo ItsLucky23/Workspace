@@ -11,21 +11,27 @@ import { readRecoveryTransitionResult, reconstructAcceptedRecoveryPrepare } from
 import type { AgentRecoveryTransitionInternalAction } from './internalOps';
 import { containerName, docker, inspectWorkerContainer, teardownExactTicketContainer, workerContainerRunning, DOCKER_BIN, type WorkerContainerIdentity } from '../container/runtime';
 
-//? Kill Claude without procps, then prove the target process is absent. No initial match is an
+//? Kill the coding agent without procps, then prove the target process is absent. No initial match is an
 //? idempotent success; a process that ignores TERM makes Docker exec nonzero and recovery cancels.
-const KILL_SCRIPT = [
-  'for d in /proc/[0-9]*; do',
-  'if grep -qa claude "$d/cmdline" 2>/dev/null; then p="${d#/proc/}"; [ "$p" != "$$" ] && kill "$p" 2>/dev/null; fi;',
-  'done;',
-  'n=0; while [ "$n" -lt 10 ]; do found=0;',
-  'for d in /proc/[0-9]*; do if grep -qa claude "$d/cmdline" 2>/dev/null; then p="${d#/proc/}"; [ "$p" != "$$" ] && found=1; fi; done;',
-  '[ "$found" -eq 0 ] && exit 0; sleep 0.1; n=$((n + 1)); done; exit 1',
-].join(' ');
+//? `match` is the /proc cmdline needle (ADR 0322: `claude` for Claude Code, `pi-coding-agent` for pi); the
+//? default matches EITHER harness so a predecessor of the other kind is still stopped on takeover.
+export const ANY_CODING_AGENT_MATCH = 'claude|pi-coding-agent';
+export function killScript(match: string = ANY_CODING_AGENT_MATCH): string {
+  if (!/^[A-Za-z0-9._|-]+$/.test(match)) throw new Error('[agentControl] invalid process match');
+  return [
+    'for d in /proc/[0-9]*; do',
+    `if grep -qaE '${match}' "$d/cmdline" 2>/dev/null; then p="\${d#/proc/}"; [ "$p" != "$$" ] && kill "$p" 2>/dev/null; fi;`,
+    'done;',
+    'n=0; while [ "$n" -lt 10 ]; do found=0;',
+    `for d in /proc/[0-9]*; do if grep -qaE '${match}' "$d/cmdline" 2>/dev/null; then p="\${d#/proc/}"; [ "$p" != "$$" ] && found=1; fi; done;`,
+    '[ "$found" -eq 0 ] && exit 0; sleep 0.1; n=$((n + 1)); done; exit 1',
+  ].join(' ');
+}
 
-//? Low-level: kill Claude in a container by immutable ID or a caller-validated name.
-export function killClaudeByContainer(container: string): Promise<boolean> {
+//? Low-level: kill the coding agent in a container by immutable ID or a caller-validated name.
+export function killClaudeByContainer(container: string, match: string = ANY_CODING_AGENT_MATCH): Promise<boolean> {
   return new Promise((resolve) => {
-    const proc = spawn(DOCKER_BIN, ['exec', container, 'sh', '-c', KILL_SCRIPT], { windowsHide: true });
+    const proc = spawn(DOCKER_BIN, ['exec', container, 'sh', '-c', killScript(match)], { windowsHide: true });
     proc.on('error', () => { resolve(false); });
     proc.on('close', (code) => { resolve(code === 0); });
   });

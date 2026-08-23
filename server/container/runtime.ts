@@ -194,8 +194,10 @@ export async function launchTicketContainer(args: { workspaceId: string; project
   //? Mount the creds RO + pin CLAUDE_CONFIG_DIR to a FIXED path (docker exec sets no HOME,
   //? so `~/.claude` is ambiguous — the spike proved an explicit dir works). The stage-runner
   //? copies the RO creds into this writable agent-owned dir before driving claude.
-  const authMount = existsSync(path.join(authDir, '.credentials.json'))
-    ? ['-v', `${authDir}:/auth-ro:ro`, '-e', 'CLAUDE_CONFIG_DIR=/home/agent/.claude']
+  //? ADR 0322 — the same projection dir also carries `pi-auth.json` (the pi harness's OAuth file); either
+  //? seat being present mounts it. PI_CODING_AGENT_DIR pins pi's config dir the same way.
+  const authMount = existsSync(path.join(authDir, '.credentials.json')) || existsSync(path.join(authDir, 'pi-auth.json'))
+    ? ['-v', `${authDir}:/auth-ro:ro`, '-e', 'CLAUDE_CONFIG_DIR=/home/agent/.claude', '-e', 'PI_CODING_AGENT_DIR=/home/agent/.pi/agent']
     : [];
 
   //? Egress control (§6). WS_EGRESS=1 confines the worker to an allowlist proxy on an internal network.

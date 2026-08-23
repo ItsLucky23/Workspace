@@ -6,9 +6,10 @@
 
 import type { Ticket as DbTicket, Sprint as DbSprint, WorkspaceNote as DbNote, EnvVar as DbEnvVar, IntegrationTool as DbIntegration, WorkspaceRole as DbRole, Invite as DbInvite, InfoSource as DbInfoSource, ContentAsset as DbContentAsset, MediaJob as DbMediaJob, VideoScene as DbVideoScene } from '@prisma/client';
 
-import type { ContentAssetSummary, ContentPieceSummary, VideoSceneSummary, EnvVar, InfoDoc, IntegrationTool, InviteEntry, PermRole, RepoInfo, Role, Sprint, Ticket, TicketNote, TicketPriority, TicketStatus } from '../../src/workspaces/_data/types';
+import type { CodingAgentConfig, ContentAssetSummary, ContentPieceSummary, VideoSceneSummary, EnvVar, InfoDoc, IntegrationTool, InviteEntry, PermRole, RepoInfo, Role, Sprint, Ticket, TicketNote, TicketPriority, TicketStatus } from '../../src/workspaces/_data/types';
 import { TICKET_PRIORITIES } from '../../src/workspaces/_data/types';
 import { parseNeedsInputQuestions } from '../orchestrator/questionSet';
+import { normalizeCodingAgent } from '../orchestrator/codingAgents/config';
 
 //? DB priority string → the frontend `TicketPriority` union (falls back to 'normal'
 //? for a legacy row written before the column existed). Mirrors buildSnapshot.
@@ -177,6 +178,13 @@ export function aiOverrideDelta(result: unknown): { feature: string; providerId:
     }
   }
   return out;
+}
+
+//? ADR 0322 — the save-coding-agent op returns `{ ok, codingAgent }`; narrow it to the typed config the `_sync`
+//? route broadcasts (client replaces `snap.codingAgent`). Re-normalised so the wire shape is always complete.
+export function codingAgentDelta(result: unknown): CodingAgentConfig {
+  const cfg = result !== null && typeof result === 'object' && 'codingAgent' in result ? result.codingAgent : null;
+  return normalizeCodingAgent(cfg);
 }
 
 //? A ticket-MUTATION op (archive/ticket-edit/bulk-*) returns the affected rows from

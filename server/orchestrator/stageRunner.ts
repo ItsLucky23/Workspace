@@ -6,12 +6,9 @@
 //? proved container-claude authenticates via the projected creds — this is that engine.
 
 import { createHash, randomUUID } from 'node:crypto';
-import { copyFileSync, existsSync } from 'node:fs';
-import path from 'node:path';
-import { homedir } from 'node:os';
 import * as pty from 'node-pty';
 import type { PrismaClient } from '@prisma/client';
-import { tryCatch, tryCatchSync, getPrismaClient } from '@luckystack/core';
+import { tryCatch, getPrismaClient } from '@luckystack/core';
 import { docker, DOCKER_BIN, isWorkspacesContainer, launchTicketContainer, teardownTicketContainer, type ContainerInfo, type DockerResult } from '../container/runtime';
 import { startProcesses } from '../container/runtimeProcesses';
 import { resolveProjectBaseImage } from '../container/baseImages';
@@ -20,7 +17,10 @@ import { isTestStage } from '../ci/gate';
 import { runStageCiInContainer, type StageCiReport } from '../ci/runner';
 
 import { renderStage, type StageArtifacts, type McpIntegration } from './renderStage';
-import type { StageProcessCfg, StageToolCfg } from '../../src/workspaces/_data/types';
+import type { StageEffort, StageProcessCfg, StageToolCfg } from '../../src/workspaces/_data/types';
+import { adapterFor, loadCodingAgent, resolveTierModel, type CodingAgentAdapter } from './codingAgents';
+import { claudeCodeAdapter, containerClaudeAuthenticated as containerClaudeAuthenticatedViaAdapter, projectClaudeAuth, CAPTURE } from './codingAgents/claudeCode';
+import { PI_CONFIG_DIR } from './codingAgents/piAgent';
 import { decryptSecret } from '../crypto/secretBox';
 import { loadTicketArtifactContext } from './artifactContext';
 import { toStageConfig } from '../read/workspaceSnapshot';
@@ -34,10 +34,10 @@ import { stageSkillBlock } from '../ai/skills';
 import { workspaceAiPrefix } from '../ai/registry';
 import { budgetForStage, shouldHandoff, parseHandoff, latestHandoff, renderHandoffReload, DEFAULT_HANDOFF_INSTRUCTION } from './handoff';
 import { killClaudeByContainer } from './agentControl';
-import { waitForOutput, matchesReady, matchesTrustOrReady } from './ptyReady';
+import { waitForOutput } from './ptyReady';
 import { parseTurnResult, type CarryOverEnvelope, type TurnResult } from './turnResult';
 import { parseToolTrail } from './toolTrail';
-import { resolveModelChoice, buildTurnArgs } from './modelSelect';
+import { resolveModelChoice } from './modelSelect';
 import { runInTenant } from '../tenant/tenantContext';
 import { enqueueInternalAction, type StageRunTarget, type StageTurnCompleteInternalAction } from './internalOps';
 import { currentWriterScope } from './writerContext';
@@ -58,7 +58,6 @@ import {
 export { resolveStageGate } from './stageWriter';
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => { setTimeout(resolve, ms); });
-const CAPTURE = '/work/.claude/turn-stop.json';
 //? GAP_SCAN D2 — the PostToolUse hook appends one JSON line per tool call here; drained after each turn.
 const TOOL_TRAIL = '/work/.claude/tool-calls.jsonl';
 const TURN_MARKER = '/work/.claude/stage-turn-marker';
@@ -177,56 +176,31 @@ async function startStageProcesses(container: string, processes: StageProcessCfg
   await startProcesses(container, processes);
 }
 
-//? Copy the RO-projected subscription creds into a writable, agent-owned ~/.claude (0600)
-//? so the CLI's permission check passes (the RO Windows mount is 0777) and no container
-//? ever writes the shared source. Also clears any stale turn-capture. Idempotent.
-//? The managed-token refresh loop, on-demand (07b §2.2): the projected token is short-lived
-//? and the HOST's `claude` keeps its own copy fresh, so re-copy the live host creds into the
-//? RO-mounted projection dir before each turn. Without this, container-claude hits
-//? "Not logged in" once the initial copy expires (~hours). Best-effort, host-side.
-function refreshProjectedAuth(): void {
-  const authDir = process.env.WS_AUTH_DIR ?? path.join(process.cwd(), 'data', '_auth');
-  const hostCreds = path.join(process.env.CLAUDE_CONFIG_DIR ?? path.join(homedir(), '.claude'), '.credentials.json');
-  if (existsSync(hostCreds) && existsSync(authDir)) {
-    tryCatchSync(() => { copyFileSync(hostCreds, path.join(authDir, '.credentials.json')); });
-  }
-}
-
+//? The Claude-specific auth projection + probe moved behind the coding-agent seam (ADR 0322); re-exported
+//? so existing callers/tests keep their import path.
 export async function projectAuth(
   container: string,
   runDocker: (args: string[]) => Promise<DockerResult> = docker,
 ): Promise<void> {
-  //? FIXED path (matches the container's CLAUDE_CONFIG_DIR env) — never `~` (docker exec
-  //? sets no HOME, so `~` would resolve wrong and claude would fall into the login flow).
-  //? Also give the worktree a git identity (local, agent-owned) so a code stage's
-  //? `git commit` succeeds instead of hanging on "who are you".
-  await runDocker(['exec', container, 'sh', '-c',
-    'mkdir -p /home/agent/.claude && cp /auth-ro/.credentials.json /auth-ro/.claude.json /home/agent/.claude/ 2>/dev/null; chmod 700 /home/agent/.claude 2>/dev/null; chmod 600 /home/agent/.claude/.credentials.json 2>/dev/null; '
-    + 'git -C /work config user.name "Workspaces AI" 2>/dev/null; git -C /work config user.email "ai@workspaces.local" 2>/dev/null; '
-    + 'rm -f ' + CAPTURE + '; true']);
+  await projectClaudeAuth(container, runDocker);
 }
-
-export function claudeAuthStatusLoggedIn(raw: string): boolean {
-  const [error, parsed] = tryCatchSync(() => JSON.parse(raw) as unknown);
-  return !error && parsed !== null && typeof parsed === 'object' && 'loggedIn' in parsed
-    && (parsed as { loggedIn?: unknown }).loggedIn === true;
-}
-
+export { claudeAuthStatusLoggedIn } from './codingAgents/claudeCode';
 export async function containerClaudeAuthenticated(
   container: string,
   runDocker: (args: string[]) => Promise<DockerResult> = docker,
 ): Promise<boolean> {
-  const result = await runDocker(['exec', container, 'claude', 'auth', 'status']);
-  return result.code === 0 && claudeAuthStatusLoggedIn(result.out);
+  return containerClaudeAuthenticatedViaAdapter(container, runDocker);
 }
 
-//? Drive ONE interactive `claude` turn inside the container and return its final message.
-//? The result is captured off the in-container Stop hook (settings.json writes it to CAPTURE)
-//? — NOT by parsing the PTY. We NEVER call `term.kill()` (its Windows conpty console-list
-//? agent can crash the host process); instead `pkill` claude inside the container so the
-//? `docker exec` exits and the PTY closes naturally.
-export async function driveContainerTurn(container: string, kickoff: string, opts: { timeoutMs?: number; resumeSessionId?: string; workspaceId?: string; ticketKey?: string; model?: string; runOwner?: StageRunOwner } = {}): Promise<{ ok: boolean; message: string; claudeSessionId?: string; error?: string }> {
+//? Drive ONE interactive coding-agent turn inside the container and return its final message.
+//? The harness (Claude Code or pi — ADR 0322) comes from the workspace's CodingAgentConfig via
+//? `opts.adapter`; absent (legacy callers/tests) it is Claude Code. The result is captured off the
+//? in-container Stop hook / pi extension (written to CAPTURE) — NOT by parsing the PTY. We NEVER call
+//? `term.kill()` (its Windows conpty console-list agent can crash the host process); instead kill the
+//? agent inside the container so the `docker exec` exits and the PTY closes naturally.
+export async function driveContainerTurn(container: string, kickoff: string, opts: { timeoutMs?: number; resumeSessionId?: string; workspaceId?: string; ticketKey?: string; model?: string; effort?: StageEffort; runOwner?: StageRunOwner; adapter?: CodingAgentAdapter } = {}): Promise<{ ok: boolean; message: string; claudeSessionId?: string; error?: string }> {
   const timeoutMs = opts.timeoutMs ?? 240_000;
+  const adapter = opts.adapter ?? claudeCodeAdapter;
   if (!(await isWorkspacesContainer(container))) return { ok: false, message: '', error: 'container.notOurs' };
   //? Every PTY drive, including the self-handoff drive, rechecks both the mutable
   //? volume marker and Redis authority. A matching stale marker alone cannot relaunch Claude.
@@ -236,22 +210,22 @@ export async function driveContainerTurn(container: string, kickoff: string, opt
     || !(await reservationOwnsSlot(opts.workspaceId, opts.ticketKey, opts.runOwner.runToken, opts.runOwner.runFence))
     || !(await verifyStageContainerOwner(container, opts.runOwner))
   )) return { ok: false, message: '', error: 'stage.ownerMismatch' };
-  refreshProjectedAuth();   //? keep the projected token fresh (07b §2.2 refresh loop)
-  await projectAuth(container);
-  //? `claude --version` only proves the binary. Fail before opening a PTY when the
-  //? projected Max-subscription login is absent/expired, rather than burning repeated
-  //? four-minute timeout turns that can never produce a Stop-hook capture.
-  if (!(await containerClaudeAuthenticated(container))) return { ok: false, message: '', error: 'claude.notAuthenticated' };
+  //? Keep the projected seat token fresh (07b §2.2 refresh loop) + copy it into the agent-owned dir.
+  await adapter.projectAuth(container, docker);
+  //? A present binary only proves the install. Fail before opening a PTY when the projected
+  //? subscription login is absent/expired, rather than burning repeated four-minute timeout
+  //? turns that can never produce a capture.
+  if (!(await adapter.authenticated(container, docker))) return { ok: false, message: '', error: 'claude.notAuthenticated' };
 
-  //? bypassPermissions: the agent runs autonomously INSIDE the hardened, isolated,
-  //? disposable container (cap-drop ALL, non-root, no host access) — the CONTAINER is the
-  //? security boundary, so in-agent permission prompts only stall the turn. The stage
-  //? instructions (+ the settings deny set as defense-in-depth) shape what it does.
-  //? `--resume <id>` continues an interrupted session verbatim (crash-recovery, #1) rather than
-  //? starting a fresh conversation — the CLI restores the transcript, so the kickoff just nudges it on.
-  //? `--model` = the stage's RESOLVED model choice (base or an escalation rule) — the argv is
-  //? built by the pure buildTurnArgs so the spawn-args are unit-testable (modelSelect).
-  const term = pty.spawn(DOCKER_BIN, ['exec', '-it', container, 'claude', ...buildTurnArgs({ ...(opts.resumeSessionId ? { resumeSessionId: opts.resumeSessionId } : {}), ...(opts.model ? { model: opts.model } : {}) })], {
+  //? The agent runs autonomously INSIDE the hardened, isolated, disposable container (cap-drop
+  //? ALL, non-root, no host access) — the CONTAINER is the security boundary, so in-agent
+  //? permission prompts only stall the turn (Claude: bypassPermissions; pi: has none). The stage
+  //? instructions (+ the settings deny set as defense-in-depth, honoured by both harnesses) shape
+  //? what it does. A resume id continues an interrupted session verbatim (crash-recovery, #1) rather
+  //? than starting a fresh conversation — the kickoff just nudges it on. `model` = the stage's
+  //? RESOLVED tier mapped onto this harness's model; the argv is built by the adapter's pure
+  //? `turnArgs` so the spawn-args are unit-testable.
+  const term = pty.spawn(DOCKER_BIN, ['exec', '-it', ...(adapter.id === 'pi-agent' ? ['-e', `PI_CODING_AGENT_DIR=${PI_CONFIG_DIR}`] : []), container, adapter.binary, ...adapter.turnArgs({ ...(opts.resumeSessionId ? { resumeSessionId: opts.resumeSessionId } : {}), ...(opts.model ? { model: opts.model } : {}), ...(opts.effort ? { effort: opts.effort } : {}) })], {
     name: 'xterm-color', cols: 120, rows: 34, cwd: process.cwd(), env: process.env,
   });
   //? Object property (not a local) so TS doesn't treat the onExit-mutated flag as constant.
@@ -274,10 +248,13 @@ export async function driveContainerTurn(container: string, kickoff: string, opt
 
   //? Boot handshake — wait until the trust prompt OR the input prompt actually appears (early-exit),
   //? with a ceiling so a wrong/missing marker degrades to a bounded wait rather than a hang (C4).
-  await waitForOutput(() => buf.text, matchesTrustOrReady, { timeoutMs: 12_000 });
-  term.write('\r'); // confirm folder-trust (harmless if already trusted)
+  if (adapter.confirmsTrust) {
+    await waitForOutput(() => buf.text, adapter.trustOrReadyMatches ?? adapter.readyMatches, { timeoutMs: 12_000 });
+    term.write('\r'); // confirm folder-trust (harmless if already trusted)
+  }
   //? Then wait for the input prompt to be ready before sending the kickoff.
-  await waitForOutput(() => buf.text, matchesReady, { timeoutMs: 8000 });
+  await waitForOutput(() => buf.text, adapter.readyMatches, { timeoutMs: adapter.confirmsTrust ? 8000 : 15_000 });
+  await wait(adapter.confirmsTrust ? 0 : 1000);
   term.write(kickoff); await wait(1200); term.write('\r'); await wait(1500); term.write('\r');
 
   //? Poll for the Stop-hook capture (turn end) up to the timeout.
@@ -288,10 +265,12 @@ export async function driveContainerTurn(container: string, kickoff: string, opt
     const r = await docker(['exec', container, 'sh', '-c', `cat ${CAPTURE} 2>/dev/null`]);
     if (r.code === 0 && r.out.length > 0) captured = r.out;
   }
-  //? Stop claude IN the container → the docker-exec PTY exits on its own (no term.kill()).
+  //? Stop the agent IN the container → the docker-exec PTY exits on its own (no term.kill()).
   //? Procps-free (/proc walk): `pkill` silently no-op'd — ps/pgrep aren't in the base image.
-  await killClaudeByContainer(container);
+  await killClaudeByContainer(container, adapter.processMatch);
   for (let i = 0; i < 12 && !state.exited; i++) await wait(300);
+  //? pi refreshes its OAuth token in place — persist it back to the host projection (no-op for Claude).
+  if (adapter.afterTurn) await adapter.afterTurn(container, docker);
   //? #20 — flush any buffered tail chunk + cancel the pending timer so nothing leaks past the turn.
   if (tail?.timer) { clearTimeout(tail.timer); tail.timer = null; }
   flushTail();
@@ -625,8 +604,13 @@ async function runStageInTenant(workspaceId: string, ticketKey: string, stageKey
   //? Resolve the ACTUAL model/effort for this turn: the stage's base choice, or (autoEscalate) the
   //? escalation rule matched by the agent's own complexity score from the previous stage.
   const choice = resolveModelChoice(cfg.modelCfg, carryOver?.complexityScore ?? null);
+  //? ADR 0322 — the workspace's coding agent: which seat + harness drives this turn, and what the stage's
+  //? abstract TIER means on it (haiku/sonnet/opus → the harness's concrete model id).
+  const codingAgent = await loadCodingAgent(workspaceId, prisma);
+  const adapter = adapterFor(codingAgent);
+  const turnModel = resolveTierModel(codingAgent, choice.model);
   const scoreNote = typeof carryOver?.complexityScore === 'number' ? ` (score ${String(carryOver.complexityScore)})` : '';
-  console.log(`[stage] ${ticketKey}@${stageKey} model=${choice.model} effort=${choice.effort}${scoreNote}${cfg.modelCfg.autoEscalate ? ' autoEscalate' : ''}`);
+  console.log(`[stage] ${ticketKey}@${stageKey} agent=${adapter.id}/${codingAgent.subscription} tier=${choice.model} model=${turnModel} effort=${choice.effort}${scoreNote}${cfg.modelCfg.autoEscalate ? ' autoEscalate' : ''}`);
 
   //? Context-docs are scoped from the ticket's authoritative project. Workspace-wide design-system
   //? guidance remains visible per ADR 0034; sibling-project starters/explicit docs never are.
@@ -661,6 +645,9 @@ async function runStageInTenant(workspaceId: string, ticketKey: string, stageKey
   //? K3 — inject the workspace env + service network so the coding agent's build/test reaches the app's services.
   const ctx = await workspaceContainerContext(prisma, workspaceId);
   await opts.reservationGuard.assertOwned();
+  //? ADR 0322 — the launch mounts the auth projection only when it exists; make sure this harness's seat is
+  //? projected before the container comes up (pi: copies the host OAuth file into data/_auth).
+  adapter.prepareHost?.();
   const container = await launchTicketContainer({ workspaceId, projectId: ticket.projectId, ticketKey, branch: ticket.branch ?? ticketKey, runToken: opts.runToken, image: resolveProjectBaseImage(project), ...ctx });
   if (!container) return { ok: false, error: 'container.launchFailed' };
   const runOwner: StageRunOwner = { runToken: opts.runToken, runFence: opts.runFence };
@@ -684,7 +671,7 @@ async function runStageInTenant(workspaceId: string, ticketKey: string, stageKey
   const handoffReload = reloadHandoff ? renderHandoffReload(reloadHandoff) : undefined;
 
   const integrations = await loadMcpIntegrations(prisma, workspaceId, cfg.tools);
-  const artifacts = renderStage(cfg, { ticketId: ticket.key, ...(ticket.commitHash ? { commitHash: ticket.commitHash } : {}), carryOver, contextDocs, retrieved, ...(handoffReload ? { handoffReload } : {}), ...(integrations.length > 0 ? { integrations } : {}), modelChoice: choice, ...((wsPrefix ?? '').length > 0 ? { workspaceInstruction: wsPrefix ?? '' } : {}) });
+  const artifacts = renderStage(cfg, { ticketId: ticket.key, ...(ticket.commitHash ? { commitHash: ticket.commitHash } : {}), carryOver, contextDocs, retrieved, ...(handoffReload ? { handoffReload } : {}), ...(integrations.length > 0 ? { integrations } : {}), modelChoice: { ...choice, model: turnModel }, ...((wsPrefix ?? '').length > 0 ? { workspaceInstruction: wsPrefix ?? '' } : {}) });
   if (!(await materializeStageConfig(container.name, artifacts))) {
     await cleanupFailedStageContainer(workspaceId, ticketKey, opts.runToken, opts.runFence, container);
     return { ok: false, error: 'materialize.failed' };
@@ -703,7 +690,7 @@ async function runStageInTenant(workspaceId: string, ticketKey: string, stageKey
     workspaceId,
     op: 'stage-session-start',
     target: { ticketId: ticket.id, ticketKey, projectId: ticket.projectId, stageId: stageKey },
-    payload: { sessionKey, runToken: opts.runToken, runFence: opts.runFence, containerId: container.containerId, model: choice.model, cliVersion: '2.1.198' },
+    payload: { sessionKey, runToken: opts.runToken, runFence: opts.runFence, containerId: container.containerId, model: turnModel, cliVersion: `${adapter.id}@${adapter.cliVersion}` },
     userId: 'stage-runner',
     clientRequestId: `stage-session-start:${sessionStartId}`,
   }));
@@ -733,7 +720,7 @@ async function runStageInTenant(workspaceId: string, ticketKey: string, stageKey
     return 'Begin working on this stage now. Read CLAUDE.md and follow the instructions. When you are done, end your final message with the ws-carryover block exactly as instructed.';
   })();
   await opts.reservationGuard.assertOwned();
-  const drive = await driveContainerTurn(container.name, kickoff, { ...(resumeSessionId ? { resumeSessionId } : {}), workspaceId, ticketKey, model: choice.model, runOwner });
+  const drive = await driveContainerTurn(container.name, kickoff, { ...(resumeSessionId ? { resumeSessionId } : {}), workspaceId, ticketKey, model: turnModel, effort: choice.effort, runOwner, adapter });
   await opts.reservationGuard.assertOwned();
   if (!drive.ok) {
     const failure = drive.error === 'claude.notAuthenticated' ? 'claude.notAuthenticated' as const : undefined;
@@ -868,7 +855,7 @@ async function runStageInTenant(workspaceId: string, ticketKey: string, stageKey
       const preCompact = pcProbe.out.trim() === 'yes';
       if (!preCompact && !shouldHandoff(completed.tokenEstimate, budget)) return;
       await opts.reservationGuard.assertOwned();
-      const drivenHandoff = await driveContainerTurn(container.name, DEFAULT_HANDOFF_INSTRUCTION, { resumeSessionId: handoffSessionId, workspaceId, ticketKey, model: choice.model, runOwner });
+      const drivenHandoff = await driveContainerTurn(container.name, DEFAULT_HANDOFF_INSTRUCTION, { resumeSessionId: handoffSessionId, workspaceId, ticketKey, model: turnModel, effort: choice.effort, runOwner, adapter });
       const body = drivenHandoff.ok ? parseHandoff(drivenHandoff.message) : null;
       if (!body) return;
       const reason = preCompact ? 'precompact' : 'budget';
