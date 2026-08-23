@@ -1258,10 +1258,11 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   }, [refetch]);
 
   const translate = useTranslator();
-  const welcomeChat = useMemo<ChatMessage[]>(() => [{
-    id: 'm0', role: 'ai',
-    text: translate({ key: 'workspaces.shell.aiWelcome' }),
-  }], [translate]);
+  //? Memoised on the translated STRING, not on `translate`: the translator is a fresh function every
+  //? render, so keying on it re-created the welcome array each render, which re-ran the hydrate effect
+  //? below, which set state, which rendered — an infinite update loop that blanked every page.
+  const welcomeText = translate({ key: 'workspaces.shell.aiWelcome' });
+  const welcomeChat = useMemo<ChatMessage[]>(() => [{ id: 'm0', role: 'ai', text: welcomeText }], [welcomeText]);
 
   // UI-only state (not yet server-backed).
   const [openTabs, setOpenTabs] = useState<string[]>([]);

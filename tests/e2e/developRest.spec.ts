@@ -72,17 +72,10 @@ test.describe('pipeline', () => {
     //? user where they already are, which is how an "edit" affordance loses its meaning.
     await expect(page.getByRole('button', { name: 'Edit on the General tab' })).toHaveCount(0);
 
-    // Add-status: collapsed control expands into an input + Add/Cancel.
-    const addStatusBtn = page.getByRole('button', { name: 'Add status' });
-    await expect(addStatusBtn).toBeVisible();
-    const statusInput = page.getByPlaceholder(/status/i);
-    await expect(statusInput).toBeHidden();
-    await addStatusBtn.click();
-    await expect(statusInput).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
-    // Collapse it back down without persisting anything (surgical — no stray custom status left behind).
-    await page.getByRole('button', { name: 'Cancel' }).click();
-    await expect(statusInput).toBeHidden();
+    //? Fix-round: custom stage statuses were never read by tickets, so the editor no longer offers
+    //? "Add status" — it shows the engine statuses and says so.
+    await expect(page.getByText('Statuses', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Add status' })).toHaveCount(0);
   });
 });
 
@@ -129,7 +122,8 @@ test.describe('terminals / answers / sources / scheduled — teaching empty stat
     // Skills / MCP starts genuinely empty — that tab IS the teaching empty state. The copy now names
     // the real dead end rather than just the absence: nothing in the app can create a skill yet, so a
     // reindex will not fill this list either (ADR 0312's empty-picker pass).
-    await page.getByRole('tab', { name: /Skills \/ MCP/ }).click();
+    //? Renamed in the fix-round: the tab is "Capabilities / MCP" (the other "Skills" are the instruction blocks).
+    await page.getByRole('tab', { name: /Capabilities \/ MCP/ }).click();
     await expect(page.getByText(/No skills or MCP tools/)).toBeVisible();
   });
 

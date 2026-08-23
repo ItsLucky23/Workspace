@@ -156,16 +156,16 @@ test.describe('ticket page', () => {
     await expect(page.getByText('No file changes yet')).toBeVisible();
 
     await tabs.getByRole('tab', { name:'Terminal', exact: true }).click();
-    await expect(page.getByText('No terminal running')).toBeVisible();
+    //? F-016 (fix-round): the tab is honest about WHY there is no terminal — no container for the ticket.
+    await expect(page.getByText('No container for this ticket')).toBeVisible();
 
     await tabs.getByRole('tab', { name:'Review', exact: true }).click();
     await expect(page.getByText('No branch yet')).toBeVisible();
 
     await tabs.getByRole('tab', { name:'Activity', exact: true }).click();
-    // The create event may arrive in the snapshot before or after navigation; these disclosures are
-    // the stable Activity-panel contract regardless of whether its feed is empty or already populated.
-    await expect(page.getByRole('button', { name: 'Related tickets' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Stage history' })).toBeVisible();
+    //? F-055 (fix-round): the permanently-empty 'Related tickets' / 'Stage history' disclosures are gone;
+    //? the Activity tab is the feed itself (empty-state copy or rows, depending on snapshot timing).
+    await expect(page.getByText('No activity yet', { exact: true }).or(page.getByRole('list').first())).toBeVisible();
 
     await tabs.getByRole('tab', { name:'Overview', exact: true }).click();
     await expect(page.getByText('Description', { exact: true })).toBeVisible();
