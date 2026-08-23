@@ -32,19 +32,19 @@ type Quick = 'all' | 'unrefined' | 'needs-input' | 'done' | 'archived';
 //? Compact relative time ("just now" / "5m" / "3h" / "2d" / "1w") from an ISO
 //? timestamp — the REAL ticket recency (`lastActivityAt`, falling back to createdAt),
 //? replacing the former hardcoded mock array that showed fake times per row index.
-function relativeTime(iso: string | undefined): string {
+function relativeTime(iso: string | undefined, translate: ReturnType<typeof useTranslator>): string {
   if (!iso) return '';
   const then = Date.parse(iso);
   if (Number.isNaN(then)) return '';
   const secs = Math.max(0, Math.round((Date.now() - then) / 1000));
-  if (secs < 45) return 'now';
+  if (secs < 45) return translate({ key: 'workspaces.backlog.timeNow' });
   const mins = Math.round(secs / 60);
-  if (mins < 60) return `${String(mins)}m`;
+  if (mins < 60) return translate({ key: 'workspaces.backlog.timeMinutes', params: [{ key: 'n', value: String(mins) }] });
   const hours = Math.round(mins / 60);
-  if (hours < 24) return `${String(hours)}h`;
+  if (hours < 24) return translate({ key: 'workspaces.backlog.timeHours', params: [{ key: 'n', value: String(hours) }] });
   const days = Math.round(hours / 24);
-  if (days < 7) return `${String(days)}d`;
-  return `${String(Math.round(days / 7))}w`;
+  if (days < 7) return translate({ key: 'workspaces.backlog.timeDays', params: [{ key: 'n', value: String(days) }] });
+  return translate({ key: 'workspaces.backlog.timeWeeks', params: [{ key: 'n', value: String(Math.round(days / 7)) }] });
 }
 
 export const template = 'workspaces';
@@ -113,11 +113,8 @@ export default function Backlog() {
   const finishBulk = () => { setSelected(new Set()); setSelectMode(false); };
   const statusOptions: { value: TicketStatus; label: string }[] = [
     { value: 'idle', label: translate({ key: 'workspaces.common.statusIdle' }) },
-    { value: 'needs-input', label: translate({ key: 'workspaces.common.statusNeedsInput' }) },
-    { value: 'busy', label: translate({ key: 'workspaces.common.statusBusy' }) },
     { value: 'done', label: translate({ key: 'workspaces.common.statusDone' }) },
     { value: 'paused', label: translate({ key: 'workspaces.common.statusPaused' }) },
-    { value: 'stuck', label: translate({ key: 'workspaces.common.statusStuck' }) },
   ];
   const moveItems: PickerItem[] = stages.map((s) => ({ label: s.name, onClick: () => { bulkMove(selectedIds, s.id); finishBulk(); } }));
   const statusItems: PickerItem[] = statusOptions.map((s) => ({ label: s.label, onClick: () => { bulkStatus(selectedIds, s.value); finishBulk(); } }));
@@ -358,14 +355,14 @@ function Row({ ticket, selectMode, selected, onToggle, onOpen, onRestore }: {
           <span className={`font-mono text-xs text-muted`}>{ticket.id}</span>
           {statusCell}
           {linked.length > 0 && <AvatarStack users={linked} size={18} />}
-          <span className={`text-xs text-muted`}>{relativeTime(ticket.lastActivityAt)}</span>
+          <span className={`text-xs text-muted`}>{relativeTime(ticket.lastActivityAt, translate)}</span>
         </div>
       </div>
       <span className={`hidden lg:block text-xs text-common w-28 shrink-0 truncate`}>{stageName(ticket.stageId)}</span>
       <span className={`hidden md:flex w-28 shrink-0`}>{statusCell}</span>
       {/* AvatarStack semantics: first avatar = creator, second = assignee (ticketMembers). */}
       <span className={`hidden sm:flex w-16 shrink-0 justify-end`} title={translate({ key: 'workspaces.backlog.creatorAssignee' })}>{linked.length > 0 ? <AvatarStack users={linked} size={20} /> : <span className={`text-xs text-muted`}>—</span>}</span>
-      <span className={`hidden sm:block text-xs text-muted w-10 shrink-0 text-right`}>{relativeTime(ticket.lastActivityAt)}</span>
+      <span className={`hidden sm:block text-xs text-muted w-10 shrink-0 text-right`}>{relativeTime(ticket.lastActivityAt, translate)}</span>
       {/* F-015 — an archived row's one action: put it back on the board. */}
       {onRestore && (
         <span onClick={(e) => { e.stopPropagation(); }} className={`shrink-0`}>

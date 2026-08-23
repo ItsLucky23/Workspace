@@ -13,6 +13,7 @@ import { apiRequest, i18nNotify as notify, tryCatch, useTranslator } from '@luck
 import Icon, { type IconName } from '../../_components/Icon';
 import { Collapse, Popover } from '../../_components/motion';
 import { EmptyState, IconButton, InfoTip, InteractiveRow, useClickAway, WsButton } from '../../_components/primitives';
+import { EmptyPicker } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { InterviewFinding } from '../../_data/types';
 
@@ -186,8 +187,11 @@ export default function Interviewer() {
               </div>
               <p className={`text-xs text-muted mt-0.5`}>{translate({ key: 'workspaces.interviewer.findingsIntro' })}</p>
             </div>
+            {activeProject === null && (
+              <EmptyPicker icon="diagram-project" label={translate({ key: 'workspaces.board.needsProject' })} />
+            )}
             {interviewFindings.map((f) => (
-              <FindingRow key={f.id} f={f} translate={translate}
+              <FindingRow key={f.id} f={f} translate={translate} canMakeTicket={activeProject !== null}
                 onMakeTicket={() => { makeTicketFromFinding(f.id); }}
                 onOpenTicket={() => { if (f.ticketId) openTicket(f.ticketId); }}
                 onDismiss={() => { dismissFinding(f.id); }} />
@@ -258,7 +262,7 @@ function GenerateIdeasMenu({ onGenerate }: { onGenerate: (focus: string) => void
   );
 }
 
-function FindingRow({ f, translate, onMakeTicket, onOpenTicket, onDismiss }: { f: InterviewFinding; translate: ReturnType<typeof useTranslator>; onMakeTicket: () => void; onOpenTicket: () => void; onDismiss: () => void }) {
+function FindingRow({ f, translate, canMakeTicket, onMakeTicket, onOpenTicket, onDismiss }: { f: InterviewFinding; translate: ReturnType<typeof useTranslator>; canMakeTicket: boolean; onMakeTicket: () => void; onOpenTicket: () => void; onDismiss: () => void }) {
   const meta = areaMeta(f.area);
   const accepted = f.status === 'accepted';
   //? Expand-to-read-more (gap-fix): the row used to be inert besides its two action buttons, so a
@@ -285,7 +289,7 @@ function FindingRow({ f, translate, onMakeTicket, onOpenTicket, onDismiss }: { f
             <button type="button" onClick={onOpenTicket} disabled={!f.ticketId} className={`text-xs text-correct inline-flex items-center gap-1 enabled:hover:underline enabled:cursor-pointer disabled:cursor-default`}><Icon name="circle-check" />{translate({ key: 'workspaces.interviewer.linkedTicket' })}</button>
           ) : (
             <div className={`flex items-center gap-1.5`}>
-              <button type="button" onClick={onMakeTicket} className={`text-xs text-primary hover:underline cursor-pointer inline-flex items-center gap-1`}><Icon name="plus" className={`text-xs`} />{translate({ key: 'workspaces.interviewer.makeTicket' })}</button>
+              <button type="button" onClick={onMakeTicket} disabled={!canMakeTicket} title={canMakeTicket ? undefined : translate({ key: 'workspaces.board.needsProject' })} className={`text-xs text-primary hover:underline cursor-pointer inline-flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline`}><Icon name="plus" className={`text-xs`} />{translate({ key: 'workspaces.interviewer.makeTicket' })}</button>
               <IconButton icon="xmark" size="sm" title={translate({ key: 'workspaces.interviewer.dismiss' })} onClick={onDismiss} className={`hover:text-wrong`} />
             </div>
           )}
