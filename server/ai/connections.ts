@@ -14,7 +14,7 @@
 import { getPrismaClient, tryCatch } from '@luckystack/core';
 
 import { decryptSecret, encryptSecret } from '../crypto/secretBox';
-import { AI_PROVIDER_CATALOG } from './providers/catalog';
+import { AI_PROVIDER_CATALOG, isKnownAiProviderId } from './providers/catalog';
 import type { AiProviderMeta } from './providers/catalog';
 import { AI_OVERRIDE_PREFIX, parseAiOverride } from './workspaceAssignments';
 
@@ -62,6 +62,8 @@ export async function connectionFor(workspaceId: string | undefined, providerId:
 export interface AddConnectionInput { workspaceId: string; providerId: string; model: string; apiKey: string }
 
 export async function addConnection(input: AddConnectionInput): Promise<{ ok: boolean; error?: string; id?: string }> {
+  //? P4-3 — the same validation source as dispatch + the save op (catalog.knownAiProviderIds).
+  if (!isKnownAiProviderId(input.providerId)) return { ok: false, error: 'ai.unknownProvider' };
   const meta = metaFor(input.providerId);
   if (meta === undefined) return { ok: false, error: 'ai.unknownProvider' };
   const model = input.model.trim();

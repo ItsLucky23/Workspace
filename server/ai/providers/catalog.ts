@@ -153,6 +153,14 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
 
 export const AI_PROVIDER_LIST: AiProviderMeta[] = Object.values(AI_PROVIDER_CATALOG);
 
+//? P4-3 — THE validation source for a provider id. Dispatch (`isAiProviderId`), the `save-ai-provider`
+//? op, the assistant op-catalog enum and the connection ops all consume this; nothing keeps its own list.
+//? A fresh copy each call so no consumer can mutate the catalog's key set.
+export function knownAiProviderIds(): string[] {
+  return Object.keys(AI_PROVIDER_CATALOG);
+}
+export const isKnownAiProviderId = (id: string): boolean => Object.hasOwn(AI_PROVIDER_CATALOG, id);
+
 /** The endpoint a backend talks to: an operator env override, else its catalog default. */
 export function providerBaseUrl(meta: AiProviderMeta): string {
   const override = meta.baseUrlEnv.length > 0 ? (process.env[meta.baseUrlEnv] ?? '').trim() : '';
