@@ -66,10 +66,11 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
   'anthropic-api': ANTHROPIC_META,
   'gemini-api': {
     id: 'gemini-api', label: 'Gemini', kind: 'api-key', transport: 'openai-compatible',
+    //? P4-6 — short, currently-shipping; the live listing (P4-4) is the real source.
     models: [
       { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
       { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
-      { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+      { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-Lite' },
     ],
     defaultModel: 'gemini-2.5-flash',
     //? Google publishes an OpenAI-compatible endpoint, so Gemini rides the same tested transport as
@@ -83,14 +84,15 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
   //? works the day it is added. That is the whole reason the transport is a first-class concept.
   'openai-api': {
     id: 'openai-api', label: 'OpenAI', kind: 'api-key', transport: 'openai-compatible',
+    //? P4-6 — short, currently-shipping; the live listing (P4-4) is the real source.
     models: [
-      { id: 'gpt-4o', label: 'GPT-4o' },
-      { id: 'gpt-4o-mini', label: 'GPT-4o mini' },
+      { id: 'gpt-5', label: 'GPT-5' },
+      { id: 'gpt-5-mini', label: 'GPT-5 mini' },
+      { id: 'gpt-5-nano', label: 'GPT-5 nano' },
       { id: 'gpt-4.1', label: 'GPT-4.1' },
       { id: 'gpt-4.1-mini', label: 'GPT-4.1 mini' },
-      { id: 'o4-mini', label: 'o4-mini' },
     ],
-    defaultModel: 'gpt-4o-mini',
+    defaultModel: 'gpt-5-mini',
     baseUrl: 'https://api.openai.com/v1', keyUrl: 'https://platform.openai.com/api-keys',
     baseUrlEnv: 'WS_OPENAI_BASE_URL',
   },
@@ -100,11 +102,12 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
     //? hatch matters more here than anywhere else, because its catalog changes weekly.
     models: [
       { id: 'anthropic/claude-sonnet-4.5', label: 'Claude Sonnet 4.5' },
-      { id: 'openai/gpt-4o', label: 'GPT-4o' },
+      { id: 'openai/gpt-5', label: 'GPT-5' },
       { id: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+      { id: 'deepseek/deepseek-chat-v3.1', label: 'DeepSeek V3.1' },
       { id: 'meta-llama/llama-3.3-70b-instruct', label: 'Llama 3.3 70B' },
     ],
-    defaultModel: 'openai/gpt-4o',
+    defaultModel: 'openai/gpt-5',
     baseUrl: 'https://openrouter.ai/api/v1', keyUrl: 'https://openrouter.ai/keys',
     baseUrlEnv: 'WS_OPENROUTER_BASE_URL',
   },
@@ -113,6 +116,8 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
     models: [
       { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B' },
       { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B (instant)' },
+      { id: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B' },
+      { id: 'openai/gpt-oss-20b', label: 'GPT-OSS 20B' },
     ],
     defaultModel: 'llama-3.3-70b-versatile',
     baseUrl: 'https://api.groq.com/openai/v1', keyUrl: 'https://console.groq.com/keys',
@@ -120,9 +125,10 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
   },
   'deepseek-api': {
     id: 'deepseek-api', label: 'DeepSeek', kind: 'api-key', transport: 'openai-compatible',
+    //? Stable aliases — DeepSeek moves these to each new V3.x release, so they stay current by themselves.
     models: [
-      { id: 'deepseek-chat', label: 'DeepSeek Chat' },
-      { id: 'deepseek-reasoner', label: 'DeepSeek Reasoner' },
+      { id: 'deepseek-chat', label: 'DeepSeek Chat (V3.x)' },
+      { id: 'deepseek-reasoner', label: 'DeepSeek Reasoner (thinking)' },
     ],
     defaultModel: 'deepseek-chat',
     baseUrl: 'https://api.deepseek.com/v1', keyUrl: 'https://platform.deepseek.com/api_keys',
@@ -132,9 +138,11 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
     id: 'mistral-api', label: 'Mistral', kind: 'api-key', transport: 'openai-compatible',
     models: [
       { id: 'mistral-large-latest', label: 'Mistral Large' },
+      { id: 'mistral-medium-latest', label: 'Mistral Medium' },
       { id: 'mistral-small-latest', label: 'Mistral Small' },
+      { id: 'codestral-latest', label: 'Codestral' },
     ],
-    defaultModel: 'mistral-large-latest',
+    defaultModel: 'mistral-medium-latest',
     baseUrl: 'https://api.mistral.ai/v1', keyUrl: 'https://console.mistral.ai/api-keys',
     baseUrlEnv: 'WS_MISTRAL_BASE_URL',
   },
