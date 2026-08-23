@@ -24,12 +24,12 @@ Workspaces is a self-hosted AI dev-orchestration + content platform on the Lucky
   - **Now:** Needs API/Conductor/snapshot files — you own them now. Agent 1 already added conversation history to the chat call; this item is about PERSISTING the interviewer conversation server-side so it survives navigation/reload.
   - **Result:** _(fill in: fixed <commit> / already-fixed / invalid: <reason>)_
 
-- [ ] **F-037** · MEDIUM · `not-persisted` — Dismissing an AI suggestion (the 'Dismiss' button in the Shell AI panel and on the usage page's root-cause card) only hides it in this browser session — it reappears after every reload and stays visible for every other member.
+- [x] **F-037** · MEDIUM · `not-persisted` — Dismissing an AI suggestion (the 'Dismiss' button in the Shell AI panel and on the usage page's root-cause card) only hides it in this browser session — it reappears after every reload and stays visible for every other member.
   - **Where (audit baseline 55ff5b7 — code has moved, re-locate):** `src/workspaces/_shell/WorkspacesProvider.tsx:1506`
   - **Evidence:** dismissSuggestion (WorkspacesProvider.tsx:1506) only does setLocalSuggestionsDismissed; no syncRequest/apiRequest. activeSuggestions (line 1446) filters snap.suggestions by that local array, which is lost on unmount/reload. Server-side there is NO dismiss op: ControlOp has only 'accept-suggestion' (controlApi.ts:90), conductor.ts has ui-review-dismiss and finding-dismiss but no suggestion-dismiss, and server/ai/opCatalog.ts:881 marks accept-suggestion as EXCLUDED plumbing. WorkspaceSuggestion rows therefore stay 'open' in the DB forever after a dismiss. Callers: Shell.tsx:1024, insights/usage/page.tsx:498.
   - **Original fix hint:** Add a 'dismiss-suggestion' op next to accept-suggestion: a small _sync route (or extend acceptSuggestion_server_v1 with an action:'dismiss' field) that flips WorkspaceSuggestion.status to 'dismissed' via the Conductor, plus a delta/refetch; keep the optimistic local hide. Classify the new op in tests/effectMatrix.mts.
-  - **Now:** Needs a `_sync` route + Conductor op so dismissal persists. New op ⇒ add its row to `tests/effectMatrix.mts`.
-  - **Result:** _(fill in: fixed <commit> / already-fixed / invalid: <reason>)_
+  - **Now:** Reuses the frozen `accept-suggestion` op with an explicit `action: 'dismiss'` payload (no new verb), persists the status through the Conductor, broadcasts the same delta, and keeps the optimistic local hide.
+  - **Result:** fixed — dismissals now persist as `WorkspaceSuggestion.status = 'dismissed'`, disappear for every member, and stay gone after reload.
 
 - [x] **F-123** · LOW · `inconsistency` — A pending invite created with a custom role displays as 'Member' in the invites table.
   - **Where (audit baseline 55ff5b7 — code has moved, re-locate):** `src/workspaces/workspace/page.tsx:225`

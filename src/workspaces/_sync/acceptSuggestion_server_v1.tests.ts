@@ -17,8 +17,8 @@ import { loginSeededUser, createRealUser, cleanupWorkspace, joinRoom } from '../
 //?      route): calling WITHOUT `joinRoom` is rejected with `sync.notRoomMember`.
 //?  [3] a room member whose custom role lacks workTickets gets auth.forbidden and no status flip.
 
-interface AcceptSuggestionInput { suggestionId: string; clientRequestId: string }
-interface AcceptSuggestionOk { status: 'success'; result: { status: 'success'; acceptedSuggestionId: string } }
+interface AcceptSuggestionInput { suggestionId: string; action?: 'accept' | 'dismiss'; clientRequestId: string }
+interface AcceptSuggestionOk { status: 'success'; result: { status: 'success'; acceptedSuggestionId?: string; dismissedSuggestionId?: string } }
 interface AcceptSuggestionErr { status: 'error'; errorCode: string }
 type AcceptSuggestionResponse = AcceptSuggestionOk | AcceptSuggestionErr;
 
@@ -55,6 +55,28 @@ export const customTests: CustomTestCase[] = [
 
         const updated = await poll(() => ctx.prisma.workspaceSuggestion.findFirst({ where: { workspaceId, id: suggestion.id, status: 'accepted' } }));
         ctx.expect.ok(updated !== null, 'the Conductor flipped the suggestion to accepted (post-condition, not just the ack)');
+      } finally {
+        await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
+      }
+    },
+  },
+  {
+    name: 'dismiss action persists an open suggestion as dismissed',
+    run: async (ctx: TestContext) => {
+      const { userId, workspaceId } = await loginSeededUser(ctx, 'acceptsuggestion_dismiss');
+      try {
+        await joinRoom(ctx, workspaceId);
+        const suggestion = await ctx.prisma.workspaceSuggestion.create({
+          data: { workspaceId, type: 'link-tickets', title: `Dismiss ${String(Date.now())}`, body: 'dismiss this', ticketIds: [], status: 'open' },
+        });
+        const res = await ctx.callSync<AcceptSuggestionInput, AcceptSuggestionResponse>(
+          { suggestionId: suggestion.id, action: 'dismiss', clientRequestId: `as-dismiss-${String(Date.now())}` },
+          { receiver: workspaceId },
+        );
+        ctx.expect.eq(res.status, 'success', 'dismiss returns status "success"');
+        if (res.status === 'success') ctx.expect.eq(res.result.dismissedSuggestionId, suggestion.id, 'the ack echoes the dismissed suggestion id');
+        const updated = await poll(() => ctx.prisma.workspaceSuggestion.findFirst({ where: { workspaceId, id: suggestion.id, status: 'dismissed' } }));
+        ctx.expect.ok(updated !== null, 'the Conductor persisted the dismissed status');
       } finally {
         await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
       }

@@ -10,17 +10,21 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface SyncParams {
-  clientInput: { suggestionId: string; clientRequestId: string };
+  clientInput: { suggestionId: string; action?: 'accept' | 'dismiss'; clientRequestId: string };
   user: SessionLayout;
   functions: Functions;
   roomCode: string;
 }
 
 export const main = async ({ clientInput, user, functions, roomCode }: SyncParams): Promise<SyncServerResponse> => {
+  const action = clientInput.action ?? 'accept';
   const res = await dispatchControlSync({
     op: 'accept-suggestion', roomCode, userId: user.id, prisma: functions.db.prisma,
-    target: { suggestionId: clientInput.suggestionId }, clientRequestId: clientInput.clientRequestId,
+    target: { suggestionId: clientInput.suggestionId },
+    ...(action === 'dismiss' ? { payload: { action } } : {}),
+    clientRequestId: clientInput.clientRequestId,
   });
   if (!res.ok) return { status: 'error', errorCode: res.errorCode };
+  if (action === 'dismiss') return { status: 'success', dismissedSuggestionId: clientInput.suggestionId };
   return { status: 'success', acceptedSuggestionId: clientInput.suggestionId };
 };

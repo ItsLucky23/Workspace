@@ -4131,6 +4131,12 @@ async function executeAction(action: WriterAction): Promise<unknown> {
     case 'accept-suggestion': {
       const suggestionId = str(target, 'suggestionId');
       if (!suggestionId) return;
+      const requestedAction = str(payload, 'action') ?? 'accept';
+      if (requestedAction !== 'accept' && requestedAction !== 'dismiss') return { ok: false, error: 'suggestion.invalidAction' };
+      if (requestedAction === 'dismiss') {
+        const dismissed = await prisma.workspaceSuggestion.updateMany({ where: { workspaceId: action.workspaceId, id: suggestionId, status: 'open' }, data: { status: 'dismissed' } });
+        return dismissed.count === 1 ? { dismissedSuggestionId: suggestionId } : { ok: false, error: 'suggestion.notOpen' };
+      }
       const suggestion = await prisma.workspaceSuggestion.findFirst({ where: { workspaceId: action.workspaceId, id: suggestionId, status: 'open' }, select: { type: true, patch: true } });
       if (!suggestion) return { ok: false, error: 'suggestion.notOpen' };
       const claimed = await prisma.workspaceSuggestion.updateMany({ where: { workspaceId: action.workspaceId, id: suggestionId, status: 'open' }, data: { status: 'accepted' } });

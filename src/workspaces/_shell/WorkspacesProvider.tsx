@@ -900,8 +900,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => upsertSyncEventCallback({
     name: 'workspaces/acceptSuggestion', version: 'v1',
     callback: ({ serverOutput }) => {
-      if (serverOutput.status !== 'success') return;
-      const id = serverOutput.acceptedSuggestionId;
+      if (!('acceptedSuggestionId' in serverOutput) && !('dismissedSuggestionId' in serverOutput)) return;
+      const id = 'acceptedSuggestionId' in serverOutput ? serverOutput.acceptedSuggestionId : serverOutput.dismissedSuggestionId;
       setSnap((s) => ({ ...s, suggestions: s.suggestions.filter((sug) => sug.id !== id) }));
     },
   }), [upsertSyncEventCallback]);
@@ -1536,7 +1536,15 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       queuedWrites,
       retryQueuedWrites,
       suggestions: activeSuggestions,
-      dismissSuggestion: (id) => { setLocalSuggestionsDismissed((prev) => [...prev, id]); },
+      dismissSuggestion: (id) => {
+        setLocalSuggestionsDismissed((prev) => (prev.includes(id) ? prev : [...prev, id]));
+        const room = snap.activeWorkspaceId;
+        if (room) {
+          const reqId = nextReqId();
+          const send = () => { void syncRequest({ name: 'workspaces/acceptSuggestion', version: 'v1', data: { suggestionId: id, action: 'dismiss', clientRequestId: reqId }, receiver: room }); };
+          if (offlineRef.current) parkWrite(send); else send();
+        }
+      },
       acceptSuggestion: (id) => {
         const room = snap.activeWorkspaceId;
         if (room) {
