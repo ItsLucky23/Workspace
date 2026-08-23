@@ -55,9 +55,16 @@ export default function Interviewer() {
   const translate = useTranslator();
   const { activeWorkspace, activeProject, interviewerChat, interviewFindings, makeTicketFromFinding, dismissFinding, runAgentRole, openTicket, navigate } = useWorkspaces();
   const [messages, setMessages] = useState<Msg[]>(() => interviewerChat.map((message) => ({ id: message.id, role: message.role, text: message.text })));
+  const messagesWorkspaceId = useRef(activeWorkspace.id);
   useEffect(() => {
-    if (interviewerChat.length > 0) setMessages(interviewerChat.map((message) => ({ id: message.id, role: message.role, text: message.text })));
-  }, [interviewerChat]);
+    const hydrated = interviewerChat.map((message) => ({ id: message.id, role: message.role, text: message.text }));
+    if (messagesWorkspaceId.current !== activeWorkspace.id) {
+      messagesWorkspaceId.current = activeWorkspace.id;
+      setMessages(hydrated);
+      return;
+    }
+    if (hydrated.length > 0) setMessages(hydrated);
+  }, [activeWorkspace.id, interviewerChat]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   //? Secondary surface: 'findings' swaps the middle area for the persisted findings list (header pill).
