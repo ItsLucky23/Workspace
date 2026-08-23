@@ -2823,7 +2823,11 @@
       "uploadQueued": "Téléversement ajouté à la file.",
       "reindexFailed": "La réindexation n’est pas terminée. Réessayez.",
       "capabilityAvailable": "Disponible",
-      "capabilityUnavailable": "Non sélectionné"
+      "capabilityUnavailable": "Non sélectionné",
+      "generateContextDoc": "Générer le document de contexte depuis le dépôt",
+      "generateContextDocDisabled": "Liez un dépôt avant de générer un document de contexte.",
+      "generateContextDocQueued": "Document de contexte du projet généré.",
+      "generateContextDocFailed": "Impossible de générer le document de contexte du projet."
     },
     "mr": {
       "runCi": "Lancer la CI",

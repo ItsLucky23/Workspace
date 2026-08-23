@@ -10,13 +10,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { i18nNotify as notify, useTranslator } from '@luckystack/core/client';
+import { apiRequest, i18nNotify as notify, tryCatch, useTranslator } from '@luckystack/core/client';
 
 import { menuHandler } from 'src/_functions/menuHandler';
 
 import Icon from '../../_components/Icon';
 import { Sheet } from '../../_components/motion';
 import { Disclosure, EmptyState, FOCUS_RING, IconButton, InfoTip, PopMenu, Tabs, Toggle, WsButton, type PopMenuItem, type TabDef } from '../../_components/primitives';
+import { SavePill, type SaveStatus } from '../../_components/settings';
 import { EmptyPicker } from '../../_components/SetupNotice';
 import type { InfoDoc, RagIndexStatus, SkillEntry } from '../../_data/types';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
@@ -253,7 +254,7 @@ export const template = 'workspaces';
 
 export default function Sources() {
   const translate = useTranslator();
-  const { docs, skills, stages, toggleSkill, scanDocs, scanIndex, ragIndex, repo, addInfoDoc, indexMemory, focusSetup } = useWorkspaces();
+  const { docs, skills, stages, toggleSkill, scanDocs, scanIndex, ragIndex, repo, activeWorkspace, addInfoDoc, indexMemory, focusSetup, refetch } = useWorkspaces();
   const [tab, setTab] = useState('docs');
   const [preview, setPreview] = useState<InfoDoc | null>(null);
   //? ADR 0310 — the archived split is a VIEW concern; the server already stopped feeding archived docs
@@ -261,6 +262,7 @@ export default function Sources() {
   const liveDocs = docs.filter((d) => d.archived !== true);
   const archivedDocs = docs.filter((d) => d.archived === true);
   const [reindexing, setReindexing] = useState(false);
+  const [generatingContextDoc, setGeneratingContextDoc] = useState<SaveStatus>('idle');
   const reindexTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   //? K2 — upload a doc (md/txt) → read its text client-side → register it as a context-doc InfoSource.
   const fileRef = useRef<HTMLInputElement>(null);
@@ -284,6 +286,21 @@ export default function Sources() {
       setReindexing(false);
       notify.error({ key: 'workspaces.sources.reindexFailed' });
     }, 120_000);
+  };
+  const generateContextDoc = () => {
+    if (!repo.linked || generatingContextDoc === 'saving') return;
+    setGeneratingContextDoc('saving');
+    void (async () => {
+      const [error, response] = await tryCatch(() => apiRequest({ name: 'workspaces/generateDocs', version: 'v1', data: { workspaceId: activeWorkspace.id } }));
+      if (!error && response?.status === 'success' && response.result.ok) {
+        setGeneratingContextDoc('saved');
+        notify.success({ key: 'workspaces.sources.generateContextDocQueued' });
+        refetch();
+      } else {
+        setGeneratingContextDoc('error');
+        notify.error({ key: 'workspaces.sources.generateContextDocFailed' });
+      }
+    })();
   };
   //? Jump from a stage chip to that stage's Pipeline config; closing the dialog first so the
   //? navigation doesn't leave it stranded open behind the new page.
@@ -349,6 +366,14 @@ export default function Sources() {
           {/* Maintenance (scan repo / reindex code / reindex memory) also affects the Skills tab's own
               data — the RAG code index feeds `skills` — so it stays available regardless of active tab. */}
           <PopMenu items={maintenanceItems} label={translate({ key: 'workspaces.sources.maintenance' })} />
+          <WsButton
+            variant="secondary" icon="wand-magic-sparkles" disabled={!repo.linked || generatingContextDoc === 'saving'}
+            title={repo.linked ? undefined : translate({ key: 'workspaces.sources.generateContextDocDisabled' })}
+            onClick={generateContextDoc}
+          >
+            {translate({ key: 'workspaces.sources.generateContextDoc' })}
+          </WsButton>
+          <SavePill status={generatingContextDoc} />
           {tab === 'docs' && <WsButton icon="plus" onClick={openUpload} className={`flex-1 md:flex-initial`}>{translate({ key: 'workspaces.sources.uploadSpec' })}</WsButton>}
         </div>
       </div>

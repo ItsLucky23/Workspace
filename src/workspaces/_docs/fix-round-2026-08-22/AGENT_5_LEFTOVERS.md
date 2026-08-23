@@ -87,12 +87,12 @@ Workspaces is a self-hosted AI dev-orchestration + content platform on the Lucky
   - **Now:** OWNER DECISION TAKEN: delete the dead `listPats` route + its test + any client caller remnants (the snapshot path is authoritative). Run `npm run generateArtifacts` after removing the route.
   - **Result:** fixed — deleted the unused route and per-route test; regenerated API artifacts; the snapshot preload remains the sole PAT read path.
 
-- [ ] **F-085** · LOW · `missing-ui` — The generateDocs route (AI-author a project-summary context doc from the linked repo) is reachable from no UI — its own header says 'the trigger button + live surfacing are a later UI slice' that never came, so users can only get generated docs via the scanDocs path.
+- [x] **F-085** · LOW · `missing-ui` — The generateDocs route (AI-author a project-summary context doc from the linked repo) is reachable from no UI — its own header says 'the trigger button + live surfacing are a later UI slice' that never came, so users can only get generated docs via the scanDocs path.
   - **Where (audit baseline 55ff5b7 — code has moved, re-locate):** `src/workspaces/_api/generateDocs_v1.ts:4`
   - **Evidence:** grep 'workspaces/generateDocs' over client code = 0 hits; only the route, its tests and the generated prod map reference it. It is also not in the chat-enabled op set (not a ChatEnabledOp), so the assistant cannot trigger it either.
   - **Original fix hint:** Add a 'Generate project summary (AI)' button on the Sources page (develop/sources/page.tsx) next to the scan/rescan action, calling apiRequest workspaces/generateDocs with the active workspace/project, then refetch; or delete the route if scanDocs has subsumed it.
   - **Now:** OWNER DECISION TAKEN: give `generateDocs` a UI — a "Generate context doc from repo" action on `develop/sources/page.tsx` (where the context docs live), with the usual SavePill/notify feedback and a disabled state when no repo is linked.
-  - **Result:** _(fill in: fixed <commit> / already-fixed / invalid: <reason>)_
+  - **Result:** fixed — Sources now exposes the typed `generateDocs` action beside maintenance controls, with SavePill/notification feedback, refetch on success, and disabled state without a linked repository.
 
 - [x] **F-083** · LOW · `missing-ui` — The ai-provider-health route ('feeds the health indicator in the workspace AI settings') has no UI caller — the gap-fix that created it was itself orphaned by the later AI-page rework, recreating the exact "exported for a UI that never came" state its header complains about.
   - **Where (audit baseline 55ff5b7 — code has moved, re-locate):** `src/workspaces/_api/aiProviderHealth_v1.ts:1`

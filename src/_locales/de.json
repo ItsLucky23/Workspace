@@ -2823,7 +2823,11 @@
       "uploadQueued": "Upload vorgemerkt.",
       "reindexFailed": "Die Indizierung wurde nicht abgeschlossen. Versuche es erneut.",
       "capabilityAvailable": "Verfügbar",
-      "capabilityUnavailable": "Nicht ausgewählt"
+      "capabilityUnavailable": "Nicht ausgewählt",
+      "generateContextDoc": "Kontextdokument aus Repository erstellen",
+      "generateContextDocDisabled": "Verknüpfe zuerst ein Repository, bevor du ein Kontextdokument erstellst.",
+      "generateContextDocQueued": "Projekt-Kontextdokument erstellt.",
+      "generateContextDocFailed": "Das Projekt-Kontextdokument konnte nicht erstellt werden."
     },
     "mr": {
       "runCi": "CI ausführen",

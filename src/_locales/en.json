@@ -2823,7 +2823,11 @@
       "uploadQueued": "Upload queued.",
       "reindexFailed": "Reindexing did not finish. Try again.",
       "capabilityAvailable": "Available",
-      "capabilityUnavailable": "Not selected"
+      "capabilityUnavailable": "Not selected",
+      "generateContextDoc": "Generate context doc from repo",
+      "generateContextDocDisabled": "Link a repository before generating a context doc.",
+      "generateContextDocQueued": "Project context doc generated.",
+      "generateContextDocFailed": "Could not generate the project context doc."
     },
     "mr": {
       "runCi": "Run CI",

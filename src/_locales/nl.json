@@ -2823,7 +2823,11 @@
       "uploadQueued": "Upload staat klaar.",
       "reindexFailed": "Het herindexeren is niet afgerond. Probeer het opnieuw.",
       "capabilityAvailable": "Beschikbaar",
-      "capabilityUnavailable": "Niet geselecteerd"
+      "capabilityUnavailable": "Niet geselecteerd",
+      "generateContextDoc": "Contextdocument uit repository genereren",
+      "generateContextDocDisabled": "Koppel eerst een repository voordat je een contextdocument genereert.",
+      "generateContextDocQueued": "Projectcontextdocument gegenereerd.",
+      "generateContextDocFailed": "Het projectcontextdocument kon niet worden gegenereerd."
     },
     "mr": {
       "runCi": "CI draaien",
