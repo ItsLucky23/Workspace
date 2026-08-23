@@ -5,10 +5,15 @@
 //? URL + a metered € cost. The HTTP transport is injectable so the request/extract logic is unit-tested
 //? with fixtures (no key, no network); the pure prompt/model/extract helpers are exported for that.
 
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+
 import { sleep, tryCatch } from '@luckystack/core';
 
 import { withRetry } from '../../util/retry';
 import { composeMediaPrompt } from '../prompt';
+import { publicMediaOrigin, signMediaUrl } from '../signedUrl';
+import { MEDIA_DIR } from '../store';
 import type { MediaFeature, MediaGenerationRequest, MediaGenerationResult, MediaProvider, MediaAsset, MediaProgressCallback } from '../types';
 
 //? Re-exported so the fal test + callers can import the shared prompt composer from here.
@@ -68,6 +73,29 @@ function cheapParams(feature: MediaFeature, reqCheap?: boolean): Record<string, 
     return { num_inference_steps: envNum('FAL_VIDEO_STEPS', 8), resolution: envStr('FAL_VIDEO_RESOLUTION', '480p'), num_frames: envNum('FAL_VIDEO_FRAMES', 65) };
   }
   return {};
+}
+
+//? fal fetches `image_url` / `mask_url` / `video_url` ITSELF, so a relative `/media/<file>` (how every asset
+//? is stored here) is unreachable from its side and comes back as a 422 — every reference-conditioned
+//? feature (edit, inpaint, reference-image, restyle) silently failed live. Images travel inline as a data
+//? URI (works from any host, bounded); a video is too large for that and goes as a signed public link
+//? when this host has a public origin, else it is left as-is and fails honestly.
+const FAL_IMAGE_MIME: Record<string, string> = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' };
+const FAL_INLINE_MAX_BYTES = 12_000_000;
+export function fetchableMediaUrl(url: string | undefined): string | undefined {
+  if (!url?.startsWith('/media/')) return url;
+  const name = url.slice('/media/'.length);
+  const ext = path.extname(name).toLowerCase();
+  const mime = FAL_IMAGE_MIME[ext];
+  if (mime !== undefined) {
+    const file = path.join(MEDIA_DIR, name);
+    if (existsSync(file)) {
+      const bytes = readFileSync(file);
+      if (bytes.length > 0 && bytes.length <= FAL_INLINE_MAX_BYTES) return `data:${mime};base64,${bytes.toString('base64')}`;
+    }
+  }
+  const origin = publicMediaOrigin();
+  return origin.length > 0 ? signMediaUrl(url, origin) : url;
 }
 
 //? Build the fal model id + input body for a request. `reference-image` carries the reference as
@@ -216,7 +244,12 @@ export const realFalTransport: FalTransport = {
     }
     if (!completed) throw new Error('fal poll timeout');
     const rr = await falFetch(responseUrl, { headers });
-    if (!rr.ok) throw new Error(`fal result ${String(rr.status)}`);
+    if (!rr.ok) {
+      //? fal reports a validation failure (422) on the RESULT fetch, with the offending field in the body —
+      //? without it a failed reference image and a bad parameter are indistinguishable in the logs.
+      const [, detail] = await tryCatch(() => rr.text());
+      throw new Error(`fal result ${String(rr.status)}${typeof detail === 'string' && detail.length > 0 ? `: ${detail.slice(0, 300)}` : ''}`);
+    }
     return (await rr.json()) as Record<string, unknown>;
   },
 };
@@ -231,7 +264,12 @@ export function createFalProvider(transport: FalTransport = realFalTransport): M
     available: (apiKey?: string) => Promise.resolve(Boolean((apiKey ?? process.env.FAL_KEY ?? '').trim())),
     generate: async (req: MediaGenerationRequest): Promise<MediaGenerationResult> => {
       if (!SUPPORTED.includes(req.feature)) return { ok: false, providerId: 'fal', costCents: 0, stub: false, error: 'media.featureUnsupported' };
-      const { model, input } = composeFalInput(req);
+      const fetchable = {
+        ...req,
+        ...(req.referenceUrl === undefined ? {} : { referenceUrl: fetchableMediaUrl(req.referenceUrl) }),
+        ...(req.maskUrl === undefined ? {} : { maskUrl: fetchableMediaUrl(req.maskUrl) }),
+      };
+      const { model, input } = composeFalInput(fetchable);
       const key = (req.apiKey ?? process.env.FAL_KEY ?? '').trim();
       const [err, result] = await tryCatch(() => transport.submit(model, input, key, req.onProgress));
       if (err || !result) return { ok: false, providerId: 'fal', costCents: 0, stub: false, error: `media.falFailed: ${err?.message ?? 'unknown'}` };

@@ -4,8 +4,8 @@
   "counts": {
     "nodes": 460,
     "edges": 718,
-    "symbols": 867,
-    "callEdges": 289
+    "symbols": 870,
+    "callEdges": 292
   },
   "nodes": [
     {
@@ -10201,6 +10201,18 @@
       "kind": "module"
     },
     {
+      "id": "workspaces/_sync/contentControl_server_v1.tests.ts::chunk",
+      "file": "workspaces/_sync/contentControl_server_v1.tests.ts",
+      "name": "chunk",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/contentControl_server_v1.tests.ts::crc",
+      "file": "workspaces/_sync/contentControl_server_v1.tests.ts",
+      "name": "crc",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_sync/contentControl_server_v1.tests.ts::fakeObjectId",
       "file": "workspaces/_sync/contentControl_server_v1.tests.ts",
       "name": "fakeObjectId",
@@ -10228,6 +10240,12 @@
       "id": "workspaces/_sync/contentControl_server_v1.tests.ts::wait",
       "file": "workspaces/_sync/contentControl_server_v1.tests.ts",
       "name": "wait",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/contentControl_server_v1.tests.ts::writeSolidPng",
+      "file": "workspaces/_sync/contentControl_server_v1.tests.ts",
+      "name": "writeSolidPng",
       "kind": "function"
     },
     {
@@ -12965,6 +12983,10 @@
       "to": "workspaces/_sync/contentAssetDelta_server_v1.ts::contentAssetDeltaAsset"
     },
     {
+      "from": "workspaces/_sync/contentControl_server_v1.tests.ts::chunk",
+      "to": "workspaces/_sync/contentControl_server_v1.tests.ts::crc"
+    },
+    {
       "from": "workspaces/_sync/contentControl_server_v1.tests.ts::poll",
       "to": "workspaces/_sync/contentControl_server_v1.tests.ts::fn"
     },
@@ -12979,6 +13001,14 @@
     {
       "from": "workspaces/_sync/contentControl_server_v1.tests.ts::run",
       "to": "workspaces/_sync/contentControl_server_v1.tests.ts::poll"
+    },
+    {
+      "from": "workspaces/_sync/contentControl_server_v1.tests.ts::run",
+      "to": "workspaces/_sync/contentControl_server_v1.tests.ts::writeSolidPng"
+    },
+    {
+      "from": "workspaces/_sync/contentControl_server_v1.tests.ts::writeSolidPng",
+      "to": "workspaces/_sync/contentControl_server_v1.tests.ts::chunk"
     },
     {
       "from": "workspaces/_sync/contentControl_server_v1.ts::main",
@@ -14046,6 +14076,15 @@
     "workspaces/_sync/contentAssetDelta_server_v1.ts::contentAssetDeltaAsset": [
       "workspaces/_sync/contentAssetDelta_server_v1.ts::main"
     ],
+    "workspaces/_sync/contentControl_server_v1.tests.ts::chunk": [
+      "workspaces/_sync/contentControl_server_v1.tests.ts::run",
+      "workspaces/_sync/contentControl_server_v1.tests.ts::writeSolidPng"
+    ],
+    "workspaces/_sync/contentControl_server_v1.tests.ts::crc": [
+      "workspaces/_sync/contentControl_server_v1.tests.ts::chunk",
+      "workspaces/_sync/contentControl_server_v1.tests.ts::run",
+      "workspaces/_sync/contentControl_server_v1.tests.ts::writeSolidPng"
+    ],
     "workspaces/_sync/contentControl_server_v1.tests.ts::fakeObjectId": [
       "workspaces/_sync/contentControl_server_v1.tests.ts::run"
     ],
@@ -14058,6 +14097,9 @@
     ],
     "workspaces/_sync/contentControl_server_v1.tests.ts::wait": [
       "workspaces/_sync/contentControl_server_v1.tests.ts::poll",
+      "workspaces/_sync/contentControl_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/contentControl_server_v1.tests.ts::writeSolidPng": [
       "workspaces/_sync/contentControl_server_v1.tests.ts::run"
     ],
     "workspaces/_sync/contentControl_server_v1.ts::isContentOp": [

@@ -1,4 +1,7 @@
 import { randomBytes } from 'node:crypto';
+import { existsSync, unlinkSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { deflateSync } from 'node:zlib';
 
 import type { CustomTestCase, TestContext } from '@luckystack/test-runner';
 
@@ -47,6 +50,23 @@ interface ContentControlInput {
 interface ContentControlOk { status: 'success' }
 interface ContentControlErr { status: 'error'; errorCode: string }
 type ContentControlResponse = ContentControlOk | ContentControlErr;
+
+//? A real (tiny, solid-colour) PNG on disk: the sweep runs against the KEYED dev server, so the edit op
+//? reaches the live image provider, which rejects a reference that is not an actual image (422).
+function writeSolidPng(file: string, size = 256): void {
+  const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xED_B8_83_20 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+  const crc = (buf: Buffer): number => { let c = 0xFF_FF_FF_FF; for (const b of buf) c = (crcTable[(c ^ b) & 0xFF] ?? 0) ^ (c >>> 8); return (c ^ 0xFF_FF_FF_FF) >>> 0; };
+  const chunk = (type: string, data: Buffer): Buffer => {
+    const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
+    const body = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+    const c = Buffer.alloc(4); c.writeUInt32BE(crc(body));
+    return Buffer.concat([len, body, c]);
+  };
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(size, 0); ihdr.writeUInt32BE(size, 4); ihdr[8] = 8; ihdr[9] = 2; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
+  const row = Buffer.concat([Buffer.from([0]), Buffer.alloc(size * 3, 0x4A)]);
+  const raw = Buffer.concat(Array.from({ length: size }, () => row));
+  writeFileSync(file, Buffer.concat([Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]));
+}
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 async function poll<T>(fn: () => Promise<T | null>, timeoutMs = 4000, stepMs = 50): Promise<T | null> {
@@ -299,6 +319,8 @@ export const customTests: CustomTestCase[] = [
         ctx.expect.ok(project !== null, 'the seeded demo workspace ships at least one Project');
         if (!project) return;
         const piece = await ctx.prisma.contentProject.create({ data: { workspaceId, projectId: project.id, title: `Image envelope ${String(Date.now())}`, brief: 'x' } });
+        const sourceFile = path.join(MEDIA_DIR, 'envelope-source.png');
+        writeSolidPng(sourceFile);
         const source = await ctx.prisma.contentAsset.create({ data: { workspaceId, contentProjectId: piece.id, kind: 'image', url: '/media/envelope-source.png', status: 'ready' } });
 
         const editRes = await ctx.callSync<ContentControlInput, ContentControlResponse>(
@@ -322,6 +344,8 @@ export const customTests: CustomTestCase[] = [
         const thumbnail = await poll(() => ctx.prisma.contentAsset.findFirst({ where: { workspaceId, contentProjectId: piece.id, kind: 'thumbnail' } }), 15_000);
         ctx.expect.ok(thumbnail !== null, 'content-gen-thumbnail persisted a thumbnail through the payload contentProjectId');
       } finally {
+        const sourceFile = path.join(MEDIA_DIR, 'envelope-source.png');
+        if (existsSync(sourceFile)) unlinkSync(sourceFile);
         await ctx.prisma.contentAsset.deleteMany({ where: { workspaceId } });
         await ctx.prisma.contentProject.deleteMany({ where: { workspaceId } });
         await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
