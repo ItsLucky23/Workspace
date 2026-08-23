@@ -102,24 +102,6 @@ export function Collapse({ open, className, children }: { open: boolean; classNa
   );
 }
 
-/** A dimmed backdrop that fades in/out behind drawers, sheets and modals. */
-export function Backdrop({ open, onClick, className }: { open: boolean; onClick?: () => void; className?: string }) {
-  return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          onClick={onClick}
-          className={className ?? 'fixed inset-0 z-40 bg-overlay'}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-        />
-      )}
-    </AnimatePresence>
-  );
-}
-
 /** A slide-in panel: from the right on desktop, up from the bottom on mobile
  *  (pass `side`). Renders its own backdrop. Use for overlays/sheets. */
 export function Sheet({ open, onClose, side = 'right', className, children }: {

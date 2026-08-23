@@ -101,12 +101,12 @@ Workspaces is a self-hosted AI dev-orchestration + content platform on the Lucky
   - **Now:** VERIFY FIRST: Agent 4 (P4-7) now calls `aiProviderHealth_v1` from the AiBehaviorTab routing picker. If that is the caller this finding asked for, mark "already-fixed" with the file:line of the call and do nothing else.
   - **Result:** already-fixed — `src/workspaces/workspace/page.tsx:1374` calls `apiRequest({ name: 'workspaces/aiProviderHealth', version: 'v1', ... })`; the result feeds the routing-picker availability at lines 1407–1421.
 
-- [ ] **F-121** · LOW · `dead-ui` — Dead exports in the shared layer: GROUP_LABELS (Shell.tsx:88) is exported but consumed nowhere (the rail translates workspaces.nav.* keys instead), and Backdrop (motion.tsx:106) has no consumer.
+- [x] **F-121** · LOW · `dead-ui` — Dead exports in the shared layer: GROUP_LABELS (Shell.tsx:88) is exported but consumed nowhere (the rail translates workspaces.nav.* keys instead), and Backdrop (motion.tsx:106) has no consumer.
   - **Where (audit baseline 55ff5b7 — code has moved, re-locate):** `src/workspaces/_shell/Shell.tsx:88`
   - **Evidence:** grep across src: GROUP_LABELS appears only in its definition + docs; Backdrop only in motion.tsx. Also listPats_v1 _api route has no client caller (PatPanel preloads from the snapshot's `pats`).
   - **Original fix hint:** Delete GROUP_LABELS and Backdrop (or wire Backdrop into the two hand-rolled motion.div backdrops in MobileChrome). Flag listPats_v1 to the owner before removal since PATs may have external API consumers.
   - **Now:** VERIFY FIRST: `GROUP_LABELS` is consumed by the navStructure contract test, so it is NOT dead — leave it. Only remove `Backdrop` in `_components/motion.tsx` if grep proves it has zero consumers; otherwise mark "invalid" with the evidence.
-  - **Result:** _(fill in: fixed <commit> / already-fixed / invalid: <reason>)_
+  - **Result:** fixed — `Backdrop` had zero code/test consumers (`rg -n "Backdrop" src tests --glob '!**/_docs/**'`); removed it from `src/workspaces/_components/motion.tsx`. `GROUP_LABELS` remains because `tests/unit/navStructure.test.mts` imports and asserts it.
 
 ## Out-of-scope observations
 
