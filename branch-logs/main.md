@@ -1,5 +1,19 @@
 # Branch log — `main`
 
+## 2026-08-24 — Push-ritual groen + gepusht; 4 open beslissingen afgehandeld; R3-b-stempel gecorrigeerd
+
+**User prompt:** "ga door waar je gebleven bent" (handoff van de background-sessie) → 4 beslissingen: Claude-via-pi zo laten · test:all + push · worktree weg · R3-b "check, als open dan terug naar open".
+
+**Wat ik deed:**
+- **Worktree** `.claude/worktrees/workspaces-audit-fixes` + gemergde branch verwijderd.
+- **R3-b** bleek al GEBOUWD (`13e98e4`, ADR 0267 — `repoStore` volledig `(workspaceId, projectId)`-gekeyd + `migrateLegacyRepoLayout`); de "not built — dropped"-stempel uit de docs-opschoning was fout → gecorrigeerd in `archive/ADOPTION_PROGRAM.md` (`10879cb`). Niet heropend.
+- **Push-ritual:** test:ws 334/334 (422s) · sweep solo 473 passed / 0 failed / 122 skipped · Playwright 42/42 (44s) → gepusht.
+- **Twee infra-valkuilen onderweg (geen code):** (1) de Redis-SSH-tunnel naar `pi5` (LocalForward 6389→6379) viel om 21:48Z weg → backend vol `Connection is closed`, 38/42 Playwright rood; tunnel-herstart is classifier-geblokkeerd voor mij → user heropende hem. (2) `@luckystack/devkit` supervisor-zombies (van eerdere "gestopte" background-tasks — alleen de shell sterft) hielden 4787/4788 vast → nieuwe backend hopte naar 4789; na tree-kill van de supervisors bond de backend weer 4787, maar Vite was al gestart met stale `dev-server.json` (4789) en de `bypass`-live-follow in `vite.config.ts` volgde NIET → Vite herstart nodig. Stop-procedure vastgelegd in `~/.claude`-memory; lessons 0007/0012 dekken het supervisor-deel al.
+
+**Files touched:** `src/workspaces/_docs/archive/ADOPTION_PROGRAM.md`, `branch-logs/{main,INDEX}.md` (+ hook-regen van de AI-indexes).
+
+**Rapport (niet gefixt, buiten scope):** de per-request `bypass`-poortvolging in `vite.config.ts` werkt niet als de proxy met een verkeerd opstart-target begon — na een backend-poorthop is een Vite-herstart nodig; overweeg de proxy-target lazy te resolven of de comment eerlijk te maken.
+
 ## 2026-08-23 — Docs-opschoning: 29 weg, 21 gefixt, 12 gearchiveerd + PROGRAMS_INDEX
 
 **User prompt:** "punt 5 ook doen alle slechte, outdated, of nuttelozen docs weg halen/fixen."
