@@ -3,21 +3,12 @@
 //? semantic theme tokens. Read-only preview; a real editor (VS Code) comes
 //? later.
 
+import { DIFF_ROW_TINT as ROW, DIFF_SIGN, DIFF_TEXT_TINT as TEXT } from '../../../_components/diffTint';
 import type { DiffLine } from '../../../_data/types';
 
-const ROW: Record<DiffLine['kind'], string> = {
-  add: 'bg-correct/10',
-  del: 'bg-wrong/10',
-  ctx: '',
-  hunk: 'bg-container2',
-};
-const TEXT: Record<DiffLine['kind'], string> = {
-  add: 'text-correct',
-  del: 'text-wrong',
-  ctx: 'text-common',
-  hunk: 'text-muted',
-};
-const SIGN: Record<DiffLine['kind'], string> = { add: '+ ', del: '- ', ctx: '  ', hunk: '' };
+//? This renderer pads the sign INSIDE the sign span (a hunk header gets none) — kept explicit so the
+//? shared table can stay unpadded for the MR panel, which pads outside the span instead.
+const SIGN: Record<DiffLine['kind'], string> = { add: `${DIFF_SIGN.add} `, del: `${DIFF_SIGN.del} `, ctx: `${DIFF_SIGN.ctx} `, hunk: DIFF_SIGN.hunk };
 
 export default function DiffView({ lines, className }: { lines: DiffLine[]; className?: string }) {
   return (

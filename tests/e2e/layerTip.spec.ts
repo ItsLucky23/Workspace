@@ -53,8 +53,14 @@ test.describe('layer tip', () => {
 
     await page.getByRole('button', { name: /More information/ }).first().hover();
     await expect(page.getByText('How this prompt is composed')).toBeVisible();
-    // The stage layers live on the pipeline, and the tip says so with a way to get there.
-    await expect(page.getByRole('button', { name: /Edit on the General tab/ }).first()).toBeVisible();
+    //? This page steers the ONE-SHOT runs (chat, documents, content, studio): one system string, no
+    //? stage layers (ADR 0323). The tip must describe that string — including the segments the server
+    //? adds around the editable fields — and must NOT offer stage-tab links that would lie about
+    //? where this field sits. It used to show the two-channel stage model here.
+    const tip = page.getByRole('dialog', { name: 'More information' });
+    await expect(tip.getByText('System prompt (one-shot features)')).toBeVisible();
+    await expect(tip.getByText('added by the server').first()).toBeVisible();
+    await expect(tip.getByRole('button', { name: /Edit on the General tab/ })).toHaveCount(0);
   });
 
 
@@ -80,7 +86,8 @@ test.describe('layer tip', () => {
 
     //? The panel renders in a floating layer OUTSIDE the trigger's wrapper. Hovering something inside
     //? it is the exact move that used to dismiss it mid-travel; it must survive and stay reachable.
-    await tip.getByRole('button', { name: /Edit on the General tab/ }).first().hover();
+    //? (A server-added segment row: this page's tip is the one-shot model and has no stage links.)
+    await tip.getByText('added by the server').first().hover();
     await expect(tip).toBeVisible();
 
     //? …and it does close once the pointer is genuinely away — a tip that never leaves is its own bug.

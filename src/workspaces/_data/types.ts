@@ -614,9 +614,10 @@ export interface WorkspaceBudget {
   enabled?: boolean;
 }
 
-//? The UI render-view of the event log (kept — screens read this shape).
+//? The UI render-view of the event log (kept — screens read this shape). `at` is an ISO timestamp;
+//? screens format it relative to now (a bare HH:MM read as "today" for days-old events).
 export interface ActivityEvent {
-  time: string;
+  at: string;
   actor: string; // member id | 'ai' | 'mr'
   ticketId: string;
   type: 'command' | 'file-change' | 'ai-message' | 'status-change' | 'mr' | 'comment' | 'ci';

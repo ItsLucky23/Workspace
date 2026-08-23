@@ -4,9 +4,9 @@
 //? the shape the initial snapshot emits (`buildSnapshot`), so the client merges a
 //? live delta identically to the first load — no divergence, no refetch.
 
-import type { Ticket as DbTicket, Sprint as DbSprint, WorkspaceNote as DbNote, EnvVar as DbEnvVar, IntegrationTool as DbIntegration, WorkspaceRole as DbRole, Invite as DbInvite, InfoSource as DbInfoSource, ContentAsset as DbContentAsset, MediaJob as DbMediaJob, VideoScene as DbVideoScene } from '@prisma/client';
+import type { Ticket as DbTicket, Sprint as DbSprint, WorkspaceNote as DbNote, EnvVar as DbEnvVar, IntegrationTool as DbIntegration, WorkspaceRole as DbRole, Invite as DbInvite, InfoSource as DbInfoSource, ContentAsset as DbContentAsset, MediaJob as DbMediaJob, VideoScene as DbVideoScene, TicketEvent as DbTicketEvent } from '@prisma/client';
 
-import type { CodingAgentConfig, ContentAssetSummary, ContentPieceSummary, VideoSceneSummary, EnvVar, InfoDoc, IntegrationTool, InviteEntry, PermRole, RepoInfo, Role, Sprint, Ticket, TicketNote, TicketPriority, TicketStatus } from '../../src/workspaces/_data/types';
+import type { ActivityEvent, CodingAgentConfig, ContentAssetSummary, ContentPieceSummary, VideoSceneSummary, EnvVar, InfoDoc, IntegrationTool, InviteEntry, PermRole, RepoInfo, Role, Sprint, Ticket, TicketNote, TicketPriority, TicketStatus } from '../../src/workspaces/_data/types';
 import { TICKET_PRIORITIES } from '../../src/workspaces/_data/types';
 import { parseNeedsInputQuestions } from '../orchestrator/questionSet';
 import { normalizeCodingAgent } from '../orchestrator/codingAgents/config';
@@ -51,6 +51,16 @@ const asStatus = (s: string): TicketStatus =>
 //? here so both the snapshot AND the realtime `_sync` deltas render a note's `time`
 //? identically — a live comment must match the shape the initial snapshot emits.
 export const formatTime = (d: Date): string => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+const asEvType = (s: string): ActivityEvent['type'] => (s === 'command' || s === 'file-change' || s === 'status-change' || s === 'mr' || s === 'comment' || s === 'ci' ? s : 'ai-message');
+
+//? Map a TicketEvent row → the frontend `ActivityEvent`. Events store ticket ObjectIds, but the
+//? frontend keys tickets by their DEV-#### `key` — `ticketKeyById` maps ObjectId → key so open-ticket /
+//? activity-tab filters resolve (unknown ids pass through). `at` is the full ISO timestamp (F-107): the
+//? client renders it relative to now, so a days-old event no longer reads as today's HH:MM.
+export function toActivityEvent(ev: Pick<DbTicketEvent, 'createdAt' | 'actor' | 'ticketId' | 'type' | 'text'>, ticketKeyById: ReadonlyMap<string, string>): ActivityEvent {
+  return { at: ev.createdAt.toISOString(), actor: ev.actor, ticketId: ticketKeyById.get(ev.ticketId) ?? ev.ticketId, type: asEvType(ev.type), text: ev.text };
+}
 
 //? Runtime guard: is this the Conductor's op-result a Prisma Ticket row? Lets the
 //? realtime `_sync` routes narrow the (deliberately `unknown`) op result to a typed

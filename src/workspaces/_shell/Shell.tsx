@@ -3,7 +3,7 @@
 //? stack (Tailwind tokens, reused Avatar/Dropdown, ctx-driven navigation).
 
 /* eslint-disable react-refresh/only-export-components -- shell module: the NAV_ITEMS/NAV_BOTTOM data is intentionally co-located with the shell chrome components (dev-only fast-refresh rule) */
-import { Fragment, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 
 import { menuHandler } from 'src/_functions/menuHandler';
 
@@ -21,6 +21,7 @@ import { Glossary } from '../_components/Glossary';
 import { Collapse, Popover, SPRING_SOFT } from '../_components/motion';
 import { AvatarBubble, AvatarStack, FOCUS_RING, IconButton, WsButton, useClickAway } from '../_components/primitives';
 import { SetupNotice } from '../_components/SetupNotice';
+import { useRememberedPanelSize } from '../_components/useRememberedPanelHeight';
 import { WORKSPACE_MODULES, isSectionEnabled, sectionsForModules, type WorkspaceModuleId } from '../_data/modules';
 import { NAV_CATEGORIES, type NavCategory } from '../_data/nav';
 import { WORKSPACE_PACK_CHOICES } from '../_data/packs';
@@ -866,10 +867,6 @@ function ChatBubble({ m, onAccept, onAcceptPlan, onReject, onApplyCopilot }: { m
   );
 }
 
-//? Remembered panel width (module-level so it survives close/reopen without
-//? threading width through app state — keeps drag re-renders local to the panel).
-let rememberedAiWidth = 340;
-
 //? VO (DOCUMENTS_AND_SKILLS) — phone-first voice input: record via the PWA mic (MediaRecorder), upload
 //? the clip, transcribe it (provider-abstracted STT), and hand the transcript back to prefill the chat.
 //? Gracefully hidden when the browser has no mic/MediaRecorder (typing stays the path). One clip → one
@@ -947,29 +944,13 @@ export function AIPanel({ onClose }: { onClose: () => void }) {
       void audio.play().catch(() => { /* autoplay may be blocked until a user gesture */ });
     })();
   }, [chat, speak, activeWorkspace.id]);
-  const [width, setWidth] = useState(rememberedAiWidth);
-  const [dragging, setDragging] = useState(false);
-  const dragRef = useRef<{ startX: number; startW: number } | null>(null);
+  //? Drag the left edge to resize. The panel sits on the right, so dragging left widens it.
+  //? Clamp 300–560px; the width is remembered across close/reopen. Disable the spring while
+  //? dragging so the edge tracks the pointer 1:1.
+  const { size: width, dragging, onPointerDown: onHandleDown, onPointerMove: onHandleMove, onPointerUp: onHandleUp } = useRememberedPanelSize('shell-ai', 340, 300, 560, 'width');
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }); }, [chat, tab]);
   const send = () => { const t = draft.trim(); if (!t) return; sendChat(t); setDraft(''); };
-
-  //? Drag the left edge to resize. The panel sits on the right, so dragging left
-  //? (negative dx) widens it. Clamp 300–560px. Disable the spring while dragging
-  //? so the edge tracks the pointer 1:1.
-  const onHandleDown = (e: ReactPointerEvent) => {
-    dragRef.current = { startX: e.clientX, startW: width };
-    setDragging(true);
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  };
-  const onHandleMove = (e: ReactPointerEvent) => {
-    if (!dragRef.current) return;
-    const dx = dragRef.current.startX - e.clientX;
-    const next = Math.min(560, Math.max(300, dragRef.current.startW + dx));
-    rememberedAiWidth = next;
-    setWidth(next);
-  };
-  const onHandleUp = () => { dragRef.current = null; setDragging(false); };
 
   //? P-A — phone-first: on mobile the panel is a full-screen sheet (no width-drag, opacity fade); on desktop
   //? it's the resizable right-hand aside (animated WIDTH so the board's flex area resizes in lock-step). This

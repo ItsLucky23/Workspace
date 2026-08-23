@@ -16,6 +16,7 @@ import { AnimatePresence, motion } from 'motion/react';
 
 import Icon from '../../_components/Icon';
 import { AvatarBubble, EmptyState, InfoTip, Segmented, WsButton } from '../../_components/primitives';
+import { timeAgo } from '../../_functions/timeAgo';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { ActivityEvent, Member } from '../../_data/types';
 
@@ -133,7 +134,7 @@ export default function Activity() {
           <AnimatePresence initial={false}>
             {events.map((e, i) => (
               <motion.div
-                key={`${e.time}-${e.actor}-${e.type}-${e.text}`}
+                key={`${e.at}-${e.actor}-${e.type}-${e.text}`}
                 layout
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -154,7 +155,7 @@ export default function Activity() {
                         negative margin so the hit target clears the ~24px minimum without shifting
                         the row's baseline alignment. */}
                     <button type="button" onClick={() => { openTicket(e.ticketId); }} className={`font-mono text-xs text-primary hover:underline cursor-pointer px-1 py-0.5 -my-0.5 -mx-1 rounded`}>{e.ticketId}</button>
-                    <span className={`text-xs text-muted`}>· {e.time}</span>
+                    <span className={`text-xs text-muted`} title={e.at}>· {timeAgo(e.at)}</span>
                   </div>
                   <div className={`text-sm text-common mt-1 break-words`}>{e.text}</div>
                 </div>

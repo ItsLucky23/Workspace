@@ -30,7 +30,7 @@ import { RepoInventoryPanel, RepoScriptPicker, useRepoIntrospection } from './re
 import { RunProcessList, anyRowIncomplete, rowCommand, seedProcesses } from './runProcesses';
 import { SkillsSection } from './skillsEditor';
 import { AiProvidersSection, CodingAgentSection } from './aiProviders';
-import { FormSection, INPUT_CLS_FULL as fieldCls, INPUT_CLS_FULL_MONO as inputCls, SavePill, SettingRow, useAutosave } from '../_components/settings';
+import { FormSection, INPUT_CLS_FULL as fieldCls, INPUT_CLS_FULL_MONO as inputCls, SavePill, SettingRow, useAutosave, type SaveStatus } from '../_components/settings';
 import { resolveAiLayers } from '../_functions/aiLayers';
 import { INTEGRATION_TYPES, RBAC_CAPABILITIES, ROLE_DISPLAY } from '../_data/seed';
 import { GATEABLE_SECTIONS, WORKSPACE_MODULES, WORKSPACE_SECTIONS, isModuleEnabled } from '../_data/modules';
@@ -596,6 +596,9 @@ function GitLabTab() {
   //? Never pre-filled from the (write-only, encrypted) stored token — an empty
   //? value tells `saveGitlab` to keep the existing token unchanged.
   const [token, setToken] = useState('');
+  //? F-075 — the Save button gave no feedback at all. Same pill the autosave rows show; the op is
+  //? fire-and-forget (BrandStylesTab's logo save uses the identical pattern), so "saved" means dispatched.
+  const [gitlabStatus, setGitlabStatus] = useState<SaveStatus>('idle');
   const projectOverride = activeProject?.forgeMode !== undefined;
   const overrideUrl = (activeProject?.forgeBaseUrl ?? '').trim();
   const forgeItems = [
@@ -653,7 +656,8 @@ function GitLabTab() {
           control={<input type="password" value={token} onChange={(e) => { setToken(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.tokenPlaceholder' })} className={`${fieldCls} font-mono`} />}
         />
         <div className="px-5 py-4 flex items-center gap-2">
-          <WsButton icon="check" onClick={() => { saveGitlab(baseUrl, token, forge); setToken(''); }}>{translate({ key: 'workspaces.workspaceSettings.save' })}</WsButton>
+          <WsButton icon="check" onClick={() => { saveGitlab(baseUrl, token, forge); setToken(''); setGitlabStatus('saved'); }}>{translate({ key: 'workspaces.workspaceSettings.save' })}</WsButton>
+          <SavePill status={gitlabStatus} />
           {/* gitlab-resync: pull open forge issues → tickets (was UI-less). */}
           <WsButton variant="secondary" icon="rotate" onClick={() => { resyncForge(); }}>{translate({ key: 'workspaces.workspaceSettings.resyncIssues' })}</WsButton>
         </div>
@@ -698,7 +702,9 @@ function WorkflowTab() {
   const translate = useTranslator();
   const { gitConfig, saveGitConfig, docs, navigate } = useWorkspaces();
   const [cfg, setCfg] = useState<GitConfig>(gitConfig);
-  const patch = (p: Partial<GitConfig>) => { setCfg((c) => ({ ...c, ...p })); };
+  //? F-075 — feedback on the Save button (see GitLabTab); an edit after a save clears the pill again.
+  const [gitStatus, setGitStatus] = useState<SaveStatus>('idle');
+  const patch = (p: Partial<GitConfig>) => { setCfg((c) => ({ ...c, ...p })); setGitStatus('idle'); };
   const starter = docs.filter((d) => d.note === 'starter');
 
   const strategyItems = [
@@ -758,7 +764,10 @@ function WorkflowTab() {
           label={translate({ key: 'workspaces.workspaceSettings.commitSigning' })}
           control={<Toggle on={cfg.commitSigning} onChange={() => { patch({ commitSigning: !cfg.commitSigning }); }} ariaLabel={translate({ key: 'workspaces.workspaceSettings.commitSigning' })} />}
         />
-        <div className="px-5 py-4"><WsButton icon="check" onClick={() => { saveGitConfig(cfg); }}>{translate({ key: 'workspaces.workspaceSettings.save' })}</WsButton></div>
+        <div className="px-5 py-4 flex items-center gap-2">
+          <WsButton icon="check" onClick={() => { saveGitConfig(cfg); setGitStatus('saved'); }}>{translate({ key: 'workspaces.workspaceSettings.save' })}</WsButton>
+          <SavePill status={gitStatus} />
+        </div>
       </FormSection>
 
       <FormSection
@@ -1392,9 +1401,11 @@ function AiBehaviorTab() {
     () => { saveAiInstruction(value.trim(), language, geminiModel.trim(), geminiTemp.trim(), geminiBaseUrl.trim()); },
     { resetKey: activeWorkspace.id },
   );
-  //? ADR 0308 — layers 1-2 resolve here (the stage-scoped 3-5 stay empty on this page, which is
-  //? itself the point: the preview shows the user that stages add three more).
-  const layers = resolveAiLayers({ workspace: activeWorkspace, skills: aiSkills });
+  //? F-075 — this page has no stage, and the run it steers most directly is the ONE-SHOT path (chat,
+  //? documents, content, studio …): one system string, workspace + skills between the product
+  //? capabilities and the feature's own prompt. Showing the two-channel stage model here described a
+  //? run this page cannot configure.
+  const layers = resolveAiLayers({ workspace: activeWorkspace, skills: aiSkills, mode: 'oneShot' });
   const workspaceTip = useLayerTip(layers, 'workspace');
   const languageOptions = OUTPUT_LANGUAGES.map((l) => ({ id: l.id, value: l.id, item: l.id.length === 0 ? translate({ key: 'workspaces.workspaceSettings.languageAuto' }) : l.label }));
   //? P4-7 — honest availability in the picker. Each backend carries a badge (probe result, else the

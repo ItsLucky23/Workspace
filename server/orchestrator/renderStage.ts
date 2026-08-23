@@ -6,6 +6,10 @@
 //? prompt-layering — the first version renders the load-bearing task + permissions + Stop hook.
 
 import type { PipelineStageCfg, StageModelChoice } from '../../src/workspaces/_data/types';
+import {
+  AI_STAGE_PROJECT_SPEC, AI_STAGE_SYSTEM_SPEC, formatDoneGuidance, formatHandoverPrompt,
+  type AiStageProjectEntryId, type AiStageSystemEntryId,
+} from '../../src/workspaces/_functions/aiLayers';
 import type { CarryOverEnvelope } from './turnResult';
 import { renderIncomingHandover } from './turnResult';
 import { effortThinkingTokens } from './modelSelect';
@@ -112,40 +116,47 @@ export function renderStage(cfg: PipelineStageCfg, ctx: StageRenderCtx): StageAr
   const reloadSection = handoffReload.length > 0
     ? `## Resumed context (your own handoff)\n\n${renderUntrustedContext({ provenance: 'previous AI self-handoff', content: handoffReload, maxChars: 6000 })}\n\n---\n\n`
     : '';
-  const claudeMd = `# ${cfg.name} stage — ${ctx.ticketId}\n\n${reloadSection}${cfg.customInstructions}\n${docsSection}${retrievedSection}\n\n${UNTRUSTED_CONTEXT_POLICY}`;
+  //? Each segment carries its own separators (they are irregular), so the channel is the plain
+  //? concatenation in AI_STAGE_PROJECT_SPEC order — the order lives in aiLayers.ts, not here.
+  const projectText: Record<AiStageProjectEntryId, string> = {
+    title: `# ${cfg.name} stage — ${ctx.ticketId}\n\n`,
+    reload: reloadSection,
+    stageInstructions: `${cfg.customInstructions}\n`,
+    docs: docsSection,
+    retrieved: retrievedSection,
+    untrustedPolicy: `\n\n${UNTRUSTED_CONTEXT_POLICY}`,
+  };
+  const claudeMd = AI_STAGE_PROJECT_SPEC.map((entry) => projectText[entry.id]).join('');
 
   //? --append-system-prompt = the system layer + the incoming handover, + the teaching
   //? that a stage ENDS by emitting a \`\`\`ws-carryover block (how the runner detects done).
   //? Per-stage "definition of done": if the stage sets one, the AI works toward it; if not,
-//? the AI judges completion itself (the product owner's choice). Either way the stage ENDS
-//? by emitting the ws-carryover block — that IS the done signal.
-  const doneGuidance = (cfg.definitionOfDone ?? '').trim().length > 0
-    ? `This stage is DONE when: ${cfg.definitionOfDone}. When that is satisfied, end your final message with the fenced block below.`
-    : 'Judge for yourself when this stage\'s goal is achieved, then end your final message with the fenced block below.';
-  const stageInstructions = [
+  //? the AI judges completion itself (the product owner's choice). Either way the stage ENDS
+  //? by emitting the ws-carryover block — that IS the done signal.
+  const systemText: Record<AiStageSystemEntryId, string> = {
     //? ADR 0311 — workspace-wide steering opens the channel, so a stage's own system prompt refines it
     //? rather than competing with it. Same position it holds on the one-shot path (ai/registry.ts).
-    ctx.workspaceInstruction ?? '',
-    cfg.systemPrompt ?? '',
+    workspace: ctx.workspaceInstruction ?? '',
+    stageSystemPrompt: cfg.systemPrompt ?? '',
     //? Composed, not configured (owner decision 2026-08-20): the previous stage decided what to hand
     //? over, so there is no per-stage template with slots to fill in here any more.
-    renderIncomingHandover(ctx.carryOver),
-    doneGuidance,
-    '```ws-carryover\\n{ "summary": "...", "changedFiles": [], "openQuestions": [] }\\n```',
+    incomingHandover: renderIncomingHandover(ctx.carryOver),
+    definitionOfDone: formatDoneGuidance(cfg.definitionOfDone),
+    carryOverFence: '```ws-carryover\\n{ "summary": "...", "changedFiles": [], "openQuestions": [] }\\n```',
     //? The stage's OWN handover instruction — the one editable half of the carry-over, and it sits at
     //? the END where it belongs: it shapes what THIS stage writes into `summary` for the next one.
-    cfg.handoverPrompt.trim().length > 0
-      ? `When you write that block, shape its \`summary\` for the next stage as follows: ${cfg.handoverPrompt.trim()}`
-      : '',
+    handoverPrompt: formatHandoverPrompt(cfg.handoverPrompt),
     //? Auto-escalation: teach the agent to self-score the REMAINING work so the NEXT stage can
     //? resolve its model tier from the rules (modelSelect.resolveModelChoice).
-    ...(cfg.modelCfg.autoEscalate
-      ? ['Auto-escalation is ON for this pipeline: also include `"complexityScore": <1-10>` in the ws-carryover JSON — your honest judgement of how complex the REMAINING work on this ticket is (1 = trivial, 10 = very hard). The next stage selects its model tier from this score.']
-      : []),
-    'If you are blocked and need a human, end with a ```ws-needs-input block listing the questions instead.',
-    'NON-BLOCKING questions (W2): if a question does NOT block your progress, DO NOT stop — make a sensible assumption, keep working, and record it in `openQuestions` as `{ "question": "...", "assumption": "what you assumed" }`. The human can correct it later; a divergent answer will trigger a revision turn. Reserve `ws-needs-input` for questions that TRULY block you.',
-    UNTRUSTED_CONTEXT_POLICY,
-  ].filter((s) => s.trim().length > 0).join('\n\n');
+    escalation: cfg.modelCfg.autoEscalate
+      ? 'Auto-escalation is ON for this pipeline: also include `"complexityScore": <1-10>` in the ws-carryover JSON — your honest judgement of how complex the REMAINING work on this ticket is (1 = trivial, 10 = very hard). The next stage selects its model tier from this score.'
+      : '',
+    needsInput: 'If you are blocked and need a human, end with a ```ws-needs-input block listing the questions instead.',
+    questionsPolicy: 'NON-BLOCKING questions (W2): if a question does NOT block your progress, DO NOT stop — make a sensible assumption, keep working, and record it in `openQuestions` as `{ "question": "...", "assumption": "what you assumed" }`. The human can correct it later; a divergent answer will trigger a revision turn. Reserve `ws-needs-input` for questions that TRULY block you.',
+    untrustedPolicy: UNTRUSTED_CONTEXT_POLICY,
+  };
+  //? Mapped over the spec so the ORDER cannot drift from what the preview says (F-075).
+  const stageInstructions = AI_STAGE_SYSTEM_SPEC.map((entry) => systemText[entry.id]).filter((s) => s.trim().length > 0).join('\n\n');
 
   //? settings.json — permissions derived from the stage commands (allow/ask/deny) + the
   //? ws-verb allows + Read; deny always includes the auth-path denyRead (07b §2.4).

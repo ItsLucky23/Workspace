@@ -5,6 +5,7 @@
 import { useTranslator } from '@luckystack/core/client';
 
 import { EmptyState } from '../../../_components/primitives';
+import { timeAgo } from '../../../_functions/timeAgo';
 import { useWorkspaces } from '../../../_shell/WorkspacesContext';
 import type { ActivityEvent, Member, Ticket } from '../../../_data/types';
 
@@ -39,11 +40,11 @@ export default function ActivityPanel({ ticket }: { ticket: Ticket }) {
         : (
           <div className="flex flex-col gap-2">
             {events.map((e) => (
-              <div key={`${e.time}-${e.actor}-${e.type}-${e.text}`} className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-container2/50 transition-colors">
+              <div key={`${e.at}-${e.actor}-${e.type}-${e.text}`} className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-container2/50 transition-colors">
                 <span className="w-6 h-6 rounded-full bg-container2 text-xs flex items-center justify-center shrink-0">{ACTOR_GLYPH(e.actor, ctx.membersById)}</span>
                 <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium shrink-0 ${EVENT_TINT[e.type]}`}>{translate({ key: EVENT_LABEL_KEY[e.type] })}</span>
                 <span className="text-sm text-common flex-1 min-w-0 truncate">{e.text}</span>
-                <span className="text-xs text-muted font-mono shrink-0">{e.time}</span>
+                <span className="text-xs text-muted font-mono shrink-0" title={e.at}>{timeAgo(e.at)}</span>
               </div>
             ))}
           </div>

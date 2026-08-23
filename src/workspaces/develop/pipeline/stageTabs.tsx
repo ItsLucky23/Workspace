@@ -116,6 +116,7 @@ export function GeneralTab({ s, update, bp }: TabProps) {
       <Disclosure summary={translate({ key: 'workspaces.pipeline.definitionOfDone' })} defaultOpen={Boolean(s.definitionOfDone)}>
         <div className="text-xs text-muted -mt-1 mb-2 flex items-center gap-2 flex-wrap">
           {translate({ key: 'workspaces.pipeline.definitionOfDoneHint' })}
+          <LayerTip layers={layers} id="definitionOfDone" stageId={s.id} />
           <UseDefault value={s.definitionOfDone ?? ''} fallback={bp?.definitionOfDone} onUse={(text) => { update({ definitionOfDone: text }); }} />
         </div>
         <textarea rows={2} value={s.definitionOfDone ?? ''} onChange={(e) => { update({ definitionOfDone: e.target.value }); }} className={areaCls} placeholder={translate({ key: 'workspaces.pipeline.definitionOfDonePlaceholder' })} />
@@ -135,7 +136,7 @@ export function GeneralTab({ s, update, bp }: TabProps) {
           it describes, which is what made the page feel crowded — and it answers a different question
           than the "?" beside each field: not "where does this come from" but "what does the agent
           literally receive". A debugging view, opened when you want it. */}
-      <EffectivePromptPreview layers={layers} stageId={s.id} inlineIds={['stageSystemPrompt', 'stageInstructions']} />
+      <EffectivePromptPreview layers={layers} stageId={s.id} inlineIds={['stageSystemPrompt', 'stageInstructions', 'definitionOfDone']} />
     </div>
   );
 }
@@ -531,8 +532,8 @@ export function CarryoverTab({ s, update, bp }: TabProps) {
         <FieldLabel
           title={translate({ key: 'workspaces.pipeline.handoverPrompt' })}
           hint={translate({ key: 'workspaces.pipeline.handoverPromptHint' })}
-          note={<LayerNote layers={carryLayers} id="carryOver" />}
-          info={<><LayerTip layers={carryLayers} id="carryOver" stageId={s.id} /><UseDefault value={s.handoverPrompt} fallback={bp?.handoverPrompt} onUse={(text) => { update({ handoverPrompt: text }); }} /><InfoTip align="start" title={translate({ key: 'workspaces.tips.pipeline.handoverTitle' })} body={translate({ key: 'workspaces.tips.pipeline.handoverBody' })} /></>}
+          note={<LayerNote layers={carryLayers} id="handoverPrompt" />}
+          info={<><LayerTip layers={carryLayers} id="handoverPrompt" stageId={s.id} /><UseDefault value={s.handoverPrompt} fallback={bp?.handoverPrompt} onUse={(text) => { update({ handoverPrompt: text }); }} /><InfoTip align="start" title={translate({ key: 'workspaces.tips.pipeline.handoverTitle' })} body={translate({ key: 'workspaces.tips.pipeline.handoverBody' })} /></>}
         />
         <textarea rows={4} value={s.handoverPrompt} onChange={(e) => { update({ handoverPrompt: e.target.value }); }} className={areaCls} placeholder={translate({ key: 'workspaces.pipeline.handoverPromptPlaceholder' })} />
       </div>

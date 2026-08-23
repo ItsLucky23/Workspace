@@ -33,7 +33,7 @@ type View = 'main' | 'brand' | 'form';
 
 export default function Marketing() {
   const translate = useTranslator();
-  const { studioBriefs, studioArtifacts, studioBrand, generateArtifact, deleteBrief, deleteArtifact, promoteBrand, runContentOp, activeWorkspace, focusSetup, copilotPrefill, consumeCopilotPrefill } = useWorkspaces();
+  const { studioBriefs, studioArtifacts, studioBrand, generateArtifact, deleteBrief, deleteArtifact, promoteBrand, runContentOpAsync, activeWorkspace, focusSetup, copilotPrefill, consumeCopilotPrefill } = useWorkspaces();
   //? Send-to-Content: only offered when the content lane is enabled for this workspace.
   const contentOn = isSectionEnabled(activeWorkspace.enabledSections, 'content');
 
@@ -84,12 +84,10 @@ export default function Marketing() {
   //? GAP_SCAN G3 — put a generated landing page live at /s/<slug>. Re-publishing keeps the same URL,
   //? so this doubles as "update the live page" once it exists.
   const publishLive = (artifactId: string) => {
-    runContentOp('studio-publish-site', '', { artifactId });
-    notify.success({ key: 'workspaces.studio.publishedLive' });
+    void runContentOpAsync('studio-publish-site', '', { artifactId }).then((ok) => { if (ok) notify.success({ key: 'workspaces.studio.publishedLive' }); });
   };
   const sendToContent = (artifactId: string) => {
-    runContentOp('studio-send-to-content', '', { artifactId });
-    notify.success({ key: 'workspaces.studio.sentToContent' });
+    void runContentOpAsync('studio-send-to-content', '', { artifactId }).then((ok) => { if (ok) notify.success({ key: 'workspaces.studio.sentToContent' }); });
   };
 
   //? Owner decision 6 — promoting overwrites the central Brand Library (palette/typography/voice/

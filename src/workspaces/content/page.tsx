@@ -140,7 +140,7 @@ function PanelHeader({ icon, label, badge, onClose, closeTitle }: { icon: string
 type ContentView = 'board' | 'comments' | 'library' | 'archived';
 
 export default function Content() {
-  const { content, navigate, focusSetup, createContentPiece, runContentOp, copilotPrefill, consumeCopilotPrefill, refreshComments, markCommentsRead, replyToComment, activeWorkspace, setAssetStarred } = useWorkspaces();
+  const { content, navigate, focusSetup, createContentPiece, runContentOp, runContentOpAsync, copilotPrefill, consumeCopilotPrefill, refreshComments, markCommentsRead, replyToComment, activeWorkspace, setAssetStarred } = useWorkspaces();
   const translate = useTranslator();
   const [view, setView] = useState<ContentView>('board');
   const openNewPiece = () => { void menuHandler.open(<NewPieceForm onCreate={createContentPiece} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
@@ -403,7 +403,7 @@ export default function Content() {
                         <Icon name="star" />
                       </button>
                     </div>
-                    <LibraryUsePicker pieces={content.pieces.filter((p) => !p.archived)} onPick={(targetId) => { runContentOp('content-import-asset', targetId, { url: asset.url, kind: asset.kind === 'video' || asset.kind === 'render' ? 'video' : 'image' }); notify.success({ key: 'workspaces.content.libraryImported' }); }} translate={translate} />
+                    <LibraryUsePicker pieces={content.pieces.filter((p) => !p.archived)} onPick={(targetId) => { void runContentOpAsync('content-import-asset', targetId, { url: asset.url, kind: asset.kind === 'video' || asset.kind === 'render' ? 'video' : 'image' }).then((ok) => { if (ok) notify.success({ key: 'workspaces.content.libraryImported' }); }); }} translate={translate} />
                   </div>
                 </div>
               ))}

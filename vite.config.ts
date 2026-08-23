@@ -45,29 +45,39 @@ export default defineConfig(({ command, mode }) => {
         ? `http://${ip}:${routerPort}`
         : `http://${ip}:${readBackendPort(String(ports.backend))}`;
 
-  //? Vite's proxy (node-http-proxy) has NO `router` option, but `bypass` runs per
-  //? request with the live options object — set `target` there so every proxied
-  //? request hits the CURRENT backend port. socket.io always does an HTTP polling
-  //? handshake before upgrading; that handshake passes through here and mutates
-  //? the shared options object, so the subsequent websocket upgrade (which reuses
-  //? the same object) is carried to the right port too. Returning undefined lets
-  //? the proxy continue as normal.
-  const followBackend = (_req: IncomingMessage, _res: ServerResponse, options: ProxyOptions): undefined => {
-    options.target = backendTarget();
-    return undefined;
+  //? Vite creates ONE http-proxy server per route at startup and closes over the
+  //? options object it was constructed with; `proxy.web` is invoked with an EMPTY
+  //? per-request override and `proxy.ws` with none at all, so the target is always
+  //? re-read from that closed-over object — mutating it per request DOES work. The
+  //? catch (Vite 6): `bypass` is handed a shallow COPY of the options, so mutating
+  //? its `target` is a no-op (that was the bug — a backend that hopped ports was
+  //? never followed until Vite restarted). `configure` IS handed the real object:
+  //? capture it there and mutate it from `bypass`. Assign a fresh STRING each time —
+  //? the ws pass rewrites `target` in place into a parsed URL object, and only a
+  //? string is re-parsed. Fresh closure per route so entries never cross-contaminate.
+  const entry = (extra: ProxyOptions = {}): ProxyOptions => {
+    let live: ProxyOptions | undefined;
+    return {
+      target: backendTarget(),
+      //? A remote backend (ports.devBackendUrl) sits on a different host, so rewrite
+      //? the Host header to match it (vhost routing + TLS SNI); the local/router
+      //? target is same-host so it stays off.
+      changeOrigin: Boolean(remoteBackend),
+      configure: (_proxy, options) => {
+        live = options;
+      },
+      //? Runs for both http and the websocket upgrade (gated on `ws: true`), so the
+      //? socket.io polling handshake AND the upgrade follow the port. `copy` is the
+      //? clone Vite logs from under DEBUG=vite:proxy — keep it truthful too.
+      bypass: (_req: IncomingMessage, _res: ServerResponse | undefined, copy: ProxyOptions): undefined => {
+        const target = backendTarget();
+        if (live) live.target = target;
+        copy.target = target;
+        return undefined;
+      },
+      ...extra,
+    };
   };
-
-  //? Fresh options object per route (spread) so each entry's `bypass` mutates its
-  //? own `target` and routes never cross-contaminate.
-  const entry = (extra: ProxyOptions = {}): ProxyOptions => ({
-    target: backendTarget(),
-    //? A remote backend (ports.devBackendUrl) sits on a different host, so rewrite
-    //? the Host header to match it (vhost routing + TLS SNI); the local/router
-    //? target is same-host so it stays off.
-    changeOrigin: Boolean(remoteBackend),
-    bypass: followBackend,
-    ...extra,
-  });
 
   return {
     // Production builds must never inherit an ambient development condition. Besides enabling

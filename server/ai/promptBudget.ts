@@ -3,6 +3,7 @@
 //? cannot crowd out the feature's authoritative system contract or current user request.
 
 import type { AiCompletionRequest } from './types';
+import { AI_ONESHOT_SPEC, type AiOneShotEntryId } from '../../src/workspaces/_functions/aiLayers';
 
 export const AI_PROMPT_BUDGET = {
   prompt: 20_000,
@@ -29,12 +30,14 @@ export function applyAiPromptBudget(input: {
   productCapabilities: string;
 }): AiCompletionRequest {
   const prompt = bounded(input.request.prompt, AI_PROMPT_BUDGET.prompt);
-  const parts = [
-    bounded(input.productCapabilities, AI_PROMPT_BUDGET.productCapabilities),
-    bounded(input.workspaceInstruction, AI_PROMPT_BUDGET.workspaceInstruction),
-    bounded(input.skills, AI_PROMPT_BUDGET.skills),
-    bounded(input.request.system ?? '', AI_PROMPT_BUDGET.coreSystem),
-  ].filter((part) => part.length > 0);
+  const segment: Record<AiOneShotEntryId, string> = {
+    productCapabilities: bounded(input.productCapabilities, AI_PROMPT_BUDGET.productCapabilities),
+    workspace: bounded(input.workspaceInstruction, AI_PROMPT_BUDGET.workspaceInstruction),
+    skills: bounded(input.skills, AI_PROMPT_BUDGET.skills),
+    featureSystem: bounded(input.request.system ?? '', AI_PROMPT_BUDGET.coreSystem),
+  };
+  //? Ordered by the shared spec (aiLayers.ts) so the preview's one-shot model cannot drift (F-075).
+  const parts = AI_ONESHOT_SPEC.map((entry) => segment[entry.id]).filter((part) => part.length > 0);
   let system = parts.join('\n\n');
   const systemLimit = AI_PROMPT_BUDGET.total - prompt.length;
   if (system.length > systemLimit) system = bounded(system, systemLimit);

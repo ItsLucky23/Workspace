@@ -176,7 +176,7 @@ function CreateForm({ onDone }: { onDone: () => void }) {
 
   const roleItems: DropdownItem[] = agentRoles.map((r) => ({ id: r.key, value: r.key, item: r.label, searchText: r.label }));
   const activeRoleItem = roleItems.find((i) => i.id === roleKey);
-  const channelItems: DropdownItem[] = content.channels.map((c) => ({ id: c.id, value: c.id, item: `${c.name}${c.platform && c.platform !== 'none' ? ` · ${c.platform}` : ''}${c.autopilot ? ' · autopilot' : ''}`, searchText: c.name }));
+  const channelItems: DropdownItem[] = content.channels.map((c) => ({ id: c.id, value: c.id, item: `${c.name}${c.platform && c.platform !== 'none' ? ` · ${c.platform}` : ''}${c.autopilot ? ` · ${translate({ key: 'workspaces.scheduled.autopilot' })}` : ''}`, searchText: c.name }));
 
   const save = () => {
     if (!canSave) return;

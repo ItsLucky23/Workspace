@@ -26,9 +26,17 @@ your log-tail follows a different instance.
 
 ## How to avoid
 
-- Restart by killing the supervisor TREE, not the port PID: find the `luckystack-dev` / `npm run
+- **`npm run stop`** (added 2026-08-24, `scripts/dev/stopRuntimes.mjs`): kills every
+  `@luckystack/devkit` supervisor tree, orphaned `tsx … server/server.ts` child and Vite of THIS repo
+  (command-line must name the repo root, so sibling projects are untouched), then verifies nothing is
+  left. Use it before every `npm run server`; `-- --dry` lists without killing. This also covers the
+  harness case: stopping a background task kills only its shell — the supervisor survives it.
+- Manual fallback: kill the supervisor TREE, not the port PID: find the `luckystack-dev` / `npm run
   server` wrapper processes (`Get-CimInstance Win32_Process | Where CommandLine -match
   'luckystack-dev'`) and `taskkill /PID <wrapper> /T /F` each — then verify `netstat` shows ZERO
   `:478x` listeners before starting exactly one new instance.
+- `SERVER_PORT_AUTO_INCREMENT=0` in `.env.local` (now the dev default in the template) makes a stale
+  supervisor FAIL the next `npm run server` loudly instead of silently hopping to :4788 — the hop is
+  what let three instances coexist unnoticed.
 - After any restart, trust `node_modules/.luckystack/dev-server.json` for the real port (lesson
   0015) and check the listener COUNT, not just "the port answers".

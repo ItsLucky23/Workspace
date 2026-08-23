@@ -104,6 +104,14 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
     })();
   };
 
+  //? A rejected export clears the busy state at once instead of waiting for the 60s timeout above.
+  const runExport = async (format: string): Promise<void> => {
+    const [error, errorCode] = await tryCatch(() => exportDocument(doc.id, format));
+    if (!error && errorCode === null) return;
+    setExporting(null);
+    notify.error({ key: errorCode ?? 'common.unknownError' });
+  };
+
   const modeItems = AI_MODES.map((m) => ({ id: m, value: m, item: translate({ key: `workspaces.documents.mode.${m}` }) }));
 
   return (
@@ -220,7 +228,7 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
       )}>
         <div className="flex flex-wrap gap-2">
           {(['md', 'html', 'pdf', 'docx', 'xlsx'] as const).map((f) => (
-            <WsButton key={f} variant="secondary" icon="file-lines" onClick={() => { setExporting(f); exportDocument(doc.id, f); }} disabled={exporting !== null}>
+            <WsButton key={f} variant="secondary" icon="file-lines" onClick={() => { setExporting(f); void runExport(f); }} disabled={exporting !== null}>
               {translate({ key: exporting === f ? 'workspaces.documents.exporting' : `workspaces.documents.format.${f}` })}
             </WsButton>
           ))}

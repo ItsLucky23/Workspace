@@ -85,17 +85,21 @@ test.describe('deep links', () => {
     await expect(page.getByRole('heading', { name: 'Connected AIs' })).toHaveCount(0);
   });
 
-  test('the workspace AI tip links to a real stage tab rather than dropping it', async ({ authedPage }) => {
+  test('the pipeline AI tip links to the real Carry-over tab rather than dropping it', async ({ authedPage }) => {
     const page = authedPage;
     await createWorkspace(page, `E2E PW TipTab ${String(Date.now())}`);
     await expect(page.getByText('Welcome to Workspaces')).toBeHidden({ timeout: 30_000 });
 
-    await page.goto('/workspaces/workspace/aibehavior');
-    await page.getByRole('button', { name: /More information/ }).first().hover();
+    //? The regression lived in the link's navigate call: it computed "carryover" and then threw it
+    //? away, landing on the stage's GENERAL tab while the button said Carry-over. It used to be
+    //? exercised from the workspace AI page, but that page now shows the one-shot prompt model (no
+    //? stage layers, ADR 0323), so the only place this link exists is a stage's own tip.
+    await page.goto('/workspaces/develop/pipeline');
+    await expect(page.getByText('AI persona (system prompt)', { exact: true })).toBeVisible();
+    const personaRow = page.getByText('AI persona (system prompt)', { exact: true }).locator('xpath=..');
+    await personaRow.getByRole('button', { name: /More information/ }).first().hover();
     const tip = page.getByRole('dialog', { name: 'More information' });
 
-    //? This page has no stage of its own, so the link used to compute "carryover" and then throw it
-    //? away, landing on the first stage's GENERAL tab while the button said Carry-over.
     await tip.getByRole('button', { name: /Edit on the Carry-over tab/ }).click();
     await expect(page).toHaveURL(/\/workspaces\/develop\/pipeline\/[^/]+\/carryover$/);
   });

@@ -2,10 +2,10 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 462,
-    "edges": 718,
-    "symbols": 877,
-    "callEdges": 296
+    "nodes": 463,
+    "edges": 724,
+    "symbols": 892,
+    "callEdges": 303
   },
   "nodes": [
     {
@@ -940,6 +940,11 @@
     },
     {
       "id": "workspaces/_components/dataDisplay.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_components/diffTint.ts",
       "kind": "other",
       "route": null
     },
@@ -2621,6 +2626,10 @@
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
+      "from": "workspaces/_components/diffTint.ts",
+      "to": "workspaces/_data/types.ts"
+    },
+    {
       "from": "workspaces/_components/EffectivePromptPreview.tsx",
       "to": "workspaces/_components/Icon.tsx"
     },
@@ -2707,6 +2716,10 @@
     {
       "from": "workspaces/_components/ModulePicker.tsx",
       "to": "workspaces/_data/modules.ts"
+    },
+    {
+      "from": "workspaces/_components/MrReviewPanel.tsx",
+      "to": "workspaces/_components/diffTint.ts"
     },
     {
       "from": "workspaces/_components/MrReviewPanel.tsx",
@@ -2999,6 +3012,10 @@
     {
       "from": "workspaces/_shell/Shell.tsx",
       "to": "workspaces/_components/SetupNotice.tsx"
+    },
+    {
+      "from": "workspaces/_shell/Shell.tsx",
+      "to": "workspaces/_components/useRememberedPanelHeight.ts"
     },
     {
       "from": "workspaces/_shell/Shell.tsx",
@@ -3970,6 +3987,10 @@
     },
     {
       "from": "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
+      "to": "workspaces/_functions/timeAgo.ts"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
@@ -4015,6 +4036,10 @@
     {
       "from": "workspaces/develop/board/[ticketId]/CodePanel.tsx",
       "to": "workspaces/develop/board/ArtifactLinkPicker.tsx"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/DiffView.tsx",
+      "to": "workspaces/_components/diffTint.ts"
     },
     {
       "from": "workspaces/develop/board/[ticketId]/DiffView.tsx",
@@ -4899,6 +4924,10 @@
     {
       "from": "workspaces/insights/activity/page.tsx",
       "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/insights/activity/page.tsx",
+      "to": "workspaces/_functions/timeAgo.ts"
     },
     {
       "from": "workspaces/insights/activity/page.tsx",
@@ -5955,6 +5984,14 @@
       "workspaces/settings/page.tsx",
       "workspaces/workspace/page.tsx"
     ],
+    "workspaces/_components/diffTint.ts": [
+      "workspaces/_components/MrReviewPanel.tsx",
+      "workspaces/content/documents/[docId]/page.tsx",
+      "workspaces/develop/board/[ticketId]/CodePanel.tsx",
+      "workspaces/develop/board/[ticketId]/DiffView.tsx",
+      "workspaces/develop/board/[ticketId]/FileDiffViewer.tsx",
+      "workspaces/develop/board/[ticketId]/page.tsx"
+    ],
     "workspaces/_components/EffectivePromptPreview.tsx": [
       "workspaces/develop/pipeline/page.tsx",
       "workspaces/develop/pipeline/stageTabs.tsx",
@@ -6389,6 +6426,13 @@
       "workspaces/workspace/skillsEditor.tsx"
     ],
     "workspaces/_components/useRememberedPanelHeight.ts": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
+      "workspaces/_components/SearchPalette.tsx",
+      "workspaces/_shell/MobileChrome.tsx",
+      "workspaces/_shell/Shell.tsx",
+      "workspaces/_shell/WorkspacesShell.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/terminals/TerminalPanel.tsx",
@@ -6522,6 +6566,7 @@
       "workspaces/_components/SetupNotice.tsx",
       "workspaces/_components/SetupWizard.tsx",
       "workspaces/_components/VideoTimelineEditor.tsx",
+      "workspaces/_components/diffTint.ts",
       "workspaces/_components/primitives.tsx",
       "workspaces/_components/sections.tsx",
       "workspaces/_components/settings.tsx",
@@ -6653,6 +6698,7 @@
       "workspaces/_components/SetupNotice.tsx",
       "workspaces/_components/SetupWizard.tsx",
       "workspaces/_components/VideoTimelineEditor.tsx",
+      "workspaces/_components/diffTint.ts",
       "workspaces/_components/primitives.tsx",
       "workspaces/_components/sections.tsx",
       "workspaces/_components/settings.tsx",
@@ -6786,7 +6832,10 @@
     ],
     "workspaces/_functions/timeAgo.ts": [
       "workspaces/content/documents/page.tsx",
-      "workspaces/develop/scheduled/page.tsx"
+      "workspaces/develop/board/[ticketId]/ActivityPanel.tsx",
+      "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/scheduled/page.tsx",
+      "workspaces/insights/activity/page.tsx"
     ],
     "workspaces/_functions/uploadMedia.ts": [
       "_components/templates/TemplateProvider.tsx",
@@ -7205,14 +7254,14 @@
     {
       "id": "workspaces/_functions/controlApi.ts",
       "kind": "other",
-      "dependents": 116,
+      "dependents": 117,
       "directDependents": 10
     },
     {
       "id": "workspaces/_data/types.ts",
       "kind": "other",
-      "dependents": 107,
-      "directDependents": 56
+      "dependents": 108,
+      "directDependents": 57
     },
     {
       "id": "workspaces/_components/Icon.tsx",
@@ -7341,16 +7390,16 @@
       "directDependents": 7
     },
     {
+      "id": "workspaces/_components/useRememberedPanelHeight.ts",
+      "kind": "other",
+      "dependents": 11,
+      "directDependents": 3
+    },
+    {
       "id": "workspaces/develop/designer/themes.ts",
       "kind": "other",
       "dependents": 11,
       "directDependents": 8
-    },
-    {
-      "id": "workspaces/develop/designer/animations.ts",
-      "kind": "other",
-      "dependents": 10,
-      "directDependents": 4
     }
   ],
   "symbols": [
@@ -9434,6 +9483,96 @@
       "id": "workspaces/_data/uiReviewTaxonomy.ts::uiProblemI18nKey",
       "file": "workspaces/_data/uiReviewTaxonomy.ts",
       "name": "uiProblemI18nKey",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_functions/aiLayers.ts::<module>",
+      "file": "workspaces/_functions/aiLayers.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_functions/aiLayers.ts::applicableSkills",
+      "file": "workspaces/_functions/aiLayers.ts",
+      "name": "applicableSkills",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_functions/aiLayers.ts::channelsOf",
+      "file": "workspaces/_functions/aiLayers.ts",
+      "name": "channelsOf",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_functions/aiLayers.ts::composeChannel",
+      "file": "workspaces/_functions/aiLayers.ts",
+      "name": "composeChannel",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_functions/aiLayers.ts::composeEffectiveContentPrompt",
+      "file": "workspaces/_functions/aiLayers.ts",
+      "name": "composeEffectiveContentPrompt",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_functions/aiLayers.ts::editableCount",
+      "file": "workspaces/_functions/aiLayers.ts",
+      "name": "editableCount",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_functions/aiLayers.ts::formatDoneGuidance",
+      "file": "workspaces/_functions/aiLayers.ts",
+      "name": "formatDoneGuidance",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_functions/aiLayers.ts::formatHandoverPrompt",
+      "file": "workspaces/_functions/aiLayers.ts",
+      "name": "formatHandoverPrompt",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_functions/aiLayers.ts::formatSkillBlock",
+      "file": "workspaces/_functions/aiLayers.ts",
+      "name": "formatSkillBlock",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_functions/aiLayers.ts::formatWorkspaceInstruction",
+      "file": "workspaces/_functions/aiLayers.ts",
+      "name": "formatWorkspaceInstruction",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_functions/aiLayers.ts::layerEntry",
+      "file": "workspaces/_functions/aiLayers.ts",
+      "name": "layerEntry",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_functions/aiLayers.ts::layersInChannel",
+      "file": "workspaces/_functions/aiLayers.ts",
+      "name": "layersInChannel",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_functions/aiLayers.ts::resolveAiLayers",
+      "file": "workspaces/_functions/aiLayers.ts",
+      "name": "resolveAiLayers",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_functions/aiLayers.ts::resolveContentAiLayers",
+      "file": "workspaces/_functions/aiLayers.ts",
+      "name": "resolveContentAiLayers",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_functions/aiLayers.ts::stagePickedSkills",
+      "file": "workspaces/_functions/aiLayers.ts",
+      "name": "stagePickedSkills",
       "kind": "function"
     },
     {
@@ -12807,6 +12946,34 @@
       "to": "workspaces/_data/seed.ts::ticketCreator"
     },
     {
+      "from": "workspaces/_functions/aiLayers.ts::composeChannel",
+      "to": "workspaces/_functions/aiLayers.ts::layersInChannel"
+    },
+    {
+      "from": "workspaces/_functions/aiLayers.ts::resolveAiLayers",
+      "to": "workspaces/_functions/aiLayers.ts::applicableSkills"
+    },
+    {
+      "from": "workspaces/_functions/aiLayers.ts::resolveAiLayers",
+      "to": "workspaces/_functions/aiLayers.ts::formatDoneGuidance"
+    },
+    {
+      "from": "workspaces/_functions/aiLayers.ts::resolveAiLayers",
+      "to": "workspaces/_functions/aiLayers.ts::formatHandoverPrompt"
+    },
+    {
+      "from": "workspaces/_functions/aiLayers.ts::resolveAiLayers",
+      "to": "workspaces/_functions/aiLayers.ts::formatSkillBlock"
+    },
+    {
+      "from": "workspaces/_functions/aiLayers.ts::resolveAiLayers",
+      "to": "workspaces/_functions/aiLayers.ts::formatWorkspaceInstruction"
+    },
+    {
+      "from": "workspaces/_functions/aiLayers.ts::resolveAiLayers",
+      "to": "workspaces/_functions/aiLayers.ts::stagePickedSkills"
+    },
+    {
       "from": "workspaces/_functions/structuredQuestion.ts::encodeQuestion",
       "to": "workspaces/_functions/structuredQuestion.ts::normalizeQuestion"
     },
@@ -13940,6 +14107,27 @@
     "workspaces/_data/seed.ts::ticketCreator": [
       "workspaces/_data/seed.ts::ticketAssignee",
       "workspaces/_data/seed.ts::ticketLinkedMembers"
+    ],
+    "workspaces/_functions/aiLayers.ts::applicableSkills": [
+      "workspaces/_functions/aiLayers.ts::resolveAiLayers"
+    ],
+    "workspaces/_functions/aiLayers.ts::formatDoneGuidance": [
+      "workspaces/_functions/aiLayers.ts::resolveAiLayers"
+    ],
+    "workspaces/_functions/aiLayers.ts::formatHandoverPrompt": [
+      "workspaces/_functions/aiLayers.ts::resolveAiLayers"
+    ],
+    "workspaces/_functions/aiLayers.ts::formatSkillBlock": [
+      "workspaces/_functions/aiLayers.ts::resolveAiLayers"
+    ],
+    "workspaces/_functions/aiLayers.ts::formatWorkspaceInstruction": [
+      "workspaces/_functions/aiLayers.ts::resolveAiLayers"
+    ],
+    "workspaces/_functions/aiLayers.ts::layersInChannel": [
+      "workspaces/_functions/aiLayers.ts::composeChannel"
+    ],
+    "workspaces/_functions/aiLayers.ts::stagePickedSkills": [
+      "workspaces/_functions/aiLayers.ts::resolveAiLayers"
     ],
     "workspaces/_functions/structuredQuestion.ts::normalizeQuestion": [
       "workspaces/_functions/structuredQuestion.ts::encodeQuestion",

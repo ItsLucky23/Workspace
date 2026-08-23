@@ -17,6 +17,9 @@ import { deterministicObjectId } from '../orchestrator/actionIds';
 //? source, client + server; same pattern as uiReviewTaxonomy). 'all' (or an empty list) = every AI run.
 export { AI_SKILL_APPLY_POINTS as SKILL_APPLY_POINTS, type AiSkillApplyPoint as SkillApplyPoint } from '../../src/workspaces/_data/types';
 import type { AiSkillApplyPoint as SkillApplyPoint } from '../../src/workspaces/_data/types';
+//? The block's FORMAT is shared with the client preview (F-075) — the header + `### Skill:` shape used
+//? to live only here, so the preview showed bare instructions the agent never saw in that form.
+import { formatSkillBlock } from '../../src/workspaces/_functions/aiLayers';
 
 //? Every AiFeature maps to exactly one group — add a feature = add one row here (the type errors until you do).
 const FEATURE_GROUP: Record<AiFeature, SkillApplyPoint> = {
@@ -102,15 +105,6 @@ export async function stageSkillBlock(workspaceId: string | undefined, ids: stri
   const [err, skills] = await tryCatch(() => resolveSkillsByIds(workspaceId, ids));
   if (err || !skills || skills.length === 0) return '';
   return formatSkillBlock(skills);
-}
-
-function formatSkillBlock(skills: ResolvedSkill[]): string {
-  const blocks = skills.map((s) => {
-    const body = s.instruction.trim();
-    const ex = s.examples.trim();
-    return `### Skill: ${s.name}\n${body}${ex.length > 0 ? `\n\nExamples:\n${ex}` : ''}`;
-  });
-  return `## Active skills (apply these writing/working instructions to your output)\n\n${blocks.join('\n\n')}`;
 }
 
 //? SK3 — the builtin seed set. Editable per workspace (instruction/applyPoints), resettable to these

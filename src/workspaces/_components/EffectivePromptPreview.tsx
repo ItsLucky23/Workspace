@@ -8,6 +8,11 @@
 //? would be the same lie in a nicer wrapper — a user would read "my system prompt constrains my
 //? instructions below it" and act on it, and the two are not even in the same file.
 //?
+//? F-075: a channel is more than the editable fields. The server adds the incoming handover, the
+//? carry-over fence, the security policy … between them, so "3 of 5" was a position in a list that
+//? does not exist. Every segment the server emits is listed now — the fixed ones compactly, muted —
+//? and a field's number is its place among all of them, read from the same spec the server maps over.
+//?
 //? It is also the cheapest way to spot the class of bug this design invites: the same instruction
 //? written twice, or two layers contradicting.
 //? @adr 0311
@@ -19,19 +24,23 @@ import Icon from './Icon';
 import { Disclosure, FOCUS_RING, InfoTip, type InfoTipPoint } from './primitives';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import {
-  AI_LAYER_CHANNEL_HELP_KEY, AI_LAYER_CHANNEL_LABEL_KEY, AI_LAYER_CHANNEL_ORDER, AI_LAYER_COUNT,
-  AI_LAYER_LABEL_KEY, composeChannel, layersInChannel, type ResolvedAiLayer,
+  AI_ENTRY_LABEL_KEY, AI_LAYER_CHANNEL_HELP_KEY, AI_LAYER_CHANNEL_LABEL_KEY, channelsOf, composeChannel, editableCount,
+  layerEntry, layersInChannel, type AiLayerId, type ResolvedAiLayer,
 } from '../_functions/aiLayers';
 
 //? A stable identity for the "nothing is inline here" default — a fresh `[]` on every render is a new
 //? prop value, which is what the unstable-default-props rule is about.
-const NO_INLINE: readonly ResolvedAiLayer['id'][] = [];
+const NO_INLINE: readonly AiLayerId[] = [];
+
+//? Which pipeline tab edits a stage-side layer. The handover instruction is the one behind the
+//? Carry-over tab; everything else the stage owns sits on General.
+const stageTabFor = (layer: AiLayerId): 'carryover' | 'general' => (layer === 'handoverPrompt' ? 'carryover' : 'general');
 
 //? Naming a layer without saying WHERE it is edited is the half-answer this preview shipped with: it
 //? listed five fields spread over two pages and left you to find them. Each layer therefore carries its
 //? own destination, and the URL work (ADR 0312) makes that destination an address rather than a hint —
-//? the carry-over template lives behind an admin-only Advanced tab, which is exactly the one nobody finds.
-function LayerLink({ id, stageId, inline }: { id: ResolvedAiLayer['id']; stageId?: string; inline: boolean }) {
+//? the handover instruction lives behind an admin-only Advanced tab, which is exactly the one nobody finds.
+function LayerLink({ layer, stageId, inline }: { layer: AiLayerId; stageId?: string; inline: boolean }) {
   const translate = useTranslator();
   const { navigate, focusSetup, stageConfigs } = useWorkspaces();
   const anchor = stageId ?? stageConfigs[0]?.id;
@@ -40,14 +49,13 @@ function LayerLink({ id, stageId, inline }: { id: ResolvedAiLayer['id']; stageId
 
   //? F-010 — on a pipeline stage the skills layer is the stage's own PICK (Context tab), so that is where
   //? the link goes; the workspace editor is only the destination when no stage is in play.
-  const stageSkills = id === 'skills' && stageId !== undefined;
+  const stageSkills = layer === 'skills' && stageId !== undefined;
   const go = (): void => {
-    if (id === 'workspace' || (id === 'skills' && !stageSkills)) { focusSetup({ view: 'workspace', tab: 'aibehavior' }); return; }
+    if (layer === 'workspace' || (layer === 'skills' && !stageSkills)) { focusSetup({ view: 'workspace', tab: 'aibehavior' }); return; }
     if (stageSkills) { navigate('pipeline', [stageId, 'context']); return; }
-    const tab = id === 'carryOver' ? 'carryover' : 'general';
     //? Same rule as useLayerTip: never navigate to the pipeline without the stage, or the tab segment
     //? is dropped and the link lands on the first stage's General tab whatever the label promised.
-    navigate('pipeline', anchor === undefined ? [] : [anchor, tab]);
+    navigate('pipeline', anchor === undefined ? [] : [anchor, stageTabFor(layer)]);
   };
 
   return (
@@ -55,7 +63,7 @@ function LayerLink({ id, stageId, inline }: { id: ResolvedAiLayer['id']; stageId
       type="button" onClick={go}
       className={`shrink-0 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-primary hover:bg-primary/10 cursor-pointer transition-colors ${FOCUS_RING}`}
     >
-      {translate({ key: stageSkills ? 'workspaces.aiLayers.goto_skillsStage' : `workspaces.aiLayers.goto_${id}` })} <Icon name="arrow-right-long" className={`text-[10px]`} />
+      {translate({ key: stageSkills ? 'workspaces.aiLayers.goto_skillsStage' : `workspaces.aiLayers.goto_${layer}` })} <Icon name="arrow-right-long" className={`text-[10px]`} />
     </button>
   );
 }
@@ -70,7 +78,7 @@ function LayerLink({ id, stageId, inline }: { id: ResolvedAiLayer['id']; stageId
 //? Returns the PARTS rather than an element because the two call sites mount a tip differently:
 //? `SettingRow` builds its own InfoTip from `infoTitle`/`info`/`infoPoints`, while the pipeline's
 //? `FieldLabel` takes a rendered node. One definition, two mounts.
-export function useLayerTip(layers: ResolvedAiLayer[], id: ResolvedAiLayer['id'], stageId?: string): {
+export function useLayerTip(layers: ResolvedAiLayer[], id: AiLayerId, stageId?: string): {
   title: string;
   body: string;
   points: InfoTipPoint[];
@@ -82,18 +90,18 @@ export function useLayerTip(layers: ResolvedAiLayer[], id: ResolvedAiLayer['id']
   //? stage's General tab while the button said "Edit on the Carry-over tab". Falling back to the first
   //? stage keeps the promise — that tab, on a real stage — instead of quietly landing elsewhere.
   const anchorStage = stageId ?? stageConfigs[0]?.id;
-  const layer = layers.find((l) => l.id === id);
-  const channel = layer?.channel ?? 'system';
+  const entry = layerEntry(layers, id);
+  const channel = entry?.channel ?? 'system';
   const siblings = layersInChannel(layers, channel);
 
   const go = (target: ResolvedAiLayer): (() => void) | undefined => {
-    //? No link for the field the tip is attached to — it is the thing you are looking at.
-    if (target.id === id) return undefined;
-    if (target.id === 'workspace' || target.id === 'skills') return () => { focusSetup({ view: 'workspace', tab: 'aibehavior' }); };
-    const tab = target.id === 'carryOver' ? 'carryover' : 'general';
+    //? No link for the field the tip is attached to, and none for server machinery — nothing to edit.
+    if (target.layer === undefined || target.layer === id) return undefined;
+    const layer = target.layer;
+    if (layer === 'workspace' || layer === 'skills') return () => { focusSetup({ view: 'workspace', tab: 'aibehavior' }); };
     //? No stage anywhere means no pipeline to point at — offer no link rather than a link that lies.
     if (anchorStage === undefined) return undefined;
-    return () => { navigate('pipeline', [anchorStage, tab]); };
+    return () => { navigate('pipeline', [anchorStage, stageTabFor(layer)]); };
   };
 
   return {
@@ -104,32 +112,36 @@ export function useLayerTip(layers: ResolvedAiLayer[], id: ResolvedAiLayer['id']
       key: 'workspaces.aiLayers.tipPosition',
       params: [
         { key: 'channel', value: translate({ key: AI_LAYER_CHANNEL_LABEL_KEY[channel] }) },
-        { key: 'n', value: String(layer?.position ?? 1) },
-        { key: 'total', value: String(layer?.channelTotal ?? siblings.length) },
+        { key: 'n', value: String(entry?.position ?? 1) },
+        { key: 'total', value: String(entry?.channelTotal ?? siblings.length) },
       ],
     })}`,
     points: siblings.map((l): InfoTipPoint => {
       const onGo = go(l);
+      const machinery = l.layer === undefined;
       return {
         id: l.id,
-        label: `${String(l.position)}. ${translate({ key: AI_LAYER_LABEL_KEY[l.id] })}${l.id === id ? translate({ key: 'workspaces.aiLayers.tipThisField' }) : ''}`,
+        label: `${String(l.position)}. ${translate({ key: AI_ENTRY_LABEL_KEY[l.id] })}${l.layer === id ? translate({ key: 'workspaces.aiLayers.tipThisField' }) : ''}`,
         //? Set vs empty is the answer to "why is my instruction being ignored" — an empty layer
-        //? contributes nothing, and that absence is invisible everywhere else.
-        desc: l.text.length > 0 ? l.text.slice(0, 140) : translate({ key: 'workspaces.aiLayers.layerEmpty' }),
-        ...(onGo === undefined ? {} : { onGo, goLabel: translate({ key: `workspaces.aiLayers.goto_${l.id}` }) }),
+        //? contributes nothing, and that absence is invisible everywhere else. Machinery has no
+        //? client-side text: it says so instead of pretending to be an empty field.
+        desc: machinery
+          ? translate({ key: 'workspaces.aiLayers.sourceServer' })
+          : (l.text.length > 0 ? l.text.slice(0, 140) : translate({ key: 'workspaces.aiLayers.layerEmpty' })),
+        ...(onGo === undefined || l.layer === undefined ? {} : { onGo, goLabel: translate({ key: `workspaces.aiLayers.goto_${l.layer}` }) }),
       };
     }),
   };
 }
 
 /** The rendered "?" for a call site that wants a node (the pipeline's FieldLabel). */
-export function LayerTip({ layers, id, stageId }: { layers: ResolvedAiLayer[]; id: ResolvedAiLayer['id']; stageId?: string }) {
+export function LayerTip({ layers, id, stageId }: { layers: ResolvedAiLayer[]; id: AiLayerId; stageId?: string }) {
   const tip = useLayerTip(layers, id, stageId);
   return <InfoTip align="start" title={tip.title} body={tip.body} points={tip.points} />;
 }
 
-/** One channel: its name, what it steers, its layers in order, and the text it composes to. */
-function ChannelBlock({ layers, channel, stageId, inlineIds }: { layers: ResolvedAiLayer[]; channel: ResolvedAiLayer['channel']; stageId?: string; inlineIds: readonly ResolvedAiLayer['id'][] }) {
+/** One channel: its name, what it steers, every segment in order, and the text the fields compose to. */
+function ChannelBlock({ layers, channel, stageId, inlineIds }: { layers: ResolvedAiLayer[]; channel: ResolvedAiLayer['channel']; stageId?: string; inlineIds: readonly AiLayerId[] }) {
   const translate = useTranslator();
   const own = layersInChannel(layers, channel);
   const composed = composeChannel(layers, channel);
@@ -141,10 +153,24 @@ function ChannelBlock({ layers, channel, stageId, inlineIds }: { layers: Resolve
         <div className={`text-xs text-meta leading-relaxed`}>{translate({ key: AI_LAYER_CHANNEL_HELP_KEY[channel] })}</div>
       </div>
 
-      {/* Every layer always listed, so an empty one reads as "not set" rather than being invisible —
-          that absence is itself the answer to "why is this being ignored?". */}
+      {/* Every segment always listed, so an empty field reads as "not set" rather than being invisible —
+          that absence is itself the answer to "why is this being ignored?". Server machinery is one
+          muted line: its name and that the server adds it, nothing to edit. */}
       <ol className={`flex flex-col gap-1.5 p-3`}>
         {own.map((l) => {
+          if (l.layer === undefined) {
+            return (
+              <li key={l.id} className={`flex items-center gap-2.5 text-xs text-meta`}>
+                <span className={`w-5 h-5 shrink-0 rounded-md flex items-center justify-center font-bold tabular-nums bg-container2 text-disabled`}>
+                  {l.position}
+                </span>
+                <span className={`min-w-0 flex-1 truncate`}>
+                  {translate({ key: AI_ENTRY_LABEL_KEY[l.id] })}
+                  <span className={`text-disabled`}> · {translate({ key: 'workspaces.aiLayers.sourceServer' })}</span>
+                </span>
+              </li>
+            );
+          }
           const on = l.text.length > 0;
           return (
             <li key={l.id} className={`flex items-start gap-2.5 text-xs`}>
@@ -152,13 +178,13 @@ function ChannelBlock({ layers, channel, stageId, inlineIds }: { layers: Resolve
                 {l.position}
               </span>
               <span className={`min-w-0 flex-1`}>
-                <span className={`font-semibold ${on ? 'text-title' : 'text-meta'}`}>{translate({ key: AI_LAYER_LABEL_KEY[l.id] })}</span>
+                <span className={`font-semibold ${on ? 'text-title' : 'text-meta'}`}>{translate({ key: AI_ENTRY_LABEL_KEY[l.id] })}</span>
                 <span className={`text-meta`}> · {translate({ key: l.source === 'workspace' ? 'workspaces.aiLayers.sourceWorkspace' : 'workspaces.aiLayers.sourceStage' })}</span>
                 {on
                   ? <span className={`block text-common truncate`}>{l.text}</span>
                   : <span className={`block text-meta italic`}>{translate({ key: 'workspaces.aiLayers.layerEmpty' })}</span>}
               </span>
-              <LayerLink id={l.id} {...(stageId === undefined ? {} : { stageId })} inline={inlineIds.includes(l.id)} />
+              <LayerLink layer={l.layer} {...(stageId === undefined ? {} : { stageId })} inline={inlineIds.includes(l.layer)} />
             </li>
           );
         })}
@@ -179,10 +205,10 @@ export function EffectivePromptPreview({ layers, defaultOpen = false, stageId, i
   /** The stage the preview belongs to, so a layer's "edit" lands on THAT stage rather than the first one. */
   stageId?: string;
   /** Layers whose editor is already on this screen — those get no jump, because there is nowhere to go. */
-  inlineIds?: readonly ResolvedAiLayer['id'][];
+  inlineIds?: readonly AiLayerId[];
 }) {
   const translate = useTranslator();
-  const contributing = layers.filter((l) => l.text.length > 0);
+  const contributing = layers.filter((l) => l.layer !== undefined && l.text.length > 0);
 
   return (
     <Disclosure
@@ -192,33 +218,33 @@ export function EffectivePromptPreview({ layers, defaultOpen = false, stageId, i
           <Icon name="layer-group" className={`text-muted`} />
           {translate({ key: 'workspaces.aiLayers.previewTitle' })}
           <span className={`rounded-full bg-container2 px-1.5 text-xs font-semibold text-meta`}>
-            {translate({ key: 'workspaces.aiLayers.contributingCount', params: [{ key: 'n', value: String(contributing.length) }, { key: 'total', value: String(AI_LAYER_COUNT) }] })}
+            {translate({ key: 'workspaces.aiLayers.contributingCount', params: [{ key: 'n', value: String(contributing.length) }, { key: 'total', value: String(editableCount(layers)) }] })}
           </span>
         </span>
       )}
     >
       <div className={`flex flex-col gap-3`}>
         <div className={`text-xs text-muted leading-relaxed`}>{translate({ key: 'workspaces.aiLayers.previewHelp' })}</div>
-        {AI_LAYER_CHANNEL_ORDER.map((channel) => <ChannelBlock key={channel} layers={layers} channel={channel} inlineIds={inlineIds} {...(stageId === undefined ? {} : { stageId })} />)}
+        {channelsOf(layers).map((channel) => <ChannelBlock key={channel} layers={layers} channel={channel} inlineIds={inlineIds} {...(stageId === undefined ? {} : { stageId })} />)}
       </div>
     </Disclosure>
   );
 }
 
-/** The inline note on a layered field, e.g. "system prompt · 2 of 3 — runs after Workspace instruction".
+/** The inline note on a layered field, e.g. "system prompt · 2 of 10 — runs after Workspace instruction".
  *  Feed it to `SettingRow`'s `inherits` prop. Names the CHANNEL, because "after X" only means anything
  *  within one: a field in the other channel neither precedes nor follows it. */
-export function LayerNote({ layers, id }: { layers: ResolvedAiLayer[]; id: ResolvedAiLayer['id'] }) {
+export function LayerNote({ layers, id }: { layers: ResolvedAiLayer[]; id: AiLayerId }) {
   const translate = useTranslator();
-  const layer = layers.find((l) => l.id === id);
-  if (!layer) return null;
-  const channel = translate({ key: AI_LAYER_CHANNEL_LABEL_KEY[layer.channel] });
-  const before = layersInChannel(layers, layer.channel)
-    .filter((l) => l.position < layer.position)
-    .map((l) => translate({ key: AI_LAYER_LABEL_KEY[l.id] }));
+  const entry = layerEntry(layers, id);
+  if (!entry) return null;
+  const channel = translate({ key: AI_LAYER_CHANNEL_LABEL_KEY[entry.channel] });
+  const before = layersInChannel(layers, entry.channel)
+    .filter((l) => l.position < entry.position)
+    .map((l) => translate({ key: AI_ENTRY_LABEL_KEY[l.id] }));
 
   if (before.length === 0) {
-    return <>{translate({ key: 'workspaces.aiLayers.noteChannelFirst', params: [{ key: 'channel', value: channel }, { key: 'total', value: String(layer.channelTotal) }] })}</>;
+    return <>{translate({ key: 'workspaces.aiLayers.noteChannelFirst', params: [{ key: 'channel', value: channel }, { key: 'total', value: String(entry.channelTotal) }] })}</>;
   }
   return (
     <>
@@ -226,8 +252,8 @@ export function LayerNote({ layers, id }: { layers: ResolvedAiLayer[]; id: Resol
         key: 'workspaces.aiLayers.noteChannelAfter',
         params: [
           { key: 'channel', value: channel },
-          { key: 'n', value: String(layer.position) },
-          { key: 'total', value: String(layer.channelTotal) },
+          { key: 'n', value: String(entry.position) },
+          { key: 'total', value: String(entry.channelTotal) },
           { key: 'before', value: before.join(', ') },
         ],
       })}

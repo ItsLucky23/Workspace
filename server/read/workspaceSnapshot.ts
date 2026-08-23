@@ -18,7 +18,7 @@ import { runInTenant, currentWorkspaceId } from '../tenant/tenantContext';
 import { tenantDb } from '../tenant/tenantDb';
 import { listAgentRoles } from '../automation/agentRoles';
 import { listAiRuns } from '../ai/activity';
-import { formatTime, toContentAssetSummary, toContentPieceSummary, toVideoSceneSummary, toEnvVar, toInfoDoc, toTicket } from './mappers';
+import { formatTime, toActivityEvent, toContentAssetSummary, toContentPieceSummary, toVideoSceneSummary, toEnvVar, toInfoDoc, toTicket } from './mappers';
 import { AI_PROVIDER_LIST } from '../ai/providers/catalog';
 import { defaultAssignments } from '../ai/assignments';
 import { AI_OVERRIDE_PREFIX, parseAiOverride } from '../ai/workspaceAssignments';
@@ -72,7 +72,6 @@ const asTriggerAction = (s: string): TriggerActionKind => ((TRIGGER_ACTIONS as r
 const asRole = (key: string): Role => (key === 'owner' || key === 'admin' ? key : 'member');
 const asKind = (s: string): StageKind => (s === 'refine' || s === 'plan' || s === 'test' || s === 'review' || s === 'final' ? s : 'code');
 const asSugType = (s: string): AiSuggestion['type'] => (s === 'link-tickets' || s === 'create-epic' || s === 'config-review' || s === 'automation' || s === 'copilot' ? s : 'maintenance');
-const asEvType = (s: string): ActivityEvent['type'] => (s === 'command' || s === 'file-change' || s === 'status-change' || s === 'mr' || s === 'comment' || s === 'ci' ? s : 'ai-message');
 const asSkillKind = (s: string | null): SkillEntry['kind'] => (s === 'frozen' ? 'frozen' : 'live');
 const asNotifType = (s: string): NotificationItem['type'] => (s === 'needs-input' || s === 'merge' || s === 'ai-suggestion' || s === 'assignment' || s === 'publish-failure' ? s : 'container-failure');
 const asCommandMode = (s: string): CommandMode => (s === 'allow' || s === 'deny' ? s : 'ask');
@@ -820,10 +819,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         ...(customRoleLabels.has(inv.roleKey) ? { roleLabel: customRoleLabels.get(inv.roleKey) } : {}),
         sentAt: inv.createdAt.toISOString(), expiresAt: inv.expiresAt ? inv.expiresAt.toISOString() : null,
       })),
-      //? Events store ticket ObjectIds, but the frontend keys tickets by their
-      //? DEV-#### `key` — map ObjectId → key so open-ticket / activity-tab filters
-      //? resolve (unknown ids pass through).
-      events: eventRows.map((ev): ActivityEvent => ({ time: formatTime(ev.createdAt), actor: ev.actor, ticketId: ticketKeyById.get(ev.ticketId) ?? ev.ticketId, type: asEvType(ev.type), text: ev.text })),
+      events: eventRows.map((ev) => toActivityEvent(ev, ticketKeyById)),
       notifications: notificationRows.map((n): NotificationItem => ({
         id: n.id, type: asNotifType(n.type), title: n.title, body: n.body, ticketId: n.ticketId ?? undefined,
         deepLink: asDeepLink(n.deepLink), time: formatTime(n.createdAt), read: n.read,

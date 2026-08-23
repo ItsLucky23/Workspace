@@ -25,7 +25,7 @@
   singleton/globale aggregaten; zie de `SERIAL`-set in `scripts/runWsTests.mjs` — een test die
   onder de pool flaked hoort DAAR bij, dat is de ontworpen escape hatch) en Playwright ×4 workers.
   De sweep blijft het grootste blok (~11 min) en is bewust sequentieel (zie Discipline 1).
-- **Snelle laag** (wat de pre-push-hook draait): `npm run test:unit` + `npm run lint` + `npm run ai:lint`.
+- **Snelle laag** (wat de pre-push-hook draait): `npm run test:unit` + `npm run lint` + `npx tsc --noEmit -p tsconfig.json` (client + server typecheck — Vite en tsx typechecken niets, lesson 0029) + `npm run ai:lint`.
 - **Eén route**: `TEST_ONLY_CUSTOM=1 TEST_FILTER="<page>/<name>/<versie>" npm run test`
   (bijv. `workspaces/quickAdd/v1`). De base-URL default sinds 2026-07-21 naar de ÉCHT gebonden
   backend-poort (dev-server.json → config.ports-fallback, altijd `127.0.0.1`) — `TEST_BASE_URL`
@@ -67,7 +67,13 @@
 
 - **`git commit`** → `.githooks/pre-commit`: AI-artifact-regens + `ai:lint` (geen tests — commits
   blijven snel).
-- **`git push`** → `.githooks/pre-push`: lint (0 errors) + `ai:lint` + `npm run test:unit`
+- **`git push`** → `.githooks/pre-push`: lint (0 errors) + typecheck (`tsc --noEmit -p tsconfig.json`, 0 errors) + `ai:lint` + `npm run test:unit`
   (structurele bewakers incl. navStructure/surfaceReachability/opCatalogParity/opEffectCoverage).
 - **AI gevraagd om te pushen** → de AI draait éérst `npm run test:all` volledig groen (runtimes
   aan, sweep solo) en pusht pas daarna. Dit is een vaste regel in CLAUDE.md.
+- **Runtimes schoon starten/stoppen** → `npm run stop` doodt de hele `luckystack-dev`-supervisor-boom
+  + Vite van DIT repo (alleen processen waarvan de command line dit repo-pad noemt). Nodig omdat het
+  killen van het proces op :4787 (of het stoppen van een harness-background-task) alleen het KIND
+  raakt en de supervisor het respawnt (lesson 0016). Met `SERVER_PORT_AUTO_INCREMENT=0` in
+  `.env.local` faalt `npm run server` dan luid op een bezette poort in plaats van stil naar :4788 te
+  hoppen (waarna de Vite-proxy en de sweep tegen de verkeerde backend praten).

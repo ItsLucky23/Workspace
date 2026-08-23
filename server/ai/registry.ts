@@ -23,6 +23,7 @@ import { anthropicApiProvider } from './providers/anthropicApi';
 import type { AiCompletionRequest, AiCompletionResult, AiFeature, AiProvider, AiProviderId } from './types';
 import { runQueued } from './jobQueue';
 import { applyAiPromptBudget } from './promptBudget';
+import { formatWorkspaceInstruction } from '../../src/workspaces/_functions/aiLayers';
 
 //? Q4 + K4 — the workspace-wide AI steering prepended to EVERY feature's system prompt at this single
 //? choke-point: the "how the AI should work here" instruction (Workspace.aiInstruction) + a strong output-
@@ -35,12 +36,8 @@ export async function workspaceAiPrefix(workspaceId?: string): Promise<string> {
   if (!workspaceId) return '';
   const [err, ws] = await tryCatch(() => getPrismaClient().workspace.findUnique({ where: { id: workspaceId }, select: { aiInstruction: true, outputLanguage: true } }));
   if (err || !ws) return '';
-  const parts: string[] = [];
-  const lang = ws.outputLanguage.trim();
-  if (lang.length > 0) parts.push(`Write all output in ${lang}.`);
-  const instruction = ws.aiInstruction.trim();
-  if (instruction.length > 0) parts.push(instruction);
-  return parts.join('\n\n');
+  //? Shared with the preview (aiLayers.ts) so the screen shows the language directive the agent gets.
+  return formatWorkspaceInstruction(ws);
 }
 
 //? Q3 — a compact, GLOBAL product-capability index prepended to every feature's system prompt, so EVERY AI

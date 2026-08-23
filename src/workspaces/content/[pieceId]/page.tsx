@@ -145,7 +145,7 @@ function AudioTrimEditor({ src, onSubmit, translate }: { src: string; onSubmit: 
 
 export default function ContentPiece({ params }: { params: Record<string, string | undefined> }) {
   const id = params.pieceid ?? '';
-  const { content, runContentOp, navigate, activeWorkspace, outputTemplates, readiness, focusSetup } = useWorkspaces();
+  const { content, runContentOp, runContentOpAsync, navigate, activeWorkspace, outputTemplates, readiness, focusSetup } = useWorkspaces();
   const translate = useTranslator();
   const [styleKey, setStyleKey] = useState('');
   const [durationKey, setDurationKey] = useState('auto');
@@ -347,7 +347,7 @@ export default function ContentPiece({ params }: { params: Record<string, string
     })();
   };
   //? KG2 — transcode a finished mp4 to webm/gif (free — a local ffmpeg pass, no provider spend).
-  const transcode = (assetId: string, format: 'webm' | 'gif') => { runContentOp('content-transcode', piece.id, { assetId, format }); notify.success({ key: 'workspaces.content.transcodeStarted' }); };
+  const transcode = (assetId: string, format: 'webm' | 'gif') => { void runContentOpAsync('content-transcode', piece.id, { assetId, format }).then((ok) => { if (ok) notify.success({ key: 'workspaces.content.transcodeStarted' }); }); };
   //? F6 — instruct-edit an image asset ("change the sky to sunset"), whole-image. Uses the free-form direction
   //? field as the instruction (required); paid → cost-confirm with the € amount.
   const instructEdit = (assetId: string) => {

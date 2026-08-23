@@ -243,16 +243,16 @@ export const NOTIFICATIONS: NotificationItem[] = [
 export const BUDGET: WorkspaceBudget = { spent: 168.4, cap: 200, alertPct: 80, currency: '€' };
 
 export const EVENTS: ActivityEvent[] = [
-  { time: '14:32', actor: 'ai', ticketId: 'DEV-1240', type: 'command', text: '`npm test` → 2 failing' },
-  { time: '14:31', actor: 'ai', ticketId: 'DEV-1240', type: 'file-change', text: 'edited src/_components/Avatar.tsx (+12 −4)' },
-  { time: '14:30', actor: 'ai', ticketId: 'DEV-1245', type: 'ai-message', text: 'Wiring dnd-kit columns; need a Column type…' },
-  { time: '14:29', actor: 'sanne', ticketId: 'DEV-1241', type: 'status-change', text: '→ needs input' },
-  { time: '14:27', actor: 'ai', ticketId: 'DEV-1242', type: 'ai-message', text: 'Asked: configurable burst size per route?' },
-  { time: '14:24', actor: 'ai', ticketId: 'DEV-1245', type: 'command', text: '`npm run client` → vite ready :5173' },
-  { time: '14:21', actor: 'mathijs', ticketId: 'DEV-1240', type: 'status-change', text: '→ busy · started terminal' },
-  { time: '14:18', actor: 'mr', ticketId: 'DEV-1246', type: 'mr', text: 'merged !88 into main (abc123)' },
-  { time: '14:12', actor: 'ai', ticketId: 'DEV-1247', type: 'file-change', text: 'created src/mcp/graphify/impact_of.ts (+86)' },
-  { time: '14:05', actor: 'tom', ticketId: 'DEV-1249', type: 'comment', text: 'Left a note on the vault encryption scheme' },
+  { at: '2026-05-04T12:32:00.000Z', actor: 'ai', ticketId: 'DEV-1240', type: 'command', text: '`npm test` → 2 failing' },
+  { at: '2026-05-04T12:31:00.000Z', actor: 'ai', ticketId: 'DEV-1240', type: 'file-change', text: 'edited src/_components/Avatar.tsx (+12 −4)' },
+  { at: '2026-05-04T12:30:00.000Z', actor: 'ai', ticketId: 'DEV-1245', type: 'ai-message', text: 'Wiring dnd-kit columns; need a Column type…' },
+  { at: '2026-05-04T12:29:00.000Z', actor: 'sanne', ticketId: 'DEV-1241', type: 'status-change', text: '→ needs input' },
+  { at: '2026-05-04T12:27:00.000Z', actor: 'ai', ticketId: 'DEV-1242', type: 'ai-message', text: 'Asked: configurable burst size per route?' },
+  { at: '2026-05-04T12:24:00.000Z', actor: 'ai', ticketId: 'DEV-1245', type: 'command', text: '`npm run client` → vite ready :5173' },
+  { at: '2026-05-04T12:21:00.000Z', actor: 'mathijs', ticketId: 'DEV-1240', type: 'status-change', text: '→ busy · started terminal' },
+  { at: '2026-05-04T12:18:00.000Z', actor: 'mr', ticketId: 'DEV-1246', type: 'mr', text: 'merged !88 into main (abc123)' },
+  { at: '2026-05-04T12:12:00.000Z', actor: 'ai', ticketId: 'DEV-1247', type: 'file-change', text: 'created src/mcp/graphify/impact_of.ts (+86)' },
+  { at: '2026-05-04T12:05:00.000Z', actor: 'tom', ticketId: 'DEV-1249', type: 'comment', text: 'Left a note on the vault encryption scheme' },
 ];
 
 export const TERMINALS: Terminal[] = [

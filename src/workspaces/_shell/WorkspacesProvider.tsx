@@ -1509,6 +1509,18 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     const push = (v: WsView) => { if (v !== view) setNavStack((s) => [...s, view]); };
     const activeWorkspace = snap.workspaces.find((w) => w.id === snap.activeWorkspaceId) ?? snap.workspaces.at(0) ?? { id: '', name: 'Loading…', slug: '', ownerId: '', role: 'member' as const };
     const lastNav = navStack.at(-1);
+    //? Fire a content-generation control-op (U2) — Conductor executes (B-23); the snapshot refetch brings the
+    //? new asset/state back. Resolves true only on success so a caller's success toast is never optimistic
+    //? (failures are already notified here — callers must not notify them again).
+    const runContentOpAsync = async (op: string, contentProjectId: string, payload?: Record<string, unknown>): Promise<boolean> => {
+      const room = snap.activeWorkspaceId;
+      if (!room) return false;
+      const [error, response] = await tryCatch(() => syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op, contentProjectId, ...payload, clientRequestId: nextReqId() }, receiver: room }));
+      if (error) { notify.error({ key: 'workspaces.syncFailed' }); return false; }
+      if (reportRequestFailure(response)) return false;
+      refetch();
+      return true;
+    };
     return {
       view,
       trail,
@@ -1955,7 +1967,14 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       discardDocumentDraft: (documentId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-discard-draft', documentId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? C2 — with an assetId this REUSES an approved asset (no generation, no spend); without one it generates.
       genDocumentImage: (documentId, prompt, assetId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-gen-image', documentId, prompt, ...(assetId ? { assetId } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
-      exportDocument: (documentId, format) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-export', documentId, format, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
+      exportDocument: (documentId, format) => {
+        const room = snap.activeWorkspaceId;
+        if (!room) return Promise.resolve('sync.missingReceiver');
+        return syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-export', documentId, format, clientRequestId: nextReqId() }, receiver: room }).then((response) => {
+          refetch();
+          return response.status === 'success' ? null : response.errorCode;
+        });
+      },
       restoreDocumentRevision: (documentId, revisionId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/documentsControl', version: 'v1', data: { op: 'document-restore-revision', documentId, revisionId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? CI — the read-only comment inbox.
       refreshComments: () => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/commentInbox', version: 'v1', data: { op: 'comments-refresh', clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
@@ -2054,11 +2073,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       toggleTrigger: (id, enabled) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-toggle', triggerId: id, enabled, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       deleteTrigger: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-delete', triggerId: id, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       runTrigger: (id) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/triggerAction', version: 'v1', data: { op: 'trigger-run', triggerId: id, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
-      //? Fire a content-generation control-op (U2) — Conductor executes (B-23); the snapshot refetch brings the new asset/state back.
-      runContentOp: (op, contentProjectId, payload) => {
-        const room = snap.activeWorkspaceId;
-        if (room) void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op, contentProjectId, ...payload, clientRequestId: nextReqId() }, receiver: room }).then((response) => { if (!reportRequestFailure(response)) refetch(); }, () => { notify.error({ key: 'workspaces.syncFailed' }); });
-      },
+      runContentOp: (op, contentProjectId, payload) => { void runContentOpAsync(op, contentProjectId, payload); },
+      runContentOpAsync,
       //? #125 — create a content piece from a brief (mirrors the chat-proposal create-content path).
       createContentPiece: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-from-brief', title: input.title, brief: input.brief, format: input.format ?? 'faceless', clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? Media €-budget settings (U3) — cap/alert/enabled via edit-media-budget (B-23).

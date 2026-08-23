@@ -16,6 +16,10 @@ fi
 set -e
 echo "[pre-push] lint (zero errors required)..."
 npm run lint
+#? Vite transpiles without type-checking and tsx never type-checks, so this is the ONLY place
+#? client + server compile errors (missing imports, lost narrowing) are caught (lesson 0029).
+echo "[pre-push] typecheck (client + server, zero errors required)..."
+npx tsc --noEmit -p tsconfig.json
 echo "[pre-push] invariant linter..."
 npm run ai:lint
 echo "[pre-push] standalone unit suites..."

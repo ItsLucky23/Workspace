@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (240)
+## Decisions (241)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -253,6 +253,7 @@
 | 0320 | An integration test reports what it verified, not that it passed | 🟢 accepted | integrations, settings, ux, security | — | `docs/decisions/0320-an-integration-test-reports-what-it-verified-not-that-it-passed.md` |
 | 0321 | The coding agent is any subscription CLI in a PTY — never metered | 🟢 accepted | ai-providers, pipeline, billing, invariant-6 | — | `docs/decisions/0321-coding-agent-is-any-subscription-cli-in-a-pty-never-metered.md` |
 | 0322 | Coding-agent seats are Claude and Codex; pi is the Codex harness (forced), optional for Claude (warned) | 🟢 accepted | ai-providers, pipeline, billing, invariant-6, pi-agent, codex | — | `docs/decisions/0322-coding-agent-seats-claude-and-codex-with-pi-as-the-codex-harness.md` |
+| 0323 | Prompt composition order is one spec the server maps over, not a mirror the UI maintains | 🟢 accepted | ai, prompt, ux, correctness, orchestrator, testing | — | `docs/decisions/0323-prompt-composition-order-is-one-spec-the-server-maps-over.md` |
 
 ## Summaries
 
@@ -2207,6 +2208,14 @@ _(no Decision section found — fill it in)_
 **Governs** (`//? @adr 0322`): `server/ai/providers/piCli.ts`, `server/orchestrator/codingAgents/claudeCode.ts`, `server/orchestrator/codingAgents/config.ts`, `server/orchestrator/codingAgents/index.ts`, `server/orchestrator/codingAgents/piAgent.ts`, `server/orchestrator/codingAgents/types.ts`
 
 → `docs/decisions/0322-coding-agent-seats-claude-and-codex-with-pi-as-the-codex-harness.md`
+
+### 0323 — Prompt composition order is one spec the server maps over, not a mirror the UI maintains
+
+**0323** · accepted · tags: ai, prompt, ux, correctness, orchestrator, testing · 2026-08-24
+
+`aiLayers.ts` is the **spec**, and the server **maps over it**:
+
+→ `docs/decisions/0323-prompt-composition-order-is-one-spec-the-server-maps-over.md`
 
 ## Code governed by decisions
 

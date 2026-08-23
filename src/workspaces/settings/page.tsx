@@ -377,7 +377,7 @@ export const template = 'workspaces';
 
 export default function AccountSettings() {
   const translate = useTranslator();
-  const { currentUser, theme, activeWorkspace, activeProject, connectForge, disconnectForge, environments, deployEnv, teardownEnv, rollbackEnv, promoteEnv, buildArtifacts, exportBuild, services, serviceStacks, provisionServiceStack, teardownServiceStack, dbConnections, migrations, dbConnect, dbMigrateCreate, dbMigrateApply, dbIntrospect } = useWorkspaces();
+  const { currentUser, theme, activeWorkspace, activeProject, connectForge, disconnectForge, focusSetup, environments, deployEnv, teardownEnv, rollbackEnv, promoteEnv, buildArtifacts, exportBuild, services, serviceStacks, provisionServiceStack, teardownServiceStack, dbConnections, migrations, dbConnect, dbMigrateCreate, dbMigrateApply, dbIntrospect } = useWorkspaces();
   //? K1/K3 — the curated service presets (stable client-side list; each maps to a server preset key).
   const SERVICE_PRESETS = useMemo(() => [
     { key: 'postgres', label: 'PostgreSQL' }, { key: 'redis', label: 'Redis' }, { key: 'kafka', label: 'Kafka' },
@@ -639,6 +639,10 @@ export default function AccountSettings() {
             {/* Without an active project the Connect button is greyed with no reason given, while the row
                 still names a provider (the legacy workspace fallback) — it reads as "not connected yet". */}
             {!activeProject && <EmptyPicker icon="diagram-project" label={translate({ key: 'workspaces.tips.settings.noProjectForge' })} />}
+            {/* F-018/F-026 — the workspace Git tab links here; give it the way back. */}
+            <button type="button" onClick={() => { focusSetup({ view: 'workspace', tab: 'gitlab' }); }} className="text-xs text-primary hover:text-primary-hover cursor-pointer inline-flex items-center gap-1">
+              <Icon name="arrow-right-long" /> {translate({ key: 'workspaces.account.forgeWorkspaceGitLink' })}
+            </button>
           </FormSection>
 
           {/* Environments (ADR 0037): deploy the active project to dev/staging/prod at a stable URL. */}

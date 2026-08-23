@@ -1,91 +1,191 @@
-//? The ONE definition of how a Develop-pipeline agent's prompt is composed (ADR 0311, supersedes 0308).
+//? The ONE definition of how an AI prompt is composed (ADR 0311, supersedes 0308) — and since F-075
+//? the definition the SERVER builds from, not a description of it.
 //?
-//? Five separate free-text fields feed one agent run, spread over two pages, and nothing stated how
-//? they combine — the only hint read "layered above your instructions" without ever saying above WHAT.
-//? ADR 0308 answered that with a single ordered stack of five. That answer was WRONG: it was written
-//? from the UI outward and never checked against `server/orchestrator/renderStage.ts`, which composes
-//? TWO INDEPENDENT CHANNELS reaching the agent by different routes:
+//? Five free-text fields feed one agent run, spread over two pages, and nothing stated how they
+//? combine. ADR 0308 answered with a single ordered stack of five; ADR 0311 corrected that to TWO
+//? INDEPENDENT CHANNELS. Both were written from the UI outward and then checked against
+//? `server/orchestrator/renderStage.ts` by hand — and the 0311 version still lied twice: it put the
+//? handover instruction at system position 3 (the server has the INCOMING handover there and the
+//? handover instruction at 6), and it left out the definition of done entirely. A mirror maintained by
+//? hand drifts; the fix is to stop mirroring.
 //?
-//?   • the SYSTEM channel (`--append-system-prompt`): workspace steering → the stage's system prompt →
-//?     the carry-over template filled with the previous stage's handoff. How the agent should behave.
-//?   • the PROJECT channel (`CLAUDE.md` on the container's /work volume): the stage's task instructions
-//?     verbatim → context documents, including the active skills block → RAG excerpts. What it works on.
+//? So this file exports the ORDERED SPEC of every prompt segment, and the server maps over it:
+//?   • `AI_STAGE_SYSTEM_SPEC`  → renderStage's `stageInstructions` (the `--append-system-prompt` channel)
+//?   • `AI_STAGE_PROJECT_SPEC` → renderStage's `claudeMd` (the CLAUDE.md project-brief channel)
+//?   • `AI_ONESHOT_SPEC`       → promptBudget's single system string (chat / docs / content / studio …)
+//? Each entry either carries the editable `layer` that feeds it, or is server machinery (fixed text the
+//? server adds — the incoming handover, the carry-over fence, the security policy …). The preview shows
+//? both, so a user sees their field at its REAL position among everything the agent receives.
 //?
-//? A layer therefore has no global position — "layer 4 of 5" was meaningless, and worse, it implied
-//? that layer 3 constrains layer 4 when they are not even in the same file. Position is per channel.
-//?
-//? Layer 1 carried a real defect alongside the wrong story: `Workspace.aiInstruction` is documented, in
-//? the op catalog and in the settings UI, as "prepended to every AI run" — but it was applied only at
-//? the one-shot choke-point in `server/ai/registry.ts`. The PTY coding agent renders its own prompt and
-//? never read it, so the one instruction a user writes to steer everything skipped the thing that
-//? writes their code. ADR 0311 fixes the server rather than documenting the gap.
-//?
-//? Everything that renders or explains the composition reads from here. Adding a layer means editing
-//? this file AND renderStage.ts — and if those two ever disagree again, this file is the one that lies.
+//? The formatting helpers at the bottom are the same reason: the server used to prepend the language
+//? directive and wrap the skills block in code the preview could not see, so the composed text on
+//? screen was never what the agent got. Both sides call these now.
 //? @adr 0311
 
 import type { AiSkillEntry, PipelineStageCfg, Workspace } from '../_data/types';
 
-/** The two routes a prompt fragment travels to reach the agent. They do not mix. */
-export const AI_LAYER_CHANNEL_ORDER = ['system', 'project'] as const;
-export type AiLayerChannel = (typeof AI_LAYER_CHANNEL_ORDER)[number];
+/** Two composition modes: a pipeline STAGE (two channels) or a ONE-SHOT feature (one system string). */
+export type AiPromptMode = 'stage' | 'oneShot';
 
-/** Every layer, grouped by the channel it actually travels in, each in its real order.
- *  Mirrors `stageInstructions[]` and `claudeMd` in server/orchestrator/renderStage.ts. */
-export const AI_LAYER_ORDER_BY_CHANNEL: Record<AiLayerChannel, readonly AiLayerId[]> = {
-  system: ['workspace', 'stageSystemPrompt', 'carryOver'],
-  project: ['stageInstructions', 'skills'],
+/** The routes a prompt fragment travels to reach the agent. They do not mix. */
+export type AiLayerChannel = 'system' | 'project' | 'oneShot';
+export const AI_CHANNELS_BY_MODE: Record<AiPromptMode, readonly AiLayerChannel[]> = {
+  stage: ['system', 'project'],
+  oneShot: ['oneShot'],
 };
 
-export const AI_LAYER_ORDER = ['workspace', 'skills', 'stageSystemPrompt', 'stageInstructions', 'carryOver'] as const;
+/** The EDITABLE layers — the fields a user types into. */
+export const AI_LAYER_ORDER = ['workspace', 'skills', 'stageSystemPrompt', 'stageInstructions', 'definitionOfDone', 'handoverPrompt'] as const;
 export type AiLayerId = (typeof AI_LAYER_ORDER)[number];
+
+/** One segment of a composed prompt: either fed by an editable layer, or fixed server machinery. */
+export interface AiPromptEntry<Id extends string = string> {
+  id: Id;
+  /** The editable field that feeds this segment. Absent = the server adds this text itself. */
+  layer?: AiLayerId;
+}
+
+//? STAGE — system channel. Mirrors nothing: renderStage builds its array by mapping over THIS.
+export const AI_STAGE_SYSTEM_SPEC = [
+  { id: 'workspace', layer: 'workspace' },
+  { id: 'stageSystemPrompt', layer: 'stageSystemPrompt' },
+  //? Composed from the previous stage's ws-carryover envelope (renderIncomingHandover) — not editable.
+  { id: 'incomingHandover' },
+  { id: 'definitionOfDone', layer: 'definitionOfDone' },
+  //? The fence the stage must end with (how the runner detects "done").
+  { id: 'carryOverFence' },
+  //? The stage's OWN handover instruction sits AFTER the fence it shapes — position 6, not 3.
+  { id: 'handoverPrompt', layer: 'handoverPrompt' },
+  //? Only emitted when the pipeline has auto-escalation on; empty (and dropped) otherwise.
+  { id: 'escalation' },
+  { id: 'needsInput' },
+  { id: 'questionsPolicy' },
+  { id: 'untrustedPolicy' },
+] as const satisfies readonly AiPromptEntry[];
+export type AiStageSystemEntryId = (typeof AI_STAGE_SYSTEM_SPEC)[number]['id'];
+
+//? STAGE — project channel (CLAUDE.md). The skills block is the LAST context document, so the
+//? `skills` layer feeds the `docs` segment rather than a segment of its own.
+export const AI_STAGE_PROJECT_SPEC = [
+  { id: 'title' },
+  { id: 'reload' },
+  { id: 'stageInstructions', layer: 'stageInstructions' },
+  { id: 'docs', layer: 'skills' },
+  { id: 'retrieved' },
+  { id: 'untrustedPolicy' },
+] as const satisfies readonly AiPromptEntry[];
+export type AiStageProjectEntryId = (typeof AI_STAGE_PROJECT_SPEC)[number]['id'];
+
+//? ONE-SHOT — the single system string every non-PTY feature receives (server/ai/promptBudget.ts).
+export const AI_ONESHOT_SPEC = [
+  { id: 'productCapabilities' },
+  { id: 'workspace', layer: 'workspace' },
+  { id: 'skills', layer: 'skills' },
+  { id: 'featureSystem' },
+] as const satisfies readonly AiPromptEntry[];
+export type AiOneShotEntryId = (typeof AI_ONESHOT_SPEC)[number]['id'];
+
+export type AiPromptEntryId = AiStageSystemEntryId | AiStageProjectEntryId | AiOneShotEntryId;
+
+export const AI_SPEC_BY_CHANNEL: Record<AiLayerChannel, readonly AiPromptEntry<AiPromptEntryId>[]> = {
+  system: AI_STAGE_SYSTEM_SPEC,
+  project: AI_STAGE_PROJECT_SPEC,
+  oneShot: AI_ONESHOT_SPEC,
+};
 
 /** Translation key for each channel's name + the one-line explanation of what it steers. */
 export const AI_LAYER_CHANNEL_LABEL_KEY: Record<AiLayerChannel, string> = {
   system: 'workspaces.aiLayers.channelSystem',
   project: 'workspaces.aiLayers.channelProject',
+  oneShot: 'workspaces.aiLayers.channelOneShot',
 };
 export const AI_LAYER_CHANNEL_HELP_KEY: Record<AiLayerChannel, string> = {
   system: 'workspaces.aiLayers.channelSystemHelp',
   project: 'workspaces.aiLayers.channelProjectHelp',
+  oneShot: 'workspaces.aiLayers.channelOneShotHelp',
 };
 
-/** Translation key for each layer's short name (`workspaces.aiLayers.<id>`). */
-export const AI_LAYER_LABEL_KEY: Record<AiLayerId, string> = {
+/** Translation key for each segment's short name (`workspaces.aiLayers.<id>`). */
+export const AI_ENTRY_LABEL_KEY: Record<AiPromptEntryId, string> = {
   workspace: 'workspaces.aiLayers.workspace',
   skills: 'workspaces.aiLayers.skills',
   stageSystemPrompt: 'workspaces.aiLayers.stageSystemPrompt',
   stageInstructions: 'workspaces.aiLayers.stageInstructions',
-  carryOver: 'workspaces.aiLayers.carryOver',
+  definitionOfDone: 'workspaces.aiLayers.definitionOfDone',
+  handoverPrompt: 'workspaces.aiLayers.handoverPrompt',
+  incomingHandover: 'workspaces.aiLayers.incomingHandover',
+  carryOverFence: 'workspaces.aiLayers.carryOverFence',
+  escalation: 'workspaces.aiLayers.escalation',
+  needsInput: 'workspaces.aiLayers.needsInput',
+  questionsPolicy: 'workspaces.aiLayers.questionsPolicy',
+  untrustedPolicy: 'workspaces.aiLayers.untrustedPolicy',
+  title: 'workspaces.aiLayers.title',
+  reload: 'workspaces.aiLayers.reload',
+  docs: 'workspaces.aiLayers.docs',
+  retrieved: 'workspaces.aiLayers.retrieved',
+  productCapabilities: 'workspaces.aiLayers.productCapabilities',
+  featureSystem: 'workspaces.aiLayers.featureSystem',
 };
 
 export interface ResolvedAiLayer {
-  id: AiLayerId;
-  /** Which of the two channels carries this layer. */
+  /** The prompt segment. */
+  id: AiPromptEntryId;
+  /** The editable field feeding it; undefined = server machinery (no text known on the client). */
+  layer?: AiLayerId;
+  /** Which channel carries this segment. */
   channel: AiLayerChannel;
-  /** 1-based position WITHIN its channel — there is no meaningful global position. */
+  /** 1-based position WITHIN its channel, counted over EVERY segment the server emits — there is no
+   *  meaningful global position. Static: an empty segment is dropped at run time, the numbering is not. */
   position: number;
-  /** How many layers that channel holds, for "position 2 of 3". */
+  /** How many segments that channel holds, for "position 6 of 10". */
   channelTotal: number;
-  /** The field's current content. Empty means the layer contributes nothing right now. */
+  /** The segment's current content, formatted as the server emits it. Empty = contributes nothing
+   *  right now (or, for machinery, unknown here). */
   text: string;
-  /** Where the user edits this layer, for the "edit →" affordance. */
-  source: 'workspace' | 'stage';
+  /** Where the user edits this segment, for the "edit →" affordance; `server` for machinery. */
+  source: 'workspace' | 'stage' | 'server';
 }
 
-/** Total layer count across both channels — used only for "3 of 5 fields are filled in". */
-export const AI_LAYER_COUNT = AI_LAYER_ORDER.length;
+/* ------------------------------------------------------------ shared formatting (server + preview) */
 
-/** Where a layer sits: its channel and its 1-based position inside it. */
-export function layerPlacement(id: AiLayerId): { channel: AiLayerChannel; position: number; channelTotal: number } {
-  for (const channel of AI_LAYER_CHANNEL_ORDER) {
-    const order = AI_LAYER_ORDER_BY_CHANNEL[channel];
-    const index = order.indexOf(id);
-    if (index !== -1) return { channel, position: index + 1, channelTotal: order.length };
-  }
-  //? Unreachable while AI_LAYER_ORDER_BY_CHANNEL covers every id — the structural test pins that.
-  return { channel: 'system', position: 1, channelTotal: 1 };
+/** The workspace layer as BOTH paths emit it: the output-language directive, then the instruction.
+ *  Was inlined in server/ai/registry.ts `workspaceAiPrefix`, so the preview showed the bare field. */
+export function formatWorkspaceInstruction({ outputLanguage, aiInstruction }: { outputLanguage?: string; aiInstruction?: string }): string {
+  const parts: string[] = [];
+  const lang = (outputLanguage ?? '').trim();
+  if (lang.length > 0) parts.push(`Write all output in ${lang}.`);
+  const instruction = (aiInstruction ?? '').trim();
+  if (instruction.length > 0) parts.push(instruction);
+  return parts.join('\n\n');
 }
+
+/** The skills block as the server injects it (one-shot system string AND the stage's last context
+ *  doc). '' when nothing applies. Was `formatSkillBlock` in server/ai/skills.ts. */
+export function formatSkillBlock(skills: readonly { name: string; instruction: string; examples: string }[]): string {
+  if (skills.length === 0) return '';
+  const blocks = skills.map((s) => {
+    const body = s.instruction.trim();
+    const ex = s.examples.trim();
+    return `### Skill: ${s.name}\n${body}${ex.length > 0 ? `\n\nExamples:\n${ex}` : ''}`;
+  });
+  return `## Active skills (apply these writing/working instructions to your output)\n\n${blocks.join('\n\n')}`;
+}
+
+/** Per-stage "definition of done": set → the AI works toward it; empty → it judges completion itself
+ *  (the product owner's choice). Either way the stage ENDS by emitting the ws-carryover block. */
+export function formatDoneGuidance(definitionOfDone: string | undefined): string {
+  return (definitionOfDone ?? '').trim().length > 0
+    ? `This stage is DONE when: ${definitionOfDone ?? ''}. When that is satisfied, end your final message with the fenced block below.`
+    : 'Judge for yourself when this stage\'s goal is achieved, then end your final message with the fenced block below.';
+}
+
+/** The stage's own handover instruction, wrapped so it shapes the `summary` of the block above it. */
+export function formatHandoverPrompt(handoverPrompt: string | undefined): string {
+  const text = (handoverPrompt ?? '').trim();
+  return text.length > 0 ? `When you write that block, shape its \`summary\` for the next stage as follows: ${text}` : '';
+}
+
+/* ------------------------------------------------------------ skills resolution (client mirror) */
 
 /** Which skills apply AUTOMATICALLY to a run. `['all']` means every AI run; an explicit list applies
  *  only when the run's apply-point matches; EMPTY means nowhere automatic — such a skill runs only
@@ -109,54 +209,75 @@ export function stagePickedSkills(skills: AiSkillEntry[], aiSkillIds: readonly s
   return skills.filter((s) => picked.has(s.id)).toSorted((a, b) => a.slug.localeCompare(b.slug));
 }
 
-/** Compose the layers for a given workspace + optional stage. Passing no stage resolves only the
- *  workspace-wide half (layers 1-2) — which is exactly what the workspace settings page shows.
- *  A stage that carries `aiSkillIds` resolves its skills layer from that pick (what stageRunner sends);
- *  `applyPoint` is the rule for the NON-stage call sites (chat, content, …). */
-export function resolveAiLayers({ workspace, skills, stage, applyPoint }: {
-  workspace: Pick<Workspace, 'aiInstruction'>;
+/* ------------------------------------------------------------ resolution */
+
+/** Compose the segments for a workspace + optional stage.
+ *  `mode: 'stage'` (default) renders the two-channel pipeline model; `mode: 'oneShot'` the single
+ *  system string of the non-PTY features (what the workspace AI page should show — it has no stage).
+ *  A stage that carries `aiSkillIds` resolves its skills from that pick (what stageRunner sends);
+ *  `applyPoint` is the rule for the one-shot call sites. With neither, only `['all']` skills show —
+ *  each one-shot feature adds its own group's skills on top. */
+export function resolveAiLayers({ workspace, skills, stage, applyPoint, mode = 'stage' }: {
+  workspace: Pick<Workspace, 'aiInstruction' | 'outputLanguage'>;
   skills: AiSkillEntry[];
-  stage?: Pick<PipelineStageCfg, 'systemPrompt' | 'customInstructions' | 'handoverPrompt'> & Partial<Pick<PipelineStageCfg, 'aiSkillIds'>>;
+  stage?: Pick<PipelineStageCfg, 'systemPrompt' | 'customInstructions' | 'handoverPrompt' | 'definitionOfDone'> & Partial<Pick<PipelineStageCfg, 'aiSkillIds'>>;
   applyPoint?: string;
+  mode?: AiPromptMode;
 }): ResolvedAiLayer[] {
   const skillSet = stage?.aiSkillIds === undefined ? applicableSkills(skills, applyPoint) : stagePickedSkills(skills, stage.aiSkillIds);
-  const skillText = skillSet
-    .map((s) => s.instruction.trim())
-    .filter((t) => t.length > 0)
-    .join('\n\n');
+  const definitionOfDone = stage?.definitionOfDone ?? '';
 
   const text: Record<AiLayerId, string> = {
-    workspace: (workspace.aiInstruction ?? '').trim(),
-    skills: skillText,
+    workspace: formatWorkspaceInstruction(workspace),
+    skills: formatSkillBlock(skillSet),
     stageSystemPrompt: (stage?.systemPrompt ?? '').trim(),
     stageInstructions: (stage?.customInstructions ?? '').trim(),
-    //? Still called `carryOver` because that is the mechanism it belongs to, but the editable half moved
-    //? from the RECEIVING end (a template with slots) to the EMITTING end (what this stage hands over).
-    //? Position in the channel is unchanged: it rides with the stage's own system-prompt layer.
-    carryOver: (stage?.handoverPrompt ?? '').trim(),
+    //? Empty shows as "not set" although the server then emits its own default line; the default
+    //? is the machinery half and belongs to the server, not to the field.
+    definitionOfDone: definitionOfDone.trim().length > 0 ? formatDoneGuidance(definitionOfDone) : '',
+    handoverPrompt: formatHandoverPrompt(stage?.handoverPrompt),
   };
   const source: Record<AiLayerId, 'workspace' | 'stage'> = {
-    workspace: 'workspace', skills: 'workspace', stageSystemPrompt: 'stage', stageInstructions: 'stage', carryOver: 'stage',
+    workspace: 'workspace', skills: 'workspace', stageSystemPrompt: 'stage', stageInstructions: 'stage', definitionOfDone: 'stage', handoverPrompt: 'stage',
   };
 
   //? Emitted channel by channel, so the list a user reads is the order the agent receives.
-  return AI_LAYER_CHANNEL_ORDER.flatMap((channel) =>
-    AI_LAYER_ORDER_BY_CHANNEL[channel].map((id, index) => ({
-      id,
+  return AI_CHANNELS_BY_MODE[mode].flatMap((channel) => {
+    const spec = AI_SPEC_BY_CHANNEL[channel];
+    return spec.map((entry, index): ResolvedAiLayer => ({
+      id: entry.id,
+      ...(entry.layer === undefined ? {} : { layer: entry.layer }),
       channel,
       position: index + 1,
-      channelTotal: AI_LAYER_ORDER_BY_CHANNEL[channel].length,
-      text: text[id],
-      source: source[id],
-    })));
+      channelTotal: spec.length,
+      text: entry.layer === undefined ? '' : text[entry.layer],
+      source: entry.layer === undefined ? 'server' : source[entry.layer],
+    }));
+  });
 }
 
-/** The layers of one channel, in order — what that channel actually carries. */
+/** The segments of one channel, in order — what that channel actually carries. */
 export function layersInChannel(layers: ResolvedAiLayer[], channel: AiLayerChannel): ResolvedAiLayer[] {
   return layers.filter((l) => l.channel === channel).toSorted((a, b) => a.position - b.position);
 }
 
-/** One channel's composed text, as the agent receives it: contributing layers only, in order.
+/** The channels present in a resolved set, in emission order. */
+export function channelsOf(layers: ResolvedAiLayer[]): AiLayerChannel[] {
+  return [...new Set(layers.map((l) => l.channel))];
+}
+
+/** The segment an editable layer feeds, if it is part of this resolved set. */
+export function layerEntry(layers: ResolvedAiLayer[], layer: AiLayerId): ResolvedAiLayer | undefined {
+  return layers.find((l) => l.layer === layer);
+}
+
+/** How many segments are editable fields — the "n of total active" denominator. */
+export function editableCount(layers: ResolvedAiLayer[]): number {
+  return layers.filter((l) => l.layer !== undefined).length;
+}
+
+/** One channel's composed text, as far as the client can know it: the contributing EDITABLE segments,
+ *  in order, each formatted as the server emits it. Machinery segments are listed, not composed.
  *  Deliberately per channel — concatenating both would recreate the fiction ADR 0311 removed. */
 export function composeChannel(layers: ResolvedAiLayer[], channel: AiLayerChannel): string {
   return layersInChannel(layers, channel).filter((l) => l.text.length > 0).map((l) => l.text).join('\n\n');

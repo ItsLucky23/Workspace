@@ -60,19 +60,17 @@ export function briefDraftFromPrefill(prefill: Record<string, string>): BriefDra
 //? shared pieces (BriefForm, BrandPanel, previews, kinds) — never a second copy of them.
 export function StudioSurface() {
   const translate = useTranslator();
-  const { studioBriefs, studioArtifacts, studioBrand, generateArtifact, deleteBrief, deleteArtifact, promoteBrand, runContentOp, activeWorkspace, copilotPrefill, consumeCopilotPrefill, readiness, focusSetup, navigate } = useWorkspaces();
+  const { studioBriefs, studioArtifacts, studioBrand, generateArtifact, deleteBrief, deleteArtifact, promoteBrand, runContentOpAsync, activeWorkspace, copilotPrefill, consumeCopilotPrefill, readiness, focusSetup, navigate } = useWorkspaces();
   //? Send-to-Content (gap-fix): only offered when the content lane is enabled for this workspace.
   const contentOn = isSectionEnabled(activeWorkspace.enabledSections, 'content');
   //? GAP_SCAN G3 — put a generated landing page live at /s/<slug>. Re-publishing keeps the same URL, so
   //? this doubles as "update the live page" once it exists.
   const publishLive = (artifactId: string) => {
-    runContentOp('studio-publish-site', '', { artifactId });
-    notify.success({ key: 'workspaces.studio.publishedLive' });
+    void runContentOpAsync('studio-publish-site', '', { artifactId }).then((ok) => { if (ok) notify.success({ key: 'workspaces.studio.publishedLive' }); });
   };
 
   const sendToContent = (artifactId: string) => {
-    runContentOp('studio-send-to-content', '', { artifactId });
-    notify.success({ key: 'workspaces.studio.sentToContent' });
+    void runContentOpAsync('studio-send-to-content', '', { artifactId }).then((ok) => { if (ok) notify.success({ key: 'workspaces.studio.sentToContent' }); });
   };
   const [selectedId, setSelectedId] = useState<string | null>(studioBriefs[0]?.id ?? null);
   const [editing, setEditing] = useState(false);

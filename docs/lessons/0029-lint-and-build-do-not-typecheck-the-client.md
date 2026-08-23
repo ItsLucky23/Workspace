@@ -20,5 +20,5 @@ So client-side type errors — including missing imports, lost narrowing inside 
 # How to avoid
 
 - After any merge of parallel branches, and before declaring a round green: `npx tsc --noEmit -p tsconfig.json` (client) in addition to lint/build/unit. Treat 0 errors as part of "green".
-- Proposed (owner decision, not applied): add the client typecheck to `npm run build` or to `.githooks/pre-push` so it cannot be skipped.
+- Applied 2026-08-24: `npm run build` now runs `npm run typecheck` (= `tsc --noEmit` on `tsconfig.json`, which covers client AND server in one program, ~29 s) before `vite build`, and `.githooks/pre-push` runs `npx tsc --noEmit -p tsconfig.json` between lint and the invariant linter. Note `tsconfig.server.json` is a runtime loader config for `tsx` only — it is never type-checked by any gate and is red on `config.ts`'s `import.meta.env`, so do not wire it in.
 - Agents reporting "tsc clean for touched files" while noting "one pre-existing error elsewhere" is a signal to run the FULL client typecheck on main, not a reassurance.

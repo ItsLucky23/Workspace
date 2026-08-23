@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 
 import { i18nNotify as notify, useTranslator } from '@luckystack/core/client';
 
+import { DIFF_ROW_TINT as ROW_TINT, DIFF_SIGN as SIGN, DIFF_TEXT_TINT as TEXT_TINT } from './diffTint';
 import Icon, { type IconName } from './Icon';
 import { AvatarBubble, EmptyState, WsButton } from './primitives';
 import type { MrDiffFile, MrDiffLine, MrThread, MrView, Ticket } from '../_data/types';
@@ -16,10 +17,6 @@ import { useWorkspaces } from '../_shell/WorkspacesContext';
 //? The three editors a changed file can be previewed in — the same trio as the ticket's Code tab
 //? (lightweight diff · Monaco source-control diff · live in-container VS Code).
 type PreviewMode = 'diff' | 'changes' | 'live';
-
-const ROW_TINT: Record<MrDiffLine['kind'], string> = { add: 'bg-correct/10', del: 'bg-wrong/10', ctx: '', hunk: 'bg-container2' };
-const TEXT_TINT: Record<MrDiffLine['kind'], string> = { add: 'text-correct', del: 'text-wrong', ctx: 'text-common', hunk: 'text-muted' };
-const SIGN: Record<MrDiffLine['kind'], string> = { add: '+', del: '-', ctx: ' ', hunk: '' };
 
 const FILE_STATUS_TINT: Record<MrDiffFile['status'], string> = {
   added: 'bg-correct/15 text-correct', deleted: 'bg-wrong/12 text-wrong',

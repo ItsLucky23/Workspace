@@ -427,6 +427,7 @@ export interface PopMenuItem { label?: string; icon?: IconName; danger?: boolean
 //? `label` renders a text + chevron trigger (e.g. "Advanced ▾") instead of the icon-only button, for a
 //? progressive-disclosure menu that reads as a labelled control. Omit it → the original icon-only trigger.
 export function PopMenu({ items, align = 'right', icon = 'ellipsis', label, ariaLabel, triggerClass, variant, onOpenChange }: { items: PopMenuItem[]; align?: 'left' | 'right'; icon?: IconName; label?: string; ariaLabel?: string; triggerClass?: string; /** Render the labelled trigger as a real button of this variant — for a menu that IS the page's primary action. */ variant?: BtnVariant; onOpenChange?: (open: boolean) => void }) {
+  const translate = useTranslator();
   const [open, setOpen] = useState(false);
   const change = (next: boolean) => { setOpen(next); onOpenChange?.(next); };
   const ref = useClickAway<HTMLDivElement>(open, () => { change(false); });
@@ -435,7 +436,7 @@ export function PopMenu({ items, align = 'right', icon = 'ellipsis', label, aria
       <button
         type="button"
         //? a11y (gap-fix): the icon-only trigger had NO accessible name — screen readers announced "button".
-        {...(label ? {} : { 'aria-label': ariaLabel ?? 'menu', 'aria-haspopup': true, 'aria-expanded': open })}
+        {...(label ? {} : { 'aria-label': ariaLabel ?? translate({ key: 'workspaces.shell.menu' }), 'aria-haspopup': true, 'aria-expanded': open })}
         onClick={(e) => { e.stopPropagation(); change(!open); }}
         className={`${triggerClass ?? (variant === undefined
           ? (label

@@ -328,7 +328,12 @@ export const customTests: CustomTestCase[] = [
           { receiver: workspaceId },
         );
         ctx.expect.eq(editRes.status, 'success', 'content-edit-image returns success');
-        const edited = await poll(() => ctx.prisma.contentAsset.findFirst({ where: { workspaceId, contentProjectId: piece.id, parentId: source.id } }));
+        //? Known load-flake: this op is dispatched SYNCHRONOUSLY through the Conductor into a live fal
+        //? round trip, and the test-runner aborts callSync at a hard, non-overridable 10 s
+        //? (DEFAULT_CALL_TIMEOUT_MS — CustomTestCase has no timeout knob, unlike the contract/fuzz layers).
+        //? Passes solo; under full-suite load it can tip over the cap. Fix is upstream (a per-case
+        //? `timeoutMs` in @luckystack/test-runner), not here — rerun this file solo before calling it red.
+        const edited = await poll(() => ctx.prisma.contentAsset.findFirst({ where: { workspaceId, contentProjectId: piece.id, parentId: source.id } }), 15_000);
         ctx.expect.ok(edited !== null, 'content-edit-image persisted a new asset through the payload contentProjectId');
         ctx.expect.eq(edited?.kind, 'image', 'the edited asset is an image');
 
