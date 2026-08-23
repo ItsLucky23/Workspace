@@ -4,7 +4,7 @@
 //? RBAC matrix + member roles live in app context so edits survive tab/route
 //? changes. Dummy data; desktop-first.
 
-import { Suspense, lazy, useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 
 import { apiRequest, tryCatch, useTranslator } from '@luckystack/core/client';
 
@@ -19,7 +19,6 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Dropdown from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../_components/Icon';
-import SetupWizard from '../_components/SetupWizard';
 import { Table, type TableColumn } from '../_components/dataDisplay';
 import { LayerNote, useLayerTip } from '../_components/EffectivePromptPreview';
 import { Collapse } from '../_components/motion';
@@ -42,6 +41,16 @@ import type { StageProcessCfg, BranchStrategyKind, EnvVar, GitConfig, Integratio
 //? text-input width (~150px) inside a column sized for far more — a settings page of stubby boxes.
 //? SettingRow already caps the control column (`sm:max-w-sm`), so filling it is the intended size.
 const fieldCls = 'h-9 w-full px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
+const RBAC_CAPABILITY_KEYS: Record<string, string> = {
+  'Use terminals + work on tickets': 'terminals',
+  'Edit pipeline / stages': 'pipeline',
+  'Workspace settings / GitLab token': 'workspaceSettings',
+  'Invite / remove members': 'members',
+  'Manage sprints + labels, teardown': 'sprints',
+  'Promote a member to Admin': 'promoteAdmin',
+  'Downgrade / remove an Admin': 'downgradeAdmin',
+  'Transfer ownership / delete workspace': 'ownership',
+};
 
 function removeMenu(member: Member, translate: ReturnType<typeof useTranslator>, onRemove: () => void): PopMenuItem[] {
   return [
@@ -143,15 +152,16 @@ function PermissionsTab() {
   };
 
   const columns: TableColumn<string>[] = [
-    { id: 'capability', header: translate({ key: 'workspaces.workspaceSettings.capability' }), cell: (action) => action },
+    { id: 'capability', header: translate({ key: 'workspaces.workspaceSettings.capability' }), cell: (action) => translate({ key: `workspaces.workspaceSettings.capabilityLabels.${RBAC_CAPABILITY_KEYS[action] ?? 'unknown'}` }) },
     ...permRoles.map((r, ri) => ({
       id: r.name,
       header: <span className="block text-center capitalize">{r.name}</span>,
       cell: (action: string) => {
         const ci = RBAC_CAPABILITIES.indexOf(action);
+        const label = translate({ key: `workspaces.workspaceSettings.capabilityLabels.${RBAC_CAPABILITY_KEYS[action] ?? 'unknown'}` });
         return (
           <div className="flex justify-center">
-            <PermCell on={r.perms[ci] ?? false} locked={r.locked} onToggle={() => { togglePerm(ri, ci); }} ariaLabel={`${action} — ${r.name}`} />
+            <PermCell on={r.perms[ci] ?? false} locked={r.locked} onToggle={() => { togglePerm(ri, ci); }} ariaLabel={`${label} — ${r.name}`} />
           </div>
         );
       },
@@ -279,7 +289,10 @@ function EnvRow({ v, reveal, onToggleReveal, onCommit, onRemove }: {
 }) {
   const translate = useTranslator();
   const [val, setVal] = useState(v.value);
-  useEffect(() => { setVal(v.value); }, [v.value]);
+  //? Seed only when the row identity changes. An autosave delta for the same row must not
+  //? overwrite characters the user typed after the debounce fired.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the server echo must not reseed the local draft
+  useEffect(() => { setVal(v.value); }, [v.id]);
   const status = useAutosave([val], () => { onCommit(val); }, { resetKey: v.id });
   //? A secret's value never leaves the server, so this row cannot show it — but it CAN show whether
   //? there IS one, and that is the whole difference between "saved" and "did nothing". Before this,
@@ -405,7 +418,7 @@ function IntegrationToolForm({ tool, onSave, onCancel }: { tool: IntegrationTool
     setMcpCmd(t.mcp);
   };
 
-  const envItems = [{ id: '__none__', value: '__none__', item: '— none —' }, ...envVars.map((v) => ({ id: v.id, value: v.id, item: v.key }))];
+  const envItems = [{ id: '__none__', value: '__none__', item: translate({ key: 'workspaces.workspaceSettings.noneOption' }) }, ...envVars.map((v) => ({ id: v.id, value: v.id, item: v.key }))];
   const typeItems = INTEGRATION_TYPES.map((t) => ({ id: t.key, value: t.key, item: t.label }));
   //? Says why instead of returning. A dead button teaches nothing — the user concludes the page is
   //? broken, which is the correct conclusion to draw from a control that does nothing when pressed.
@@ -522,7 +535,7 @@ function IntegrationsTab() {
   const { integrationTools, saveIntegrationTool, removeIntegrationTool, testIntegrationTool, envVars } = useWorkspaces();
   const [editing, setEditing] = useState<IntegrationTool | null>(null);
   const [adding, setAdding] = useState(false);
-  const envName = (id: string | null) => (id ? (envVars.find((v) => v.id === id)?.key ?? '—') : '— none —');
+  const envName = (id: string | null) => (id ? (envVars.find((v) => v.id === id)?.key ?? '—') : translate({ key: 'workspaces.workspaceSettings.noneOption' }));
 
   const columns: TableColumn<IntegrationTool>[] = [
     {
@@ -957,6 +970,9 @@ function DockerfileReview({ workspaceId }: { workspaceId: string }) {
   const projectId = activeProject?.id;
   const projectData = () => ({ workspaceId, ...(projectId ? { projectId } : {}) });
   const [draft, setDraft] = useState('');
+  const draftRef = useRef('');
+  const loadedDraftRef = useRef<string | null>(null);
+  const setDraftValue = (value: string) => { draftRef.current = value; setDraft(value); };
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState<'generate' | 'save' | 'build' | null>(null);
   const [status, setStatus] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
@@ -975,16 +991,27 @@ function DockerfileReview({ workspaceId }: { workspaceId: string }) {
     return translate({ key: `workspaces.workspaceSettings.${map[code ?? ''] ?? 'dockerfileErrGeneric'}` });
   };
 
-  //? Load the persisted draft on mount so edits survive a reload without a fresh AI turn.
-  //? The component is keyed by workspace, so `workspaceId` never changes during a mount —
-  //? no cancel guard is needed (the effect runs once per mounted workspace).
+  //? Load the persisted draft for the active project. A project switch is a data-boundary: if the
+  //? current draft differs from the last loaded value, ask before replacing the user's local edits.
   useEffect(() => {
     void (async () => {
       const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/getDockerfile', version: 'v1', data: { workspaceId, ...(projectId ? { projectId } : {}) } }));
-      if (!error && res?.status === 'success' && res.result.ok) setDraft(res.result.dockerfile);
+      if (!error && res?.status === 'success' && res.result.ok) {
+        const next = res.result.dockerfile;
+        const dirty = loadedDraftRef.current !== null && draftRef.current !== loadedDraftRef.current;
+        if (dirty) {
+          const discard = await menuHandler.confirm({
+            title: translate({ key: 'workspaces.workspaceSettings.dockerfileSwitchConfirmTitle' }),
+            content: translate({ key: 'workspaces.workspaceSettings.dockerfileSwitchConfirmContent' }),
+          });
+          if (!discard) { setLoaded(true); return; }
+        }
+        loadedDraftRef.current = next;
+        setDraftValue(next);
+      }
       setLoaded(true);
     })();
-  }, [workspaceId, projectId]);
+  }, [workspaceId, projectId, translate]);
 
   const generate = async (): Promise<void> => {
     setBusy('generate'); setStatus(null);
@@ -992,7 +1019,8 @@ function DockerfileReview({ workspaceId }: { workspaceId: string }) {
     setBusy(null);
     if (error || res?.status !== 'success') { setStatus({ kind: 'err', text: errText(res?.status === 'error' ? res.errorCode : undefined) }); return; }
     if (!res.result.ok) { setStatus({ kind: 'err', text: errText(res.result.error) }); return; }
-    setDraft(res.result.dockerfile);
+    loadedDraftRef.current = res.result.dockerfile;
+    setDraftValue(res.result.dockerfile);
   };
 
   const save = async (): Promise<void> => {
@@ -1001,6 +1029,7 @@ function DockerfileReview({ workspaceId }: { workspaceId: string }) {
     setBusy(null);
     if (error || res?.status !== 'success') { setStatus({ kind: 'err', text: errText(res?.status === 'error' ? res.errorCode : undefined) }); return; }
     if (!res.result.ok) { setStatus({ kind: 'err', text: errText(res.result.error) }); return; }
+    loadedDraftRef.current = draft;
     setStatus({ kind: 'ok', text: translate({ key: 'workspaces.workspaceSettings.dockerfileSaved' }) });
   };
 
@@ -1044,7 +1073,7 @@ function DockerfileReview({ workspaceId }: { workspaceId: string }) {
       )}
       <div className="w-full h-72 rounded-lg border border-container1-border overflow-hidden">
         <Suspense fallback={<div className="w-full h-full flex items-center justify-center text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.dockerfileEmptyHint' })}</div>}>
-          <LazyMonaco value={draft} language="dockerfile" theme={editorTheme} onChange={setDraft} />
+          <LazyMonaco value={draft} language="dockerfile" theme={editorTheme} onChange={setDraftValue} />
         </Suspense>
       </div>
       {!hasDraft && loaded && <div className="text-xs text-muted">{translate({ key: 'workspaces.workspaceSettings.dockerfileEmptyHint' })}</div>}
@@ -1294,7 +1323,7 @@ function SectionsTab() {
 //? K4 — the preferred AI OUTPUT language options (the value is the language name used in the directive;
 //? empty = the model's default / auto).
 const OUTPUT_LANGUAGES: { id: string; label: string }[] = [
-  { id: '', label: 'Auto' }, { id: 'English', label: 'English' }, { id: 'Dutch', label: 'Nederlands' },
+  { id: '', label: '' }, { id: 'English', label: 'English' }, { id: 'Dutch', label: 'Nederlands' },
   { id: 'German', label: 'Deutsch' }, { id: 'French', label: 'Français' }, { id: 'Spanish', label: 'Español' },
   { id: 'Italian', label: 'Italiano' }, { id: 'Portuguese', label: 'Português' },
 ];
@@ -1358,7 +1387,7 @@ function AiBehaviorTab() {
   //? itself the point: the preview shows the user that stages add three more).
   const layers = resolveAiLayers({ workspace: activeWorkspace, skills: aiSkills });
   const workspaceTip = useLayerTip(layers, 'workspace');
-  const languageOptions = OUTPUT_LANGUAGES.map((l) => ({ id: l.id, value: l.id, item: l.label }));
+  const languageOptions = OUTPUT_LANGUAGES.map((l) => ({ id: l.id, value: l.id, item: l.id.length === 0 ? translate({ key: 'workspaces.workspaceSettings.languageAuto' }) : l.label }));
   //? 'default' plus one entry per DISTINCT connected backend — a feature can only be routed somewhere
   //? that can actually answer it.
   const providerItems = [
@@ -1570,10 +1599,9 @@ export const template = 'workspaces';
 
 export default function WorkspaceSettings() {
   const translate = useTranslator();
-  const { activeWorkspace, renameWorkspace, can, myPerms } = useWorkspaces();
+  const { activeWorkspace, renameWorkspace, can, myPerms, navigate, focusSetup } = useWorkspaces();
   const [renaming, setRenaming] = useState(false);
   const [nameInput, setNameInput] = useState(activeWorkspace.name);
-  const [showWizard, setShowWizard] = useState(false);
   //? Repository / GitLab / Workflow are Development-lane setup — hide them for a
   //? content/design-only workspace (no repo/Dockerfile prompt when you didn't ask for code).
   const devEnabled = isModuleEnabled(activeWorkspace.enabledSections, 'development');
@@ -1645,10 +1673,13 @@ export default function WorkspaceSettings() {
         )}
         <div className="flex items-center justify-between gap-3">
           <span className="text-sm text-muted">{translate({ key: 'workspaces.workspaceSettings.workspaceSettings' })}</span>
-          <button type="button" onClick={() => { setShowWizard(true); }} className="text-xs text-primary hover:text-primary-hover cursor-pointer flex items-center gap-1"><Icon name="wand-magic-sparkles" /> {translate({ key: 'workspaces.setup.title' })}</button>
+          <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs">
+            <button type="button" onClick={() => { focusSetup({ view: 'settings', tab: 'workspace' }); }} className="text-primary hover:text-primary-hover cursor-pointer inline-flex items-center gap-1"><Icon name="arrow-right-long" /> {translate({ key: 'workspaces.workspaceSettings.toolsWorkspaceLink' })}</button>
+            <button type="button" onClick={() => { focusSetup({ view: 'settings', tab: 'developer' }); }} className="text-primary hover:text-primary-hover cursor-pointer inline-flex items-center gap-1"><Icon name="arrow-right-long" /> {translate({ key: 'workspaces.workspaceSettings.toolsDeveloperLink' })}</button>
+            <button type="button" onClick={() => { navigate('board'); }} className="text-primary hover:text-primary-hover cursor-pointer inline-flex items-center gap-1"><Icon name="wand-magic-sparkles" /> {translate({ key: 'workspaces.setup.title' })}</button>
+          </div>
         </div>
       </div>
-      {showWizard && <SetupWizard onClose={() => { setShowWizard(false); }} />}
       <div className="px-4 md:px-6">
         <Tabs tabs={tabs} active={activeTab} onChange={setTab} />
       </div>
