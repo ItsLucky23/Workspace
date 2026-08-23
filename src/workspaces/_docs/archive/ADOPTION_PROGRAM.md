@@ -55,8 +55,8 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 | R1 pipeline stage add/remove/reorder persistent | ✅ | — | pipelineStages-integratie 7/7 (client-knop-wiring = browser-follow-up) |
 | R2 deterministische test-gate (test-stage → auto-CI, red blokkeert) | ✅ | — | ciGate-unit 9/9 · stageEngine-regressie 27/27 |
 | R3 webhook-routing per-project (multi-repo #8) | ✅ | — | webhookRouting-integratie 7/7 · forge-regressie 26/26 |
-| R3-b repoStore per-project bare re-key (readers/writers) | ❌ | | not built — dropped 2026-08-23 (docs cleanup); was deferred to a separate safe round (fresh context + Docker) that never ran |
-| **FASE R (R1/R2/R3-webhook) COMPLEET** | ✅ | | R3-b (bare-re-key) = scoped follow-up |
+| R3-b repoStore per-project bare re-key (readers/writers) | ✅ | 0267 | gebouwd in `13e98e4` (UNIVERSAL_TOOL Fase C): `repoStore` volledig gekeyd op `(workspaceId, projectId)` + `migrateLegacyRepoLayout`-migratie; eerdere "not built — dropped"-stempel (2026-08-23) was fout — gecorrigeerd 2026-08-23 |
+| **FASE R (R1/R2/R3-webhook) COMPLEET** | ✅ | | R3-b alsnog gebouwd (zie rij hierboven) |
 | U1 UI-review-intake (taxonomie + `ui-review-create`-op) | ✅ | — | uiReview-unit 8/8 · uiReview-integratie (screenshot-UI = browser-follow-up) |
 | N1 knowledge-graph-data-op (nodes + similarity-edges) | ✅ | — | knowledgeGraph-unit 9/9 · knowledgeGraph-integratie (N2-graph-UI = browser-follow-up) |
 | Y1 activity-presence-core (status-drempels + aggregatie) | ✅ | — | presence-unit 11/11 (DOM-streaming-engine/overlay-UI/ultrasync.watch-RBAC/screen-share = browser-ronde) |
@@ -68,7 +68,7 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 | H5 concurrency-fairness (round-robin drain per workspace) | ✅ | 0168 | capacityFairness-unit 5/5 · capacity-regressie groen |
 | H6 onboarding-doc (nieuwe teams & admins) | ✅ | — | `src/workspaces/_docs/ONBOARDING.md` |
 | **FASE H COMPLEET** (H3-SSO geschrapt) | ✅ | | H1/H2/H4/H5/H6 |
-| **ALLE 11 FASEN — BACKEND-KERN COMPLEET** | ✅ | | resteert: browser-gen-ronde (UI-tegels) + gescopede follow-ups (R3-b, live-Docker/keys) |
+| **ALLE 11 FASEN — BACKEND-KERN COMPLEET** | ✅ | | resteert: browser-gen-ronde (UI-tegels) + gescopede follow-ups (live-Docker/keys; R3-b inmiddels gebouwd — ADR 0267) |
 
 ---
 
