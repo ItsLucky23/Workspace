@@ -225,11 +225,14 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   },
   'save-ai-provider': {
     mode: 'enabled',
-    hint: `switch which AI provider runs ONE non-coding feature ('use Gemini for MR reviews'). params: feature (script|docs-generate|studio-designer|studio-marketer|designer-theme|interviewer|mr-review|root-cause|plan-critique), providerId (default clears the override | ${Object.keys(AI_PROVIDER_CATALOG).join(' | ')}). The CODING agent is not switchable.`,
+    hint: `switch which AI provider runs ONE non-coding feature ('use Gemini for MR reviews'), or the workspace DEFAULT backend for every feature without its own choice (feature '_default'). params: feature (_default|script|docs-generate|studio-designer|studio-marketer|designer-theme|interviewer|mr-review|root-cause|plan-critique), providerId (default clears the override | ${Object.keys(AI_PROVIDER_CATALOG).join(' | ')}), model (optional: pin a specific model on that provider, e.g. 'gpt-4.1-mini'; omit to use the connection's model). The CODING agent is not switchable.`,
     params: {
-      feature: { kind: 'enum', required: true, values: ['script', 'docs-generate', 'studio-designer', 'studio-marketer', 'designer-theme', 'interviewer', 'mr-review', 'root-cause', 'plan-critique'] },
+      //? P4-1 — '_default' = the workspace-wide default backend (AI_DEFAULT_FEATURE), same store + validation.
+      feature: { kind: 'enum', required: true, values: ['_default', 'script', 'docs-generate', 'studio-designer', 'studio-marketer', 'designer-theme', 'interviewer', 'mr-review', 'root-cause', 'plan-critique'] },
       //? F-017 — every catalog backend, not a stale pair (the picker + dispatch allow the same set).
       providerId: { kind: 'enum', required: true, values: ['default', ...Object.keys(AI_PROVIDER_CATALOG)] },
+      //? P4-2 — optional per-feature model pin (stored as `providerId:model`).
+      model: { kind: 'string' },
     },
   },
   'save-autonomy': {

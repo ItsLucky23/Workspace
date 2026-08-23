@@ -785,9 +785,9 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     });
   },
   'save-ai-provider': (p, x) => {
-    const feature = str(p, 'feature'); const providerId = str(p, 'providerId');
+    const feature = str(p, 'feature'); const providerId = str(p, 'providerId'); const model = str(p, 'model');
     if (!feature || !providerId) return;
-    void syncRequest({ name: 'workspaces/saveAiProvider', version: 'v1', data: { feature, providerId, clientRequestId: x.nextReqId() }, receiver: x.room });
+    void syncRequest({ name: 'workspaces/saveAiProvider', version: 'v1', data: { feature, providerId, ...(model === undefined ? {} : { model }), clientRequestId: x.nextReqId() }, receiver: x.room });
   },
   'save-autonomy': (p, x) => {
     const autonomyLevel = str(p, 'autonomyLevel'); if (!autonomyLevel) return;

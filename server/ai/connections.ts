@@ -16,6 +16,7 @@ import { getPrismaClient, tryCatch } from '@luckystack/core';
 import { decryptSecret, encryptSecret } from '../crypto/secretBox';
 import { AI_PROVIDER_CATALOG } from './providers/catalog';
 import type { AiProviderMeta } from './providers/catalog';
+import { AI_OVERRIDE_PREFIX, parseAiOverride } from './workspaceAssignments';
 
 export interface AiConnectionView {
   id: string;
@@ -129,11 +130,12 @@ export async function reassignmentFor(workspaceId: string, connectionId: string)
   const stillServed = new Set(remaining.map((r) => r.providerId));
   if (stillServed.has(target.providerId)) return [];
 
-  const overrides = await prisma.envVar.findMany({ where: { workspaceId, key: { startsWith: '__ai_provider_' } }, select: { key: true, value: true } });
+  const overrides = await prisma.envVar.findMany({ where: { workspaceId, key: { startsWith: AI_OVERRIDE_PREFIX } }, select: { key: true, value: true } });
   const fallback = remaining[0]?.providerId ?? null;
+  //? P4-2 — a stored value may be `providerId:model`; match on the PROVIDER part (includes the `_default` row).
   return overrides
-    .filter((o) => o.value === target.providerId)
-    .map((o) => ({ feature: o.key.slice('__ai_provider_'.length), from: target.providerId, to: fallback }));
+    .filter((o) => parseAiOverride(o.value)?.providerId === target.providerId)
+    .map((o) => ({ feature: o.key.slice(AI_OVERRIDE_PREFIX.length), from: target.providerId, to: fallback }));
 }
 
 export async function removeConnection(workspaceId: string, connectionId: string): Promise<{ ok: boolean; moved: Reassignment[] }> {
@@ -144,7 +146,7 @@ export async function removeConnection(workspaceId: string, connectionId: string
   if (deleted.count === 0) return { ok: false, moved: [] };
 
   for (const m of moved) {
-    const key = `__ai_provider_${m.feature}`;
+    const key = `${AI_OVERRIDE_PREFIX}${m.feature}`;
     //? No remaining backend ⇒ CLEAR the override rather than pinning the feature to a provider that
     //? cannot run. Cleared means "use the global default", which is a working state; pinned means a
     //? feature that silently fails at dispatch.

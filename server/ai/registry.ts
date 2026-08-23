@@ -9,7 +9,7 @@ import path from 'node:path';
 
 import { getPrismaClient, sleep, tryCatch, tryCatchSync } from '@luckystack/core';
 
-import { resolveAssignment, defaultAssignments } from './assignments';
+import { aiRouteCandidates, defaultAssignments } from './assignments';
 import { applyPointForFeature, skillPromptBlock } from './skills';
 import { loadWorkspaceAiOverrides } from './workspaceAssignments';
 import { recordAiRun } from './activity';
@@ -71,8 +71,20 @@ const PROVIDERS: Record<string, AiProvider> = Object.fromEntries(AI_PROVIDER_LIS
   return [meta.id, openAiCompatibleProvider(meta)];
 }));
 
-//? Run one AI completion for a feature. `overrides` carries the per-workspace/user
-//? assignment once the picker UI exists; omitted → global defaults. Returns a typed
+//? P4-1 — walk the candidate chain and return the first backend that exists AND is available for this
+//? workspace (with the model the winning route carries, if any). Sequential on purpose: probing every
+//? backend up-front would cost a Claude-CLI spawn + N key reads per turn when the first candidate is fine.
+async function resolveAvailableRoute(candidates: { providerId: AiProviderId; model?: string }[], workspaceId?: string): Promise<{ provider: AiProvider; model?: string } | null> {
+  for (const candidate of candidates) {
+    const provider = PROVIDERS[candidate.providerId];
+    if (!provider) continue;
+    if (await provider.available(workspaceId)) return { provider, ...(candidate.model === undefined ? {} : { model: candidate.model }) };
+  }
+  return null;
+}
+
+//? Run one AI completion for a feature. `overrides` is the explicit CALL-SITE assignment (wins over
+//? every stored choice); omitted → the workspace's stored routing, then global defaults. Returns a typed
 //? result (never throws) so callers surface `error` codes uniformly.
 export async function runAiCompletion(
   feature: AiFeature,
@@ -80,18 +92,28 @@ export async function runAiCompletion(
   overrides?: Partial<Record<AiFeature, AiProviderId>>,
 ): Promise<AiCompletionResult> {
   //? P1 — the per-workspace provider override FEEDS the seam; an explicit call-site override still wins.
+  //? P4-1 — the chain no longer stops at the first choice: call-site → per-feature → workspace default →
+  //? feature default → any other catalog backend, and the first AVAILABLE one runs. An id with no
+  //? implementation (configuration that outlived its backend) is skipped like an unavailable one, so one
+  //? stale override cannot crash the workspace — only when NOTHING can serve the feature does it fail.
   const wsOverrides = await loadWorkspaceAiOverrides(req.workspaceId);
-  const providerId = resolveAssignment(feature, { ...wsOverrides, ...overrides });
-  const provider = PROVIDERS[providerId];
-  //? An id with no implementation is configuration that outlived its backend. Treated as unavailable
-  //? rather than dereferenced, so one stale override cannot crash the workspace.
-  if (!provider) return { ok: false, text: '', providerId, error: 'ai.providerUnavailable' };
+  const callSite = overrides?.[feature];
+  const featureOverride = wsOverrides.features[feature];
+  const candidates = aiRouteCandidates({
+    feature,
+    ...(callSite === undefined ? {} : { callSite: { providerId: callSite } }),
+    ...(featureOverride === undefined ? {} : { featureOverride }),
+    ...(wsOverrides.defaultRoute === undefined ? {} : { workspaceDefault: wsOverrides.defaultRoute }),
+  });
   const startedAt = Date.now();
-  const available = await provider.available(req.workspaceId);
-  if (!available) {
+  const route = await resolveAvailableRoute(candidates, req.workspaceId);
+  if (route === null) {
+    const providerId = candidates[0]?.providerId ?? '';
     recordAiRun({ ...(req.workspaceId ? { workspaceId: req.workspaceId } : {}), feature, ...(req.label ? { label: req.label } : {}), prompt: req.prompt, output: '', providerId, status: 'error', error: 'ai.providerUnavailable', startedAt });
     return { ok: false, text: '', providerId, error: 'ai.providerUnavailable' };
   }
+  const { provider, model } = route;
+  const providerId = provider.id;
   //? Q4 + K4 — prepend the workspace AI steer (instruction + output language) to the system prompt (one
   //? point → every feature is steered).
   const prefix = await workspaceAiPrefix(req.workspaceId);
@@ -116,7 +138,7 @@ export async function runAiCompletion(
   //? circuit so later callers fail FAST instead of paying the full timeout twice through the retry ladder.
   const complete = (): Promise<AiCompletionResult> => runQueued({
     key: providerId,
-    run: () => provider.complete(groundedReq),
+    run: () => provider.complete(groundedReq, model === undefined ? undefined : { model }),
     isFailure: (r) => !r.ok,
     onCircuitOpen: () => ({ ok: false, text: '', providerId, error: 'ai.circuitOpen' }),
   });

@@ -76,7 +76,7 @@ interface Snap {
   events: ActivityEvent[];
   notifications: NotificationItem[];
   stageConfigs: PipelineStageCfg[];
-  aiOverrides: { feature: string; providerId: string }[];
+  aiOverrides: { feature: string; providerId: string; model?: string }[];
   //? ADR 0007 — the connected AIs + what can be connected. `hasKey` is presence only.
   aiConnections: AiConnection[];
   aiProviderCatalog: AiProviderOption[];
@@ -1951,9 +1951,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       customTasks: snap.customTasks,
       //? Preload gap-fix (X3) — the caller's own PATs for the settings API-tokens panel (metadata only).
       pats: snap.pats,
-      saveAiProvider: (feature, providerId) => {
+      saveAiProvider: (feature, providerId, model) => {
         const room = snap.activeWorkspaceId;
-        if (room) observeSync(syncRequest({ name: 'workspaces/saveAiProvider', version: 'v1', data: { feature, providerId, clientRequestId: nextReqId() }, receiver: room }));
+        //? P4-2 — `model` only travels when given; the server treats an absent key as "connection's model".
+        if (room) observeSync(syncRequest({ name: 'workspaces/saveAiProvider', version: 'v1', data: { feature, providerId, ...(model === undefined ? {} : { model }), clientRequestId: nextReqId() }, receiver: room }));
       },
       workspacePaused: snap.workspacePaused,
       pauseTicket: (ticketKey) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/agentControl', version: 'v1', data: { op: 'pause', ticketKey, clientRequestId: nextReqId() }, receiver: room }); },

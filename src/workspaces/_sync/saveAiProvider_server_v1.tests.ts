@@ -12,10 +12,13 @@ import { loginSeededUser, createRealUser, cleanupWorkspace, joinRoom } from '../
 //?      the ack.
 //?  [2] tenant/RBAC boundary — a room member who is NOT a `WorkspaceMember` is rejected with
 //?      `auth.forbidden`, and no `EnvVar` row is created.
+//?  [3] P4-1/P4-2 — the `_default` pseudo-feature + a `model` pin persist as `providerId:model` and come back
+//?      SPLIT in the ack; a blank `model` is rejected (ai.modelRequired) and nothing is written.
 
 interface SaveAiProviderInput {
   feature: string;
   providerId: string;
+  model?: string;
   clientRequestId: string;
 }
 //? The HTTP sync harness wraps a route's own `SyncServerResponse` inside an outer
@@ -26,7 +29,7 @@ interface SaveAiProviderInput {
 interface SaveAiProviderOk {
   status: 'success';
   message: string;
-  result: { status: 'success'; aiOverrides: { feature: string; providerId: string }[] };
+  result: { status: 'success'; aiOverrides: { feature: string; providerId: string; model?: string }[] };
 }
 interface SaveAiProviderErr {
   status: 'error';
@@ -93,6 +96,38 @@ export const customTests: CustomTestCase[] = [
         const envVar = await poll(() => ctx.prisma.envVar.findFirst({ where: { workspaceId, key: `__ai_provider_${feature}` } }));
         ctx.expect.ok(envVar !== null, 'the Conductor persisted the override (post-condition, not just the ack)');
         ctx.expect.eq(envVar?.value, providerId, 'persisted value matches the chosen providerId');
+      } finally {
+        await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
+      }
+    },
+  },
+  {
+    name: 'P4-1/P4-2: `_default` + model pin persist as providerId:model and echo split; blank model rejected',
+    run: async (ctx: TestContext) => {
+      const { userId, workspaceId } = await loginSeededUser(ctx, 'saveaiprovider_c3');
+      try {
+        await joinRoom(ctx, workspaceId);
+        const res = await ctx.callSync<SaveAiProviderInput, SaveAiProviderResponse>(
+          { feature: '_default', providerId: 'openai-api', model: 'gpt-4.1-mini', clientRequestId: `sap-c3a-${String(Date.now())}` },
+          { receiver: workspaceId },
+        );
+        ctx.expect.eq(res.status, 'success', 'the _default pseudo-feature is accepted');
+        if (res.status === 'success') {
+          const row = res.result.aiOverrides.find((o) => o.feature === '_default');
+          ctx.expect.eq(row?.providerId, 'openai-api', 'the ack carries the provider part');
+          ctx.expect.eq(row?.model, 'gpt-4.1-mini', 'the ack carries the model part separately');
+        }
+        const envVar = await poll(() => ctx.prisma.envVar.findFirst({ where: { workspaceId, key: '__ai_provider__default' } }));
+        ctx.expect.eq(envVar?.value, 'openai-api:gpt-4.1-mini', 'stored as providerId:model under __ai_provider__default');
+
+        const bad = await ctx.callSync<SaveAiProviderInput, SaveAiProviderResponse>(
+          { feature: 'script', providerId: 'openai-api', model: '   ', clientRequestId: `sap-c3b-${String(Date.now())}` },
+          { receiver: workspaceId },
+        );
+        ctx.expect.eq(bad.status, 'error', 'a blank model is rejected');
+        await wait(300);
+        const none = await ctx.prisma.envVar.findFirst({ where: { workspaceId, key: '__ai_provider_script' } });
+        ctx.expect.ok(none === null, 'nothing was written for the rejected save');
       } finally {
         await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
       }

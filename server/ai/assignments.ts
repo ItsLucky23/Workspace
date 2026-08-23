@@ -3,7 +3,8 @@
 //? the seam below (`resolveAssignment`) is where a per-workspace / user-chosen override
 //? plugs in later (a DB setting surfaced in the UI) WITHOUT touching any feature code.
 
-import type { AiFeature, AiProviderId } from './types';
+import { AI_PROVIDER_LIST } from './providers/catalog';
+import type { AiFeature, AiProviderId, AiRoute } from './types';
 
 //? Sensible defaults: the pipeline/coding + chat work goes to the Claude CLI (the
 //? subscription-billed PTY the P0.5 spike proved); everything is overridable per feature.
@@ -56,4 +57,35 @@ export function resolveAssignment(feature: AiFeature, overrides?: Partial<Record
 //? The full default map (for surfacing the current wiring in a settings UI later).
 export function defaultAssignments(): Record<AiFeature, AiProviderId> {
   return { ...DEFAULT_ASSIGNMENTS };
+}
+
+//? P4-1 — the FULL resolution chain, as an ordered candidate list (pure, so the chain is testable without a
+//? backend): explicit call-site override → per-feature workspace override → workspace default → feature
+//? default → every OTHER catalog backend in catalog order. Dispatch takes the first candidate that is
+//? actually available, so a feature no longer fails `ai.providerUnavailable` while ANY connected backend
+//? could serve it. Deduplicated by providerId (first occurrence — and with it, its model — wins).
+export interface AiRouteInput {
+  feature: AiFeature;
+  callSite?: AiRoute;
+  featureOverride?: AiRoute;
+  workspaceDefault?: AiRoute;
+  /** Defaults to the catalog order; injectable for tests. */
+  catalogIds?: AiProviderId[];
+}
+export function aiRouteCandidates(input: AiRouteInput): AiRoute[] {
+  const preferred: (AiRoute | undefined)[] = [
+    input.callSite,
+    input.featureOverride,
+    input.workspaceDefault,
+    { providerId: DEFAULT_ASSIGNMENTS[input.feature] },
+  ];
+  const ids = input.catalogIds ?? AI_PROVIDER_LIST.map((m) => m.id);
+  const out: AiRoute[] = [];
+  const seen = new Set<AiProviderId>();
+  for (const route of [...preferred, ...ids.map((providerId) => ({ providerId }))]) {
+    if (route === undefined || seen.has(route.providerId)) continue;
+    seen.add(route.providerId);
+    out.push(route);
+  }
+  return out;
 }

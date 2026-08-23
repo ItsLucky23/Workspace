@@ -166,13 +166,14 @@ export function toContentPieceSummary(
 
 //? P1 — the save-ai-provider op returns the full per-feature provider override map; narrow the (unknown)
 //? control-op result to the typed array the `_sync` route broadcasts (client replaces `snap.aiOverrides`).
-export function aiOverrideDelta(result: unknown): { feature: string; providerId: string }[] {
+export function aiOverrideDelta(result: unknown): { feature: string; providerId: string; model?: string }[] {
   if (!Array.isArray(result)) return [];
-  const out: { feature: string; providerId: string }[] = [];
+  const out: { feature: string; providerId: string; model?: string }[] = [];
   for (const r of result) {
     if (r !== null && typeof r === 'object' && 'feature' in r && 'providerId' in r) {
-      const rec = r as Record<'feature' | 'providerId', unknown>;
-      if (typeof rec.feature === 'string' && typeof rec.providerId === 'string') out.push({ feature: rec.feature, providerId: rec.providerId });
+      const rec = r as Record<'feature' | 'providerId' | 'model', unknown>;
+      //? P4-2 — the optional per-feature model rides along when the op returned one.
+      if (typeof rec.feature === 'string' && typeof rec.providerId === 'string') out.push({ feature: rec.feature, providerId: rec.providerId, ...(typeof rec.model === 'string' ? { model: rec.model } : {}) });
     }
   }
   return out;
