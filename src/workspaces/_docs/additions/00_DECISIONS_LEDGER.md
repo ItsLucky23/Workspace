@@ -28,7 +28,7 @@ The locked invariants every addition honors (non-negotiable): **B-23** (AI propo
 | Decision style | **AI recommends a default + reasoning; user picks.** |
 | New-scope tagging | **Mix** — each addition tagged V1 vs HORIZON individually (§2/§3). |
 | Interview depth | **Write full specs now**, sub-decisions filled with `DEFAULT — flag if wrong` markers in each doc. |
-| Folder shape | `workspaces-handoff/` with `src/workspaces/` (portable app) + `src/workspaces/_docs/` (consolidated docs incl. this `additions/` set) + `server/hooks/workspacesTerminal.ts` + a top-level `README.md`. |
+| Folder shape | `workspaces-handoff/` with `src/workspaces/` (portable app) + `src/workspaces/_docs/` (consolidated docs incl. this `additions/` set) + `server/hooks/workspacesTerminal.ts` + a top-level `README.md`. *(folder deleted 2026-08-23 — BUILD_PROGRAM/BUILD_LOG now in `src/workspaces/_docs/`)* |
 | Older framework-gap docs (`FRAMEWORK_GAPS`/`REMEDIATION`) | **Excluded** — the user considers those framework gaps solved. A one-line "verify framework prerequisites at install" note replaces them (see [README](../../../README.md)). |
 
 ---

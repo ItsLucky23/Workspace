@@ -78,6 +78,10 @@ De parallelle ultracode-scan leverde **`COMPLETION_PROGRAM.md`** (~130 wiring/se
 
 ### Fase H — Ads-creatie (user maakt advertenties; GEEN ad-platform-API's)
 - **H1 ad-creative content-type.** `ContentPiece`-kind of template-set "advertisement": per-platform ad-specs (YouTube pre-roll 15/30s, TikTok/Reels 9:16 met hook-eerste-3s, display-banners via Studio-HTML, thumbnail/end-card met CTA-overlay). Bouwt op F1-formats + Studio-`ads`-copy + bestaande pipeline; CTA/end-card als render-overlay (ffmpeg drawtext/overlay, lokaal). *Verify:* ad-preset → render-plan met juiste duur/formaat/end-card; Studio-copy gekoppeld aan de piece.
+
+---
+
+**✅ STATUS: COMPLETE (built 2026-07)** — this program consumed `SCAN_UNIVERSAL_TOOL_2026-07-09.md` and was built in full; kept as the record of the plan.
 - **H2 A/B-varianten + meting.** N ad-varianten (hook/copy/thumbnail-permutaties via I1-regenerate + G1-variants), gelabeld als experiment; metrics per variant (G3-loop) → vergelijking-UI + winnaar→ideator. *Verify:* experiment-model round-trip; fixture-metrics wijzen winnaar aan.
 - **H3 landing + tracking.** Landing-artifact (Studio) deploybaar naar een env/subdomein (D2-hergebruik); `ShortLink`-model + redirect-route met klik-registratie + UTM-passthrough; kliks zichtbaar in insights + per-experiment. *Verify:* shortlink-redirect + klik-count (integratie, geen externe dep); landing live op subdomein (Docker).
 

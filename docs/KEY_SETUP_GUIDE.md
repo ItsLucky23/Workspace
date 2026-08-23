@@ -26,6 +26,11 @@ There are two places, and either works:
 
 ## Providers
 
+> **Text-AI backends** (Claude, Codex, Gemini, OpenAI-compatible hosts, …) are NOT set up here: connect
+> them in-app under **Workspace → AI → Backends** — that list is generated from the server's provider
+> catalog and handles keys, model pick and testing per backend. This guide covers the MEDIA and
+> publishing keys, plus the coding-agent seats below.
+
 ### Fal.ai — images · video · 3D · reference-image  (`FAL_KEY`)
 - **Get it:** sign in at <https://fal.ai> → **Dashboard → Keys** → create a key.
 - **Put it:** app settings (provider **Fal.ai**) or `FAL_KEY=…`.

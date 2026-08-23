@@ -1,6 +1,6 @@
 # Built-in MR review — the full merge-request experience (threads · approvals · merge · conflicts) over the forge seam
 
-> **⚑ V1 SCOPE:** mostly DEFERRED — there is NO built-in MergeRequest entity and NO on-platform merge in V1; push-on-approval → the GitLab ‘create merge request’ URL replaces this ([V1_SCOPE.md] §3.1). This doc is the design-horizon record. Read [V1_SCOPE.md] first.
+> **⚑ STATUS 2026-08-23: BUILT — ADR 0018.** The earlier "V1: mostly DEFERRED, no built-in MergeRequest entity" banner is obsolete: built-in MR-review shipped (root `CLAUDE.md` invariant 5). This doc remains as the design reference for the shipped surface.
 
 > The killer feature for a 5-person team. Expands the ticket-local "changed-files review" ([07_CODE_CHANGES_REVIEW]) into a **full merge-request surface**: rich diff, review threads/comments anchored to file+line, approvals + approval rules, merge (fast-forward / squash / merge-commit) with conflict handling, and the federation rule for external forges. This doc OWNS the `MergeRequest`/`ReviewThread`/`ReviewComment`/`Approval` schema + the review UX; [FORGE_ABSTRACTION] owns the `mergeRequests` capability seam (`Q-FORGE-MR-EXPANSION-OWNER` assigns the split). In **built-in** mode Workspaces owns the MR (sourceOfTruth=`workspaces`, [FORGE_ABSTRACTION §4]); in **external** mode it federates with the GitLab MR / GitHub PR via `ForgeProvider.mergeRequests`. Cites architecture as `[01 §x]`…`[07 §x]`, `[07b]`, `[CONTROL_API]`, `[04b §N]`, `[FORGE_ABSTRACTION §N]`; codes via [REFERENCE_CODES]. Last updated: 2026-06-04.
 >

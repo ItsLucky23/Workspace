@@ -1,5 +1,7 @@
 # 07 — Orchestrator runtime mechanics (launch/teardown · Caddy · webhook ingest · RAG delta-indexer)
 
+> **⚑ STATUS 2026-08-23.** The single-instance/SPOF frame below is superseded: the engine is now the leader-elected multi-instance orchestrator (ADR 0015, root `CLAUDE.md` invariant 5) — safe to run as N instances, with exactly one leader running the background loops + authoritative writes. The runtime mechanics described below otherwise still hold.
+
 > The single-instance **engine** every feature sits on. Architecture-layer companion to [01](./01_ARCHITECTURE.md): where 01 names the *two-system topology* and the *three roles*, this doc spells out the **deterministic runtime mechanics the Conductor drives** — the per-ticket launch/teardown sequence, the Caddy subdomain proxy, the GitLab-webhook ingest + board sync, and the RAG delta-indexer + vector store. Feature docs cite these as `[07 §A]`…`[07 §D]`. Prereq: [01](./01_ARCHITECTURE.md), [02](./02_PROTOCOL_AND_FLOW.md), [SETUP](./SETUP_AND_PREREQUISITES.md). Last updated: 2026-06-04.
 
 ---

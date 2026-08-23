@@ -1,5 +1,16 @@
 # V1_SCOPE — the definitive source of truth for what Workspaces V1 *is*
 
+> ## ⚠️ STATUS 2026-08-23 — HISTORICAL V1 REFERENCE; NO LONGER THE TIE-BREAKER
+>
+> This document was the tie-breaker for the V1 build. **All four core V1 locks have since been reversed** by root `CLAUDE.md` § "User Project Rules" (invariant 5) and the cited ADRs:
+>
+> - **GitLab-only** → GitHub-forge is a build target (invariant 5; GitLab-ingestion ADR 0014).
+> - **Single-host / single-instance** → leader-elected multi-instance engine (ADR 0015).
+> - **Claude-CLI-only coding agent** → Claude Code OR the pi agent on a Codex/ChatGPT seat (ADR 0322).
+> - **No built-in MR review** → built-in MR-review shipped (ADR 0018).
+>
+> **On any conflict, root `CLAUDE.md` § "User Project Rules" now wins over this file.** This doc remains as the historical record of what V1 was scoped to be.
+
 > **Read this FIRST, before any other `_docs` file, when you are building V1.** The broader doc set (01–08, 04b, the all-in-one layer, the 24 feature docs) describes a **bigger system than V1 ships** — a pluggable multi-forge, multi-provider, built-in-MR/CI, preview-deploy, analytics platform. That is the *design horizon*, not the build. **V1 is the deliberate subset locked by the user on 2026-06-04**, captured here. Where any other doc over-describes beyond this file, **V1_SCOPE wins** (§5). This doc adds no new design — it *selects* from the decided scope ([REVIEW_AND_OPEN_QUESTIONS], [REVIEW_AND_OPEN_QUESTIONS_2_ALLINONE]) and cites the owning build-docs for each included piece. Codes resolve via [REFERENCE_CODES]. Last updated: 2026-06-04.
 >
 > **No new verbs. No new scope.** This file introduces zero structured-channel verbs and zero new entities. It is a *scoping* document over the frozen 7+6 verb surface ([02 §2], all `read|propose`, none write), the single-writer Conductor ([01 §3.3]), the FROZEN [CONTROL_API] verb-free write path, `runInTenant` multi-tenancy ([04b §11c]), and the LuckyStack file-based `_api`/`_sync` + function-injection conventions (root `CLAUDE.md`).

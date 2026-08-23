@@ -71,7 +71,7 @@ LuckyStack is a socket-first fullstack framework: React 19 frontend on a raw Nod
 18. **Suggest extracting repeating patterns** into a helper, component, or skill.
 19. **Security is top priority** unless the user explicitly says otherwise for a given task.
 20. **Critical self-review on larger implementations** — re-read your own diff before declaring done.
-21. **Respect type generation and template injection.** NEVER write `{} as unknown as TYPE` or `{} as any`. No `unsafe*` wrappers around `apiRequest` / `syncRequest` / `upsertSyncEventCallback`. Treat `src/_sockets/apiTypes.generated.ts` as the source of truth. In API + sync handlers, prefer `functions.tryCatch.tryCatch(...)` and `functions.sleep.sleep(...)` (auto-injected from `shared/`) plus the consumer shims in `functions/` (db, redis, sentry, session, …) over direct package imports. Spec: `docs/ARCHITECTURE_FUNCTION_INJECTION.md`.
+21. **Respect type generation and template injection.** NEVER write `{} as unknown as TYPE` or `{} as any`. No `unsafe*` wrappers around `apiRequest` / `syncRequest` / `upsertSyncEventCallback`. Treat `src/_sockets/apiTypes.generated.ts` as the source of truth. In API + sync handlers, prefer `functions.tryCatch.tryCatch(...)` and `functions.sleep.sleep(...)` (auto-injected from `shared/`) plus the consumer shims in `functions/` (db, redis, sentry, session, …) over direct package imports. Spec: `docs/luckystack/ARCHITECTURE_FUNCTION_INJECTION.md`.
    - **NEVER-cast escalation**: when `apiRequest` / `syncRequest` / `upsertSyncEventCallback` typing fails, FIRST run `npm run generateArtifacts`. NEVER cast with `as unknown as TYPE` or `as any`. If the generator output is itself wrong, fix the generator — don't cast around it.
 
 ### Prompt Development (22)
@@ -92,7 +92,7 @@ LuckyStack is a socket-first fullstack framework: React 19 frontend on a raw Nod
     1. `CLAUDE.md` (this file).
     2. Current branch's `branch-logs/<sanitized>.md` if it exists.
     3. If (2) is empty: `branch-logs/INDEX.md` → most recent previous branch's log. Mark its contents as **"previous context, may not apply here"** and verify before acting on any assumption.
-    4. Framework + project context: `docs/PROJECT_CONTEXT.md` (if exists), `docs/ROADMAP.md`, `docs/HOSTING.md`, `docs/PACKAGE_OVERVIEW.md`, `docs/AGENT_TEAM_PLAYBOOK.md`.
+    4. Framework + project context: `docs/PROJECT_CONTEXT.md` (if exists), `docs/luckystack/ROADMAP.md`, `docs/HOSTING.md`, `docs/luckystack/PACKAGE_OVERVIEW.md`, `docs/luckystack/AGENT_TEAM_PLAYBOOK.md`.
     5. `config.ts` + `.env` (NEVER `.env.local`).
     6. Auto-generated indexes: `docs/AI_QUICK_INDEX.md`, `docs/AI_CAPABILITIES.md`, `docs/AI_PROJECT_INDEX.md`, `docs/AI_DECISIONS_INDEX.md` (the committed "why" record — open a `docs/decisions/NNNN-*.md` for the full rationale behind a choice), `docs/AI_RUNBOOKS.md` (task-shaped golden paths: how to add an API/page/sync/helper, verify, and record a decision in THIS project), `docs/AI_PRODUCT_OVERVIEW.md` (the intent layer — what the app + each page is FOR, in plain language), `docs/AI_LESSONS_INDEX.md` (the pitfalls layer — what was tried and FAILED, so it isn't repeated; query via `find_lesson`), `docs/AI_EXAMPLES_INDEX.md` (the canonical example corpus — copy these reviewed shapes; query via `list_examples` / `get_example`), `docs/AI_CONTEXT_BUDGET.md` (what-to-load-when per task type — don't read every index every session), and `docs/ai-graph.json` (the dependency graph — or query it via the `@luckystack/mcp` tools `blast_radius` / `who_imports` / `who_calls` / `god_nodes` / `decision_for_file` rather than reading the whole file).
     7. **Memory-coverage check (then offer to backfill).** If the decision memory (`docs/AI_DECISIONS_INDEX.md` / `docs/decisions/`) is empty OR clearly does not cover major parts of an already-substantial codebase (many commits / large `src/` but few or no ADRs explaining the big choices), proactively TELL the user and OFFER to backfill it — both by mining the written history (`git log`, `branch-logs/`, and with permission the per-dev `~/.claude` memory) AND by offering a one-time, focused, resumable **interview** ("heb je even tijd om mijn vragen over de codebase te beantwoorden? eenmalig, verbetert al mijn toekomstige changes drastisch") since most rationale was never written down. Surface this once, early; act only on their go-ahead. Full how-to: Decision Memory Protocol §8 (§8a mine, §8b interview).
@@ -183,7 +183,7 @@ Before building any UI primitive, check this table. Extend the existing componen
 
 Each token gets `bg-`, `text-`, `border-` utility variants. Dark mode auto-switches via the `.dark` class on `<html>`.
 
-### API Pattern (full details: `docs/ARCHITECTURE_API.md`)
+### API Pattern (full details: `docs/luckystack/ARCHITECTURE_API.md`)
 
 ```typescript
 // src/{page}/_api/{name}_v1.ts
@@ -202,7 +202,7 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
 };
 ```
 
-### Sync Pattern (full details: `docs/ARCHITECTURE_SYNC.md`)
+### Sync Pattern (full details: `docs/luckystack/ARCHITECTURE_SYNC.md`)
 
 - `{name}_server_v{N}.ts` runs ONCE on the server for validation.
 - `{name}_client_v{N}.ts` runs on the server for EACH client in the room. Optional — only create it when per-client logic (filtering, per-client auth, custom `clientOutput`) is required. If it would only return `{ status: 'success' }`, do not create it.
@@ -210,7 +210,7 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
 - Client sends: `syncRequest({ name, data, receiver: roomCode, ignoreSelf? })`.
 - Client receives: `upsertSyncEventCallback(name, ({ clientOutput, serverOutput }) => {})`.
 
-### File-Based Routing (full details: `docs/ARCHITECTURE_ROUTING.md`)
+### File-Based Routing (full details: `docs/luckystack/ARCHITECTURE_ROUTING.md`)
 
 - `src/{page}/page.tsx` → route `/{page}`.
 - `src/{page}/_api/{name}_v{N}.ts` → endpoint `api/{page}/{name}/v{N}`.
@@ -231,7 +231,7 @@ When a Prisma model type is needed in app code, create `src/_types/{ModelName}.t
 
 Always use the custom `tryCatch`:
 
-- **In API / sync handlers**: use the injected `functions.tryCatch.tryCatch(...)` (sourced from `shared/tryCatch.ts` via the function-injection system — spec: `docs/ARCHITECTURE_FUNCTION_INJECTION.md`).
+- **In API / sync handlers**: use the injected `functions.tryCatch.tryCatch(...)` (sourced from `shared/tryCatch.ts` via the function-injection system — spec: `docs/luckystack/ARCHITECTURE_FUNCTION_INJECTION.md`).
 - **Elsewhere (client components, server utilities, scripts)**: `import { tryCatch } from '@luckystack/core'`. Same `[error, result]` tuple shape; the server-side path captures through the registered error-tracker adapter(s).
 - Check the first value; if truthy, there's an error. Never use raw `try/catch`.
 
@@ -262,7 +262,7 @@ After creating any new API or sync route, run `npm run scaffold:test <route>` au
 
 **New assistant-op → classify it.** Every new op in the propose catalog must get a row in `tests/effectMatrix.mts` (`covered` with a test ref, or an `excluded:*` reason) — the `opEffectCoverage` guard turns an unclassified op red by design.
 
-Full spec: `docs/ARCHITECTURE_TESTING.md`. **Project practice (commands, recipes for new `_api`/`_sync`/op/Playwright tests, hook behavior, discipline): `docs/TESTING_PLAYBOOK.md` — read it before writing or running tests in this repo.**
+Full spec: `docs/luckystack/ARCHITECTURE_TESTING.md`. **Project practice (commands, recipes for new `_api`/`_sync`/op/Playwright tests, hook behavior, discipline): `docs/TESTING_PLAYBOOK.md` — read it before writing or running tests in this repo.**
 
 ---
 
@@ -335,42 +335,44 @@ When verifying the frontend in a browser, follow the cheapest-first ladder + sug
 
 ## Documentation Reference
 
+> **Paths in THIS repo (consumer, 2026-08-23):** the framework docs live under `docs/luckystack/` here; the plain `docs/` folder holds only project-owned docs (TESTING_PLAYBOOK, HOSTING, KEY_SETUP_GUIDE, SETUP_FROM_SCRATCH, DR_RUNBOOK, the AI_* indexes, PRODUCT.md, decisions/, lessons/, examples/).
+
 | Doc | Purpose |
 |---|---|
 | `docs/TESTING_PLAYBOOK.md` | Project testing practice: layers, commands, new-test recipes, effect-matrix taxonomy, hooks + push ritual |
-| `docs/ARCHITECTURE_ROUTING.md` | File-based routing (pages, APIs, syncs) |
-| `docs/ARCHITECTURE_API.md` | API request system |
-| `docs/ARCHITECTURE_HTTP.md` | HTTP pipeline, custom-route phases, webhook + streaming-upload seam (origin-exempt paths) |
-| `docs/ARCHITECTURE_SYNC.md` | Real-time sync events |
-| `docs/ARCHITECTURE_AUTH.md` | Authentication flows |
-| `docs/ARCHITECTURE_SESSION.md` | Session management |
-| `docs/ARCHITECTURE_SOCKET.md` | Socket.io setup |
-| `docs/ARCHITECTURE_EMAIL.md` | `@luckystack/email` + login forgot-password |
-| `docs/ARCHITECTURE_SECRET_MANAGER.md` | `@luckystack/secret-manager` client + external server contract |
-| `docs/ARCHITECTURE_MULTI_TENANCY.md` | Multi-tenant pattern (tenant = Workspace): Prisma `$extends` row isolation + keyed clients + Redis key formatter + per-workspace secrets |
-| `docs/ARCHITECTURE_MULTI_INSTANCE.md` | Multi-instance/router model + pitfalls: WS pins to `system`, Redis-adapter cross-instance fan-out, regular `syncRequest` also crosses instances via `io.in(room).fetchSockets()` + `RemoteSocket.emit()` (streaming via `io.to().emit()`), shared-Redis footgun. Symptom→cause→fix table + local test recipe |
-| `docs/ARCHITECTURE_PACKAGING.md` | Package split strategy |
-| `docs/DEVELOPER_GUIDE.md` | Getting started |
-| `docs/HOSTING.md` | Deployment |
-| `docs/PACKAGE_OVERVIEW.md` | Per-package use-case + peer-deps table |
-| `docs/LUCKYSTACK_ADD_GUIDE.md` | Adding an optional feature later (`npx luckystack add <feature>`): npm-i-vs-add matrix + per-feature checklists + troubleshooting |
-| `docs/AGENT_TEAM_PLAYBOOK.md` | Multi-agent workflow |
-| `docs/BRANCH_LOG_PROTOCOL.md` | Branch-log entry format |
-| `docs/DECISION_MEMORY_PROTOCOL.md` | Committed decision-log (ADR) protocol — the shareable "why" record the AI auto-fills + reads (no command) |
-| `docs/LESSONS_PROTOCOL.md` | Pitfalls-layer protocol — the committed "what failed + how to avoid" record the AI auto-fills + reads (no command) |
+| `docs/luckystack/ARCHITECTURE_ROUTING.md` | File-based routing (pages, APIs, syncs) |
+| `docs/luckystack/ARCHITECTURE_API.md` | API request system |
+| `docs/luckystack/ARCHITECTURE_HTTP.md` | HTTP pipeline, custom-route phases, webhook + streaming-upload seam (origin-exempt paths) |
+| `docs/luckystack/ARCHITECTURE_SYNC.md` | Real-time sync events |
+| `docs/luckystack/ARCHITECTURE_AUTH.md` | Authentication flows |
+| `docs/luckystack/ARCHITECTURE_SESSION.md` | Session management |
+| `docs/luckystack/ARCHITECTURE_SOCKET.md` | Socket.io setup |
+| `docs/luckystack/ARCHITECTURE_EMAIL.md` | `@luckystack/email` + login forgot-password |
+| `docs/luckystack/ARCHITECTURE_SECRET_MANAGER.md` | `@luckystack/secret-manager` client + external server contract |
+| `docs/luckystack/ARCHITECTURE_MULTI_TENANCY.md` | Multi-tenant pattern (tenant = Workspace): Prisma `$extends` row isolation + keyed clients + Redis key formatter + per-workspace secrets |
+| `docs/luckystack/ARCHITECTURE_MULTI_INSTANCE.md` | Multi-instance/router model + pitfalls: WS pins to `system`, Redis-adapter cross-instance fan-out, regular `syncRequest` also crosses instances via `io.in(room).fetchSockets()` + `RemoteSocket.emit()` (streaming via `io.to().emit()`), shared-Redis footgun. Symptom→cause→fix table + local test recipe |
+| `docs/luckystack/ARCHITECTURE_PACKAGING.md` | Package split strategy |
+| `docs/luckystack/DEVELOPER_GUIDE.md` | Getting started |
+| `docs/HOSTING.md` | Deployment (project-owned; framework twin: `docs/luckystack/HOSTING.md`) |
+| `docs/luckystack/PACKAGE_OVERVIEW.md` | Per-package use-case + peer-deps table |
+| `docs/luckystack/LUCKYSTACK_ADD_GUIDE.md` | Adding an optional feature later (`npx luckystack add <feature>`): npm-i-vs-add matrix + per-feature checklists + troubleshooting |
+| `docs/luckystack/AGENT_TEAM_PLAYBOOK.md` | Multi-agent workflow |
+| `docs/luckystack/BRANCH_LOG_PROTOCOL.md` | Branch-log entry format |
+| `docs/luckystack/DECISION_MEMORY_PROTOCOL.md` | Committed decision-log (ADR) protocol — the shareable "why" record the AI auto-fills + reads (no command) |
+| `docs/luckystack/LESSONS_PROTOCOL.md` | Pitfalls-layer protocol — the committed "what failed + how to avoid" record the AI auto-fills + reads (no command) |
 | `docs/AI_LESSONS_INDEX.md` | Auto-generated index of `docs/lessons/` pitfalls (severity, area, takeaway) |
 | `docs/AI_EXAMPLES_INDEX.md` | Auto-generated index of the curated canonical example corpus (`docs/examples/`) |
 | `docs/AI_CONTEXT_BUDGET.md` | Auto-generated per-task retrieval profiles + artifact token sizes (what-to-load-when) |
 | `eval/` | AI-context eval harness — deterministic with/without scorer measuring whether the artifacts improve AI output (`npm run ai:eval`) |
-| `docs/AI_QUICK_INDEX.md` | Auto-generated cross-repo index (framework surfaces) |
+| `docs/luckystack/AI_QUICK_INDEX.md` | Auto-generated cross-repo index (framework surfaces) |
 | `docs/AI_PROJECT_INDEX.md` | Auto-generated inventory of the consumer project's own code (routes, pages, helpers, components, cross-refs) |
 | `docs/AI_DECISIONS_INDEX.md` | Auto-generated index of `docs/decisions/` ADRs (title, status, tags, summary) |
 | `docs/AI_RUNBOOKS.md` | Auto-generated task-shaped golden paths (add API/page/sync/helper, verify, decide) grounded in this project's real files |
 | `docs/PRODUCT.md` | AI-maintained plain-language description of what the app is + for whom (the intent-layer source) |
 | `docs/AI_PRODUCT_OVERVIEW.md` | Auto-generated intent overview: app description (from `PRODUCT.md`) + each page's `//? intent:` purpose |
 | `luckystack.ai.json` | AI-tooling config — `docs.sharding` (`auto`/`single`/`per-folder`) controls when the read-whole indexes split per src folder |
-| `docs/AI_BOOST_OVERVIEW.md` | One-page catalog of every AI-tooling surface in LuckyStack |
-| `docs/AI_BROWSER_TESTING.md` | AI browser-testing tooling (agent-browser + Playwright/Chrome DevTools MCP): the cheapest-first ladder + suggest→approve protocol |
+| `docs/luckystack/AI_BOOST_OVERVIEW.md` | One-page catalog of every AI-tooling surface in LuckyStack |
+| `docs/luckystack/AI_BROWSER_TESTING.md` | AI browser-testing tooling (agent-browser + Playwright/Chrome DevTools MCP): the cheapest-first ladder + suggest→approve protocol |
 
 ---
 

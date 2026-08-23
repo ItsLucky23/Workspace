@@ -1,5 +1,7 @@
 # 04b — Data model addenda (§6–§11 bodies, field sweep, type reconciliation)
 
+> **Note (2026-08-23):** the "V1" framing in this doc is historical — the build is long past V1. The schema bodies §6–§11 remain the frozen contract.
+
 > Build-grade addendum to [`04_DATA_MODEL.md`](./04_DATA_MODEL.md). **Does not edit 04.** This doc supplies the model bodies that feature docs 16–24 cite as `DATAMODEL §6–§11` (which `04 §1–§5` names but does not spell out), the Resolved-decision field sweep, the typed `StageKind` reconciliation, the `WorkspaceSuggestion` enum + patch field, the carryOver/Handoff relationship + fenced-block parsing pointer, and a `types.ts` backfill checklist with a recomputed delta count. Provider: MongoDB (`@map("_id") @db.ObjectId`); tenant = `Workspace`; every tenant model carries `workspaceId`. Cite this doc as `[04b §N]`.
 >
 > **Authority:** every section here traces to a `Q-DATA-*` (and a few `Q-SEC-*`/`Q-MP-*`) decision in [`REVIEW_AND_OPEN_QUESTIONS.md`](./REVIEW_AND_OPEN_QUESTIONS.md), all LOCKED 2026-06-04. The `→` markers carry the originating `Q-*` id inline. Where this doc states a persisted shape, the [INDEX delta table](./features/INDEX.md#new-fields--models-delta-table) is the aggregation source; this doc reconciles the deltas into model bodies, it does not invent new persistence beyond them.

@@ -1,6 +1,6 @@
 # Trust & Safety UX — the controls that make an autonomous AI dev system trustworthy
 
-> **⚑ V1 SCOPE:** per-stage proceed-or-gate + the changes-page edit-lock are IN for V1; the auto-merge end of the autonomy spectrum (full-auto-merge) and the AuditEntry rollback surface are DEFERRED — see [V1_SCOPE.md] §4. Read [V1_SCOPE.md] first.
+> **⚑ STATUS 2026-08-23: BUILT.** The earlier partial-deferral banner is obsolete: the surfaces described here — dry-run/shadow mode, rollback, the audit trail, and per-workspace autonomy levels — have since shipped. This doc remains as the design reference for the shipped surface.
 
 > The human-facing trust surface over the locked engine: a **dry-run / shadow mode** (the AI produces the full plan + diff but the Conductor does NOT execute until a human *promotes*), **rollback / revert** of a merged AI change, an **immutable audit trail** (who approved / merged / killed / promoted what — distinct from the activity feed), and **per-workspace autonomy levels** (full-auto ↔ gate-every-stage). None of these adds engine surface: every one rides B-23 (AI proposes → human accepts → Conductor executes — the only writer), the frozen 7+6 verb surface, and `[control-API]` as the sole human write path. Cites architecture as `[01 §x]`…`[07 §x]`, `[07b]`, `[02b §x]`, `[CONTROL_API §x]`, `[04b §x]`, `[FORGE_ABSTRACTION §x]`; codes via [REFERENCE_CODES]; carries `Q-TRUST-*` ids inline. Last updated: 2026-06-04.
 >

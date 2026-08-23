@@ -28,7 +28,7 @@
 | `pause` / `resume` / `kill` / `--resume` | **CONTRACT-ONLY** (fall through to a `default` no-op) | `controlApi.ts` ControlOp union; `conductor.ts::executeAction` default |
 | Per-stage `userEditable` edit-lock | **DATA ONLY, unenforced** | `PipelineStage.userEditable` (schema), `PipelineStageCfg.userEditable` (types.ts) |
 | Account `editorExtensions` + open-vsx render | **ABSENT** | `User.preferences Json?` exists as the persistence pattern (`updatePreferences_v1.ts`) |
-| Monaco in the main app | **ABSENT** (only in the un-imported `workspaces-handoff/ui-builder`) | root `package.json` has no `monaco-*` |
+| Monaco in the main app | **ABSENT** (only in the ui-builder prototype from the deleted workspaces-handoff scaffold (2026-08-23)) | root `package.json` has no `monaco-*` |
 | Dockerfile review (Monaco-lite candidate) | **BUILT as `<textarea>`** | `src/workspaces/workspace/page.tsx::DockerfileReview` |
 
 **Reality check:** the "real VS Code per ticket" path is *mostly infrastructure that does not yet exist* (Caddy, networking, TLS, editor-server lifecycle, wiring the stage engine into the conductor, and connecting the ticket UI to real data). Budget accordingly.
@@ -158,4 +158,4 @@ Track F (push-on-approval)            ── needs C ──► commit user edits
 | Pause/kill controls | [features/24] |
 | Control-API op catalogue + RBAC | [CONTROL_API.md], `server/control/rbac.ts` |
 | Account model + per-user persistence | [features/17], `src/settings/_api/updatePreferences_v1.ts` |
-| Monaco reference (what NOT to re-plumb) | `workspaces-handoff/ui-builder/src/sandbox/_components/editor/*` |
+| Monaco reference (what NOT to re-plumb) | the ui-builder prototype from the deleted workspaces-handoff scaffold (2026-08-23) |

@@ -1,5 +1,7 @@
 # 00 — Spec Reconciliation & ERRATA
 
+> **⚠️ STATUS 2026-08-23.** The `workspaces-handoff/` spec layer this doc arbitrated against was **deleted on 2026-08-23** (`BUILD_PROGRAM.md`/`BUILD_LOG.md` now live in `src/workspaces/_docs/`). The ERRATA rows below remain valid as recorded decisions; the referenced `handoff/` files no longer exist on disk.
+
 > **Read this before any `handoff/` spec.** The Workspaces design exists in three artifact layers — the **spec layer** (`handoff/`: `IDEE_SPEC.md`, `BESLISSINGEN.md` `B-01…B-O8`, `DATAMODEL.md`, `CLAUDE_SETTINGS_MAP.md`, `FRAMEWORK_*`, `DESIGN_BRIEF` + `designs/`), the **docs layer** (`src/workspaces/_docs/` 01–07 + `SETUP` + the 24 `features/` docs), and the **prototype** (`src/workspaces/`). The spec layer is "deprecated but two days old" and the docs layer has **deliberately evolved past it on the load-bearing axis.** This doc carves out *which layer governs which class of decision* and lists every superseded section. It is the authoritative tie-breaker — `README.md`'s blanket "specs win on conflict" line is **superseded by the precedence rule below.** Resolves `Q-INF-SPECWIN`, `Q-INF-CLAUDESETTINGSMAP`, `Q-INF-PRESETS`, `Q-PROD-WORKSPACE-AI`. Cites architecture as `[01 §x]`…`[07 §x]` and `handoff/` codes via `REFERENCE_CODES.md`. **No new verbs** — this is a reconciliation doc; it introduces no protocol surface. Last updated: 2026-06-04.
 
 ---

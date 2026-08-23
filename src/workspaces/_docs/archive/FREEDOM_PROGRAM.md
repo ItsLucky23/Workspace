@@ -1,6 +1,6 @@
 # FREEDOM PROGRAM — the `/goal` build spec (premium customization + creative freedom + editors)
 
-> **Status:** 📋 PLANNED (2026-07-07). The runnable spec for turning Workspaces from a "generate + download"
+> **Status:** ✅ COMPLETE (2026-07) — the program was built; see `branch-logs/main.md` for the per-item build entries. The runnable spec for turning Workspaces from a "generate + download"
 > pipeline into a **premium, freely-customizable AI product**. Grounding: the two gap-analysis waves
 > (2026-07-07) — 10 read-only audits across AI-steering, provider/model choice, pipeline/custom-tasks,
 > iteration/upload, context/knowledge, output/export/publish, approval/notification, templates/reuse,

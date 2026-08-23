@@ -29,6 +29,8 @@
 
 ## VOORTGANG (levend — bijgewerkt per gecommit increment)
 
+> **✅ PROGRAMMA COMPLEET (2026-07-08)** — alle drie de lagen gebouwd in worktree `feat/ai-libraries-accounts`, ADRs 0250–0261. De tabel hieronder is nooit per increment bijgewerkt; de ADRs + branch-log zijn het record.
+
 | Item | Status | ADR | Test |
 |---|---|---|---|
 | — | ⬜ | | |

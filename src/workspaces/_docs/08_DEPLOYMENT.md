@@ -1,5 +1,7 @@
 # 08 — Deployment & run model (how the app itself runs)
 
+> **⚑ STATUS 2026-08-23.** The single-instance/SPOF frame below is superseded: the engine is now the leader-elected multi-instance orchestrator (ADR 0015, root `CLAUDE.md` invariant 5) — N instances are safe, one leader at a time holds the writes. The deployment mechanics described below otherwise still hold.
+
 > Where every other build-doc describes what the system *does*, this one describes how the **two systems are deployed and kept alive**: the horizontally-scaled **web-app** tier and the **single-instance orchestrator** that is the agent-execution **SPOF**. It is the operational counterpart to [01 §2] (two-system topology) and [07 §overview] (single-instance pin). Prereq: [01](./01_ARCHITECTURE.md), [07](./07_ORCHESTRATOR.md), [SETUP](./SETUP_AND_PREREQUISITES.md). Carries **Q-INF-DEPLOY** (this file is its deliverable) and the boot-lease half of **Q-CT-RESUME**. Cites [REFERENCE_CODES → B-01/G8/G16/B-11/B-31] and the locked container decisions in [REVIEW §Container deep-dive]. **No new verbs** — deployment is pure process/infra topology; it spawns and supervises the same surfaces already specified, never a new protocol surface.
 >
 > **One-line model:** the web-app is **N stateless replicas behind the `app.` Caddy pool**; the orchestrator is **exactly one supervised process** that takes `lease:orchestrator` on boot and runs `resumeAll()`. Last updated: 2026-06-04.

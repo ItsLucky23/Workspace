@@ -1,5 +1,16 @@
 # Branch log — `main`
 
+## 2026-08-23 — Docs-opschoning: 29 weg, 21 gefixt, 12 gearchiveerd + PROGRAMS_INDEX
+
+**User prompt:** "punt 5 ook doen alle slechte, outdated, of nuttelozen docs weg halen/fixen."
+
+**Basis:** de 3-agent docs-inventaris van eerder vandaag (166 files → 26 DELETE / 21 FIX / 117 KEEP). Uitgevoerd:
+- **DELETE (26 .md + 3 .json, ~10k regels):** alle geconsumeerde scans/audits (GAP_SCAN_2026-07-16/17, PRODUCT_GAP_SCAN, COMPLETENESS_SCAN, SCAN_UNIVERSAL_TOOL, UI_AUDIT_08-17, UI_BEHAVIOUR_AUDIT_08-19, UI_FUNCTIONAL_AUDIT_08-22, GIT_HISTORY_AUDIT), de hele `fix-round-2026-08-22/` (alle vinkjes gezet, branches gemerged), de beantwoorde round-3-vragenlijsten, bootstrap-restanten (REPO_CLAUDE.template, PORT_MANIFEST, STAP1_SPIKE_CHECKLIST, ADOPTION_GOAL_COMMAND, HANDOVER_AI_LIBRARIES), het misleidende `COMPLETION_PROGRAM.md` (162 ⬜ terwijl vrijwel alles shipte) + zijn 3 `completion-gaps*.json`, en `docs/LESSONS_PROTOCOL.md` (byte-identiek duplicaat van `docs/luckystack/`).
+- **FIX (21):** `CLAUDE.md` — 25 dode doc-paden → `docs/luckystack/...` + consumer-pad-notitie boven de Documentation Reference; **`V1_SCOPE.md`** — banner dat alle vier V1-locks (GitLab-only/single-instance/Claude-only/geen MR) zijn teruggedraaid en CLAUDE.md invariant 5 nu wint; HISTORISCH/superseded-banners op BUILD_HANDOFF, BUILD_ORDER, MIGRATION, 00_SPEC_RECONCILIATION, 01/07/08 (single-instance→ADR 0015), 05_BUILD_PLAN, BUILTIN_MR_REVIEW+BUILTIN_CI (DEFERRED→BUILT), TRUST_SAFETY_UX, FORGE_ABSTRACTION, MULTI_PROVIDER_SEAM (PARKED→9 backends shippen), 04b (V1-frame-notitie); handoff-refs gefixt in CODE_EDITOR_BUILD_PLAN + additions/00_DECISIONS_LEDGER; statusstempels op FREEDOM/AI_LIBRARIES_ACCOUNTS/UNIVERSAL_TOOL/ADOPTION; **`README.md`** — van scaffold-stub ("# Test") naar echte Workspaces-readme; **`docs/PRODUCT.md`** — intent-laag gevuld (Rule 15a) + `ai:product` gedraaid; KEY_SETUP_GUIDE — verwijzing naar de in-app backend-catalogus.
+- **ARCHIEF + INDEX:** 12 afgeronde `*_PROGRAM.md` → `src/workspaces/_docs/archive/`; nieuw **`PROGRAMS_INDEX.md`** (actief vs gearchiveerd vs verwijderd, met provenance per rij); `_docs/README.md` front-door bijgewerkt (status-notitie + dode rijen weg).
+
+**Verify:** geen levende docs verwijzen nog naar verwijderde/verplaatste paden (grep); spot-checks V1_SCOPE/README/PRODUCT. **Open:** `.claude/worktrees/workspaces-audit-fixes` bevat nog een stale kopie van het oude handoff-materiaal — worktree-delete is niet autonoom (Rule 8), zeg het als ik hem mag opruimen.
+
 ## 2026-08-23 — test:all ~40 min → ~18 min: worker-pool voor test:ws + Playwright ×4
 
 **User prompt:** "ik wil ook de test:all fixen want 40 minuten is veel te lang."

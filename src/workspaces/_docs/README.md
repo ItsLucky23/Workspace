@@ -69,6 +69,8 @@ Ticket-agents **report via structured JSON into an append-only signal log** (not
 ### ▶ V1 setup — START HERE (the drag-and-drop build package, 2026-06-04)
 
 > A fresh AI pointed at this folder should read **`BUILD_HANDOFF.md` first**, then `V1_SCOPE.md`, then `BUILD_ORDER.md`. **Precedence:** `V1_SCOPE` wins on *what* ships; the build-docs win on *how* each piece works; `00_SPEC_RECONCILIATION.md` resolves any handoff/-vs-_docs conflict.
+>
+> **Status 2026-08-23:** the V1 build is DONE and the product has expanded past this corpus's V1 scope — on any conflict, root `CLAUDE.md` (User Project Rules, invariant 5) wins over `V1_SCOPE.md`. Completed build programs are indexed in **[PROGRAMS_INDEX.md](./PROGRAMS_INDEX.md)** and archived under `archive/`; the one-off scans/audits they consumed were deleted in the 2026-08-23 docs cleanup (see `branch-logs/main.md`).
 
 | Doc | Role | Read when |
 |---|---|---|
@@ -76,8 +78,6 @@ Ticket-agents **report via structured JSON into an append-only signal log** (not
 | **[V1_SCOPE.md](./V1_SCOPE.md)** | **Ground truth on WHAT ships.** IN/OUT table, the 7 concrete V1 flows, the deferred list, the precedence rule, the 4 lanes + Phase 0. | SECOND — the authority every other doc defers to on scope. |
 | **[BUILD_ORDER.md](./BUILD_ORDER.md)** | **The sequenced build plan.** Phase 0 (P0.5 spike gate + frozen contracts), the 4 non-overlapping lanes (A/B/C/D) with per-lane dirs/docs/milestones, the dependency graph, the non-overlap protocol, checkpoints CP0–CP5. | THIRD — once you know your lane. |
 | **[CODE_EDITOR.md](./CODE_EDITOR.md)** | **The Lane-D editor build-doc.** openvscode-server in-container (1:1 VS Code, account extensions, multi-language LSP, native git diff), the per-ticket Caddy route, the edit-lock/pause/resume orchestration, push-on-approval ride-along, the ui-builder Monaco demotion. | When building Lane D (editor / changes page). |
-| **[REPO_CLAUDE.template.md](./REPO_CLAUDE.template.md)** | **Template for the new repo's root `CLAUDE.md`.** Copy to repo root (do not edit in place). | Once, at repo bootstrap (Phase 0). |
-| **[PORT_MANIFEST.md](./PORT_MANIFEST.md)** | **The copy-list.** Exactly which non-framework files to bring into the fresh repo (the folder + `server/hooks/workspacesTerminal.ts` + the one wiring line + the `ui-builder/` reference + deps), and what NOT to copy (it's the framework). | At repo bootstrap, when copying files in. |
 
 ### Architecture (the locked spine)
 

@@ -1,5 +1,7 @@
 # 01 — Architecture (engine, topology, runtime)
 
+> **⚑ STATUS 2026-08-23.** The single-instance/SPOF frame below is superseded: the engine is now the leader-elected multi-instance orchestrator (ADR 0015, root `CLAUDE.md` invariant 5). Also, since ADR 0322 the coding agent is Claude Code OR the pi agent (Codex/ChatGPT seat) — the PTY-billing invariant itself still stands. The architecture mechanics described below otherwise still hold.
+
 > The *why* and the runtime shape. Prereq: [README](./README.md). Protocol details are in [02](./02_PROTOCOL_AND_FLOW.md); long-session context handling in [06](./06_TOKEN_OPTIMIZATION.md).
 
 ---

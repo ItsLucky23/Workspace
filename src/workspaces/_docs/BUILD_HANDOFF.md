@@ -1,5 +1,7 @@
 # BUILD_HANDOFF — the single front door for building Workspaces V1
 
+> **⚠️ STATUS 2026-08-23 — HISTORICAL.** This was the front door for the V1 build; that build is **complete**, and the 4-parallel-lanes method described here was replaced by the sequential waterfall method (root `CLAUDE.md` invariant 9, 2026-07-03). New sessions follow root `CLAUDE.md` (its "Read order before touching Workspaces code" sequence), not this file. Kept for provenance only.
+
 > **You are a fresh AI pointed at this file. Read it top-to-bottom, then read the docs in the order in §2, then ask the user the "where do I start?" question in §6.** This is the master entry-point: it tells you *what Workspaces is*, *what V1 actually ships*, *the order to read the spec*, *how the 4 parallel build lanes are spun up and kept non-overlapping*, and *the constraints every lane must honor*. It introduces **no new design, no new verbs, no new scope** — it routes you into the real docs. Where it summarizes, the cited doc governs. Last updated: 2026-06-04.
 >
 > **The one rule that overrides everything below:** [V1_SCOPE.md](./V1_SCOPE.md) is the authority on *what ships*. The broader doc set (01–08, 04b, the all-in-one layer, the 24 `features/` docs) describes a **bigger system than V1 builds** — it is the design horizon, not the build. When any doc over-describes beyond V1_SCOPE, **V1_SCOPE wins** ([V1_SCOPE §5]). Codes (`B-23`, `G6`, `DH5`, `B-O2`…) resolve via [REFERENCE_CODES.md].

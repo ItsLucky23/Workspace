@@ -1,6 +1,6 @@
 # AI Provider Expansion Plan
 
-> Goal: any AI feature can run on any backend the user connects — other subscriptions (OpenAI/GPT, …), many APIs, many models — instead of the `claude-cli` / `gemini-api` pair the code keeps naming. Written 2026-08-22, after the 8-agent audit; builds on the fix-round (`fix-round-2026-08-22/`). Owner decisions are marked **OPEN VRAAG**.
+> Goal: any AI feature can run on any backend the user connects — other subscriptions (OpenAI/GPT, …), many APIs, many models — instead of the `claude-cli` / `gemini-api` pair the code keeps naming. Written 2026-08-22, after the 8-agent audit; built on the fix-round docs (deleted 2026-08-23 after completion — see branch-logs). Owner decisions are marked **OPEN VRAAG**.
 
 ## 1. What already exists (do not rebuild)
 

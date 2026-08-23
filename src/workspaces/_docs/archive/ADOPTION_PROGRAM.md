@@ -55,7 +55,7 @@ De engine is écht (123 conductor-ops, echte PTY/Docker/ffmpeg/fal/ElevenLabs/Yo
 | R1 pipeline stage add/remove/reorder persistent | ✅ | — | pipelineStages-integratie 7/7 (client-knop-wiring = browser-follow-up) |
 | R2 deterministische test-gate (test-stage → auto-CI, red blokkeert) | ✅ | — | ciGate-unit 9/9 · stageEngine-regressie 27/27 |
 | R3 webhook-routing per-project (multi-repo #8) | ✅ | — | webhookRouting-integratie 7/7 · forge-regressie 26/26 |
-| R3-b repoStore per-project bare re-key (readers/writers) | ⬜ | | groot cross-cutting → aparte veilige ronde (fresh context + Docker) |
+| R3-b repoStore per-project bare re-key (readers/writers) | ❌ | | not built — dropped 2026-08-23 (docs cleanup); was deferred to a separate safe round (fresh context + Docker) that never ran |
 | **FASE R (R1/R2/R3-webhook) COMPLEET** | ✅ | | R3-b (bare-re-key) = scoped follow-up |
 | U1 UI-review-intake (taxonomie + `ui-review-create`-op) | ✅ | — | uiReview-unit 8/8 · uiReview-integratie (screenshot-UI = browser-follow-up) |
 | N1 knowledge-graph-data-op (nodes + similarity-edges) | ✅ | — | knowledgeGraph-unit 9/9 · knowledgeGraph-integratie (N2-graph-UI = browser-follow-up) |
