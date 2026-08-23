@@ -3,12 +3,17 @@
 //? let the settings picker offer openai-api/anthropic-api/openrouter while dispatch silently dropped them.
 
 import { assert, eq, report } from '../_helpers.mts';
-import { AI_PROVIDER_CATALOG } from '../../server/ai/providers/catalog.ts';
+import { AI_PROVIDER_CATALOG, isKnownAiProviderId, knownAiProviderIds } from '../../server/ai/providers/catalog.ts';
 import { isAiProviderId } from '../../server/ai/workspaceAssignments.ts';
 import { PROPOSE_CATALOG } from '../../server/ai/opCatalog.ts';
 
 const ids = Object.keys(AI_PROVIDER_CATALOG);
 assert(ids.length > 2, 'the catalog has more than the old claude-cli/gemini-api pair');
+//? P4-3 — one validation source: knownAiProviderIds() IS the catalog key set, and isKnownAiProviderId agrees.
+eq(knownAiProviderIds(), ids, 'knownAiProviderIds() equals the catalog key set, in catalog order');
+for (const id of ids) assert(isKnownAiProviderId(id), `isKnownAiProviderId(${id})`);
+assert(!isKnownAiProviderId('toString'), 'a prototype key is not a provider (own-property check)');
+assert(!isAiProviderId('toString'), 'dispatch also rejects a prototype key');
 for (const id of ids) assert(isAiProviderId(id), `${id} is routable at dispatch`);
 assert(!isAiProviderId('gemini'), "'gemini' (not a catalog id) is not routable");
 assert(!isAiProviderId('not-a-provider'), 'an unknown id is not routable');

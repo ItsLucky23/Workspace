@@ -20,6 +20,7 @@ import { listAgentRoles } from '../automation/agentRoles';
 import { listAiRuns } from '../ai/activity';
 import { formatTime, toContentAssetSummary, toContentPieceSummary, toVideoSceneSummary, toEnvVar, toInfoDoc, toTicket } from './mappers';
 import { AI_PROVIDER_LIST } from '../ai/providers/catalog';
+import { AI_OVERRIDE_PREFIX, parseAiOverride } from '../ai/workspaceAssignments';
 import { listConnections } from '../ai/connections';
 import { repoStatus } from '../git/repoStore';
 import { baseDomain } from '../proxy';
@@ -167,8 +168,9 @@ export interface WorkspaceSnapshot {
   tickets: Ticket[];
   stages: PipelineStage[];
   stageConfigs: PipelineStageCfg[];
-  //? P1 — per-workspace AI provider overrides per feature (empty = the global defaults).
-  aiOverrides: { feature: string; providerId: string }[];
+  //? P1 — per-workspace AI provider overrides per feature (empty = the global defaults). P4-1: the
+  //? `_default` pseudo-feature row is the workspace default backend. P4-2: optional per-feature `model`.
+  aiOverrides: { feature: string; providerId: string; model?: string }[];
   //? ADR 0007 — the CONNECTED AIs, and what can be connected. `hasKey` is presence ONLY; the
   //? credential is encrypted at rest and never leaves the server. No endpoint in either shape: which
   //? host answers is infrastructure, resolved server-side.
@@ -700,7 +702,9 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       stages: stageRows.map((s): PipelineStage => ({ id: s.key, kind: asKind(s.kind), name: s.name, order: s.order, aiEnabled: s.aiEnabled, wipLimit: s.wipLimit ?? undefined })),
       stageConfigs: stageRows.map((s) => toStageConfig(s)),
       //? P1 — per-workspace AI provider overrides (from the __ai_provider_<feature> EnvVars).
-      aiOverrides: envRows.filter((e) => e.key.startsWith('__ai_provider_')).map((e) => ({ feature: e.key.slice('__ai_provider_'.length), providerId: e.value })),
+      //? P4-1/P4-2 — includes the `_default` pseudo-feature row; a `providerId:model` value is split so the
+      //? client sees the provider + optional model as separate fields (never the raw stored string).
+      aiOverrides: envRows.filter((e) => e.key.startsWith(AI_OVERRIDE_PREFIX)).map((e) => ({ feature: e.key.slice(AI_OVERRIDE_PREFIX.length), ...(parseAiOverride(e.value) ?? { providerId: e.value }) })),
       //? E5 — user-defined custom AI tasks.
       customTasks: customTaskRows.map((t) => ({ id: t.id, name: t.name, promptTemplate: t.promptTemplate, lastOutput: t.lastOutput, lastRunAt: t.lastRunAt ? t.lastRunAt.getTime() : null })),
       //? O5 — reusable output specs.

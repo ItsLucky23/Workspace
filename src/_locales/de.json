@@ -3746,7 +3746,12 @@
       "err_ai.unknownProvider": "Unbekanntes Backend.",
       "err_unknown": "Verbinden fehlgeschlagen.",
       "kind_subscription": "Abonnement",
-      "kind_api-key": "API-Schlüssel"
+      "kind_api-key": "API-Schlüssel",
+      "modelHelpLive": "Live-Liste vom Backend, über deine bestehende Verbindung. Wähle „Andere“ für ein Modell, das nicht aufgeführt ist.",
+      "refreshModels": "Aktualisieren",
+      "refreshingModels": "Aktualisiere…",
+      "err_ai.modelsUnsupported": "Dieses Backend hat keine Modellliste.",
+      "err_ai.connectionNotFound": "Verbindung nicht gefunden."
     },
     "aiSections": {
       "instructions": "Anweisungen",

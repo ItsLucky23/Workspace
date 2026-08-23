@@ -66,10 +66,11 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
   'anthropic-api': ANTHROPIC_META,
   'gemini-api': {
     id: 'gemini-api', label: 'Gemini', kind: 'api-key', transport: 'openai-compatible',
+    //? P4-6 — short, currently-shipping; the live listing (P4-4) is the real source.
     models: [
       { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
       { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
-      { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+      { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-Lite' },
     ],
     defaultModel: 'gemini-2.5-flash',
     //? Google publishes an OpenAI-compatible endpoint, so Gemini rides the same tested transport as
@@ -83,14 +84,15 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
   //? works the day it is added. That is the whole reason the transport is a first-class concept.
   'openai-api': {
     id: 'openai-api', label: 'OpenAI', kind: 'api-key', transport: 'openai-compatible',
+    //? P4-6 — short, currently-shipping; the live listing (P4-4) is the real source.
     models: [
-      { id: 'gpt-4o', label: 'GPT-4o' },
-      { id: 'gpt-4o-mini', label: 'GPT-4o mini' },
+      { id: 'gpt-5', label: 'GPT-5' },
+      { id: 'gpt-5-mini', label: 'GPT-5 mini' },
+      { id: 'gpt-5-nano', label: 'GPT-5 nano' },
       { id: 'gpt-4.1', label: 'GPT-4.1' },
       { id: 'gpt-4.1-mini', label: 'GPT-4.1 mini' },
-      { id: 'o4-mini', label: 'o4-mini' },
     ],
-    defaultModel: 'gpt-4o-mini',
+    defaultModel: 'gpt-5-mini',
     baseUrl: 'https://api.openai.com/v1', keyUrl: 'https://platform.openai.com/api-keys',
     baseUrlEnv: 'WS_OPENAI_BASE_URL',
   },
@@ -100,11 +102,12 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
     //? hatch matters more here than anywhere else, because its catalog changes weekly.
     models: [
       { id: 'anthropic/claude-sonnet-4.5', label: 'Claude Sonnet 4.5' },
-      { id: 'openai/gpt-4o', label: 'GPT-4o' },
+      { id: 'openai/gpt-5', label: 'GPT-5' },
       { id: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+      { id: 'deepseek/deepseek-chat-v3.1', label: 'DeepSeek V3.1' },
       { id: 'meta-llama/llama-3.3-70b-instruct', label: 'Llama 3.3 70B' },
     ],
-    defaultModel: 'openai/gpt-4o',
+    defaultModel: 'openai/gpt-5',
     baseUrl: 'https://openrouter.ai/api/v1', keyUrl: 'https://openrouter.ai/keys',
     baseUrlEnv: 'WS_OPENROUTER_BASE_URL',
   },
@@ -113,6 +116,8 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
     models: [
       { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B' },
       { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B (instant)' },
+      { id: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B' },
+      { id: 'openai/gpt-oss-20b', label: 'GPT-OSS 20B' },
     ],
     defaultModel: 'llama-3.3-70b-versatile',
     baseUrl: 'https://api.groq.com/openai/v1', keyUrl: 'https://console.groq.com/keys',
@@ -120,9 +125,10 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
   },
   'deepseek-api': {
     id: 'deepseek-api', label: 'DeepSeek', kind: 'api-key', transport: 'openai-compatible',
+    //? Stable aliases — DeepSeek moves these to each new V3.x release, so they stay current by themselves.
     models: [
-      { id: 'deepseek-chat', label: 'DeepSeek Chat' },
-      { id: 'deepseek-reasoner', label: 'DeepSeek Reasoner' },
+      { id: 'deepseek-chat', label: 'DeepSeek Chat (V3.x)' },
+      { id: 'deepseek-reasoner', label: 'DeepSeek Reasoner (thinking)' },
     ],
     defaultModel: 'deepseek-chat',
     baseUrl: 'https://api.deepseek.com/v1', keyUrl: 'https://platform.deepseek.com/api_keys',
@@ -132,11 +138,63 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
     id: 'mistral-api', label: 'Mistral', kind: 'api-key', transport: 'openai-compatible',
     models: [
       { id: 'mistral-large-latest', label: 'Mistral Large' },
+      { id: 'mistral-medium-latest', label: 'Mistral Medium' },
       { id: 'mistral-small-latest', label: 'Mistral Small' },
+      { id: 'codestral-latest', label: 'Codestral' },
     ],
-    defaultModel: 'mistral-large-latest',
+    defaultModel: 'mistral-medium-latest',
     baseUrl: 'https://api.mistral.ai/v1', keyUrl: 'https://console.mistral.ai/api-keys',
     baseUrlEnv: 'WS_MISTRAL_BASE_URL',
+  },
+  //? P4-5 — four more hosts that speak the same transport (ADR 0321: no Azure — its per-deployment URL
+  //? scheme needs a transport tweak, deferred until there is a concrete need). Data only, by design.
+  'xai-api': {
+    id: 'xai-api', label: 'xAI (Grok)', kind: 'api-key', transport: 'openai-compatible',
+    models: [
+      { id: 'grok-4', label: 'Grok 4' },
+      { id: 'grok-4-fast-reasoning', label: 'Grok 4 Fast (reasoning)' },
+      { id: 'grok-4-fast-non-reasoning', label: 'Grok 4 Fast (non-reasoning)' },
+      { id: 'grok-3-mini', label: 'Grok 3 mini' },
+    ],
+    defaultModel: 'grok-4-fast-non-reasoning',
+    baseUrl: 'https://api.x.ai/v1', keyUrl: 'https://console.x.ai/',
+    baseUrlEnv: 'WS_XAI_BASE_URL',
+  },
+  'together-api': {
+    id: 'together-api', label: 'Together', kind: 'api-key', transport: 'openai-compatible',
+    //? Open-weight models under `org/Model` ids; the live listing (P4-4) is the real catalog here.
+    models: [
+      { id: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', label: 'Llama 3.3 70B Turbo' },
+      { id: 'deepseek-ai/DeepSeek-V3', label: 'DeepSeek V3' },
+      { id: 'Qwen/Qwen2.5-72B-Instruct-Turbo', label: 'Qwen 2.5 72B Turbo' },
+    ],
+    defaultModel: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+    baseUrl: 'https://api.together.xyz/v1', keyUrl: 'https://api.together.xyz/settings/api-keys',
+    baseUrlEnv: 'WS_TOGETHER_BASE_URL',
+  },
+  'fireworks-api': {
+    id: 'fireworks-api', label: 'Fireworks', kind: 'api-key', transport: 'openai-compatible',
+    //? Ids carry the `accounts/fireworks/models/` prefix — that IS the model name on this host.
+    models: [
+      { id: 'accounts/fireworks/models/llama-v3p3-70b-instruct', label: 'Llama 3.3 70B' },
+      { id: 'accounts/fireworks/models/deepseek-v3', label: 'DeepSeek V3' },
+      { id: 'accounts/fireworks/models/qwen2p5-72b-instruct', label: 'Qwen 2.5 72B' },
+    ],
+    defaultModel: 'accounts/fireworks/models/llama-v3p3-70b-instruct',
+    baseUrl: 'https://api.fireworks.ai/inference/v1', keyUrl: 'https://fireworks.ai/settings/users/api-keys',
+    baseUrlEnv: 'WS_FIREWORKS_BASE_URL',
+  },
+  'cerebras-api': {
+    id: 'cerebras-api', label: 'Cerebras', kind: 'api-key', transport: 'openai-compatible',
+    models: [
+      { id: 'llama-3.3-70b', label: 'Llama 3.3 70B' },
+      { id: 'llama3.1-8b', label: 'Llama 3.1 8B' },
+      { id: 'gpt-oss-120b', label: 'GPT-OSS 120B' },
+      { id: 'qwen-3-32b', label: 'Qwen 3 32B' },
+    ],
+    defaultModel: 'llama-3.3-70b',
+    baseUrl: 'https://api.cerebras.ai/v1', keyUrl: 'https://cloud.cerebras.ai/platform',
+    baseUrlEnv: 'WS_CEREBRAS_BASE_URL',
   },
   'local-openai': {
     id: 'local-openai', label: 'Local / self-hosted', kind: 'api-key', transport: 'openai-compatible',
@@ -152,6 +210,14 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
 };
 
 export const AI_PROVIDER_LIST: AiProviderMeta[] = Object.values(AI_PROVIDER_CATALOG);
+
+//? P4-3 — THE validation source for a provider id. Dispatch (`isAiProviderId`), the `save-ai-provider`
+//? op, the assistant op-catalog enum and the connection ops all consume this; nothing keeps its own list.
+//? A fresh copy each call so no consumer can mutate the catalog's key set.
+export function knownAiProviderIds(): string[] {
+  return Object.keys(AI_PROVIDER_CATALOG);
+}
+export const isKnownAiProviderId = (id: string): boolean => Object.hasOwn(AI_PROVIDER_CATALOG, id);
 
 /** The endpoint a backend talks to: an operator env override, else its catalog default. */
 export function providerBaseUrl(meta: AiProviderMeta): string {

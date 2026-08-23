@@ -11,6 +11,13 @@
 //? and a union would make "add a provider" a code change in five files again.
 export type AiProviderId = string;
 
+//? P4-1/P4-2 — a routing target: which backend, and optionally WHICH MODEL on it. `model` omitted ⇒ the
+//? connection's picked model (resolveProviderConfig) applies.
+export interface AiRoute {
+  providerId: AiProviderId;
+  model?: string;
+}
+
 //? The distinct AI-integration points. Each resolves to a provider independently; adding
 //? a feature = one key here + a default in ./assignments. `pipeline-agent` is the
 //? long-running in-container coding agent (a session/stream shape layered on later); the
@@ -101,7 +108,9 @@ export interface AiProvider {
   id: AiProviderId;
   label: string;
   available: (workspaceId?: string) => Promise<boolean>;   //? Q5 — a per-workspace key (EnvVar store) can make a provider available even without an env key
-  complete: (req: AiCompletionRequest) => Promise<AiCompletionResult>;
+  //? P4-2 — `opts.model` is a per-CALL model override (from a `providerId:model` feature route); a backend with
+  //? no model concept (a subscription CLI) ignores it.
+  complete: (req: AiCompletionRequest, opts?: { model?: string }) => Promise<AiCompletionResult>;
   //? ADR 0007 — probe ONE set of credentials without going through the workspace's stored config, so
   //? the settings page can answer "is this key valid" for a connection that is not the active one.
   //? Must be the cheapest call the backend offers: a user may press Test on every row.

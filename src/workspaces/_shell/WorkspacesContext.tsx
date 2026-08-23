@@ -318,14 +318,15 @@ export interface WorkspacesCtx {
   markCommentsRead: (commentId?: string) => void;
   //? Q4 + K4 + P2 — the workspace AI-behaviour settings: instruction + output language + Gemini model/temperature.
   saveAiInstruction: (aiInstruction: string, outputLanguage: string, geminiModel: string, geminiTemperature: string, geminiBaseUrl: string) => void;
-  //? P1 — per-feature AI provider overrides + a setter ('default' clears).
-  aiOverrides: { feature: string; providerId: string }[];
+  //? P1 — per-feature AI provider overrides + a setter ('default' clears). P4-1: feature '_default' = the
+  //? workspace default backend. P4-2: optional per-feature model pin.
+  aiOverrides: { feature: string; providerId: string; model?: string }[];
   //? ADR 0007 — the connected AIs, and what CAN be connected. `hasKey` is presence only.
   aiConnections: AiConnection[];
   aiProviderCatalog: AiProviderOption[];
   /** Add / test / remove one connection. Resolves with the Conductor's own result. */
   aiConnectionAction: (input: { op: 'ai-connection-add' | 'ai-connection-test' | 'ai-connection-remove'; providerId?: string; model?: string; apiKey?: string; connectionId?: string }) => Promise<{ ok: boolean; error?: string; result?: unknown }>;
-  saveAiProvider: (feature: string, providerId: string) => void;
+  saveAiProvider: (feature: string, providerId: string, model?: string) => void;
   //? Preload gap-fix (X3) — the caller's own Personal Access Tokens (metadata only; never the raw token).
   pats: PatSummary[];
   //? Agent controls (C2) — pause/resume/kill a ticket's autonomous turn; pause/resume all.

@@ -3746,7 +3746,12 @@
       "err_ai.unknownProvider": "Backend inconnu.",
       "err_unknown": "Connexion impossible.",
       "kind_subscription": "Abonnement",
-      "kind_api-key": "Clé API"
+      "kind_api-key": "Clé API",
+      "modelHelpLive": "Liste en direct du backend, via votre connexion existante. Choisissez « Autre » pour un modèle absent de la liste.",
+      "refreshModels": "Actualiser",
+      "refreshingModels": "Actualisation…",
+      "err_ai.modelsUnsupported": "Ce backend n’a pas de liste de modèles.",
+      "err_ai.connectionNotFound": "Connexion introuvable."
     },
     "aiSections": {
       "instructions": "Instructions",

@@ -23,7 +23,7 @@ import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { ensureWorkspaceBuiltins, scheduleWorkspaceBuiltinIndexing } from '../bootstrap/workspaceBuiltins';
 import { addConnection, recordTest, removeConnection } from '../ai/connections';
-import { isAiProviderId } from '../ai/workspaceAssignments';
+import { AI_OVERRIDE_PREFIX, formatAiOverride, isAiProviderId, parseAiOverride } from '../ai/workspaceAssignments';
 import { aiProviderById } from '../ai/registry';
 import { isPipelinePreset, createDefaultPipeline, stageBlueprint, baseStageStatuses, stagesForPreset, stageCreateData, blueprintForStage, fallbackStageKey, defaultStageKeys, isStageKind } from '../bootstrap/defaultPipeline';
 import { cloneWorkspace } from '../bootstrap/cloneWorkspace';
@@ -2771,18 +2771,24 @@ async function executeAction(action: WriterAction): Promise<unknown> {
     case 'save-ai-provider': {
       //? P1 — a per-workspace AI provider override per feature (EnvVar `__ai_provider_<feature>`). 'default'
       //? (or empty) clears it → the global default. Returns the full override map for the settings UI.
+      //? P4-1 — `feature: '_default'` (AI_DEFAULT_FEATURE) sets the WORKSPACE DEFAULT backend in the same store.
+      //? P4-2 — optional `model` is stored as `providerId:model`; when the key is sent it must be non-empty.
       const feature = str(payload, 'feature');
       const providerId = str(payload, 'providerId');
       if (!feature) return [];
       //? F-017 — reject an unknown id instead of storing it: a stored-but-ignored override is exactly the
       //? "looks saved, silently falls back" failure this op used to produce.
       if (providerId && providerId !== 'default' && !isAiProviderId(providerId)) return { ok: false, error: 'ai.unknownProvider' };
-      const key = `__ai_provider_${feature}`;
+      const rawModel = str(payload, 'model');
+      const model = rawModel?.trim() ?? '';
+      if (rawModel !== undefined && model.length === 0) return { ok: false, error: 'ai.modelRequired' };
+      const key = `${AI_OVERRIDE_PREFIX}${feature}`;
+      const value = providerId === undefined ? '' : formatAiOverride(model.length > 0 ? { providerId, model } : { providerId });
       await (!providerId || providerId === 'default'
         ? prisma.envVar.deleteMany({ where: { workspaceId: action.workspaceId, key } })
-        : prisma.envVar.upsert({ where: { workspaceId_key: { workspaceId: action.workspaceId, key } }, create: { workspaceId: action.workspaceId, key, value: providerId, secret: false }, update: { value: providerId } }));
-      const rows = await prisma.envVar.findMany({ where: { workspaceId: action.workspaceId, key: { startsWith: '__ai_provider_' } }, select: { key: true, value: true } });
-      return rows.map((r) => ({ feature: r.key.slice('__ai_provider_'.length), providerId: r.value }));
+        : prisma.envVar.upsert({ where: { workspaceId_key: { workspaceId: action.workspaceId, key } }, create: { workspaceId: action.workspaceId, key, value, secret: false }, update: { value } }));
+      const rows = await prisma.envVar.findMany({ where: { workspaceId: action.workspaceId, key: { startsWith: AI_OVERRIDE_PREFIX } }, select: { key: true, value: true } });
+      return rows.map((r) => ({ feature: r.key.slice(AI_OVERRIDE_PREFIX.length), ...(parseAiOverride(r.value) ?? { providerId: r.value }) }));
     }
     //? Edit a channel's brand voice (U4) — update the field + re-index the brand snippet into brand-RAG
     //? (F5.1) so every generation for the channel can ground on it. The Conductor is the only writer (B-23).

@@ -76,8 +76,11 @@ export const anthropicApiProvider: AiProvider = {
     const [error] = await call(cfg.apiKey, anthropicBody({ prompt: 'ping' }, cfg.model, 1), 15_000);
     return error ? { ok: false, error: error.message } : { ok: true };
   },
-  complete: async (req: AiCompletionRequest): Promise<AiCompletionResult> => {
-    const { apiKey, model } = await resolveProviderConfig('anthropic-api', req.workspaceId, { apiKey: envKey(), model: META.defaultModel, baseUrl: providerBaseUrl(META) });
+  complete: async (req: AiCompletionRequest, opts?: { model?: string }): Promise<AiCompletionResult> => {
+    const cfg = await resolveProviderConfig('anthropic-api', req.workspaceId, { apiKey: envKey(), model: META.defaultModel, baseUrl: providerBaseUrl(META) });
+    const { apiKey } = cfg;
+    //? P4-2 — a per-feature model pin (`providerId:model` route) beats the connection's picked model.
+    const model = opts?.model !== undefined && opts.model.length > 0 ? opts.model : cfg.model;
     if (apiKey.length === 0) return { ok: false, text: '', providerId: 'anthropic-api', error: 'ai.providerUnavailable' };
     const [error, body] = await call(apiKey, anthropicBody(req, model), req.timeoutMs ?? 60_000);
     if (error) return { ok: false, text: '', providerId: 'anthropic-api', error: error.message };

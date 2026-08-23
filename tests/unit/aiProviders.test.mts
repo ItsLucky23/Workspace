@@ -37,6 +37,25 @@ for (const meta of AI_PROVIDER_LIST) {
 assert(AI_PROVIDER_LIST.some((m) => m.kind === 'subscription'), 'at least one subscription backend exists');
 assert(AI_PROVIDER_LIST.filter((m) => m.kind === 'api-key').length >= 4, 'several api-key backends exist');
 
+//? P4-5 — the four added OpenAI-compatible hosts: each is a real endpoint, has a key page, an operator
+//? env override, and (via the generic loop above) a default model it offers. No Azure (ADR 0321).
+for (const [id, baseUrl, env] of [
+  ['xai-api', 'https://api.x.ai/v1', 'WS_XAI_BASE_URL'],
+  ['together-api', 'https://api.together.xyz/v1', 'WS_TOGETHER_BASE_URL'],
+  ['fireworks-api', 'https://api.fireworks.ai/inference/v1', 'WS_FIREWORKS_BASE_URL'],
+  ['cerebras-api', 'https://api.cerebras.ai/v1', 'WS_CEREBRAS_BASE_URL'],
+] as const) {
+  const meta = AI_PROVIDER_CATALOG[id];
+  assert(meta !== undefined, `${id} is in the catalog`);
+  eq(meta?.transport, 'openai-compatible', `${id} rides the shared transport`);
+  eq(meta?.kind, 'api-key', `${id} is a metered api-key backend`);
+  eq(meta?.baseUrl, baseUrl, `${id} endpoint`);
+  eq(meta?.baseUrlEnv, env, `${id} operator env override`);
+  assert((meta?.keyUrl ?? '').startsWith('https://'), `${id} links to a key page`);
+  assert((meta?.models.length ?? 0) >= 2 && (meta?.models.length ?? 0) <= 4, `${id} lists 2-4 models`);
+}
+assert(!('azure-openai' in AI_PROVIDER_CATALOG), 'no Azure entry (ADR 0321: deferred)');
+
 {
   const local = AI_PROVIDER_CATALOG['local-openai'];
   //? A self-hosted server has no key to fetch, and demanding one would block the one backend that
