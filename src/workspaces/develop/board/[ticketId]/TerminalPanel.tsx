@@ -11,23 +11,18 @@
 //? And the shell is gated on a RUNNING container for this ticket (`containerTerminals`, polled like the
 //? Terminals page): a container-less ticket gets a setup notice instead of a dead xterm that exits 126.
 
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useState } from 'react';
 
 import { apiRequest, tryCatch, useTranslator } from '@luckystack/core/client';
 
 import Icon from '../../../_components/Icon';
 import XtermTerminal from '../../../_components/XtermTerminal';
 import { EmptyState } from '../../../_components/primitives';
+import { useRememberedPanelHeight } from '../../../_components/useRememberedPanelHeight';
 import { useWorkspaces } from '../../../_shell/WorkspacesContext';
 
-//? Remembered terminal height (module-level so a drag persists across remounts /
-//? tab switches without threading it through page state — mirrors the Terminals
-//? page's rememberedGridHeight).
-let rememberedTerminalHeight = 320;
-const MIN_TERMINAL_HEIGHT = 220;
 //? The relay execs `bash` at /work (workspacesTerminal.ts attachDockerPty / pty-agent) — shown, not chosen.
 const WORKDIR_LABEL = '· /work';
-const MAX_TERMINAL_HEIGHT = 900;
 const tabCls = (on: boolean): string => `rounded-md px-2 py-0.5 text-xs font-mono cursor-pointer transition-colors ${on ? 'bg-white/10 text-terminal-text' : 'text-terminal-muted hover:text-terminal-text'}`;
 
 export default function TerminalPanel({ ticketId }: { ticketId: string }) {
@@ -41,9 +36,7 @@ export default function TerminalPanel({ ticketId }: { ticketId: string }) {
   const liveOutput = ctx.agentTerm[ticketId] ?? '';
   const hasLiveTail = liveOutput.length > 0;
   const [tab, setTab] = useState<'shell' | 'agent'>('shell');
-  const [height, setHeight] = useState(rememberedTerminalHeight);
-  const [dragging, setDragging] = useState(false);
-  const dragRef = useRef<{ startY: number; startH: number } | null>(null);
+  const { height, dragging, onPointerDown, onPointerMove, onPointerUp } = useRememberedPanelHeight('ticket-terminal', 320);
 
   //? Is there a running container for THIS ticket? Polled (5s) so a container that spins up on stage
   //? activation appears without a manual refresh. `null` = not known yet.
@@ -59,22 +52,6 @@ export default function TerminalPanel({ ticketId }: { ticketId: string }) {
     const timer = setInterval(() => { void load(); }, 5000);
     return () => { cancelled = true; clearInterval(timer); };
   }, [workspaceId, ticketId]);
-
-  //? Drag the bottom strip to resize the panel height. Clamp to a sane range and
-  //? remember the last height at module level. Pointer-capture keeps the drag
-  //? tracking even when the cursor leaves the thin handle (mirrors TerminalPanel).
-  const onHandleDown = (e: ReactPointerEvent) => {
-    dragRef.current = { startY: e.clientY, startH: height };
-    setDragging(true);
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  };
-  const onHandleMove = (e: ReactPointerEvent) => {
-    if (!dragRef.current) return;
-    const next = Math.min(MAX_TERMINAL_HEIGHT, Math.max(MIN_TERMINAL_HEIGHT, dragRef.current.startH + (e.clientY - dragRef.current.startY)));
-    rememberedTerminalHeight = next;
-    setHeight(next);
-  };
-  const onHandleUp = () => { dragRef.current = null; setDragging(false); };
 
   const isAgentTab = hasLiveTail && tab === 'agent';
   //? No container AND no live tail → nothing to show at all; say how a terminal comes to exist.
@@ -118,7 +95,7 @@ export default function TerminalPanel({ ticketId }: { ticketId: string }) {
             : <EmptyState icon="terminal" title={translate({ key: 'workspaces.ticket.terminalNoContainerTitle' })} sub={translate({ key: 'workspaces.ticket.terminalNoContainerSub' })} />}
         </div>
       )}
-      <div onPointerDown={onHandleDown} onPointerMove={onHandleMove} onPointerUp={onHandleUp}
+      <div onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}
         title={translate({ key: 'workspaces.terminals.resizeTitle' })}
         className="group h-2.5 flex items-center justify-center cursor-ns-resize bg-terminal-surface border-t border-white/5">
         <span className={`w-8 h-0.5 rounded-full transition-colors ${dragging ? 'bg-primary' : 'bg-terminal-muted/50 group-hover:bg-terminal-muted'}`} />

@@ -2,8 +2,8 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 459,
-    "edges": 688,
+    "nodes": 460,
+    "edges": 690,
     "symbols": 871,
     "callEdges": 289
   },
@@ -1035,6 +1035,11 @@
     },
     {
       "id": "workspaces/_components/SetupWizard.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_components/useRememberedPanelHeight.ts",
       "kind": "other",
       "route": null
     },
@@ -4043,6 +4048,10 @@
     },
     {
       "from": "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
+      "to": "workspaces/_components/useRememberedPanelHeight.ts"
+    },
+    {
+      "from": "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
       "to": "workspaces/_components/XtermTerminal.tsx"
     },
     {
@@ -4760,6 +4769,10 @@
     {
       "from": "workspaces/develop/terminals/TerminalPanel.tsx",
       "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/develop/terminals/TerminalPanel.tsx",
+      "to": "workspaces/_components/useRememberedPanelHeight.ts"
     },
     {
       "from": "workspaces/develop/terminals/TerminalPanel.tsx",
@@ -6177,6 +6190,12 @@
       "workspaces/workspace/aiProviders.tsx",
       "workspaces/workspace/page.tsx",
       "workspaces/workspace/skillsEditor.tsx"
+    ],
+    "workspaces/_components/useRememberedPanelHeight.ts": [
+      "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
+      "workspaces/develop/board/[ticketId]/page.tsx",
+      "workspaces/develop/terminals/TerminalPanel.tsx",
+      "workspaces/develop/terminals/page.tsx"
     ],
     "workspaces/_components/VideoTimelineEditor.tsx": [
       "workspaces/content/[pieceId]/page.tsx"

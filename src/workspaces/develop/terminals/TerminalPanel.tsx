@@ -6,7 +6,7 @@
 //? sessions. Grid mode adds the drag-resize handle (desktop-only; fill/tabs mode omits it).
 //? Always-dark terminal tokens.
 
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { i18nNotify as notify, useTranslator } from '@luckystack/core/client';
 
@@ -15,22 +15,16 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Icon from '../../_components/Icon';
 import XtermTerminal, { clearSession, copySessionBuffer, killSession, restartSession } from '../../_components/XtermTerminal';
 import { FOCUS_RING, PopMenu } from '../../_components/primitives';
+import { useRememberedPanelHeight } from '../../_components/useRememberedPanelHeight';
 import type { Terminal, TerminalProcess } from '../../_data/types';
 
-//? Remembered grid-panel height (module-level so a drag persists across remounts
-//? and layout switches without threading height through page state — mirrors the
-//? AI panel's rememberedAiWidth pattern in Shell.tsx).
-let rememberedGridHeight = 460;
+//? Ad-hoc shells are still remembered per ticket across panel remounts.
 const rememberedAdHocShells = new Map<string, TerminalProcess[]>();
-const MIN_PANEL_HEIGHT = 220;
-const MAX_PANEL_HEIGHT = 900;
 
 export default function TerminalPanel({ workspaceId, terminal, viewerName, fill = false, isMaximized = false, onToggleMaximize }: { workspaceId: string; terminal: Terminal; viewerName: string; fill?: boolean; isMaximized?: boolean; onToggleMaximize?: () => void }) {
   const translate = useTranslator();
   const [active, setActive] = useState(0);
-  const [height, setHeight] = useState(rememberedGridHeight);
-  const [dragging, setDragging] = useState(false);
-  const dragRef = useRef<{ startY: number; startH: number } | null>(null);
+  const { height, dragging, onPointerDown, onPointerMove, onPointerUp } = useRememberedPanelHeight('terminals', 460);
   //? Ad-hoc shells opened via the trailing '+' tab (gap-fix: the process list was a fixed, read-only
   //? container snapshot with no way to pop open one more shell alongside it). Keep the names outside
   //? this panel so tabs survive unmounts when the user switches terminal tabs or layouts.
@@ -71,22 +65,6 @@ export default function TerminalPanel({ workspaceId, terminal, viewerName, fill 
       return next;
     });
   };
-
-  //? Drag the bottom strip to resize the panel height. Clamp to a sane range and
-  //? remember the last height at module level. Pointer-capture keeps the drag
-  //? tracking even when the cursor leaves the thin handle (mirrors AIPanel).
-  const onHandleDown = (e: ReactPointerEvent) => {
-    dragRef.current = { startY: e.clientY, startH: height };
-    setDragging(true);
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  };
-  const onHandleMove = (e: ReactPointerEvent) => {
-    if (!dragRef.current) return;
-    const next = Math.min(MAX_PANEL_HEIGHT, Math.max(MIN_PANEL_HEIGHT, dragRef.current.startH + (e.clientY - dragRef.current.startY)));
-    rememberedGridHeight = next;
-    setHeight(next);
-  };
-  const onHandleUp = () => { dragRef.current = null; setDragging(false); };
 
   //? #14 — the panel-menu actions operate on the live xterm session: restart/kill emit
   //? to the ws-term relay; clear/copyBuffer are client-side. Rename was dropped (no
@@ -160,7 +138,7 @@ export default function TerminalPanel({ workspaceId, terminal, viewerName, fill 
         <span className={`inline-flex items-center gap-1 shrink-0 ml-auto`}><span className={`w-1.5 h-1.5 rounded-full bg-terminal-green`} /> {translate({ key: 'workspaces.terminals.live' })}</span>
       </div>
       {!fill && (
-        <div onPointerDown={onHandleDown} onPointerMove={onHandleMove} onPointerUp={onHandleUp}
+        <div onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}
           title={translate({ key: 'workspaces.terminals.resizeTitle' })}
           className={`group shrink-0 h-2.5 hidden md:flex items-center justify-center cursor-ns-resize bg-terminal-surface border-t border-white/5`}>
           <span className={`w-8 h-0.5 rounded-full transition-colors ${dragging ? 'bg-primary' : 'bg-terminal-muted/50 group-hover:bg-terminal-muted'}`} />
