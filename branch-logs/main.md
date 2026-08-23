@@ -5960,3 +5960,20 @@ server-side + 1 item Fase B na agent 3, ownership-grenzen t.o.v. agent 3's Fase 
 
 **Notes:** agent 1 meldde 1 out-of-scope-skip (file van agent 3) — zit in diens handoff. Live sweep +
 browser-check nog niet gedraaid (dev-runtimes uit); doen na Fase B.
+
+## 2026-08-23 — Ronde 2 gemerged (fix2-B, fix3-B, fix4-A) — alles groen
+
+**User prompt:** "alle 3 de agents zijn klaar" (ronde 2).
+
+**Wat ik deed:** gemerged in volgorde fix/audit-develop (`f86ff9c`, Fase B 49/49) → fix/audit-content-
+shell (`0e2d82d`, Fase B 48/48) → fix/audit-providers (`c7952af`, Fase A 6/6: fallback-keten +
+`providerId[:model]`-override + knownAiProviderIds + live model-listing `aiModels_v1` + 4 nieuwe hosts
+xAI/Together/Fireworks/Cerebras + verse modellijsten). Conflicten alleen in gegenereerde artefacten
+(theirs; hook regenereert). Na `generateArtifacts`: lint OK, build OK, ai:lint schoon, unit 130/130.
+fix4 ge-fast-forward naar main + verse type-maps → P4-7 (AiBehaviorTab-badges) kan starten.
+
+**Restpunten na P4-7:** ~8 cross-ownership-skips uit de agent-handoffs (o.a. terminals-dedup,
+Interviewer-persistentie-grens, Usage-shared-helper, publieke-route-verwijdering = owner-beslissing)
++ live sweep + browser-verificatie met draaiende runtimes.
+
+**Files touched:** merges only; geen eigen code.

@@ -52,6 +52,7 @@ Every typed API route in this project. Sourced from `_ProjectApiTypeMap` in `src
 | `system/session/v1` | POST | 60 | — | — |
 | `workspaces/acceptInvite/v1` | POST | 10 | — | ✓ |
 | `workspaces/aiChat/v1` | POST | 20 | — | ✓ |
+| `workspaces/aiModels/v1` | POST | 20 | — | ✓ |
 | `workspaces/aiProviderHealth/v1` | POST | 12 | — | ✓ |
 | `workspaces/auditLog/v1` | POST | 12 | — | ✓ |
 | `workspaces/brandExport/v1` | POST | 30 | — | ✓ |
