@@ -760,24 +760,210 @@
       "tipThisField": " — dit veld",
       "goto_skillsStage": "Kies op het Context-tabblad van deze stage",
       "catalog": {
-        "categories": { "events": "Events & status", "lifecycle": "Lifecycle", "packageManagers": "Pakketbeheerders", "buildRun": "Bouwen & uitvoeren", "testing": "Testen", "versionControl": "Versiebeheer", "filesystem": "Bestanden & edits", "containers": "Containers & infra", "database": "Database-CLI's", "network": "Netwerk & gevaarlijk" },
+        "categories": {
+          "events": "Events & status",
+          "lifecycle": "Lifecycle",
+          "packageManagers": "Pakketbeheerders",
+          "buildRun": "Bouwen & uitvoeren",
+          "testing": "Testen",
+          "versionControl": "Versiebeheer",
+          "filesystem": "Bestanden & edits",
+          "containers": "Containers & infra",
+          "database": "Database-CLI's",
+          "network": "Netwerk & gevaarlijk"
+        },
         "hooks": {
-          "stop": { "label": "Stop", "feeds": "klaar / input nodig + verplaatsen", "desc": "Markeert de stage als klaar (of input nodig als hij idle is) en voert de pipeline-verplaatsing uit. De engine heeft dit nodig." },
-          "postToolUse": { "label": "PostToolUse", "feeds": "TicketEvent → live activiteit", "desc": "Registreert elk commando en bestand als event, zodat de beurt achteraf te volgen is." },
-          "preCompact": { "label": "PreCompact", "feeds": "gecontroleerde overdracht", "desc": "Geeft de orchestrator een eigen overdracht voordat automatische compactie ondoorzichtig wordt." }
+          "stop": {
+            "label": "Stop",
+            "feeds": "klaar / input nodig + verplaatsen",
+            "desc": "Markeert de stage als klaar (of input nodig als hij idle is) en voert de pipeline-verplaatsing uit. De engine heeft dit nodig."
+          },
+          "postToolUse": {
+            "label": "PostToolUse",
+            "feeds": "TicketEvent → live activiteit",
+            "desc": "Registreert elk commando en bestand als event, zodat de beurt achteraf te volgen is."
+          },
+          "preCompact": {
+            "label": "PreCompact",
+            "feeds": "gecontroleerde overdracht",
+            "desc": "Geeft de orchestrator een eigen overdracht voordat automatische compactie ondoorzichtig wordt."
+          }
         },
         "commands": {
-          "npmInstall": { "label": "npm install", "desc": "Installeer Node-dependencies uit package.json." }, "npmCi": { "label": "npm ci", "desc": "Schone installatie uit de lockfile." }, "pnpmInstall": { "label": "pnpm install", "desc": "Installeer dependencies met pnpm." }, "yarnInstall": { "label": "yarn install", "desc": "Installeer dependencies met Yarn." }, "dotnetRestore": { "label": "dotnet restore", "desc": "Herstel NuGet-pakketten." }, "goModDownload": { "label": "go mod download", "desc": "Download Go-modules." }, "pipInstall": { "label": "pip install …", "desc": "Installeer Python-pakketten met pip." },
-          "npmRunBuild": { "label": "npm run build", "desc": "Voer het buildscript van het project uit." }, "npmRunAny": { "label": "npm run …", "desc": "Voer een package.json-script uit." }, "dotnetBuild": { "label": "dotnet build", "desc": "Compileer een .NET-project." }, "goBuild": { "label": "go build …", "desc": "Compileer Go-pakketten." }, "make": { "label": "make …", "desc": "Voer een Makefile-target uit." },
-          "npmRunTest": { "label": "npm run test…", "desc": "Voer testscripts uit." }, "npmCoverage": { "label": "npm run coverage", "desc": "Voer de tests met coverage uit." }, "dotnetTest": { "label": "dotnet test", "desc": "Voer .NET-tests uit." }, "goTest": { "label": "go test ./...", "desc": "Voer alle Go-tests uit." },
-          "gitAdd": { "label": "git add …", "desc": "Zet bestanden klaar voor een commit." }, "gitCommit": { "label": "git commit …", "desc": "Maak een commit op de ticketbranch." }, "gitCheckout": { "label": "git checkout …", "desc": "Wissel branch of herstel bestanden." }, "gitPush": { "label": "git push …", "desc": "Push commits naar de remote." }, "gitRebase": { "label": "git rebase …", "desc": "Rebase de branch; wees voorzichtig." },
-          "editFiles": { "label": "Bestanden bewerken", "desc": "Wijzig bestaande bestanden in de worktree." }, "writeFiles": { "label": "Bestanden schrijven", "desc": "Maak bestanden in de worktree." }, "mkdir": { "label": "mkdir …", "desc": "Maak mappen." }, "rm": { "label": "rm …", "desc": "Verwijder bestanden — destructief." },
-          "docker": { "label": "docker …", "desc": "Voer Docker-commando's uit in de container." }, "dockerCompose": { "label": "docker compose …", "desc": "Beheer compose-services." }, "kubectl": { "label": "kubectl …", "desc": "Werk met een Kubernetes-cluster." },
-          "psql": { "label": "psql …", "desc": "PostgreSQL-CLI." }, "mysql": { "label": "mysql …", "desc": "MySQL-CLI." }, "redisCli": { "label": "redis-cli …", "desc": "Redis-CLI." }, "mongosh": { "label": "mongosh …", "desc": "MongoDB-shell." },
-          "curl": { "label": "curl …", "desc": "Doe HTTP-requests; combineer met een netwerkallowlist." }, "npmPublish": { "label": "npm publish", "desc": "Publiceer een pakket naar de registry." }, "sudo": { "label": "sudo …", "desc": "Draai als root — gevaarlijk." }, "rmRf": { "label": "rm -rf …", "desc": "Recursief geforceerd verwijderen — gevaarlijk." }
+          "npmInstall": {
+            "label": "npm install",
+            "desc": "Installeer Node-dependencies uit package.json."
+          },
+          "npmCi": {
+            "label": "npm ci",
+            "desc": "Schone installatie uit de lockfile."
+          },
+          "pnpmInstall": {
+            "label": "pnpm install",
+            "desc": "Installeer dependencies met pnpm."
+          },
+          "yarnInstall": {
+            "label": "yarn install",
+            "desc": "Installeer dependencies met Yarn."
+          },
+          "dotnetRestore": {
+            "label": "dotnet restore",
+            "desc": "Herstel NuGet-pakketten."
+          },
+          "goModDownload": {
+            "label": "go mod download",
+            "desc": "Download Go-modules."
+          },
+          "pipInstall": {
+            "label": "pip install …",
+            "desc": "Installeer Python-pakketten met pip."
+          },
+          "npmRunBuild": {
+            "label": "npm run build",
+            "desc": "Voer het buildscript van het project uit."
+          },
+          "npmRunAny": {
+            "label": "npm run …",
+            "desc": "Voer een package.json-script uit."
+          },
+          "dotnetBuild": {
+            "label": "dotnet build",
+            "desc": "Compileer een .NET-project."
+          },
+          "goBuild": {
+            "label": "go build …",
+            "desc": "Compileer Go-pakketten."
+          },
+          "make": {
+            "label": "make …",
+            "desc": "Voer een Makefile-target uit."
+          },
+          "npmRunTest": {
+            "label": "npm run test…",
+            "desc": "Voer testscripts uit."
+          },
+          "npmCoverage": {
+            "label": "npm run coverage",
+            "desc": "Voer de tests met coverage uit."
+          },
+          "dotnetTest": {
+            "label": "dotnet test",
+            "desc": "Voer .NET-tests uit."
+          },
+          "goTest": {
+            "label": "go test ./...",
+            "desc": "Voer alle Go-tests uit."
+          },
+          "gitAdd": {
+            "label": "git add …",
+            "desc": "Zet bestanden klaar voor een commit."
+          },
+          "gitCommit": {
+            "label": "git commit …",
+            "desc": "Maak een commit op de ticketbranch."
+          },
+          "gitCheckout": {
+            "label": "git checkout …",
+            "desc": "Wissel branch of herstel bestanden."
+          },
+          "gitPush": {
+            "label": "git push …",
+            "desc": "Push commits naar de remote."
+          },
+          "gitRebase": {
+            "label": "git rebase …",
+            "desc": "Rebase de branch; wees voorzichtig."
+          },
+          "editFiles": {
+            "label": "Bestanden bewerken",
+            "desc": "Wijzig bestaande bestanden in de worktree."
+          },
+          "writeFiles": {
+            "label": "Bestanden schrijven",
+            "desc": "Maak bestanden in de worktree."
+          },
+          "mkdir": {
+            "label": "mkdir …",
+            "desc": "Maak mappen."
+          },
+          "rm": {
+            "label": "rm …",
+            "desc": "Verwijder bestanden — destructief."
+          },
+          "docker": {
+            "label": "docker …",
+            "desc": "Voer Docker-commando's uit in de container."
+          },
+          "dockerCompose": {
+            "label": "docker compose …",
+            "desc": "Beheer compose-services."
+          },
+          "kubectl": {
+            "label": "kubectl …",
+            "desc": "Werk met een Kubernetes-cluster."
+          },
+          "psql": {
+            "label": "psql …",
+            "desc": "PostgreSQL-CLI."
+          },
+          "mysql": {
+            "label": "mysql …",
+            "desc": "MySQL-CLI."
+          },
+          "redisCli": {
+            "label": "redis-cli …",
+            "desc": "Redis-CLI."
+          },
+          "mongosh": {
+            "label": "mongosh …",
+            "desc": "MongoDB-shell."
+          },
+          "curl": {
+            "label": "curl …",
+            "desc": "Doe HTTP-requests; combineer met een netwerkallowlist."
+          },
+          "npmPublish": {
+            "label": "npm publish",
+            "desc": "Publiceer een pakket naar de registry."
+          },
+          "sudo": {
+            "label": "sudo …",
+            "desc": "Draai als root — gevaarlijk."
+          },
+          "rmRf": {
+            "label": "rm -rf …",
+            "desc": "Recursief geforceerd verwijderen — gevaarlijk."
+          }
         },
         "network": {
-          "packageRegistries": { "label": "Pakketregisters", "desc": "npm, NuGet, Go proxy, PyPI, crates.io" }, "sourceHosts": { "label": "Source-hosts", "desc": "github.com, gitlab.com, bitbucket.org" }, "aiApis": { "label": "AI-API's", "desc": "api.anthropic.com, api.openai.com" }, "cdns": { "label": "CDN's", "desc": "jsdelivr, unpkg, cloudflare" }, "cloud": { "label": "Cloudproviders", "desc": "AWS-, GCP- en Azure-endpoints" }, "social": { "label": "Social & media", "desc": "twitter/x, youtube, reddit" }, "trackers": { "label": "Ads & trackers", "desc": "analytics + advertentienetwerken" }
+          "packageRegistries": {
+            "label": "Pakketregisters",
+            "desc": "npm, NuGet, Go proxy, PyPI, crates.io"
+          },
+          "sourceHosts": {
+            "label": "Source-hosts",
+            "desc": "github.com, gitlab.com, bitbucket.org"
+          },
+          "aiApis": {
+            "label": "AI-API's",
+            "desc": "api.anthropic.com, api.openai.com"
+          },
+          "cdns": {
+            "label": "CDN's",
+            "desc": "jsdelivr, unpkg, cloudflare"
+          },
+          "cloud": {
+            "label": "Cloudproviders",
+            "desc": "AWS-, GCP- en Azure-endpoints"
+          },
+          "social": {
+            "label": "Social & media",
+            "desc": "twitter/x, youtube, reddit"
+          },
+          "trackers": {
+            "label": "Ads & trackers",
+            "desc": "analytics + advertentienetwerken"
+          }
         }
       }
     },
@@ -1593,7 +1779,18 @@
       },
       "dockerfileSwitchConfirmTitle": "Dockerfile-wijzigingen weggooien?",
       "dockerfileSwitchConfirmContent": "Het actieve project is gewijzigd. Niet-opgeslagen Dockerfile-wijzigingen weggooien en de draft van het andere project laden?",
-      "ownerActionsOnly": "Eigendom overdragen en de workspace verwijderen vereisen de owner-actions-permissie, die jouw rol niet heeft — deze acties zijn verborgen in plaats van aangeboden en geweigerd."
+      "ownerActionsOnly": "Eigendom overdragen en de workspace verwijderen vereisen de owner-actions-permissie, die jouw rol niet heeft — deze acties zijn verborgen in plaats van aangeboden en geweigerd.",
+      "providerDefaultResolved": "Standaard — {{backend}}",
+      "providerAvailable": "Nu beschikbaar",
+      "providerUnavailable": "Nu niet beschikbaar",
+      "providerRoutedUnavailable": "{{backend}} is nu niet beschikbaar — runs vallen terug op de eerste backend die dat wel is.",
+      "providerPinnedModel": "Vastgezet model: {{model}}",
+      "providerLastRan": "Laatst gedraaid op {{backend}}{{model}} · {{when}}",
+      "providerLastFailed": "Laatste run op {{backend}}{{model}} mislukt ({{error}}) · {{when}}",
+      "providerNeverRan": "Nog geen runs.",
+      "workspaceDefaultTitle": "Standaard-backend van de workspace",
+      "workspaceDefaultDesc": "Gebruikt door elke feature die op \"Standaard\" staat. Ingebouwd houdt per feature de eigen standaard.",
+      "workspaceDefaultBuiltIn": "Ingebouwd per feature"
     },
     "skills": {
       "title": "Vaardigheden",

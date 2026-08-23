@@ -760,24 +760,210 @@
       "tipThisField": " — ce champ",
       "goto_skillsStage": "Choisir dans l'onglet Contexte de cette étape",
       "catalog": {
-        "categories": { "events": "Événements et statut", "lifecycle": "Cycle de vie", "packageManagers": "Gestionnaires de paquets", "buildRun": "Build et exécution", "testing": "Tests", "versionControl": "Contrôle de version", "filesystem": "Fichiers et édition", "containers": "Conteneurs et infra", "database": "CLIs de base de données", "network": "Réseau et dangereux" },
+        "categories": {
+          "events": "Événements et statut",
+          "lifecycle": "Cycle de vie",
+          "packageManagers": "Gestionnaires de paquets",
+          "buildRun": "Build et exécution",
+          "testing": "Tests",
+          "versionControl": "Contrôle de version",
+          "filesystem": "Fichiers et édition",
+          "containers": "Conteneurs et infra",
+          "database": "CLIs de base de données",
+          "network": "Réseau et dangereux"
+        },
         "hooks": {
-          "stop": { "label": "Stop", "feeds": "terminé / entrée requise + déplacement", "desc": "Marque l'étape comme terminée (ou en attente d'entrée) et applique la logique de déplacement. Le moteur en dépend." },
-          "postToolUse": { "label": "PostToolUse", "feeds": "TicketEvent → activité en direct", "desc": "Enregistre chaque commande et modification de fichier comme événement." },
-          "preCompact": { "label": "PreCompact", "feeds": "transfert contrôlé", "desc": "Signale à l'orchestrateur d'effectuer son propre transfert plutôt qu'une compaction opaque." }
+          "stop": {
+            "label": "Stop",
+            "feeds": "terminé / entrée requise + déplacement",
+            "desc": "Marque l'étape comme terminée (ou en attente d'entrée) et applique la logique de déplacement. Le moteur en dépend."
+          },
+          "postToolUse": {
+            "label": "PostToolUse",
+            "feeds": "TicketEvent → activité en direct",
+            "desc": "Enregistre chaque commande et modification de fichier comme événement."
+          },
+          "preCompact": {
+            "label": "PreCompact",
+            "feeds": "transfert contrôlé",
+            "desc": "Signale à l'orchestrateur d'effectuer son propre transfert plutôt qu'une compaction opaque."
+          }
         },
         "commands": {
-          "npmInstall": { "label": "npm install", "desc": "Installer les dépendances Node de package.json." }, "npmCi": { "label": "npm ci", "desc": "Installation propre depuis le lockfile." }, "pnpmInstall": { "label": "pnpm install", "desc": "Installer les dépendances avec pnpm." }, "yarnInstall": { "label": "yarn install", "desc": "Installer les dépendances avec Yarn." }, "dotnetRestore": { "label": "dotnet restore", "desc": "Restaurer les paquets NuGet." }, "goModDownload": { "label": "go mod download", "desc": "Télécharger les modules Go." }, "pipInstall": { "label": "pip install …", "desc": "Installer des paquets Python avec pip." },
-          "npmRunBuild": { "label": "npm run build", "desc": "Lancer le script de build du projet." }, "npmRunAny": { "label": "npm run …", "desc": "Lancer un script package.json." }, "dotnetBuild": { "label": "dotnet build", "desc": "Compiler un projet .NET." }, "goBuild": { "label": "go build …", "desc": "Compiler des paquets Go." }, "make": { "label": "make …", "desc": "Lancer une cible Makefile." },
-          "npmRunTest": { "label": "npm run test…", "desc": "Lancer les scripts de test." }, "npmCoverage": { "label": "npm run coverage", "desc": "Lancer la suite avec la couverture." }, "dotnetTest": { "label": "dotnet test", "desc": "Lancer les tests .NET." }, "goTest": { "label": "go test ./...", "desc": "Lancer tous les tests Go." },
-          "gitAdd": { "label": "git add …", "desc": "Préparer des fichiers pour le commit." }, "gitCommit": { "label": "git commit …", "desc": "Créer un commit sur la branche du ticket." }, "gitCheckout": { "label": "git checkout …", "desc": "Changer de branche ou restaurer des fichiers." }, "gitPush": { "label": "git push …", "desc": "Pousser les commits vers le dépôt distant." }, "gitRebase": { "label": "git rebase …", "desc": "Rebaser la branche, avec prudence." },
-          "editFiles": { "label": "Modifier les fichiers", "desc": "Modifier les fichiers existants de la worktree." }, "writeFiles": { "label": "Écrire des fichiers", "desc": "Créer des fichiers dans la worktree." }, "mkdir": { "label": "mkdir …", "desc": "Créer des dossiers." }, "rm": { "label": "rm …", "desc": "Supprimer des fichiers — destructif." },
-          "docker": { "label": "docker …", "desc": "Lancer des commandes Docker dans le conteneur." }, "dockerCompose": { "label": "docker compose …", "desc": "Gérer les services Compose." }, "kubectl": { "label": "kubectl …", "desc": "Interagir avec un cluster Kubernetes." },
-          "psql": { "label": "psql …", "desc": "CLI PostgreSQL." }, "mysql": { "label": "mysql …", "desc": "CLI MySQL." }, "redisCli": { "label": "redis-cli …", "desc": "CLI Redis." }, "mongosh": { "label": "mongosh …", "desc": "Shell MongoDB." },
-          "curl": { "label": "curl …", "desc": "Faire des requêtes HTTP ; utiliser une allowlist réseau." }, "npmPublish": { "label": "npm publish", "desc": "Publier un paquet dans le registre." }, "sudo": { "label": "sudo …", "desc": "Exécuter en root — dangereux." }, "rmRf": { "label": "rm -rf …", "desc": "Supprimer récursivement et de force — dangereux." }
+          "npmInstall": {
+            "label": "npm install",
+            "desc": "Installer les dépendances Node de package.json."
+          },
+          "npmCi": {
+            "label": "npm ci",
+            "desc": "Installation propre depuis le lockfile."
+          },
+          "pnpmInstall": {
+            "label": "pnpm install",
+            "desc": "Installer les dépendances avec pnpm."
+          },
+          "yarnInstall": {
+            "label": "yarn install",
+            "desc": "Installer les dépendances avec Yarn."
+          },
+          "dotnetRestore": {
+            "label": "dotnet restore",
+            "desc": "Restaurer les paquets NuGet."
+          },
+          "goModDownload": {
+            "label": "go mod download",
+            "desc": "Télécharger les modules Go."
+          },
+          "pipInstall": {
+            "label": "pip install …",
+            "desc": "Installer des paquets Python avec pip."
+          },
+          "npmRunBuild": {
+            "label": "npm run build",
+            "desc": "Lancer le script de build du projet."
+          },
+          "npmRunAny": {
+            "label": "npm run …",
+            "desc": "Lancer un script package.json."
+          },
+          "dotnetBuild": {
+            "label": "dotnet build",
+            "desc": "Compiler un projet .NET."
+          },
+          "goBuild": {
+            "label": "go build …",
+            "desc": "Compiler des paquets Go."
+          },
+          "make": {
+            "label": "make …",
+            "desc": "Lancer une cible Makefile."
+          },
+          "npmRunTest": {
+            "label": "npm run test…",
+            "desc": "Lancer les scripts de test."
+          },
+          "npmCoverage": {
+            "label": "npm run coverage",
+            "desc": "Lancer la suite avec la couverture."
+          },
+          "dotnetTest": {
+            "label": "dotnet test",
+            "desc": "Lancer les tests .NET."
+          },
+          "goTest": {
+            "label": "go test ./...",
+            "desc": "Lancer tous les tests Go."
+          },
+          "gitAdd": {
+            "label": "git add …",
+            "desc": "Préparer des fichiers pour le commit."
+          },
+          "gitCommit": {
+            "label": "git commit …",
+            "desc": "Créer un commit sur la branche du ticket."
+          },
+          "gitCheckout": {
+            "label": "git checkout …",
+            "desc": "Changer de branche ou restaurer des fichiers."
+          },
+          "gitPush": {
+            "label": "git push …",
+            "desc": "Pousser les commits vers le dépôt distant."
+          },
+          "gitRebase": {
+            "label": "git rebase …",
+            "desc": "Rebaser la branche, avec prudence."
+          },
+          "editFiles": {
+            "label": "Modifier les fichiers",
+            "desc": "Modifier les fichiers existants de la worktree."
+          },
+          "writeFiles": {
+            "label": "Écrire des fichiers",
+            "desc": "Créer des fichiers dans la worktree."
+          },
+          "mkdir": {
+            "label": "mkdir …",
+            "desc": "Créer des dossiers."
+          },
+          "rm": {
+            "label": "rm …",
+            "desc": "Supprimer des fichiers — destructif."
+          },
+          "docker": {
+            "label": "docker …",
+            "desc": "Lancer des commandes Docker dans le conteneur."
+          },
+          "dockerCompose": {
+            "label": "docker compose …",
+            "desc": "Gérer les services Compose."
+          },
+          "kubectl": {
+            "label": "kubectl …",
+            "desc": "Interagir avec un cluster Kubernetes."
+          },
+          "psql": {
+            "label": "psql …",
+            "desc": "CLI PostgreSQL."
+          },
+          "mysql": {
+            "label": "mysql …",
+            "desc": "CLI MySQL."
+          },
+          "redisCli": {
+            "label": "redis-cli …",
+            "desc": "CLI Redis."
+          },
+          "mongosh": {
+            "label": "mongosh …",
+            "desc": "Shell MongoDB."
+          },
+          "curl": {
+            "label": "curl …",
+            "desc": "Faire des requêtes HTTP ; utiliser une allowlist réseau."
+          },
+          "npmPublish": {
+            "label": "npm publish",
+            "desc": "Publier un paquet dans le registre."
+          },
+          "sudo": {
+            "label": "sudo …",
+            "desc": "Exécuter en root — dangereux."
+          },
+          "rmRf": {
+            "label": "rm -rf …",
+            "desc": "Supprimer récursivement et de force — dangereux."
+          }
         },
         "network": {
-          "packageRegistries": { "label": "Registres de paquets", "desc": "npm, NuGet, proxy Go, PyPI, crates.io" }, "sourceHosts": { "label": "Hôtes source", "desc": "github.com, gitlab.com, bitbucket.org" }, "aiApis": { "label": "API d'IA", "desc": "api.anthropic.com, api.openai.com" }, "cdns": { "label": "CDN", "desc": "jsdelivr, unpkg, cloudflare" }, "cloud": { "label": "Fournisseurs cloud", "desc": "points de terminaison AWS, GCP, Azure" }, "social": { "label": "Réseaux et médias", "desc": "twitter/x, youtube, reddit" }, "trackers": { "label": "Publicités et traceurs", "desc": "analytics et réseaux publicitaires" }
+          "packageRegistries": {
+            "label": "Registres de paquets",
+            "desc": "npm, NuGet, proxy Go, PyPI, crates.io"
+          },
+          "sourceHosts": {
+            "label": "Hôtes source",
+            "desc": "github.com, gitlab.com, bitbucket.org"
+          },
+          "aiApis": {
+            "label": "API d'IA",
+            "desc": "api.anthropic.com, api.openai.com"
+          },
+          "cdns": {
+            "label": "CDN",
+            "desc": "jsdelivr, unpkg, cloudflare"
+          },
+          "cloud": {
+            "label": "Fournisseurs cloud",
+            "desc": "points de terminaison AWS, GCP, Azure"
+          },
+          "social": {
+            "label": "Réseaux et médias",
+            "desc": "twitter/x, youtube, reddit"
+          },
+          "trackers": {
+            "label": "Publicités et traceurs",
+            "desc": "analytics et réseaux publicitaires"
+          }
         }
       }
     },
@@ -1593,7 +1779,18 @@
       },
       "dockerfileSwitchConfirmTitle": "Abandonner les modifications Dockerfile ?",
       "dockerfileSwitchConfirmContent": "Le projet actif a changé. Abandonner les modifications Dockerfile non enregistrées et charger le brouillon de l’autre projet ?",
-      "ownerActionsOnly": "Transférer la propriété et supprimer l'espace de travail nécessitent la permission owner-actions, que votre rôle n'a pas — ces actions sont masquées plutôt que proposées puis refusées."
+      "ownerActionsOnly": "Transférer la propriété et supprimer l'espace de travail nécessitent la permission owner-actions, que votre rôle n'a pas — ces actions sont masquées plutôt que proposées puis refusées.",
+      "providerDefaultResolved": "Par défaut — {{backend}}",
+      "providerAvailable": "Disponible maintenant",
+      "providerUnavailable": "Indisponible pour le moment",
+      "providerRoutedUnavailable": "{{backend}} est indisponible pour le moment — les exécutions basculent vers le premier backend disponible.",
+      "providerPinnedModel": "Modèle épinglé : {{model}}",
+      "providerLastRan": "Dernière exécution sur {{backend}}{{model}} · {{when}}",
+      "providerLastFailed": "Dernière exécution sur {{backend}}{{model}} échouée ({{error}}) · {{when}}",
+      "providerNeverRan": "Aucune exécution pour l’instant.",
+      "workspaceDefaultTitle": "Backend par défaut de l’espace",
+      "workspaceDefaultDesc": "Utilisé par chaque fonction laissée sur « Par défaut ». « Intégré » garde le défaut propre à chaque fonction.",
+      "workspaceDefaultBuiltIn": "Intégré par fonction"
     },
     "skills": {
       "title": "Compétences",
