@@ -8,7 +8,7 @@
 //? diagnosis (ADR 0042) sits behind its own disclosure. Data comes from the
 //? real SpendRecord aggregate (server aggregateUsage), not dummy rows.
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
@@ -18,6 +18,7 @@ import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../../_components/Icon';
 import { AvatarBubble, Disclosure, EmptyState, IconButton, InfoTip, SectionCard, Tabs, WsButton } from '../../_components/primitives';
+import { StatCard } from '../../_components/dataDisplay';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { Member, Ticket } from '../../_data/types';
 
@@ -38,16 +39,6 @@ interface DiagnoseEntry {
   symptom: string;
   status: 'pending' | 'ready';
   suggestionId: string | null;
-}
-
-function StatCard({ label, value, hint, info }: { label: string; value: string; hint: string; info?: ReactNode }) {
-  return (
-    <div className={`rounded-2xl border border-container1-border bg-container1 p-5`}>
-      <div className={`text-xs text-muted flex items-center gap-1.5`}>{label}{info}</div>
-      <div className={`text-2xl font-semibold text-title mt-1 tabular-nums`}>{value}</div>
-      <div className={`text-xs text-muted mt-0.5`}>{hint}</div>
-    </div>
-  );
 }
 
 export default function Usage() {

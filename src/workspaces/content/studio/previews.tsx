@@ -8,6 +8,7 @@ import { useTranslator } from '@luckystack/core/client';
 
 import Icon from '../../_components/Icon';
 import { asRecord, asStr, asStrArr } from './content';
+import { stripInline } from '../../_components/MarkdownView';
 import type { StudioArtifactKind } from '../../_data/types';
 
 //? Render the artifact body by kind (avoids a nested ternary at the call site). `full` makes the HTML
@@ -213,5 +214,3 @@ function renderMdLine(line: string, key: number): ReactNode {
   if (t.startsWith('- ') || t.startsWith('* ')) return <div key={key} className={`flex gap-2 pl-2`}><span className={`text-muted`}>•</span><span>{stripInline(t.slice(2))}</span></div>;
   return <div key={key}>{stripInline(t)}</div>;
 }
-//? strip **bold**/`code` markers for a plain readable render (no dangerouslySetInnerHTML).
-function stripInline(s: string): string { return s.replaceAll(/\*\*(.+?)\*\*/g, '$1').replaceAll(/`(.+?)`/g, '$1'); }

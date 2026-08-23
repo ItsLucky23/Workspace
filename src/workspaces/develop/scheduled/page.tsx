@@ -18,6 +18,7 @@ import { Disclosure, EmptyState, InfoTip, PopMenu, SectionCard, Toggle, WsButton
 import { INPUT_CLS_FULL as inputCls } from '../../_components/settings';
 import { EmptyPicker } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
+import { timeAgo } from '../../_functions/timeAgo';
 
 export const template = 'workspaces';
 
@@ -34,19 +35,6 @@ const CADENCES: { id: string; cron: string }[] = [
 function cronLabel(cron: string): string {
   const found = CADENCES.find((c) => c.cron === cron && c.id !== 'custom');
   return found ? found.id : cron;
-}
-
-//? Short relative format ("2h ago") so a row's last-run time survives phone-width truncation
-//? instead of the full locale date/time string, which was the first thing clipped off the line.
-function timeAgo(iso: string): string {
-  const ms = Date.parse(iso);
-  if (Number.isNaN(ms)) return iso;
-  const diff = Date.now() - ms;
-  const mins = Math.round(diff / 60_000);
-  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
-  if (mins < 60) return rtf.format(-mins, 'minute');
-  if (mins < 60 * 24) return rtf.format(-Math.round(mins / 60), 'hour');
-  return rtf.format(-Math.round(mins / (60 * 24)), 'day');
 }
 
 //? Structural cron validation — 5 space-separated fields, each a wildcard/number/range/list/step.

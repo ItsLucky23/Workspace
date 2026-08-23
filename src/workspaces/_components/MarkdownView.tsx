@@ -34,7 +34,7 @@ function Mermaid({ code }: { code: string }): ReactNode {
 }
 
 //? strip **bold**/`code`/_italic_ markers for a plain readable render.
-function stripInline(s: string): string {
+export function stripInline(s: string): string {
   return s.replaceAll(/\*\*(.+?)\*\*/g, '$1').replaceAll(/`(.+?)`/g, '$1').replaceAll(/(^|\s)_(.+?)_(?=\s|$)/g, '$1$2');
 }
 

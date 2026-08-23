@@ -16,17 +16,9 @@ import { EmptyState, InfoTip, PopMenu, WsButton } from '../../_components/primit
 import { INPUT_CLS as fieldCls } from '../../_components/settings';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import TemplateManager from './TemplateManager';
+import { timeAgo } from '../../_functions/timeAgo';
 
 export const template = 'workspaces';
-
-function timeAgo(ms: number): string {
-  const diff = Date.now() - ms;
-  const mins = Math.round(diff / 60_000);
-  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
-  if (mins < 60) return rtf.format(-mins, 'minute');
-  if (mins < 60 * 24) return rtf.format(-Math.round(mins / 60), 'hour');
-  return rtf.format(-Math.round(mins / (60 * 24)), 'day');
-}
 
 export default function DocumentsPage() {
   const translate = useTranslator();

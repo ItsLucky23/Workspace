@@ -3,12 +3,13 @@
 //? read-only view of each channel's brand voice that feeds brand-RAG — edited in Content settings →
 //? Channels, the single owner — with the read-only style library behind a disclosure).
 
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 
 import { useTranslator } from '@luckystack/core/client';
 
 import Icon from '../../_components/Icon';
 import { Reveal } from '../../_components/motion';
+import { StatCard } from '../../_components/dataDisplay';
 import { Disclosure, EmptyState, IconButton, InfoTip, Segmented, WsButton } from '../../_components/primitives';
 import { EmptyPicker } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
@@ -27,15 +28,6 @@ const euros = (cents: number): string => `€${(cents / 100).toFixed(2)}`;
 //? URL-path prefix rendered verbatim (shortlinks) — a code-value, not prose; const keeps it
 //? out of jsx-no-literals territory without a fake translation.
 const SHORTLINK_PREFIX = '/l/';
-
-function Stat({ label, value, info }: { label: string; value: string; info?: ReactNode }) {
-  return (
-    <div className={`rounded-2xl border border-container1-border bg-container1 p-4`}>
-      <div className={`text-xs text-muted flex items-center gap-1.5`}>{label}{info}</div>
-      <div className={`text-2xl font-semibold text-title mt-1 tabular-nums`}>{value}</div>
-    </div>
-  );
-}
 
 function BrandCard({ channel }: { channel: ContentChannelSummary }) {
   const translate = useTranslator();
@@ -90,11 +82,11 @@ export default function ContentInsights() {
         <div className={`flex flex-col gap-4 max-w-4xl`}>
           {/* The at-a-glance answer to "how am I doing" — always visible, whatever the tab. */}
           <div className={`grid grid-cols-2 sm:grid-cols-4 gap-3`}>
-            <Stat label={translate({ key: 'workspaces.content.anTotalPieces' })} value={String(a.totalPieces)} />
-            <Stat label={translate({ key: 'workspaces.content.anDone' })} value={String(a.doneCount)} />
+            <StatCard label={translate({ key: 'workspaces.content.anTotalPieces' })} value={String(a.totalPieces)} />
+            <StatCard label={translate({ key: 'workspaces.content.anDone' })} value={String(a.doneCount)} />
             {/* Published counts done publish JOBS (per channel, per re-publish) while the other tiles
                 count distinct non-archived pieces — that asymmetry is why it can be the larger number. */}
-            <Stat
+            <StatCard
               label={translate({ key: 'workspaces.content.anPublished' })}
               value={String(a.publishedCount)}
               info={
@@ -108,7 +100,7 @@ export default function ContentInsights() {
             />
             {/* MediaSpend only (image/video/audio/tts), summed WITHOUT the archived filter the piece
                 counts use; LLM € lives on Insights → Usage under a different cap. */}
-            <Stat
+            <StatCard
               label={translate({ key: 'workspaces.content.anCost' })}
               value={euros(a.totalCostCents)}
               info={

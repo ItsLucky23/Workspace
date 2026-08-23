@@ -1,7 +1,17 @@
 //? Studio-local shared helpers (no components): defensive readers for the AI-generated `unknown`
-//? artifact content, the shared input class, and the client-side HTML→PNG rasterizer (#170).
+//? artifact content, the shared input class, the canonical asset href, and the client-side HTML→PNG
+//? rasterizer (#170).
+
+import { backendUrl } from '../../../../config';
 
 export { INPUT_CLS_FULL as inputCls } from '../../_components/settings';
+
+//? `/media/*` is served by the backend; hosted URLs pass through and dummy stubs are not openable.
+export function assetHref(url: string): string | null {
+  if (url.startsWith('/media/')) return `${backendUrl}${url}`;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return null;
+}
 
 //? ---- content readers (the AI content is `unknown`; read defensively, no casts to `any`) ----
 export function asRecord(v: unknown): Record<string, unknown> { return v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {}; }

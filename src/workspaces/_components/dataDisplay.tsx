@@ -16,6 +16,17 @@ import { type ReactNode } from 'react';
 import { useTranslator } from '@luckystack/core/client';
 
 /** One column. `cell` receives the row, so a column can render a chip/button, not just text. */
+export function StatCard({ label, value, hint, info }: { label: string; value: string; hint?: string; info?: ReactNode }) {
+  const padding = hint === undefined ? 'p-4' : 'p-5';
+  return (
+    <div className={`rounded-2xl border border-container1-border bg-container1 ${padding}`}>
+      <div className={`text-xs text-muted flex items-center gap-1.5`}>{label}{info}</div>
+      <div className={`text-2xl font-semibold text-title mt-1 tabular-nums`}>{value}</div>
+      {hint !== undefined && <div className={`text-xs text-muted mt-0.5`}>{hint}</div>}
+    </div>
+  );
+}
+
 export interface TableColumn<T> {
   id: string;
   header: ReactNode;

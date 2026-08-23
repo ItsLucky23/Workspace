@@ -8,8 +8,11 @@
 //? Every input is a prop, no `useWorkspaces()`: the picker has to work inside a `menuHandler` overlay,
 //? which renders above the provider (lesson 0011).
 
-import { backendUrl } from '../../../config';
 import Icon from './Icon';
+import { assetHref } from '../content/studio/content';
+
+//? The canonical helper resolves backend-relative media URLs through `backendUrl`; this picker only
+//? consumes that policy so it remains safe inside menuHandler overlays.
 
 export interface PickableAsset {
   id: string;
@@ -19,16 +22,11 @@ export interface PickableAsset {
   starred: boolean;
 }
 
-//? `/media/*` is served by the BACKEND; rendering it against the frontend origin is the bug this helper
-//? exists to prevent (the old documents picker had exactly that).
-function assetHref(url: string): string {
-  return url.startsWith('/media/') ? `${backendUrl}${url}` : url;
-}
-
 //? Image / silent video frame / a kind icon for audio-ish assets.
 export function AssetThumb({ asset }: { asset: PickableAsset }) {
-  if (asset.kind === 'image' || asset.kind === 'thumbnail') return <img src={assetHref(asset.url)} alt={asset.pieceTitle} className="w-full h-full object-cover" />;
-  if (asset.kind === 'video' || asset.kind === 'render' || asset.kind === 'avatar') return <video src={assetHref(asset.url)} muted playsInline className="w-full h-full object-cover" />;
+  const href = assetHref(asset.url);
+  if (href && (asset.kind === 'image' || asset.kind === 'thumbnail')) return <img src={href} alt={asset.pieceTitle} className="w-full h-full object-cover" />;
+  if (href && (asset.kind === 'video' || asset.kind === 'render' || asset.kind === 'avatar')) return <video src={href} muted playsInline className="w-full h-full object-cover" />;
   return <Icon name="wave-square" className="text-2xl text-muted" />;
 }
 
