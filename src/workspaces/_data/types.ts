@@ -813,6 +813,8 @@ export interface InviteEntry {
   id: string;
   email: string;
   role: Role;
+  roleKey?: string;           // raw key so custom roles are not flattened in the invite table
+  roleLabel?: string;         // custom role label; built-ins use the locale-aware ROLE_DISPLAY map
   sentAt: string;             // #77 — ISO timestamp the invite was created (was a literal 'pending')
   expiresAt: string | null;   // #77 — ISO expiry (7-day), or null if it never expires
 }

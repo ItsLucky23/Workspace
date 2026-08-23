@@ -422,6 +422,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     //? DESIGN_DOCS_PROGRAM 2.1 — the workspace's document templates (virtual builtins + user rows).
     const documentTemplates = await listWorkspaceTemplates(prisma, currentWorkspaceId());
     const userById = new Map(userRows.map((u) => [u.id, u]));
+    const customRoleLabels = new Map(roleRows.filter((r) => !r.builtIn).map((r) => [r.key, r.label]));
     const members: Member[] = memberRows.map((m) => {
       const u = userById.get(m.userId);
       const avatar = u && u.avatar.length > 0 ? u.avatar : undefined;
@@ -807,7 +808,11 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
           ? { lastTest: { status: it.lastTestStatus, detail: it.lastTestDetail ?? '', at: it.lastTestAt === null ? 0 : it.lastTestAt.getTime() } }
           : {}),
       })),
-      invites: inviteRows.map((inv): InviteEntry => ({ id: inv.id, email: inv.email, role: asRole(inv.roleKey), sentAt: inv.createdAt.toISOString(), expiresAt: inv.expiresAt ? inv.expiresAt.toISOString() : null })),
+      invites: inviteRows.map((inv): InviteEntry => ({
+        id: inv.id, email: inv.email, role: asRole(inv.roleKey), roleKey: inv.roleKey,
+        ...(customRoleLabels.has(inv.roleKey) ? { roleLabel: customRoleLabels.get(inv.roleKey) } : {}),
+        sentAt: inv.createdAt.toISOString(), expiresAt: inv.expiresAt ? inv.expiresAt.toISOString() : null,
+      })),
       //? Events store ticket ObjectIds, but the frontend keys tickets by their
       //? DEV-#### `key` — map ObjectId → key so open-ticket / activity-tab filters
       //? resolve (unknown ids pass through).

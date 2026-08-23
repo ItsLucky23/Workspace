@@ -31,12 +31,12 @@ Workspaces is a self-hosted AI dev-orchestration + content platform on the Lucky
   - **Now:** Needs a `_sync` route + Conductor op so dismissal persists. New op ⇒ add its row to `tests/effectMatrix.mts`.
   - **Result:** _(fill in: fixed <commit> / already-fixed / invalid: <reason>)_
 
-- [ ] **F-123** · LOW · `inconsistency` — A pending invite created with a custom role displays as 'Member' in the invites table.
+- [x] **F-123** · LOW · `inconsistency` — A pending invite created with a custom role displays as 'Member' in the invites table.
   - **Where (audit baseline 55ff5b7 — code has moved, re-locate):** `src/workspaces/workspace/page.tsx:225`
   - **Evidence:** InvitesTab line 225 renders ROLE_DISPLAY[i.role]; snapshot invite projection (workspaceSnapshot.ts:797) sets role: asRole(inv.roleKey), which flattens any custom roleKey to 'member'. The invite stores the correct roleKey server-side (acceptInvite will apply it) — only the display lies.
   - **Original fix hint:** Send the raw roleKey (plus resolved label) in the invite projection and render the role's label, falling back to ROLE_DISPLAY for the built-ins.
   - **Now:** Needs `InviteEntry` type + snapshot projection (server/read/workspaceSnapshot.ts) + provider typing to carry the raw roleKey/label for invites, mirroring what Agent 1 did for members (F-024).
-  - **Result:** _(fill in: fixed <commit> / already-fixed / invalid: <reason>)_
+  - **Result:** fixed — invite snapshots and realtime deltas carry the raw `roleKey` plus custom-role label; the table renders that label and retains locale-aware built-in fallbacks.
 
 - [x] **F-122** · LOW · `inconsistency` — The Usage page's three tabs (Usage/Delivery/People) are React state, not URL trail — unlike settings/workspace/pipeline/content-settings, a deep link or refresh always lands on the first tab and back does not walk out of a tab.
   - **Where (audit baseline 55ff5b7 — code has moved, re-locate):** `src/workspaces/insights/usage/page.tsx:56`

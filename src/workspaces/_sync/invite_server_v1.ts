@@ -25,5 +25,6 @@ export const main = async ({ clientInput, user, functions, roomCode }: SyncParam
     payload: { email, roleKey }, clientRequestId,
   });
   if (!res.ok) return { status: 'error', errorCode: res.errorCode };
-  return { status: 'success', invite: inviteDelta(res.result) };
+  const role = await functions.db.prisma.workspaceRole.findFirst({ where: { workspaceId: roomCode, key: roleKey }, select: { label: true, builtIn: true } });
+  return { status: 'success', invite: inviteDelta(res.result, role && !role.builtIn ? role.label : undefined) };
 };

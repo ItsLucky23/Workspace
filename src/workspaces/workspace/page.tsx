@@ -236,7 +236,7 @@ function InvitesTab() {
         </div>
       ),
     },
-    { id: 'role', header: translate({ key: 'workspaces.workspaceSettings.role' }), cell: (i) => ROLE_DISPLAY[i.role] },
+    { id: 'role', header: translate({ key: 'workspaces.workspaceSettings.role' }), cell: (i) => i.roleLabel ?? ROLE_DISPLAY[i.role] },
     {
       id: 'sent',
       header: translate({ key: 'workspaces.workspaceSettings.sentColumn' }),

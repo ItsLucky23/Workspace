@@ -100,6 +100,13 @@ try {
   assert(ownerMember !== undefined, 'the owner is present in the members list');
   eq(ownerMember?.role, 'owner', "the owner member has role 'owner'");
 
+  // ---- F-123: custom invite roles keep their raw key + label in the read projection ----
+  await prisma.workspaceRole.create({ data: { workspaceId, key: 'content-editor', label: 'Content editor', perms: [true, false, false, false, false, false, false, false], builtIn: false } });
+  await prisma.invite.create({ data: { workspaceId, email: `custom-invite-${stamp}@test.local`, roleKey: 'content-editor', invitedById: owner.id, token: `custom-invite-token-${stamp}`, status: 'pending', expiresAt: new Date(Date.now() + 86_400_000) } });
+  const inviteSnap = await buildSnapshot(prisma, owner.id);
+  const customInvite = inviteSnap.invites.find((invite) => invite.roleKey === 'content-editor');
+  eq(customInvite?.roleLabel, 'Content editor', 'a custom invite carries its role label instead of flattening to Member');
+
   // ---- budget ----
   assert(snap.budget !== null, 'budget is non-null');
 
