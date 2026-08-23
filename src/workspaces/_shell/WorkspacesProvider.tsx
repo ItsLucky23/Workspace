@@ -1362,9 +1362,10 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     if (!scope || !isChatProposalForProject(p, scope.projectId)) return false;
     const room = scope.workspaceId;
     if (p.op === 'bulk-move' && p.ticketKeys && p.stageId) {
-      const receipt = await syncRequest({ name: 'workspaces/bulkMove', version: 'v1', data: { ticketIds: p.ticketKeys, stageId: p.stageId, projectId: p.projectId, clientRequestId: nextReqId() }, receiver: room });
+      const { ticketKeys, stageId } = p;
+      const receipt = await syncRequest({ name: 'workspaces/bulkMove', version: 'v1', data: { ticketIds: ticketKeys, stageId, projectId: p.projectId, clientRequestId: nextReqId() }, receiver: room });
       if (receipt.status === 'success') {
-        setStageOverrides(() => Object.fromEntries(p.ticketKeys.map((ticketId) => [ticketId, p.stageId])));
+        setStageOverrides(() => Object.fromEntries(ticketKeys.map((ticketId) => [ticketId, stageId])));
       }
       return receipt.status === 'success';
     }

@@ -65,7 +65,8 @@ export default function TerminalPanel({ workspaceId, terminal, viewerName, fill 
     while (taken.has(uniqueName)) { uniqueName = `${name}-${String(suffix)}`; suffix += 1; }
     setActive(allProcesses.length);
     setAdHocShells((prev) => {
-      const next = [...prev, { name: uniqueName, status: 'idle', cwd: proc.cwd, exit: '', lines: [] }];
+      const shell: TerminalProcess = { name: uniqueName, status: 'idle', cwd: proc.cwd, exit: '', lines: [] };
+      const next = [...prev, shell];
       rememberedAdHocShells.set(adHocKey, next);
       return next;
     });

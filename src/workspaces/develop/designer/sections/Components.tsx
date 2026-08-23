@@ -70,8 +70,10 @@ export default function Components() {
     cherry: translate({ key: 'workspaces.components.demoCherry' }), frontend: translate({ key: 'workspaces.components.demoFrontend' }),
     backend: translate({ key: 'workspaces.components.demoBackend' }), design: translate({ key: 'workspaces.components.demoDesign' }),
   };
-  const fruitItems: DropdownItem[] = [{ id: 'apple', value: 'apple', item: demo.apple }, { id: 'banana', value: 'banana', item: demo.banana }, { id: 'cherry', value: 'cherry', item: demo.cherry }];
-  const tagItems: DropdownItem[] = [{ id: 1, value: 1, item: demo.frontend }, { id: 2, value: 2, item: demo.backend }, { id: 3, value: 3, item: demo.design }];
+  const firstFruit: DropdownItem = { id: 'apple', value: 'apple', item: demo.apple };
+  const fruitItems: DropdownItem[] = [firstFruit, { id: 'banana', value: 'banana', item: demo.banana }, { id: 'cherry', value: 'cherry', item: demo.cherry }];
+  const firstTag: DropdownItem = { id: 1, value: 1, item: demo.frontend };
+  const tagItems: DropdownItem[] = [firstTag, { id: 2, value: 2, item: demo.backend }, { id: 3, value: 3, item: demo.design }];
 
   const [text, setText] = useState('Ada Lovelace');
   const [num, setNum] = useState('3');
@@ -83,8 +85,8 @@ export default function Components() {
   const [wsT, setWsT] = useState(true);
   const [seg, setSeg] = useState<'board' | 'list'>('board');
   const [tab, setTab] = useState('overview');
-  const [fruit, setFruit] = useState<DropdownItem>(fruitItems[0]);
-  const [tags, setTags] = useState<DropdownItem[]>([tagItems[0]]);
+  const [fruit, setFruit] = useState<DropdownItem>(firstFruit);
+  const [tags, setTags] = useState<DropdownItem[]>([firstTag]);
   const [date, setDate] = useState<Date | null>(null);
 
   const cats: Cat[] = [

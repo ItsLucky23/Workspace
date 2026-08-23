@@ -5977,3 +5977,21 @@ Interviewer-persistentie-grens, Usage-shared-helper, publieke-route-verwijdering
 + live sweep + browser-verificatie met draaiende runtimes.
 
 **Files touched:** merges only; geen eigen code.
+
+## 2026-08-23 — P4-7 gemerged + 7 verborgen client-typefouten gefixt (lesson 0029)
+
+**User prompt:** agent 4's P4-7-rapport geplakt.
+
+**Wat ik deed:** `fix/audit-providers` gemerged (`4768cc8`, P4-7 badges/default-rij/last-ran). Lint/build/
+unit 130/130 groen — maar agent 4 noemde terloops "één pre-existing tsc-fout"; `npx tsc --noEmit -p
+tsconfig.json` gaf 7 fouten die de hele gate mist (Vite typecheckt de client niet): een MISSING IMPORT
+(`SavedNote` in `AdminTab.tsx` — runtime-crash, agent 3 haalde de import weg terwijl één gebruik bleef),
+verloren narrowing in een closure (`WorkspacesProvider.tsx` bulk-move), `noUncheckedIndexedAccess` op
+`fruitItems[0]` (designer Components) en een te wijd `status: string` (terminals TerminalPanel). Alle 4
+surgical gefixt; tsc 0 fouten, lint OK, unit 130/130. Lesson 0029 vastgelegd.
+
+**Files touched:** `content/settings/AdminTab.tsx`, `_shell/WorkspacesProvider.tsx`,
+`develop/designer/sections/Components.tsx`, `develop/terminals/TerminalPanel.tsx`, `docs/lessons/0029-*`.
+
+**Voorstel (niet toegepast, owner-beslissing):** client-typecheck toevoegen aan `npm run build` of de
+pre-push-hook.

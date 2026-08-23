@@ -13,6 +13,7 @@ import Icon from '../../_components/Icon';
 import { Disclosure, SectionCard, Toggle, WsButton } from '../../_components/primitives';
 import { FormSection, SavePill, SettingRow, useAutosave } from '../../_components/settings';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
+import { SavedNote } from './SavedNote';
 import { fieldCls, PUBLISH_PLATFORMS } from './shared';
 
 //? Q5 — media providers (image/video/3d + voice/sfx + music) only. The AI TEXT backend (Gemini, Claude,
