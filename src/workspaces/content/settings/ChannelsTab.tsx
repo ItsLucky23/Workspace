@@ -14,6 +14,7 @@ import { Disclosure, EmptyState, InfoTip, SectionCard, Toggle, WsButton } from '
 import { EmptyPicker } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { oauthCallbackBase } from '../../../../config';
+import { BrandLayerNote } from '../brandLayers';
 import { AccountConnectForm } from './portalForms';
 import { fieldCls, PUBLISH_PLATFORMS } from './shared';
 
@@ -28,7 +29,7 @@ const CHANNEL_PLATFORMS = ['youtube', 'tiktok', 'none'];
 //? Channel manager — create/edit/delete via the generic runContentOp (channel-* content control-ops).
 function ChannelsCard() {
   const translate = useTranslator();
-  const { content, runContentOp } = useWorkspaces();
+  const { content, runContentOp, focusSetup } = useWorkspaces();
   const platformItems: DropdownItem[] = CHANNEL_PLATFORMS.map((p) => ({ id: p, value: p, item: p }));
   //? #153 — the channel's default house style options (empty = no default).
   const styleItems: DropdownItem[] = [{ id: '', value: '', item: translate({ key: 'workspaces.content.channelNoStyle' }) }, ...content.styles.map((s) => ({ id: s.id, value: s.id, item: `${s.label} · ${s.feature}` }))];
@@ -115,6 +116,7 @@ function ChannelsCard() {
           </div>
           <input value={handle} onChange={(e) => { setHandle(e.target.value); }} placeholder={translate({ key: 'workspaces.content.channelHandlePlaceholder' })} className={fieldCls} />
           <input value={brandVoice} onChange={(e) => { setBrandVoice(e.target.value); }} placeholder={translate({ key: 'workspaces.content.channelVoicePlaceholder' })} className={fieldCls} />
+          <BrandLayerNote surface="channel" onOpen={() => { focusSetup({ view: 'content/settings', tab: 'brand' }); }} />
           {/* #153 — the channel's house style (defaultStyleId), only meaningful when editing an existing channel. */}
           {editingId && (
             <div className={`flex flex-col gap-1`}>

@@ -9,6 +9,7 @@ import { apiRequest, i18nNotify as notify, useTranslator } from '@luckystack/cor
 import { menuHandler } from 'src/_functions/menuHandler';
 import Icon from '../../_components/Icon';
 import { PopMenu, WsButton } from '../../_components/primitives';
+import { BrandLayerNote } from '../brandLayers';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { inputCls } from './content';
 
@@ -41,7 +42,7 @@ function BrandImportForm({ workspaceId, onImported }: { workspaceId: string; onI
 
 export function BrandPanel() {
   const translate = useTranslator();
-  const { studioBrand, saveBrand, activeWorkspace, refetch } = useWorkspaces();
+  const { studioBrand, saveBrand, activeWorkspace, refetch, focusSetup } = useWorkspaces();
   //? #164 — portable brand-kit export (copy JSON to clipboard) + import (paste JSON).
   const exportBrand = () => {
     void apiRequest({ name: 'workspaces/brandExport', version: 'v1', data: { workspaceId: activeWorkspace.id } }).then((r) => {
@@ -83,6 +84,7 @@ export function BrandPanel() {
       <div>
         <div className={`text-xl font-semibold text-title`}>{translate({ key: 'workspaces.studio.brandLibrary' })}</div>
         <div className={`text-sm text-muted mt-0.5`}>{translate({ key: 'workspaces.studio.brandIntro' })}</div>
+        <BrandLayerNote surface="studio" onOpen={() => { focusSetup({ view: 'content/settings', tab: 'brand' }); }} />
         {/* ADR 0310 — provenance, shown wherever the workspace is opened (not just where it was set). */}
         {provenance && (
           <div className={`text-xs text-meta mt-1`}>

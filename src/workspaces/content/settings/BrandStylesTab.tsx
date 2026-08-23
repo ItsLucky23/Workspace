@@ -15,6 +15,7 @@ import { MediaUploadButton } from '../../_components/MediaUploadButton';
 import { Disclosure, EmptyState, PopMenu, SectionCard, WsButton } from '../../_components/primitives';
 import { SavePill, useAutosave, type SaveStatus } from '../../_components/settings';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
+import { BrandLayerNote } from '../brandLayers';
 import { StyleEditorForm, StyleImportForm, type StyleDraft } from './portalForms';
 import { fieldCls, mediaSrc } from './shared';
 
@@ -22,7 +23,7 @@ import { fieldCls, mediaSrc } from './shared';
 //? content-edit-product control-op. Until it is saved once, the card header TEACHES what this place is for.
 function BrandContextCard() {
   const translate = useTranslator();
-  const { activeWorkspace, saveProductContext, saveBrandLogo } = useWorkspaces();
+  const { activeWorkspace, saveProductContext, saveBrandLogo, navigate } = useWorkspaces();
   const hasSaved = (activeWorkspace.productContext ?? '').trim().length > 0;
   const [value, setValue] = useState(activeWorkspace.productContext ?? '');
   const status = useAutosave([value], () => { saveProductContext(value.trim()); }, { resetKey: activeWorkspace.id });
@@ -38,6 +39,7 @@ function BrandContextCard() {
         placeholder={translate({ key: 'workspaces.content.brandContextPlaceholder' })}
         className={`w-full ${fieldCls} resize-none`}
       />
+      <BrandLayerNote surface="product" onOpen={() => { navigate('studio'); }} />
       <div className={`mt-3 flex flex-wrap items-center gap-3`}>
         <SavePill status={status} />
       </div>

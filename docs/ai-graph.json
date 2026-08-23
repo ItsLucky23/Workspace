@@ -2,8 +2,8 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 459,
-    "edges": 714,
+    "nodes": 460,
+    "edges": 718,
     "symbols": 867,
     "callEdges": 289
   },
@@ -1904,6 +1904,11 @@
       "route": null
     },
     {
+      "id": "workspaces/content/brandLayers.tsx",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/content/documents/[docId]/page.tsx",
       "kind": "page",
       "route": null
@@ -3230,6 +3235,10 @@
       "to": "workspaces/content/[pieceId]/assetHref.ts"
     },
     {
+      "from": "workspaces/content/brandLayers.tsx",
+      "to": "workspaces/_components/Icon.tsx"
+    },
+    {
       "from": "workspaces/content/documents/[docId]/page.tsx",
       "to": "_components/dropdown/Dropdown.tsx"
     },
@@ -3563,6 +3572,10 @@
     },
     {
       "from": "workspaces/content/settings/BrandStylesTab.tsx",
+      "to": "workspaces/content/brandLayers.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/BrandStylesTab.tsx",
       "to": "workspaces/content/settings/portalForms.tsx"
     },
     {
@@ -3592,6 +3605,10 @@
     {
       "from": "workspaces/content/settings/ChannelsTab.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/ChannelsTab.tsx",
+      "to": "workspaces/content/brandLayers.tsx"
     },
     {
       "from": "workspaces/content/settings/ChannelsTab.tsx",
@@ -3684,6 +3701,10 @@
     {
       "from": "workspaces/content/studio/BrandPanel.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
+      "from": "workspaces/content/studio/BrandPanel.tsx",
+      "to": "workspaces/content/brandLayers.tsx"
     },
     {
       "from": "workspaces/content/studio/BrandPanel.tsx",
@@ -5968,6 +5989,7 @@
       "workspaces/content/[pieceId]/AssetCard.tsx",
       "workspaces/content/[pieceId]/assetHref.ts",
       "workspaces/content/[pieceId]/page.tsx",
+      "workspaces/content/brandLayers.tsx",
       "workspaces/content/documents/TemplateManager.tsx",
       "workspaces/content/documents/[docId]/page.tsx",
       "workspaces/content/documents/page.tsx",
@@ -6903,6 +6925,14 @@
       "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/page.tsx"
     ],
+    "workspaces/content/brandLayers.tsx": [
+      "workspaces/content/marketing/page.tsx",
+      "workspaces/content/settings/BrandStylesTab.tsx",
+      "workspaces/content/settings/ChannelsTab.tsx",
+      "workspaces/content/settings/page.tsx",
+      "workspaces/content/studio/BrandPanel.tsx",
+      "workspaces/content/studio/page.tsx"
+    ],
     "workspaces/content/documents/lineDiff.ts": [
       "workspaces/content/documents/[docId]/page.tsx"
     ],
@@ -7177,8 +7207,8 @@
     {
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
-      "dependents": 95,
-      "directDependents": 78
+      "dependents": 96,
+      "directDependents": 79
     },
     {
       "id": "workspaces/_components/motion.tsx",
