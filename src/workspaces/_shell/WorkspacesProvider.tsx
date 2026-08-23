@@ -79,6 +79,8 @@ interface Snap {
   //? ADR 0007 — the connected AIs + what can be connected. `hasKey` is presence only.
   aiConnections: AiConnection[];
   aiProviderCatalog: AiProviderOption[];
+  //? P4-7 — built-in feature → backend defaults (what "Default" resolves to).
+  aiFeatureDefaults: Record<string, string>;
   customTasks: { id: string; name: string; promptTemplate: string; lastOutput: string | null; lastRunAt: number | null }[];
   outputTemplates: { id: string; name: string; format: string; watermarkPosition: string }[];
   //? SK1 — the universal AI-skills layer.
@@ -124,7 +126,7 @@ const EMPTY_SNAP: Snap = {
   templates: [],
   members: [], tickets: [], stages: [], sprints: [],
   suggestions: [], budget: null, budgets: [], docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [],
-  notifications: [], stageConfigs: [], aiOverrides: [], aiConnections: [], aiProviderCatalog: [], customTasks: [], outputTemplates: [], aiSkills: [], documents: [], documentTemplates: [], myInvites: [], notes: [], repo: { linked: false },
+  notifications: [], stageConfigs: [], aiOverrides: [], aiConnections: [], aiProviderCatalog: [], aiFeatureDefaults: {}, customTasks: [], outputTemplates: [], aiSkills: [], documents: [], documentTemplates: [], myInvites: [], notes: [], repo: { linked: false },
   gitConfig: { branchStrategy: 'ticket-prefix', defaultBranchType: 'feature', branchTemplate: '{{type}}/{{key}}-{{slug}}', pushPolicy: 'local-only', targetBranch: 'main', protectedBranches: ['main', 'master'], commitSigning: false },
   workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0, byAi: [], byUser: [] },
@@ -2035,6 +2037,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       editMediaBudget: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'edit-media-budget', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       aiConnections: snap.aiConnections,
       aiProviderCatalog: snap.aiProviderCatalog,
+      aiFeatureDefaults: snap.aiFeatureDefaults,
       //? ADR 0007 — the three connection verbs. Each resolves with the Conductor's own result so the
       //? caller can report what actually happened: a test's pass/fail, and which features a removal
       //? moved. The key travels IN only; nothing key-shaped comes back.

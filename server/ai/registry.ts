@@ -149,7 +149,7 @@ export async function runAiCompletion(
     result = await complete();
   }
   //? Feed the central AI-activity view (the "Activity" tab of the Workspace-AI panel).
-  recordAiRun({ ...(req.workspaceId ? { workspaceId: req.workspaceId } : {}), feature, ...(req.label ? { label: req.label } : {}), prompt: req.prompt, output: result.text, providerId: result.providerId, status: result.ok ? 'ok' : 'error', ...(result.error ? { error: result.error } : {}), startedAt });
+  recordAiRun({ ...(req.workspaceId ? { workspaceId: req.workspaceId } : {}), feature, ...(req.label ? { label: req.label } : {}), prompt: req.prompt, output: result.text, providerId: result.providerId, ...(result.model ? { model: result.model } : {}), status: result.ok ? 'ok' : 'error', ...(result.error ? { error: result.error } : {}), startedAt });
   //? Durable per-AI spend (the missing half): one-shot completions only touched the in-memory activity ring,
   //? so metered providers (Gemini) never accrued into SpendRecord/WorkspaceBudget. Record here, best-effort +
   //? only on success, with the provider's real usage when it reports it (else char-estimate). The PTY coding

@@ -20,6 +20,7 @@ import { listAgentRoles } from '../automation/agentRoles';
 import { listAiRuns } from '../ai/activity';
 import { formatTime, toContentAssetSummary, toContentPieceSummary, toVideoSceneSummary, toEnvVar, toInfoDoc, toTicket } from './mappers';
 import { AI_PROVIDER_LIST } from '../ai/providers/catalog';
+import { defaultAssignments } from '../ai/assignments';
 import { AI_OVERRIDE_PREFIX, parseAiOverride } from '../ai/workspaceAssignments';
 import { listConnections } from '../ai/connections';
 import { repoStatus } from '../git/repoStore';
@@ -176,6 +177,9 @@ export interface WorkspaceSnapshot {
   //? host answers is infrastructure, resolved server-side.
   aiConnections: { id: string; providerId: string; label: string; model: string; kind: 'subscription' | 'api-key'; hasKey: boolean; verifiedAt: string | null; lastError: string | null }[];
   aiProviderCatalog: { id: string; label: string; kind: 'subscription' | 'api-key'; models: { id: string; label: string }[]; defaultModel: string; keyUrl: string }[];
+  //? P4-7 — the built-in feature → backend defaults (assignments.ts), so the routing picker can say WHICH
+  //? backend "Default" resolves to instead of the word alone.
+  aiFeatureDefaults: Record<string, string>;
   //? E5 — user-defined custom AI tasks (name + template + last output).
   customTasks: { id: string; name: string; promptTemplate: string; lastOutput: string | null; lastRunAt: number | null }[];
   //? O5 — reusable output specs (name + render format + watermark position).
@@ -232,7 +236,7 @@ export interface WorkspaceSnapshot {
   agentRoles: { key: string; label: string; description: string; mutates: boolean }[];
   //? Central AI-activity feed (the "Activity" tab of the Workspace-AI panel): recent AI runs with
   //? their prompt + output + status, so every AI-driven action is visible in one place.
-  aiRuns: { id: string; feature: string; label: string; prompt: string; output: string; providerId: string; status: 'ok' | 'error'; error?: string; createdAt: string; ms: number }[];
+  aiRuns: { id: string; feature: string; label: string; prompt: string; output: string; providerId: string; model?: string; status: 'ok' | 'error'; error?: string; createdAt: string; ms: number }[];
   //? Studio module: product briefs + their generated artifacts + the central brand library.
   studioBriefs: StudioBrief[];
   studioArtifacts: StudioArtifact[];
@@ -261,7 +265,7 @@ export interface WorkspaceSnapshot {
 
 const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activeProjectId' | 'myInvites'> = {
   projects: [], services: [], serviceStacks: [], dbConnections: [], migrations: [], environments: [], buildArtifacts: [], templates: listTemplates(),
-  members: [], tickets: [], stages: [], stageConfigs: [], aiOverrides: [], aiConnections: [], aiProviderCatalog: [], customTasks: [], outputTemplates: [], aiSkills: [], documents: [], documentTemplates: [], sprints: [], suggestions: [], budget: null, budgets: [],
+  members: [], tickets: [], stages: [], stageConfigs: [], aiOverrides: [], aiConnections: [], aiProviderCatalog: [], aiFeatureDefaults: {}, customTasks: [], outputTemplates: [], aiSkills: [], documents: [], documentTemplates: [], sprints: [], suggestions: [], budget: null, budgets: [],
   docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [],
   readiness: { repoLinked: false, aiText: false, media: { fal: false, elevenlabs: false, suno: false }, publishing: false, docker: false, push: false, secretManager: false },
   myPerms: [], myRoleKey: 'member',
@@ -616,6 +620,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       id: meta.id, label: meta.label, kind: meta.kind, models: meta.models,
       defaultModel: meta.defaultModel, keyUrl: meta.keyUrl,
     }));
+    const aiFeatureDefaults: Record<string, string> = defaultAssignments();
 
     //? Register-flow step A: the ACTIVE project's linked-repo status (on-disk bare
     //? clone), keyed off its stored (clean) gitUrl. R3-b — the physical repo is now per-project,
@@ -693,7 +698,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         ...(b.deployHookStatus === null ? {} : { deployHookStatus: b.deployHookStatus }),
       })),
       templates: listTemplates(),
-      members, budget, budgets, capacity, docs, skills, aiConnections, aiProviderCatalog,
+      members, budget, budgets, capacity, docs, skills, aiConnections, aiProviderCatalog, aiFeatureDefaults,
       //? `locked` must mirror what the Conductor will actually accept. It only marked `owner`, while
       //? `role-update` rejects EVERY built-in role (`if (existingRole.builtIn) return { ok: false,
       //? error: 'role.builtInImmutable' }`) — so the Admin and Member cells rendered clickable, with

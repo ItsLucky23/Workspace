@@ -16,6 +16,9 @@ export interface AiRun {
   prompt: string;    //? our prompt (truncated) — "the general prompt from our side"
   output: string;    //? the model's reasoning/output (truncated)
   providerId: string;
+  //? P4-7 — the model the backend RESOLVED for this run (when it reports one), so the routing picker can say
+  //? "last ran on <backend> · <model>" rather than only the backend.
+  model?: string;
   status: 'ok' | 'error';
   error?: string;
   createdAt: string; //? ISO
@@ -31,7 +34,7 @@ let seq = 0;
 function clip(s: string, cap: number): string { return s.length > cap ? `${s.slice(0, cap)}…` : s; }
 
 //? Record one AI run. Best-effort + never throws (a logging failure must not break a completion).
-export function recordAiRun(input: { workspaceId?: string; feature: string; label?: string; prompt: string; output: string; providerId: string; status: 'ok' | 'error'; error?: string; startedAt: number }): void {
+export function recordAiRun(input: { workspaceId?: string; feature: string; label?: string; prompt: string; output: string; providerId: string; model?: string; status: 'ok' | 'error'; error?: string; startedAt: number }): void {
   const workspaceId = input.workspaceId;
   if (!workspaceId) return; //? only feed runs tagged to a workspace (untagged = internal/system)
   seq += 1;
@@ -43,6 +46,7 @@ export function recordAiRun(input: { workspaceId?: string; feature: string; labe
     prompt: clip(input.prompt, PROMPT_CAP),
     output: clip(input.output, OUTPUT_CAP),
     providerId: input.providerId,
+    ...(input.model ? { model: input.model } : {}),
     status: input.status,
     ...(input.error ? { error: input.error } : {}),
     createdAt: new Date(input.startedAt).toISOString(),

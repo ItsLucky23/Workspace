@@ -324,6 +324,8 @@ export interface WorkspacesCtx {
   //? ADR 0007 — the connected AIs, and what CAN be connected. `hasKey` is presence only.
   aiConnections: AiConnection[];
   aiProviderCatalog: AiProviderOption[];
+  /** P4-7 — built-in feature → backend defaults (assignments.ts), keyed by feature id. */
+  aiFeatureDefaults: Record<string, string>;
   /** Add / test / remove one connection. Resolves with the Conductor's own result. */
   aiConnectionAction: (input: { op: 'ai-connection-add' | 'ai-connection-test' | 'ai-connection-remove'; providerId?: string; model?: string; apiKey?: string; connectionId?: string }) => Promise<{ ok: boolean; error?: string; result?: unknown }>;
   saveAiProvider: (feature: string, providerId: string, model?: string) => void;

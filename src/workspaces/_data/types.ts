@@ -1248,6 +1248,8 @@ export interface AiRun {
   prompt: string;
   output: string;
   providerId: string;
+  /** P4-7 — the model the backend resolved for this run, when it reported one. */
+  model?: string;
   status: 'ok' | 'error';
   error?: string;
   createdAt: string;

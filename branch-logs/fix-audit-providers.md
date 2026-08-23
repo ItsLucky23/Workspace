@@ -32,3 +32,21 @@ commit per item, Phase B NIET starten.
 **Notes / open:** Phase B (P4-7, `workspace/page.tsx`) wacht op Agent 3's Phase B-merge + rebase. Out-of-scope-
 observaties (multimodaal-fallback naar tekst-only backend, Anthropic-lijst, pre-existing tsc-fouten) staan in
 `AGENT_4_PROVIDERS.md`. Geen nieuwe ops → geen effect-matrix-wijziging.
+
+## 2026-08-23 — Phase B: P4-7 honest availability in the per-feature picker (1 commit)
+
+**User prompt:** branch is bijgewerkt met main; voer Phase B (alleen P4-7) uit, afvinken + Result, commit.
+
+**Wat ik deed:** `workspace/page.tsx` AiBehaviorTab-routing herschreven: beschikbaarheids-dot per backend
+(probe `aiProviderHealth_v1`, fallback = connection-state), "Default — <backend>" als eerste keuze (lost op naar
+ws-default → ingebouwde feature-default, via nieuw snapshot-veld `aiFeatureDefaults`), waarschuwing bij routing
+naar een onbeschikbare backend, "Laatst gedraaid op <backend> · <model> · <tijd>" uit `aiRuns` (`AiRun.model`
+toegevoegd: `server/ai/activity.ts` + registry + snapshot + client-type), nieuwe rij "Workspace default backend"
+(`saveAiProvider('_default', …)`), pinned-model-regel. 11 i18n-keys ×4 locales.
+
+**Files touched:** `src/workspaces/workspace/page.tsx`, `server/ai/{activity,registry}.ts`,
+`server/read/workspaceSnapshot.ts`, `src/workspaces/_shell/{WorkspacesProvider,WorkspacesContext}.tsx`,
+`src/workspaces/_data/types.ts`, `src/_locales/*.json`, `AGENT_4_PROVIDERS.md`.
+
+**Verificatie:** lint/build/ai:lint schoon, tsc schoon voor de aangeraakte files, unit 130/130. Niet in de
+browser gezien (geen dev-server). Agent 4 hiermee volledig klaar (Phase A + B).

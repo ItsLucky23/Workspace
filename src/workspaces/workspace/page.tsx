@@ -4,7 +4,7 @@
 //? RBAC matrix + member roles live in app context so edits survive tab/route
 //? changes. Dummy data; desktop-first.
 
-import { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { apiRequest, tryCatch, useTranslator } from '@luckystack/core/client';
 
@@ -1363,8 +1363,19 @@ function CustomTaskVarsForm({ vars, onRun }: { vars: string[]; onRun: (values: R
 //? SK1 — one AI-skill row: toggle + expandable editor (builtin = resettable, never deletable).
 function AiBehaviorTab() {
   const translate = useTranslator();
-  const { activeWorkspace, saveAiInstruction, aiOverrides, aiConnections, saveAiProvider, saveAutonomy, customTasks, saveCustomTask, runCustomTask, deleteCustomTask, aiSkills, navigate } = useWorkspaces();
+  const { activeWorkspace, saveAiInstruction, aiOverrides, aiConnections, aiProviderCatalog, aiFeatureDefaults, aiRuns, saveAiProvider, saveAutonomy, customTasks, saveCustomTask, runCustomTask, deleteCustomTask, aiSkills, navigate } = useWorkspaces();
   const [newTaskName, setNewTaskName] = useState('');
+  //? P4-7 — the REAL availability probe per backend (Claude CLI on the host, a usable key for a metered
+  //? one), fetched once per workspace. Until it answers, the connection row's own state stands in.
+  const [health, setHealth] = useState<Record<string, boolean> | null>(null);
+  useEffect(() => {
+    setHealth(null);
+    void (async () => {
+      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/aiProviderHealth', version: 'v1', data: { workspaceId: activeWorkspace.id } }));
+      if (error || res?.status !== 'success') return;
+      setHealth(Object.fromEntries(res.result.providers.map((p) => [p.id, p.available])));
+    })();
+  }, [activeWorkspace.id]);
   const [newTaskTemplate, setNewTaskTemplate] = useState('');
   const autonomyItems = (['gate-every', 'gate-key-stages', 'full-auto'] as const).map((id) => ({ id, value: id, item: translate({ key: `workspaces.workspaceSettings.autonomy.${id}` }) }));
   const autonomyLevel = activeWorkspace.autonomyLevel ?? 'gate-key-stages';
@@ -1388,13 +1399,70 @@ function AiBehaviorTab() {
   const layers = resolveAiLayers({ workspace: activeWorkspace, skills: aiSkills });
   const workspaceTip = useLayerTip(layers, 'workspace');
   const languageOptions = OUTPUT_LANGUAGES.map((l) => ({ id: l.id, value: l.id, item: l.id.length === 0 ? translate({ key: 'workspaces.workspaceSettings.languageAuto' }) : l.label }));
-  //? 'default' plus one entry per DISTINCT connected backend — a feature can only be routed somewhere
-  //? that can actually answer it.
-  const providerItems = [
-    { id: 'default', value: 'default', item: translate({ key: 'workspaces.workspaceSettings.providerDefault' }) },
-    ...[...new Map(aiConnections.map((c) => [c.providerId, c.label])).entries()].map(([id, label]) => ({ id, value: id, item: label })),
-  ];
+  //? P4-7 — honest availability in the picker. Each backend carries a badge (probe result, else the
+  //? connection's own state), the "Default" choice names the backend it actually resolves to (workspace
+  //? default, else the built-in feature default), and a feature routed at an unavailable backend says so.
+  const backendLabel = (id: string): string => aiProviderCatalog.find((p) => p.id === id)?.label ?? aiConnections.find((c) => c.providerId === id)?.label ?? id;
+  const isAvailable = (id: string): boolean => {
+    if (health !== null && id in health) return health[id] === true;
+    return aiConnections.some((c) => c.providerId === id && (c.kind === 'subscription' || c.hasKey) && c.lastError === null);
+  };
+  const dot = (id: string): ReactNode => (
+    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isAvailable(id) ? 'bg-correct' : 'bg-wrong'}`} title={translate({ key: isAvailable(id) ? 'workspaces.workspaceSettings.providerAvailable' : 'workspaces.workspaceSettings.providerUnavailable' })} />
+  );
+  const badge = (id: string): ReactNode => <span className={`inline-flex items-center gap-2`}>{dot(id)}{backendLabel(id)}</span>;
+  //? One entry per DISTINCT connected backend — a feature can only be routed somewhere that can answer it.
+  const connectedIds = [...new Set(aiConnections.map((c) => c.providerId))];
+  const wsDefault = aiOverrides.find((o) => o.feature === '_default');
   const providerFor = (feature: string): string => aiOverrides.find((o) => o.feature === feature)?.providerId ?? 'default';
+  //? What "Default" means for this feature: the workspace default (P4-1) when set, else the built-in one.
+  const resolvedDefault = (feature: string): string => wsDefault?.providerId ?? aiFeatureDefaults[feature] ?? '';
+  const providerItemsFor = (feature: string) => [
+    { id: 'default', value: 'default', searchText: translate({ key: 'workspaces.workspaceSettings.providerDefault' }), item: (
+      <span className={`inline-flex items-center gap-2`}>
+        {dot(resolvedDefault(feature))}
+        {translate({ key: 'workspaces.workspaceSettings.providerDefaultResolved', params: [{ key: 'backend', value: backendLabel(resolvedDefault(feature)) }] })}
+      </span>
+    ) },
+    ...connectedIds.map((id) => ({ id, value: id, searchText: backendLabel(id), item: badge(id) })),
+  ];
+  const wsDefaultItems = [
+    { id: 'default', value: 'default', item: translate({ key: 'workspaces.workspaceSettings.workspaceDefaultBuiltIn' }) },
+    ...connectedIds.map((id) => ({ id, value: id, searchText: backendLabel(id), item: badge(id) })),
+  ];
+  //? The help line under a feature: the unavailable warning first (it is the actionable one), then the
+  //? pinned model (P4-2) and what actually ran last (from the AI-activity ring, newest first).
+  const featureHelp = (feature: string): ReactNode => {
+    const chosen = providerFor(feature);
+    const effective = chosen === 'default' ? resolvedDefault(feature) : chosen;
+    const pinned = aiOverrides.find((o) => o.feature === feature)?.model;
+    const last = aiRuns.find((r) => r.feature === feature);
+    const camel = feature.replaceAll(/-([a-z])/g, (_m, c: string) => c.toUpperCase());
+    return (
+      <span className={`flex flex-col gap-0.5`}>
+        <span>{translate({ key: `workspaces.workspaceSettings.providerFeatureDesc.${camel}` })}</span>
+        {effective.length > 0 && !isAvailable(effective) && (
+          <span className={`text-warning`}>{translate({ key: 'workspaces.workspaceSettings.providerRoutedUnavailable', params: [{ key: 'backend', value: backendLabel(effective) }] })}</span>
+        )}
+        {pinned !== undefined && pinned.length > 0 && (
+          <span className={`font-mono text-[11px]`}>{translate({ key: 'workspaces.workspaceSettings.providerPinnedModel', params: [{ key: 'model', value: pinned }] })}</span>
+        )}
+        <span className={last?.status === 'error' ? 'text-wrong' : ''}>
+          {last === undefined
+            ? translate({ key: 'workspaces.workspaceSettings.providerNeverRan' })
+            : translate({
+              key: last.status === 'error' ? 'workspaces.workspaceSettings.providerLastFailed' : 'workspaces.workspaceSettings.providerLastRan',
+              params: [
+                { key: 'backend', value: backendLabel(last.providerId) },
+                { key: 'model', value: last.model ? ` · ${last.model}` : '' },
+                { key: 'error', value: last.error ?? '' },
+                { key: 'when', value: new Date(last.createdAt).toLocaleString() },
+              ],
+            })}
+        </span>
+      </span>
+    );
+  };
   //? Provider health used to be fetched here for a row of green/red chips. A connection now carries
   //? its OWN verified/failed state, tested on demand against the real backend — which answers the
   //? question the chips only gestured at ("a key is present" vs "this key works").
@@ -1491,16 +1559,23 @@ function AiBehaviorTab() {
         title={translate({ key: 'workspaces.workspaceSettings.aiProviderTitle' })}
         desc={translate({ key: 'workspaces.workspaceSettings.aiProviderDesc' })}
       >
+        {/* P4-1 — the workspace default backend: every feature that keeps "Default" resolves here first. */}
+        <SettingRow
+          label={translate({ key: 'workspaces.workspaceSettings.workspaceDefaultTitle' })}
+          help={translate({ key: 'workspaces.workspaceSettings.workspaceDefaultDesc' })}
+          control={<Dropdown width="full" size="sm" value={wsDefaultItems.find((p) => p.id === (wsDefault?.providerId ?? 'default'))} items={wsDefaultItems} onChange={(it) => { saveAiProvider('_default', String(it.id)); }} />}
+        />
         {PROVIDER_FEATURES.map((f) => {
           //? #82 — human label + one-line description per feature (no raw slugs). The camelCase key
           //? maps the internal slug to a translation entry under workspaceSettings.providerFeature.
           const camel = f.replaceAll(/-([a-z])/g, (_m, c: string) => c.toUpperCase());
+          const items = providerItemsFor(f);
           return (
             <SettingRow
               key={f}
               label={translate({ key: `workspaces.workspaceSettings.providerFeature.${camel}` })}
-              help={translate({ key: `workspaces.workspaceSettings.providerFeatureDesc.${camel}` })}
-              control={<Dropdown width="full" size="sm" value={providerItems.find((p) => p.id === providerFor(f))} items={providerItems} onChange={(it) => { saveAiProvider(f, String(it.id)); }} />}
+              help={featureHelp(f)}
+              control={<Dropdown width="full" size="sm" value={items.find((p) => p.id === providerFor(f))} items={items} onChange={(it) => { saveAiProvider(f, String(it.id)); }} />}
             />
           );
         })}

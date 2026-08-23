@@ -760,24 +760,210 @@
       "tipThisField": " — dieses Feld",
       "goto_skillsStage": "Auf dem Kontext-Tab dieser Stufe wählen",
       "catalog": {
-        "categories": { "events": "Ereignisse & Status", "lifecycle": "Lebenszyklus", "packageManagers": "Paketmanager", "buildRun": "Bauen & Ausführen", "testing": "Tests", "versionControl": "Versionsverwaltung", "filesystem": "Dateien & Bearbeitung", "containers": "Container & Infrastruktur", "database": "Datenbank-CLIs", "network": "Netzwerk & gefährlich" },
+        "categories": {
+          "events": "Ereignisse & Status",
+          "lifecycle": "Lebenszyklus",
+          "packageManagers": "Paketmanager",
+          "buildRun": "Bauen & Ausführen",
+          "testing": "Tests",
+          "versionControl": "Versionsverwaltung",
+          "filesystem": "Dateien & Bearbeitung",
+          "containers": "Container & Infrastruktur",
+          "database": "Datenbank-CLIs",
+          "network": "Netzwerk & gefährlich"
+        },
         "hooks": {
-          "stop": { "label": "Stop", "feeds": "fertig / Eingabe nötig + Verschieben", "desc": "Markiert die Stage als fertig (oder als Eingabe nötig) und bewegt das Ticket weiter. Die Engine benötigt diesen Hook." },
-          "postToolUse": { "label": "PostToolUse", "feeds": "TicketEvent → Live-Aktivität", "desc": "Zeichnet jedes Kommando und jede Dateiänderung als Event auf." },
-          "preCompact": { "label": "PreCompact", "feeds": "kontrollierte Übergabe", "desc": "Signalisiert dem Orchestrator eine eigene Übergabe statt einer undurchsichtigen automatischen Komprimierung." }
+          "stop": {
+            "label": "Stop",
+            "feeds": "fertig / Eingabe nötig + Verschieben",
+            "desc": "Markiert die Stage als fertig (oder als Eingabe nötig) und bewegt das Ticket weiter. Die Engine benötigt diesen Hook."
+          },
+          "postToolUse": {
+            "label": "PostToolUse",
+            "feeds": "TicketEvent → Live-Aktivität",
+            "desc": "Zeichnet jedes Kommando und jede Dateiänderung als Event auf."
+          },
+          "preCompact": {
+            "label": "PreCompact",
+            "feeds": "kontrollierte Übergabe",
+            "desc": "Signalisiert dem Orchestrator eine eigene Übergabe statt einer undurchsichtigen automatischen Komprimierung."
+          }
         },
         "commands": {
-          "npmInstall": { "label": "npm install", "desc": "Node-Abhängigkeiten aus package.json installieren." }, "npmCi": { "label": "npm ci", "desc": "Saubere Installation aus der Lockfile." }, "pnpmInstall": { "label": "pnpm install", "desc": "Abhängigkeiten mit pnpm installieren." }, "yarnInstall": { "label": "yarn install", "desc": "Abhängigkeiten mit Yarn installieren." }, "dotnetRestore": { "label": "dotnet restore", "desc": "NuGet-Pakete wiederherstellen." }, "goModDownload": { "label": "go mod download", "desc": "Go-Module herunterladen." }, "pipInstall": { "label": "pip install …", "desc": "Python-Pakete mit pip installieren." },
-          "npmRunBuild": { "label": "npm run build", "desc": "Das Build-Skript des Projekts ausführen." }, "npmRunAny": { "label": "npm run …", "desc": "Ein package.json-Skript ausführen." }, "dotnetBuild": { "label": "dotnet build", "desc": "Ein .NET-Projekt kompilieren." }, "goBuild": { "label": "go build …", "desc": "Go-Pakete kompilieren." }, "make": { "label": "make …", "desc": "Ein Makefile-Ziel ausführen." },
-          "npmRunTest": { "label": "npm run test…", "desc": "Test-Skripte ausführen." }, "npmCoverage": { "label": "npm run coverage", "desc": "Die Tests mit Coverage ausführen." }, "dotnetTest": { "label": "dotnet test", "desc": ".NET-Tests ausführen." }, "goTest": { "label": "go test ./...", "desc": "Alle Go-Tests ausführen." },
-          "gitAdd": { "label": "git add …", "desc": "Dateien für den Commit vormerken." }, "gitCommit": { "label": "git commit …", "desc": "Einen Commit auf dem Ticket-Branch erstellen." }, "gitCheckout": { "label": "git checkout …", "desc": "Branch wechseln oder Dateien wiederherstellen." }, "gitPush": { "label": "git push …", "desc": "Commits zum Remote pushen." }, "gitRebase": { "label": "git rebase …", "desc": "Den Branch rebasen; mit Vorsicht verwenden." },
-          "editFiles": { "label": "Dateien bearbeiten", "desc": "Bestehende Dateien in der Worktree ändern." }, "writeFiles": { "label": "Dateien schreiben", "desc": "Dateien in der Worktree erstellen." }, "mkdir": { "label": "mkdir …", "desc": "Verzeichnisse erstellen." }, "rm": { "label": "rm …", "desc": "Dateien löschen — destruktiv." },
-          "docker": { "label": "docker …", "desc": "Docker-Befehle im Container ausführen." }, "dockerCompose": { "label": "docker compose …", "desc": "Compose-Dienste verwalten." }, "kubectl": { "label": "kubectl …", "desc": "Mit einem Kubernetes-Cluster arbeiten." },
-          "psql": { "label": "psql …", "desc": "PostgreSQL-CLI." }, "mysql": { "label": "mysql …", "desc": "MySQL-CLI." }, "redisCli": { "label": "redis-cli …", "desc": "Redis-CLI." }, "mongosh": { "label": "mongosh …", "desc": "MongoDB-Shell." },
-          "curl": { "label": "curl …", "desc": "HTTP-Anfragen senden; mit einer Netzwerk-Allowlist kombinieren." }, "npmPublish": { "label": "npm publish", "desc": "Ein Paket in der Registry veröffentlichen." }, "sudo": { "label": "sudo …", "desc": "Als Root ausführen — gefährlich." }, "rmRf": { "label": "rm -rf …", "desc": "Rekursiv und erzwungen löschen — gefährlich." }
+          "npmInstall": {
+            "label": "npm install",
+            "desc": "Node-Abhängigkeiten aus package.json installieren."
+          },
+          "npmCi": {
+            "label": "npm ci",
+            "desc": "Saubere Installation aus der Lockfile."
+          },
+          "pnpmInstall": {
+            "label": "pnpm install",
+            "desc": "Abhängigkeiten mit pnpm installieren."
+          },
+          "yarnInstall": {
+            "label": "yarn install",
+            "desc": "Abhängigkeiten mit Yarn installieren."
+          },
+          "dotnetRestore": {
+            "label": "dotnet restore",
+            "desc": "NuGet-Pakete wiederherstellen."
+          },
+          "goModDownload": {
+            "label": "go mod download",
+            "desc": "Go-Module herunterladen."
+          },
+          "pipInstall": {
+            "label": "pip install …",
+            "desc": "Python-Pakete mit pip installieren."
+          },
+          "npmRunBuild": {
+            "label": "npm run build",
+            "desc": "Das Build-Skript des Projekts ausführen."
+          },
+          "npmRunAny": {
+            "label": "npm run …",
+            "desc": "Ein package.json-Skript ausführen."
+          },
+          "dotnetBuild": {
+            "label": "dotnet build",
+            "desc": "Ein .NET-Projekt kompilieren."
+          },
+          "goBuild": {
+            "label": "go build …",
+            "desc": "Go-Pakete kompilieren."
+          },
+          "make": {
+            "label": "make …",
+            "desc": "Ein Makefile-Ziel ausführen."
+          },
+          "npmRunTest": {
+            "label": "npm run test…",
+            "desc": "Test-Skripte ausführen."
+          },
+          "npmCoverage": {
+            "label": "npm run coverage",
+            "desc": "Die Tests mit Coverage ausführen."
+          },
+          "dotnetTest": {
+            "label": "dotnet test",
+            "desc": ".NET-Tests ausführen."
+          },
+          "goTest": {
+            "label": "go test ./...",
+            "desc": "Alle Go-Tests ausführen."
+          },
+          "gitAdd": {
+            "label": "git add …",
+            "desc": "Dateien für den Commit vormerken."
+          },
+          "gitCommit": {
+            "label": "git commit …",
+            "desc": "Einen Commit auf dem Ticket-Branch erstellen."
+          },
+          "gitCheckout": {
+            "label": "git checkout …",
+            "desc": "Branch wechseln oder Dateien wiederherstellen."
+          },
+          "gitPush": {
+            "label": "git push …",
+            "desc": "Commits zum Remote pushen."
+          },
+          "gitRebase": {
+            "label": "git rebase …",
+            "desc": "Den Branch rebasen; mit Vorsicht verwenden."
+          },
+          "editFiles": {
+            "label": "Dateien bearbeiten",
+            "desc": "Bestehende Dateien in der Worktree ändern."
+          },
+          "writeFiles": {
+            "label": "Dateien schreiben",
+            "desc": "Dateien in der Worktree erstellen."
+          },
+          "mkdir": {
+            "label": "mkdir …",
+            "desc": "Verzeichnisse erstellen."
+          },
+          "rm": {
+            "label": "rm …",
+            "desc": "Dateien löschen — destruktiv."
+          },
+          "docker": {
+            "label": "docker …",
+            "desc": "Docker-Befehle im Container ausführen."
+          },
+          "dockerCompose": {
+            "label": "docker compose …",
+            "desc": "Compose-Dienste verwalten."
+          },
+          "kubectl": {
+            "label": "kubectl …",
+            "desc": "Mit einem Kubernetes-Cluster arbeiten."
+          },
+          "psql": {
+            "label": "psql …",
+            "desc": "PostgreSQL-CLI."
+          },
+          "mysql": {
+            "label": "mysql …",
+            "desc": "MySQL-CLI."
+          },
+          "redisCli": {
+            "label": "redis-cli …",
+            "desc": "Redis-CLI."
+          },
+          "mongosh": {
+            "label": "mongosh …",
+            "desc": "MongoDB-Shell."
+          },
+          "curl": {
+            "label": "curl …",
+            "desc": "HTTP-Anfragen senden; mit einer Netzwerk-Allowlist kombinieren."
+          },
+          "npmPublish": {
+            "label": "npm publish",
+            "desc": "Ein Paket in der Registry veröffentlichen."
+          },
+          "sudo": {
+            "label": "sudo …",
+            "desc": "Als Root ausführen — gefährlich."
+          },
+          "rmRf": {
+            "label": "rm -rf …",
+            "desc": "Rekursiv und erzwungen löschen — gefährlich."
+          }
         },
         "network": {
-          "packageRegistries": { "label": "Paket-Registries", "desc": "npm, NuGet, Go-Proxy, PyPI, crates.io" }, "sourceHosts": { "label": "Source-Hosts", "desc": "github.com, gitlab.com, bitbucket.org" }, "aiApis": { "label": "AI-APIs", "desc": "api.anthropic.com, api.openai.com" }, "cdns": { "label": "CDNs", "desc": "jsdelivr, unpkg, cloudflare" }, "cloud": { "label": "Cloud-Anbieter", "desc": "AWS-, GCP-, Azure-Endpunkte" }, "social": { "label": "Social & Medien", "desc": "twitter/x, youtube, reddit" }, "trackers": { "label": "Ads & Tracker", "desc": "Analytics- und Werbenetzwerke" }
+          "packageRegistries": {
+            "label": "Paket-Registries",
+            "desc": "npm, NuGet, Go-Proxy, PyPI, crates.io"
+          },
+          "sourceHosts": {
+            "label": "Source-Hosts",
+            "desc": "github.com, gitlab.com, bitbucket.org"
+          },
+          "aiApis": {
+            "label": "AI-APIs",
+            "desc": "api.anthropic.com, api.openai.com"
+          },
+          "cdns": {
+            "label": "CDNs",
+            "desc": "jsdelivr, unpkg, cloudflare"
+          },
+          "cloud": {
+            "label": "Cloud-Anbieter",
+            "desc": "AWS-, GCP-, Azure-Endpunkte"
+          },
+          "social": {
+            "label": "Social & Medien",
+            "desc": "twitter/x, youtube, reddit"
+          },
+          "trackers": {
+            "label": "Ads & Tracker",
+            "desc": "Analytics- und Werbenetzwerke"
+          }
         }
       }
     },
@@ -1593,7 +1779,18 @@
       },
       "dockerfileSwitchConfirmTitle": "Dockerfile-Änderungen verwerfen?",
       "dockerfileSwitchConfirmContent": "Das aktive Projekt wurde gewechselt. Nicht gespeicherte Dockerfile-Änderungen verwerfen und den Entwurf des anderen Projekts laden?",
-      "ownerActionsOnly": "Eigentum übertragen und den Workspace löschen erfordern die Owner-Actions-Berechtigung, die deine Rolle nicht hat — diese Aktionen sind ausgeblendet statt angeboten und verweigert."
+      "ownerActionsOnly": "Eigentum übertragen und den Workspace löschen erfordern die Owner-Actions-Berechtigung, die deine Rolle nicht hat — diese Aktionen sind ausgeblendet statt angeboten und verweigert.",
+      "providerDefaultResolved": "Standard — {{backend}}",
+      "providerAvailable": "Jetzt verfügbar",
+      "providerUnavailable": "Derzeit nicht verfügbar",
+      "providerRoutedUnavailable": "{{backend}} ist derzeit nicht verfügbar — Läufe fallen auf das erste verfügbare Backend zurück.",
+      "providerPinnedModel": "Festgelegtes Modell: {{model}}",
+      "providerLastRan": "Zuletzt auf {{backend}}{{model}} gelaufen · {{when}}",
+      "providerLastFailed": "Letzter Lauf auf {{backend}}{{model}} fehlgeschlagen ({{error}}) · {{when}}",
+      "providerNeverRan": "Noch keine Läufe.",
+      "workspaceDefaultTitle": "Standard-Backend des Workspace",
+      "workspaceDefaultDesc": "Wird von jeder Funktion genutzt, die auf „Standard“ steht. „Eingebaut“ behält den jeweiligen Funktions-Standard.",
+      "workspaceDefaultBuiltIn": "Eingebaut pro Funktion"
     },
     "skills": {
       "title": "Fähigkeiten",
