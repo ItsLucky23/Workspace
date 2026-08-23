@@ -133,7 +133,9 @@ test.describe('layer tip', () => {
     await expect(row).toBeVisible({ timeout: 15_000 });
 
     //? The list groups by kind, so a subscription and a metered key are never read as the same thing.
-    await expect(page.getByText('Subscription', { exact: true })).toBeVisible();
+    //? Scoped to the uppercase group header: 'Subscription' also appears as the coding-agent seat
+    //? label on this page since ADR 0322.
+    await expect(page.locator('.uppercase', { hasText: 'Subscription' })).toBeVisible();
 
     //? Test and Disconnect are the two verbs the owner asked for, on the row itself.
     await expect(page.getByRole('button', { name: 'Test', exact: true })).toBeVisible();

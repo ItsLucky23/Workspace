@@ -1,5 +1,19 @@
 # Branch log — `main`
 
+## 2026-08-23 — test:all ~40 min → ~18 min: worker-pool voor test:ws + Playwright ×4
+
+**User prompt:** "ik wil ook de test:all fixen want 40 minuten is veel te lang."
+
+**Analyse:** de 40 min was gedomineerd door `scripts/runWsTests.mjs` — 334 test-files SEQUENTIEEL, elk via `npx tsx` (~1s shell-roundtrip/file op Windows) — plus Playwright met `--workers=1` terwijl de config al `fullyParallel: true` had. De sweep (`npm run test`, 683s) is bewust sequentieel (rate-limit-lagen, Discipline 1) en zit in het test-runner-package — buiten scope.
+
+**Gebouwd:**
+- `scripts/runWsTests.mjs` herschreven: worker-pool (unit ×8, integratie ×4), **serial lane** achteraf voor vaste-resource-tests (poorten/Docker/writer-singletons/globale spend/capacity-aggregaten — 28 files in de `SERIAL`-set, de ontworpen escape hatch voor pool-flakes), tsx DIRECT aangeroepen (node + `tsx/dist/cli.mjs`, geen npx), gedeelde `NODE_COMPILE_CACHE`, gebufferde output per file (fail = volledige log), slowest-10-dump + workers in de summary.
+- `package.json` `test:all`: Playwright `--workers=1` → `--workers=4`.
+- `tests/e2e/layerTip.spec.ts`: 'Subscription'-assert gescoped naar de uppercase groepheader — sinds ADR 0322 staat 'Subscription' óók als coding-agent-label op die pagina (strict-mode-clash, geen productbug).
+- `docs/TESTING_PLAYBOOK.md`: tijden + aantallen + SERIAL-lane-uitleg bijgewerkt (334 files, 329 custom-cases, 42 specs).
+
+**Verify (alles net gedraaid):** `test:ws` **334/334 in 366s** (was ~30 min; unit-subset 131/131 in 30s), sweep **473/473 in 683s**, Playwright **42/42 in 57s** met ×4. Nul pool-flakes. Totaal test:all ≈ **18-19 min** (was ~40). **Files touched:** `scripts/runWsTests.mjs`, `package.json`, `tests/e2e/layerTip.spec.ts`, `docs/TESTING_PLAYBOOK.md`. **Notitie:** tijdens het meten bleek de supervisor-boom van een eerdere `npm run server` gecrasht (2 orphan-listeners op 4787/4789, register-route wedged → 42 Playwright-fails met 500) — hele boom gekilld + vers gestart, daarna alles groen; zie lesson-kandidaat in de Discipline-sectie (bestond al als regel 2).
+
 ## 2026-08-23 — Coding-agent abstractie: Claude Code + pi-agent, Codex-subscription support (ADR 0322)
 
 **User prompt:** providers helemaal uitwerken; Codex via de **pi agent** (niet Codex CLI); alleen Claude + Codex subscriptions; Claude = keuze Claude Code/pi, Codex = pi geforceerd; zelf e2e testen. (Zelfde prompt bevat ook: handoff-map weg [al gecommit], test:all versnellen, docs opschonen — aparte taken.)

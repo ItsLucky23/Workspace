@@ -11,21 +11,27 @@
 | Laag | Wat | Draaien |
 |---|---|---|
 | Auto-sweep | contract / auth / rate-limit / csrf / fuzz, ELKE route automatisch | `npm run test` (sweep-lagen) |
-| Per-route custom | businesslogica per route — 130/130 routes hebben er één | `npm run test` (custom-laag) |
-| Standalone suites | integratie/unit in `tests/` (293 bestanden, incl. structurele bewakers) | `npm run test:ws` |
+| Per-route custom | businesslogica per route — elke route heeft er één (329 cases) | `npm run test` (custom-laag) |
+| Standalone suites | integratie/unit in `tests/` (334 bestanden, incl. structurele bewakers) | `npm run test:ws` |
 | Effect-matrix | elke assistant-op → geverifieerd effect óf gedocumenteerde uitsluiting | bewaker draait mee in `test:ws` (unit) |
-| Playwright | 24 deterministische kernflow-specs, geen LLM in de loop | `npm run test:e2e -- --workers=1` |
+| Playwright | 42 deterministische kernflow-specs (12 files), geen LLM in de loop | `npm run test:e2e` (test:all: `--workers=4`) |
 
 ## Commands
 
 - **Alles**: `npm run test:all` (= test:ws → test → test:e2e). Vereist de dev-runtimes
-  (`npm run server` + `npm run client`) en echte Mongo/Redis. Reken op ~30+ min.
+  (`npm run server` + `npm run client`) en echte Mongo/Redis. Reken op ~18-20 min sinds de
+  parallelisatie van 2026-08-23 (was ~40): `test:ws` draait nu een WORKER-POOL (unit ×8,
+  integratie ×4, plus een SERIAL LANE voor tests met een vaste resource — poort/Docker/writer-
+  singleton/globale aggregaten; zie de `SERIAL`-set in `scripts/runWsTests.mjs` — een test die
+  onder de pool flaked hoort DAAR bij, dat is de ontworpen escape hatch) en Playwright ×4 workers.
+  De sweep blijft het grootste blok (~11 min) en is bewust sequentieel (zie Discipline 1).
 - **Snelle laag** (wat de pre-push-hook draait): `npm run test:unit` + `npm run lint` + `npm run ai:lint`.
 - **Eén route**: `TEST_ONLY_CUSTOM=1 TEST_FILTER="<page>/<name>/<versie>" npm run test`
   (bijv. `workspaces/quickAdd/v1`). De base-URL default sinds 2026-07-21 naar de ÉCHT gebonden
   backend-poort (dev-server.json → config.ports-fallback, altijd `127.0.0.1`) — `TEST_BASE_URL`
   is alleen nog nodig voor een afwijkend doelwit.
 - **Eén Playwright-spec**: `npx playwright test tests/e2e/<file>.spec.ts --workers=1`.
+- **Eén standalone file / subset**: `node scripts/runWsTests.mjs <substring>` (matcht op pad).
 
 ## Discipline (hard geleerd)
 
