@@ -12,7 +12,7 @@ import Icon from '../../_components/Icon';
 import { PopMenu, type PopMenuItem } from '../../_components/primitives';
 import { FONT_LIBRARY, fontByStack } from './fonts';
 
-export const inputCls = 'w-full h-9 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
+export { INPUT_CLS_FULL as inputCls } from '../../_components/settings';
 
 //? Inline rename: double-click the name (or click the pencil) to edit — a SINGLE click passes
 //? through so a parent row can still select. Enter/blur saves, Esc cancels.

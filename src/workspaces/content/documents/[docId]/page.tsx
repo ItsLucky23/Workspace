@@ -16,6 +16,7 @@ import { MediaUploadButton } from '../../../_components/MediaUploadButton';
 import { Collapse } from '../../../_components/motion';
 import { EmptyState, InfoDot, InfoTip, SectionCard, Segmented, WsButton } from '../../../_components/primitives';
 import { EmptyPicker } from '../../../_components/SetupNotice';
+import { INPUT_CLS as fieldCls } from '../../../_components/settings';
 import { isSectionEnabled } from '../../../_data/modules';
 import DiffView from '../../../develop/board/[ticketId]/DiffView';
 import { AssetPicker, type PickableAsset } from '../../../_components/AssetPicker';
@@ -23,8 +24,6 @@ import { useWorkspaces } from '../../../_shell/WorkspacesContext';
 import { lineDiff, diffStat } from '../lineDiff';
 
 export const template = 'workspaces';
-
-const fieldCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 
 const AI_MODES = ['generate', 'rewrite', 'summarize', 'extend'] as const;
 

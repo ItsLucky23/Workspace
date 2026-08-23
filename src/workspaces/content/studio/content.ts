@@ -1,7 +1,7 @@
 //? Studio-local shared helpers (no components): defensive readers for the AI-generated `unknown`
 //? artifact content, the shared input class, and the client-side HTML→PNG rasterizer (#170).
 
-export const inputCls = 'w-full h-9 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
+export { INPUT_CLS_FULL as inputCls } from '../../_components/settings';
 
 //? ---- content readers (the AI content is `unknown`; read defensively, no casts to `any`) ----
 export function asRecord(v: unknown): Record<string, unknown> { return v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {}; }

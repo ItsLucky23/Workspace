@@ -15,6 +15,7 @@ import { confirmDeleteTrigger } from '../../_functions/confirmDeleteTrigger';
 
 import Icon from '../../_components/Icon';
 import { Disclosure, EmptyState, InfoTip, PopMenu, SectionCard, Toggle, WsButton } from '../../_components/primitives';
+import { INPUT_CLS_FULL as inputCls } from '../../_components/settings';
 import { EmptyPicker } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 
@@ -28,7 +29,6 @@ const CADENCES: { id: string; cron: string }[] = [
   { id: 'weekly', cron: '0 9 * * 1' },
   { id: 'custom', cron: '' },
 ];
-const inputCls = 'w-full h-9 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 
 //? A friendly label for a cron string (covers the presets; falls back to the raw expression).
 function cronLabel(cron: string): string {

@@ -59,12 +59,12 @@ Workspaces is a self-hosted AI dev-orchestration + content platform on the Lucky
   - **Now:** Same pair of files as F-051 — resolve together: one named component/hook, the other a thin consumer. Tick both.
   - **Result:** fixed — the resize state is shared by `useRememberedPanelHeight`; the ticket consumer is now explicitly named `TicketTerminalPanel`, leaving only the process-rich `TerminalPanel` for the Terminals page.
 
-- [ ] **F-112** · LOW · `duplicate` — The standard input style string (fieldCls/inputCls) is independently re-declared in ~20 files with drifting variants (h-9 vs h-10, bg-container2/50 vs /40, differing focus rings), so inputs subtly differ per page and every style fix must be repeated.
+- [x] **F-112** · LOW · `duplicate` — The standard input style string (fieldCls/inputCls) is independently re-declared in ~20 files with drifting variants (h-9 vs h-10, bg-container2/50 vs /40, differing focus rings), so inputs subtly differ per page and every style fix must be repeated.
   - **Where (audit baseline 55ff5b7 — code has moved, re-locate):** `src/workspaces/workspace/page.tsx:43`
   - **Evidence:** grep 'const fieldCls = |const inputCls = ' across src/workspaces hits 22 declarations in 20 files: workspace/page.tsx:43, aiProviders.tsx:32, skillsEditor.tsx:29, runProcesses.tsx, settings/page.tsx (dbInputCls:401 + inputCls:90), scheduled/page.tsx:31, stageTabs.tsx:31-32, SetupWizard.tsx:16 (h-10, border-container1), content/settings/shared.ts, studio/content.ts, marketing/panels.tsx:3 (bg-container2/40), backlog/forms.tsx, designer/*, documents/*, content/page.tsx, TimeTravelForm.tsx.
   - **Original fix hint:** Export INPUT_CLS (and AREA_CLS / a mono variant) from _components/primitives.tsx next to FOCUS_RING, replace the local consts file-by-file (pure class-string swap, no behavior change), and let content/settings/shared.ts re-export it during the transition.
   - **Now:** The `fieldCls`/`inputCls` string re-declared in ~20 files: export ONE from `src/workspaces/_components/settings.tsx` (or `primitives.tsx`) and replace the copies. Mechanical; verify with grep that no local copy remains.
-  - **Result:** _(fill in: fixed <commit> / already-fixed / invalid: <reason>)_
+  - **Result:** fixed — `INPUT_CLS` plus derived full-width/monospace variants now live in `src/workspaces/_components/settings.tsx`; all local `fieldCls`/`inputCls`/`dbInputCls` declarations were removed (the declaration grep is empty), and existing width/mono call-site semantics are retained via the derived aliases.
 
 - [ ] **F-113** · LOW · `duplicate` — Small helpers/components are implemented twice under different paths: stat tiles, relative-time formatting, and markdown line rendering each have two independent copies.
   - **Where (audit baseline 55ff5b7 — code has moved, re-locate):** `src/workspaces/content/insights/page.tsx:31`

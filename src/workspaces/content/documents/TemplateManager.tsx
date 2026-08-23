@@ -10,9 +10,8 @@ import { useTranslator } from '@luckystack/core/client';
 
 import type { DocumentTemplateSection } from '../../_data/types';
 import { WsButton } from '../../_components/primitives';
+import { INPUT_CLS as fieldCls } from '../../_components/settings';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
-
-const fieldCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 
 //? Textarea ("Heading | hint" per line) ↔ typed sections, for the compact template editor.
 function parseSectionLines(text: string): DocumentTemplateSection[] {

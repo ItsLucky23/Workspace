@@ -6,8 +6,8 @@ import { backendUrl } from '../../../../config';
 //? Prefix a backend-relative /media URL for the client origin (uploads land as /media/…); pass external URLs through.
 export const mediaSrc = (url: string): string => (url.startsWith('/media/') ? `${backendUrl}${url}` : url);
 
-//? One input recipe for the whole settings surface — text-base under md (no iOS focus-zoom), text-sm from md up.
-export const fieldCls = 'rounded-lg border border-container2-border bg-container2 px-3 py-2 text-base md:text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring';
+//? The settings forms use the same canonical input recipe as the rest of Workspaces.
+export { INPUT_CLS as fieldCls } from '../../_components/settings';
 
 //? The five features a style can target (matches the server's style validation).
 export const STYLE_FEATURES = ['script', 'image-gen', 'reference-image', 'video-gen', 'tts'];

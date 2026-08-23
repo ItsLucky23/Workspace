@@ -14,6 +14,7 @@ import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import Icon, { type IconName } from '../../_components/Icon';
 import { MediaUploadButton } from '../../_components/MediaUploadButton';
 import { Disclosure, EmptyState, FOCUS_RING, IconButton, InfoTip, PopMenu, SectionCard, Segmented, Toggle, WsButton, type PopMenuItem } from '../../_components/primitives';
+import { INPUT_CLS_FULL as inputCls } from '../../_components/settings';
 import { EmptyPicker, SetupNotice } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import ImageRegionEditor from '../../_components/ImageRegionEditor';
@@ -72,7 +73,6 @@ function PublishComposer({ platform, accounts, defaultSynthetic, defaultAccountI
       ? defaultAccountId
       : (accounts[0]?.accountId ?? ''),
   );
-  const inputCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary w-full';
   const privItems = (['public', 'unlisted', 'private'] as const).map((p) => ({ id: p, value: p, item: translate({ key: `workspaces.publish.priv_${p}` }) }));
   const showAccountPicker = accounts.length > 1 || accounts.some((a) => a.accountId !== null);
   const accountItems = accounts.map((a) => ({ id: a.accountId ?? '__default__', value: a.accountId ?? '', item: a.accountId ?? translate({ key: 'workspaces.content.publishDefaultAccount' }) }));

@@ -22,11 +22,11 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Icon from '../_components/Icon';
 import { EmptyPicker } from '../_components/SetupNotice';
 import { FOCUS_RING, InfoTip, WsButton } from '../_components/primitives';
+import { INPUT_CLS_FULL as fieldCls } from '../_components/settings';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import { AI_SKILL_APPLY_POINTS } from '../_data/types';
 import type { AiSkillEntry } from '../_data/types';
 
-const fieldCls = 'h-9 w-full px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 //? Monospace and tall: a skill IS its text, and reviewing one in a six-row proportional box is why
 //? nobody could tell what a skill actually said.
 const editorCls = 'w-full px-3 py-2 rounded-lg border border-container1-border bg-container2/50 text-sm font-mono leading-relaxed text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 resize-y';

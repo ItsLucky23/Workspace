@@ -29,6 +29,12 @@ import { InfoTip, type InfoTipPoint } from './primitives';
 /** Per-row autosave state. `idle` renders nothing — a settled row should be quiet. */
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
+//? The canonical text-input recipe. Width and monospace are composed variants so each field keeps
+// its layout semantics without re-declaring the visual treatment.
+export const INPUT_CLS = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
+export const INPUT_CLS_FULL = `${INPUT_CLS} w-full`;
+export const INPUT_CLS_FULL_MONO = `${INPUT_CLS_FULL} font-mono`;
+
 /** The autosave affordance. Deliberately small and non-blocking: it confirms without demanding
  *  attention, which is the whole point of choosing autosave over a Save button. */
 export function SavePill({ status, errorText }: { status: SaveStatus; errorText?: string }) {

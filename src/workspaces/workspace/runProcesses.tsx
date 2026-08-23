@@ -21,11 +21,10 @@ import { useTranslator } from '@luckystack/core/client';
 
 import Icon from '../_components/Icon';
 import { FOCUS_RING, IconButton, WsButton } from '../_components/primitives';
+import { INPUT_CLS_FULL as nameCls, INPUT_CLS_FULL_MONO as inputCls } from '../_components/settings';
 import { RepoScriptPicker, type RepoIntrospection, type RepoScript } from './repoIntrospection';
 import type { StageProcessCfg } from '../_data/types';
 
-const inputCls = 'h-9 w-full px-3 rounded-lg border border-container1-border bg-container2/50 text-sm font-mono text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
-const nameCls = 'h-9 w-full px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 //? Overrides the base border/ring rather than sitting next to it, so the field reads as wrong even
 //? while it has focus — which is exactly when someone is looking at it.
 const errorRing = '!border-wrong focus:!border-wrong focus:!ring-wrong/30';

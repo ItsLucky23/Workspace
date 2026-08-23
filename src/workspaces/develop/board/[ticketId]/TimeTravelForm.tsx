@@ -13,6 +13,7 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import { WsButton } from '../../../_components/primitives';
+import { INPUT_CLS_FULL as inputCls } from '../../../_components/settings';
 
 //? #25 — the 'ref' kind previews an ARBITRARY git ref (SHA/tag/branch) via open-ref-preview;
 //? commit/revert/asof go through timeTravelPreview. The page owns the op calls.
@@ -24,7 +25,6 @@ export default function TimeTravelForm({ onSubmit, translate }: { onSubmit: (spe
   const [value, setValue] = useState('');
   const [when, setWhen] = useState('');
   const modeItems: DropdownItem[] = (['commit', 'revert', 'asof', 'ref'] as const).map((m) => ({ id: m, value: m, item: translate({ key: `workspaces.timetravel.mode_${m}` }) }));
-  const inputCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary w-full';
   const valuePh = mode === 'revert' ? 'workspaces.timetravel.revertPh' : (mode === 'ref' ? 'workspaces.timetravel.refPh' : 'workspaces.timetravel.commitPh');
   return (
     <div className="w-full flex flex-col gap-3 p-5">

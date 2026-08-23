@@ -13,6 +13,7 @@ import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import Icon from '../_components/Icon';
 import { Collapse } from '../_components/motion';
 import { ClickableCard, EmptyState, FOCUS_RING, IconButton, InfoTip, PopMenu, WsButton, type PopMenuItem } from '../_components/primitives';
+import { INPUT_CLS as fieldCls } from '../_components/settings';
 import { EmptyPicker } from '../_components/SetupNotice';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { ContentPieceSummary, ContentSnapshot, SocialCommentSummary } from '../_data/types';
@@ -45,7 +46,6 @@ function NewPieceForm({ onCreate, initialTitle = '', initialBrief = '' }: { onCr
   const [brief, setBrief] = useState(initialBrief);
   const [format, setFormat] = useState(PIECE_FORMATS[0] ?? 'faceless');
   const formatItems: DropdownItem[] = PIECE_FORMATS.map((f) => ({ id: f, value: f, item: translate({ key: `workspaces.content.format_${f.replace('-', '_')}` }) }));
-  const fieldCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
   const canCreate = title.trim().length > 0 && brief.trim().length > 0;
   const submit = () => {
     if (!canCreate) return;

@@ -16,7 +16,7 @@ import { Collapse } from '../_components/motion';
 import { AvatarBubble, Disclosure, IconButton, InfoTip, PopMenu, Tabs, Toggle, WsButton } from '../_components/primitives';
 import { useTrailSegment } from '../_components/sections';
 import { EmptyPicker } from '../_components/SetupNotice';
-import { FormSection, SettingRow } from '../_components/settings';
+import { FormSection, INPUT_CLS as dbInputCls, INPUT_CLS as fieldCls, INPUT_CLS as inputCls, SettingRow } from '../_components/settings';
 import { isModuleEnabled } from '../_data/modules';
 import type { EnvironmentSummary, PatSummary, PromptExperimentSummary } from '../_data/types';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
@@ -87,7 +87,6 @@ function ForgeConnectForm({ projectId, onConnect }: { projectId: string; onConne
     onConnect({ projectId, mode, ...(repoPath.trim() ? { repoPath: repoPath.trim() } : {}), ...(token.trim() ? { token: token.trim() } : {}), ...(baseUrl.trim() ? { baseUrl: baseUrl.trim() } : {}) });
     void menuHandler.close();
   };
-  const inputCls = `h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30`;
   return (
     <div className="w-full flex flex-col gap-3 p-5">
       <div className="text-base font-semibold text-title">{translate({ key: 'workspaces.account.forgeConnectTitle' })}</div>
@@ -275,7 +274,6 @@ function ExperimentsPanel({ workspaceId }: { workspaceId: string }) {
   const stop = (id: string): void => { stopPromptExperiment(id); refreshAfterWrite(); };
 
   const featureItems: DropdownItem[] = EXPERIMENT_FEATURES.map((f) => ({ id: f, value: f, item: f }));
-  const fieldCls = 'rounded-lg border border-container2-border bg-container2 px-3 py-2 text-sm text-title placeholder:text-disabled focus:outline-none focus:ring-2 focus:ring-focus-ring';
 
   return (
     <Card title={translate({ key: 'workspaces.experiments.title' })} desc={translate({ key: 'workspaces.experiments.desc' })}>
@@ -401,7 +399,6 @@ export default function AccountSettings() {
   const [dbEnvKind, setDbEnvKind] = useState('dev');
   const [migName, setMigName] = useState('');
   const [migSql, setMigSql] = useState('');
-  const dbInputCls = `h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30`;
   const { session } = useSession<SessionLayout>();
   //? A1 — real web-push subscribe/unsubscribe (the toggle drives the browser subscription + the server store).
   const [push, setPush] = useState(false);

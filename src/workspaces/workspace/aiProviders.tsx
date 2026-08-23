@@ -23,13 +23,12 @@ import Dropdown from 'src/_components/dropdown/Dropdown';
 import { menuHandler } from 'src/_functions/menuHandler';
 
 import Icon from '../_components/Icon';
-import { FormSection, SettingRow } from '../_components/settings';
+import { FormSection, INPUT_CLS_FULL as inputCls, SettingRow } from '../_components/settings';
 import { EmptyPicker } from '../_components/SetupNotice';
 import { WsButton } from '../_components/primitives';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { AiConnection, AiProviderOption } from '../_data/types';
 
-const inputCls = 'h-9 w-full px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 
 //? The escape hatch on the model picker: the catalog is a starting point, not a whitelist. A model
 //? released after that file was written must not make the backend unreachable.

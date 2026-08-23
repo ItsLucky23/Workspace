@@ -14,6 +14,7 @@ import Icon from '../../_components/Icon';
 import { EffectivePromptPreview, LayerNote, LayerTip } from '../../_components/EffectivePromptPreview';
 import { Collapse } from '../../_components/motion';
 import { Disclosure, IconButton, InfoDot, InfoTip, Segmented, Toggle, WsButton } from '../../_components/primitives';
+import { INPUT_CLS as inputCls } from '../../_components/settings';
 import { EmptyPicker } from '../../_components/SetupNotice';
 import { resolveAiLayers } from '../../_functions/aiLayers';
 import { COMMAND_CATALOG, HOOK_CATALOG, NETWORK_CATEGORIES } from '../../_data/catalogs';
@@ -28,7 +29,6 @@ export interface TabProps { s: PipelineStageCfg; update: (patch: Partial<Pipelin
 
 const MODE_TINT: Record<CommandMode, string> = { allow: 'bg-correct/15 text-correct', ask: 'bg-warning/15 text-warning', deny: 'bg-wrong/15 text-wrong' };
 
-const inputCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 const areaCls = 'w-full px-3 py-2 rounded-lg border border-container1-border bg-container2/50 text-sm text-title font-mono leading-relaxed focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 
 /** The first line of a skill's text — enough to recognise it in a picker without opening it. */

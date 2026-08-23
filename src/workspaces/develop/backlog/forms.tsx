@@ -13,10 +13,10 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import { WsButton } from '../../_components/primitives';
+import { INPUT_CLS as fieldCls } from '../../_components/settings';
 import type { Member, Sprint, TicketPriority } from '../../_data/types';
 import { PRIORITY_LABEL_KEY, PRIORITY_ORDER } from '../../_functions/priority';
 
-const fieldCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 
 //? #1 — edit a sprint: activate/deactivate, rename, set/clear the start+end dates. Opened via
 //? menuHandler → `sprint-edit` op. Only changed fields are sent.

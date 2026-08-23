@@ -30,7 +30,7 @@ import { RepoInventoryPanel, RepoScriptPicker, useRepoIntrospection } from './re
 import { RunProcessList, anyRowIncomplete, rowCommand, seedProcesses } from './runProcesses';
 import { SkillsSection } from './skillsEditor';
 import { AiProvidersSection } from './aiProviders';
-import { FormSection, SavePill, SettingRow, useAutosave } from '../_components/settings';
+import { FormSection, INPUT_CLS_FULL as fieldCls, INPUT_CLS_FULL_MONO as inputCls, SavePill, SettingRow, useAutosave } from '../_components/settings';
 import { resolveAiLayers } from '../_functions/aiLayers';
 import { INTEGRATION_TYPES, RBAC_CAPABILITIES, ROLE_DISPLAY } from '../_data/seed';
 import { GATEABLE_SECTIONS, WORKSPACE_MODULES, WORKSPACE_SECTIONS, isModuleEnabled } from '../_data/modules';
@@ -40,7 +40,6 @@ import type { StageProcessCfg, BranchStrategyKind, EnvVar, GitConfig, Integratio
 //? `w-full` was missing, so every input built from this class rendered at the browser's intrinsic
 //? text-input width (~150px) inside a column sized for far more — a settings page of stubby boxes.
 //? SettingRow already caps the control column (`sm:max-w-sm`), so filling it is the intended size.
-const fieldCls = 'h-9 w-full px-3 rounded-lg border border-container1-border bg-container2/50 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 const RBAC_CAPABILITY_KEYS: Record<string, string> = {
   'Use terminals + work on tickets': 'terminals',
   'Edit pipeline / stages': 'pipeline',
@@ -863,7 +862,6 @@ function RuntimeSection({ workspaceId }: { workspaceId: string }) {
   }, { delay: 1200, resetKey: projectId ?? '' });
 
   const STACK_ITEMS = (['node', 'python', 'go', 'rust', 'java', 'php', 'dotnet', 'ruby', 'generic'] as const).map((s) => ({ id: s, value: s, item: s }));
-  const inputCls = `h-9 w-full px-3 rounded-lg border border-container1-border bg-container2/50 text-sm font-mono text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30`;
 
   //? The verified answer to "is a separate terminal started per command?" — resolution order from
   //? server/container/previewSession.ts, which reads Service.devCommand → Project.devCommand → the

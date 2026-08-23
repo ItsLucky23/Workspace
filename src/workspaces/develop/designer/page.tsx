@@ -14,6 +14,7 @@ import BaseDropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdo
 import Icon, { type IconName } from '../../_components/Icon';
 import { Disclosure, EmptyState, InfoTip, PopMenu, Segmented, WsButton } from '../../_components/primitives';
 import { EmptyPicker, SetupNotice } from '../../_components/SetupNotice';
+import { INPUT_CLS as inputCls } from '../../_components/settings';
 import { MediaUploadButton } from '../../_components/MediaUploadButton';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { UI_PROBLEMS, uiProblemI18nKey } from '../../_data/uiReviewTaxonomy';
@@ -129,7 +130,6 @@ function InspirationForm() {
       }
     });
   };
-  const inputCls = 'h-9 px-3 rounded-lg border border-container1-border bg-container2/40 text-sm text-title focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
   //? GAP_SCAN C8 — "our page" had to be uploaded by hand even when this project is already DEPLOYED.
   //? Offer the live environment's URL (prod > staging > dev) as a one-tap fill; compare captures URLs itself.
   const liveEnv = ['prod', 'staging', 'dev']
