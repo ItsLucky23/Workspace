@@ -3667,7 +3667,12 @@
       "err_ai.unknownProvider": "Unknown backend.",
       "err_unknown": "Could not connect.",
       "kind_subscription": "Subscription",
-      "kind_api-key": "API key"
+      "kind_api-key": "API key",
+      "modelHelpLive": "Live list from the backend, via your existing connection. Pick \"Other\" for a model it does not list.",
+      "refreshModels": "Refresh",
+      "refreshingModels": "Refreshing…",
+      "err_ai.modelsUnsupported": "This backend has no model list.",
+      "err_ai.connectionNotFound": "Connection not found."
     },
     "aiSections": {
       "instructions": "Instructions",

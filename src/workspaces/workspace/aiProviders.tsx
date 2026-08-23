@@ -15,9 +15,9 @@
 //? @adr 0007
 
 /* eslint-disable react-refresh/only-export-components -- the section, its row and the add-form are one feature; splitting them to satisfy a dev-only fast-refresh rule buys nothing. Not route components. */
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-import { useTranslator } from '@luckystack/core/client';
+import { apiRequest, tryCatch, useTranslator } from '@luckystack/core/client';
 
 import Dropdown from 'src/_components/dropdown/Dropdown';
 import { menuHandler } from 'src/_functions/menuHandler';
@@ -34,6 +34,24 @@ const inputCls = 'h-9 w-full px-3 rounded-lg border border-container1-border bg-
 //? The escape hatch on the model picker: the catalog is a starting point, not a whitelist. A model
 //? released after that file was written must not make the backend unreachable.
 const CUSTOM = '__custom__';
+
+//? P4-4 — the LIVE model list for a backend, fetched through an EXISTING connection of that backend (the
+//? server reads the key from the row; nothing is sent from here). `null` = no live list (no connection
+//? yet, or the host does not answer `/models`) → the static catalog list renders instead.
+function useLiveModels(workspaceId: string | null, connectionId: string | undefined): { live: { id: string; label: string }[] | null; loading: boolean; refresh: () => void } {
+  const [live, setLive] = useState<{ id: string; label: string }[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const load = useCallback(async (refresh: boolean): Promise<void> => {
+    if (!workspaceId || connectionId === undefined) { setLive(null); return; }
+    setLoading(true);
+    const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/aiModels', version: 'v1', data: { workspaceId, connectionId, refresh } }));
+    setLoading(false);
+    if (error || res?.status !== 'success' || res.result.models.length === 0) { setLive(null); return; }
+    setLive(res.result.models);
+  }, [workspaceId, connectionId]);
+  useEffect(() => { void load(false); }, [load]);
+  return { live, loading, refresh: () => { void load(true); } };
+}
 
 export function AiProvidersSection() {
   const translate = useTranslator();
@@ -146,7 +164,7 @@ function statusLine(c: AiConnection, translate: ReturnType<typeof useTranslator>
 
 function AddConnection() {
   const translate = useTranslator();
-  const { aiProviderCatalog, aiConnectionAction } = useWorkspaces();
+  const { aiProviderCatalog, aiConnections, aiConnectionAction, activeWorkspace } = useWorkspaces();
   //? NOT initialised from the catalog: the first render happens before the snapshot lands, so a
   //? lazy initial value pinned this to '' forever and the whole add-form rendered as null. The
   //? selection is DERIVED instead — an empty choice resolves to the first backend the moment the
@@ -165,8 +183,12 @@ function AddConnection() {
     id: p.id, value: p.id,
     item: `${p.label} · ${translate({ key: `workspaces.aiProviders.kind_${p.kind}` })}`,
   }));
+  //? P4-4 — borrow the key of an existing connection of this backend to list its models live; the static
+  //? catalog list is the fallback, and the "other" hatch stays either way.
+  const keyedConnection = aiConnections.find((c) => c.providerId === provider?.id && c.hasKey);
+  const { live, loading: modelsLoading, refresh: refreshModels } = useLiveModels(activeWorkspace.id || null, keyedConnection?.id);
   const modelItems = [
-    ...(provider?.models ?? []).map((m) => ({ id: m.id, value: m.id, item: m.label })),
+    ...(live ?? provider?.models ?? []).map((m) => ({ id: m.id, value: m.id, item: m.label })),
     { id: CUSTOM, value: CUSTOM, item: translate({ key: 'workspaces.aiProviders.customModel' }) },
   ];
     //? Falls through the picker → the provider's default → nothing, and each step can legitimately be
@@ -206,10 +228,17 @@ function AddConnection() {
         <>
           <SettingRow
             label={translate({ key: 'workspaces.aiProviders.model' })}
-            help={translate({ key: 'workspaces.aiProviders.modelHelp' })}
+            help={translate({ key: live === null ? 'workspaces.aiProviders.modelHelp' : 'workspaces.aiProviders.modelHelpLive' })}
             control={(
               <div className={`flex flex-col gap-2`}>
-                <Dropdown width="full" items={modelItems} value={modelItems.find((m) => m.id === (modelChoice || provider.defaultModel))} onChange={(it) => { setModelChoice(String(it.value)); setError(''); }} />
+                <div className={`flex items-center gap-2`}>
+                  <Dropdown width="full" items={modelItems} value={modelItems.find((m) => m.id === (modelChoice || provider.defaultModel))} onChange={(it) => { setModelChoice(String(it.value)); setError(''); }} />
+                  {keyedConnection !== undefined && (
+                    <WsButton variant="ghost" icon="arrows-rotate" onClick={refreshModels} disabled={modelsLoading} title={translate({ key: 'workspaces.aiProviders.refreshModels' })}>
+                      {translate({ key: modelsLoading ? 'workspaces.aiProviders.refreshingModels' : 'workspaces.aiProviders.refreshModels' })}
+                    </WsButton>
+                  )}
+                </div>
                 {modelChoice === CUSTOM && (
                   <input value={customModel} onChange={(e) => { setCustomModel(e.target.value); setError(''); }} placeholder={provider.defaultModel} className={`${inputCls} font-mono`} />
                 )}

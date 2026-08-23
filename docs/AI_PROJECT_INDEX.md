@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (66)
+## API routes (67)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -24,6 +24,7 @@
 | `api/settings/updateUser/v1` | POST | login | 20 | — | yes | — | — |
 | `api/workspaces/acceptInvite/v1` | POST | login | 10 | — | yes | — | Workspaces — [accept-invite] typed per-action route (Fase-0 split). Login-only: |
 | `api/workspaces/aiChat/v1` | POST | login | 20 | — | yes | — | Workspaces — [ai-chat] the Workspace-AI chat interpreter route. A member sends a |
+| `api/workspaces/aiModels/v1` | POST | login | 20 | ItsLucky23 | yes | — | Workspaces — [ai-models] (P4-4) the LIVE model list for one connected AI backend: `GET {baseUrl}/models` |
 | `api/workspaces/aiProviderHealth/v1` | POST | login | 12 | ItsLucky23 | yes | — | Workspaces — [ai-provider-health] (gap-fix) the provider health read: which AI backends are usable |
 | `api/workspaces/auditLog/v1` | POST | login | 12 | — | yes | — | Workspaces — [audit-log] (H1) the admin/security audit view: recent governance entries (who did what, when) |
 | `api/workspaces/brandExport/v1` | POST | login | 30 | — | yes | — | R3 — export the workspace brand library as a portable JSON kit (download/copy → import elsewhere). |
@@ -160,10 +161,10 @@
 
 | Owner | Routes |
 | --- | --- |
-| `ItsLucky23` | 29 |
+| `ItsLucky23` | 30 |
 | _(unowned)_ | 108 |
 
-**Test coverage**: 135/137 routes have a per-route `.tests.ts`.
+**Test coverage**: 136/138 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 

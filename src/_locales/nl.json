@@ -3667,7 +3667,12 @@
       "err_ai.unknownProvider": "Onbekende backend.",
       "err_unknown": "Koppelen is niet gelukt.",
       "kind_subscription": "Abonnement",
-      "kind_api-key": "API-sleutel"
+      "kind_api-key": "API-sleutel",
+      "modelHelpLive": "Live lijst van de backend, via je bestaande verbinding. Kies \"Anders\" voor een model dat er niet tussen staat.",
+      "refreshModels": "Vernieuwen",
+      "refreshingModels": "Vernieuwen…",
+      "err_ai.modelsUnsupported": "Deze backend heeft geen modellenlijst.",
+      "err_ai.connectionNotFound": "Verbinding niet gevonden."
     },
     "aiSections": {
       "instructions": "Instructies",
