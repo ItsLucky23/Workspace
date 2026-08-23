@@ -138,6 +138,56 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
     baseUrl: 'https://api.mistral.ai/v1', keyUrl: 'https://console.mistral.ai/api-keys',
     baseUrlEnv: 'WS_MISTRAL_BASE_URL',
   },
+  //? P4-5 — four more hosts that speak the same transport (ADR 0321: no Azure — its per-deployment URL
+  //? scheme needs a transport tweak, deferred until there is a concrete need). Data only, by design.
+  'xai-api': {
+    id: 'xai-api', label: 'xAI (Grok)', kind: 'api-key', transport: 'openai-compatible',
+    models: [
+      { id: 'grok-4', label: 'Grok 4' },
+      { id: 'grok-4-fast-reasoning', label: 'Grok 4 Fast (reasoning)' },
+      { id: 'grok-4-fast-non-reasoning', label: 'Grok 4 Fast (non-reasoning)' },
+      { id: 'grok-3-mini', label: 'Grok 3 mini' },
+    ],
+    defaultModel: 'grok-4-fast-non-reasoning',
+    baseUrl: 'https://api.x.ai/v1', keyUrl: 'https://console.x.ai/',
+    baseUrlEnv: 'WS_XAI_BASE_URL',
+  },
+  'together-api': {
+    id: 'together-api', label: 'Together', kind: 'api-key', transport: 'openai-compatible',
+    //? Open-weight models under `org/Model` ids; the live listing (P4-4) is the real catalog here.
+    models: [
+      { id: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', label: 'Llama 3.3 70B Turbo' },
+      { id: 'deepseek-ai/DeepSeek-V3', label: 'DeepSeek V3' },
+      { id: 'Qwen/Qwen2.5-72B-Instruct-Turbo', label: 'Qwen 2.5 72B Turbo' },
+    ],
+    defaultModel: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+    baseUrl: 'https://api.together.xyz/v1', keyUrl: 'https://api.together.xyz/settings/api-keys',
+    baseUrlEnv: 'WS_TOGETHER_BASE_URL',
+  },
+  'fireworks-api': {
+    id: 'fireworks-api', label: 'Fireworks', kind: 'api-key', transport: 'openai-compatible',
+    //? Ids carry the `accounts/fireworks/models/` prefix — that IS the model name on this host.
+    models: [
+      { id: 'accounts/fireworks/models/llama-v3p3-70b-instruct', label: 'Llama 3.3 70B' },
+      { id: 'accounts/fireworks/models/deepseek-v3', label: 'DeepSeek V3' },
+      { id: 'accounts/fireworks/models/qwen2p5-72b-instruct', label: 'Qwen 2.5 72B' },
+    ],
+    defaultModel: 'accounts/fireworks/models/llama-v3p3-70b-instruct',
+    baseUrl: 'https://api.fireworks.ai/inference/v1', keyUrl: 'https://fireworks.ai/settings/users/api-keys',
+    baseUrlEnv: 'WS_FIREWORKS_BASE_URL',
+  },
+  'cerebras-api': {
+    id: 'cerebras-api', label: 'Cerebras', kind: 'api-key', transport: 'openai-compatible',
+    models: [
+      { id: 'llama-3.3-70b', label: 'Llama 3.3 70B' },
+      { id: 'llama3.1-8b', label: 'Llama 3.1 8B' },
+      { id: 'gpt-oss-120b', label: 'GPT-OSS 120B' },
+      { id: 'qwen-3-32b', label: 'Qwen 3 32B' },
+    ],
+    defaultModel: 'llama-3.3-70b',
+    baseUrl: 'https://api.cerebras.ai/v1', keyUrl: 'https://cloud.cerebras.ai/platform',
+    baseUrlEnv: 'WS_CEREBRAS_BASE_URL',
+  },
   'local-openai': {
     id: 'local-openai', label: 'Local / self-hosted', kind: 'api-key', transport: 'openai-compatible',
     //? Ollama, llama.cpp, vLLM, LM Studio — anything serving the OpenAI shape on your own machine.
