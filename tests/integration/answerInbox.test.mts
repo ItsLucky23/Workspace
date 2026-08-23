@@ -23,7 +23,8 @@ const workspaceId = '000000000000000000a48001';
 
 const page = read('src/workspaces/develop/answers/page.tsx');
 assert(page.includes('const { tickets } = useWorkspaces()'), 'the inbox reads the live tickets');
-assert(page.includes('.filter((t) => t.archived !== true && ((t.needsInput ?? \'\').length > 0 || t.status === \'needs-input\'))'), 'and derives the queue from them');
+//? F-057 — a status-only 'needs-input' ticket no longer yields an empty question card: only a real prompt queues.
+assert(page.includes('.filter((t) => t.archived !== true && (t.needsInput ?? \'\').length > 0)'), 'and derives the queue from them');
 assert(!page.includes('const { answerQueue } = useWorkspaces()'), 'it does NOT read a snapshot array that no delta keeps current');
 
 //? The dead server-side field is gone rather than left in place — a snapshot field nobody reads is exactly

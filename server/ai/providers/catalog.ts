@@ -18,6 +18,11 @@
 
 export type AiTransport = 'claude-cli' | 'openai-compatible' | 'anthropic';
 
+//? What a backend can actually take as INPUT. A request carrying images needs 'vision', one carrying
+//? audio needs 'audio' — routing a speech-to-text turn at a text-only backend produced "no audio clip
+//? was attached" as a transcript, so dispatch refuses such a candidate instead of letting it answer.
+export type AiModality = 'text' | 'vision' | 'audio';
+
 export interface AiModelChoice { id: string; label: string }
 
 export interface AiProviderMeta {
@@ -36,6 +41,13 @@ export interface AiProviderMeta {
   keyUrl: string;
   /** Env var an operator can set to override this backend's endpoint (proxy / self-host / gateway). */
   baseUrlEnv: string;
+  /** Input modalities beyond text. Omitted ⇒ text only (the safe default for a host we have not verified). */
+  modalities?: AiModality[];
+}
+
+/** The modalities a backend accepts; text is always included. */
+export function providerModalities(meta: AiProviderMeta): AiModality[] {
+  return ['text', ...(meta.modalities ?? []).filter((m) => m !== 'text')];
 }
 
 //? Model lists are a STARTING POINT, not a whitelist — every add-form keeps an "other" escape hatch,
@@ -65,7 +77,7 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
   //? ---------------------------------------------------------------- api key, native shapes
   'anthropic-api': ANTHROPIC_META,
   'gemini-api': {
-    id: 'gemini-api', label: 'Gemini', kind: 'api-key', transport: 'openai-compatible',
+    id: 'gemini-api', label: 'Gemini', kind: 'api-key', transport: 'openai-compatible', modalities: ['vision', 'audio'],
     //? P4-6 — short, currently-shipping; the live listing (P4-4) is the real source.
     models: [
       { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
@@ -83,7 +95,7 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
   //? These are not "more names": each one is a host that speaks the transport above, so connecting one
   //? works the day it is added. That is the whole reason the transport is a first-class concept.
   'openai-api': {
-    id: 'openai-api', label: 'OpenAI', kind: 'api-key', transport: 'openai-compatible',
+    id: 'openai-api', label: 'OpenAI', kind: 'api-key', transport: 'openai-compatible', modalities: ['vision'],
     //? P4-6 — short, currently-shipping; the live listing (P4-4) is the real source.
     models: [
       { id: 'gpt-5', label: 'GPT-5' },
@@ -97,7 +109,7 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
     baseUrlEnv: 'WS_OPENAI_BASE_URL',
   },
   'openrouter-api': {
-    id: 'openrouter-api', label: 'OpenRouter', kind: 'api-key', transport: 'openai-compatible',
+    id: 'openrouter-api', label: 'OpenRouter', kind: 'api-key', transport: 'openai-compatible', modalities: ['vision'],
     //? A gateway in front of many vendors — its model ids are `vendor/model`, and the "other" escape
     //? hatch matters more here than anywhere else, because its catalog changes weekly.
     models: [

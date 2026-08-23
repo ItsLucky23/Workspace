@@ -156,11 +156,13 @@ assert(mrService.includes("const failed = units.find((u) => u.status !== 'succes
 //? A ticket must be able to SAY which unit it belongs to, or preview/CI scoping is unreachable.
 const ticketPage = read('src/workspaces/develop/board/[ticketId]/page.tsx');
 assert(ticketPage.includes("ctx.editTicket(ticket.id, { serviceId: next })"), 'a ticket can be assigned to a unit');
-assert(ticketPage.includes('ticketServices.length > 0 &&'), 'and a single-unit project is not asked a question it has no answer to');
+//? A single-unit project names the whole-project fallback instead of hiding the question (audit fix-round).
+assert(ticketPage.includes('ticketServices.length > 0 ?'), 'and a single-unit project is not asked a question it has no answer to');
 
 const preview = read('server/container/previewSession.ts');
 assert(preview.includes('workdirOrRoot(service?.path)'), 'a preview boots in the ticket\'s unit');
-assert(preview.includes('service?.devCommand ?? project?.devCommand'), "and uses that unit's dev command");
+//? ADR 0317 — the unit's dev command is resolved by the shared runtime resolver (service first, then project).
+assert(preview.includes('resolveRuntime(project, service)') && read('server/container/runtimeProcesses.ts').includes('service?.devCommand'), "and uses that unit's dev command");
 assert(preview.includes('service?.baseImageRef ?? resolveProjectBaseImage(project)'), 'and its image');
 
 /* ------------------------------------------------------------ export/import no longer drops units */

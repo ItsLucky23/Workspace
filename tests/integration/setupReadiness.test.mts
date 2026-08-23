@@ -89,8 +89,9 @@ const wired: [string, string][] = [
 for (const [path, label] of wired) assert(read(path).includes('SetupNotice'), `SetupNotice is wired into ${label}`);
 
 //? The deep-link (fix button lands on the exact tab, not the page default) is consumed by the settings pages.
+//? ADR 0312 — the tab IS the URL trail (`useTrailSegment`); the old `settingsFocus` side-channel is gone.
 for (const path of ['src/workspaces/workspace/page.tsx', 'src/workspaces/settings/page.tsx', 'src/workspaces/content/settings/page.tsx']) {
-  assert(read(path).includes('settingsFocus') && read(path).includes('consumeSettingsFocus'), `${path} consumes the settings deep-link`);
+  assert(read(path).includes('useTrailSegment'), `${path} consumes the settings deep-link`);
 }
 
 /* ------------------------------------------------------------ all four locales carry the setup copy */

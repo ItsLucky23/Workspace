@@ -40,7 +40,8 @@ try {
 
   // ---- 5. leftover template chip is caught ----
   const leftover = await scoreTicket({ id: 'LT', title: 'x', promptVersion: 'x', scope: { allow: ['**'] }, stages: [{ stage: 's', message: cf({ summary: 'ok', changedFiles: [], openQuestions: [] }), expectKind: 'done', nextTemplate: 'Do {{summary}} and {{unknownChip}}' }] });
-  assert(leftover.failures.some((f) => f.check === 'template-fully-filled'), 'an unfillable {{chip}} in the next template fails');
+  //? ADR 0319 — no slot template any more: a done turn composes the incoming handover from its envelope.
+  assert(!leftover.failures.some((f) => f.check === 'handover-composed'), 'a done turn with an envelope composes a non-empty incoming handover');
 } finally {
   report('tests/integration/evalPipeline.test.mts');
 }

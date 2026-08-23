@@ -24,16 +24,19 @@ try {
   eq(resolveAssignment('script'), 'gemini-api', 'baseline: script defaults to gemini-api');
   await enqueueControlAction({ workspaceId: wsId, op: 'save-ai-provider', target: {}, payload: { feature: 'script', providerId: 'claude-cli' }, userId: owner.id, clientRequestId: `apo-1-${String(stamp)}` });
 
+  //? P4-1/P4-2 — the loader returns routes ({ providerId, model? }) under `features`; the flat
+  //? provider map `resolveAssignment` takes is derived from it.
   const overrides = await loadWorkspaceAiOverrides(wsId);
-  eq(overrides.script, 'claude-cli', 'the workspace override is loaded');
-  eq(resolveAssignment('script', overrides), 'claude-cli', 'resolveAssignment respects the workspace override');
-  eq(resolveAssignment('script', { ...overrides, script: 'gemini-api' }), 'gemini-api', 'an explicit call-site override still wins');
+  const flat = Object.fromEntries(Object.entries(overrides.features).map(([feature, route]) => [feature, route.providerId]));
+  eq(overrides.features.script?.providerId, 'claude-cli', 'the workspace override is loaded');
+  eq(resolveAssignment('script', flat), 'claude-cli', 'resolveAssignment respects the workspace override');
+  eq(resolveAssignment('script', { ...flat, script: 'gemini-api' }), 'gemini-api', 'an explicit call-site override still wins');
 
   // clear it → back to the default
   await enqueueControlAction({ workspaceId: wsId, op: 'save-ai-provider', target: {}, payload: { feature: 'script', providerId: 'default' }, userId: owner.id, clientRequestId: `apo-2-${String(stamp)}` });
   const cleared = await loadWorkspaceAiOverrides(wsId);
-  assert(cleared.script === undefined, "'default' clears the override");
-  eq(resolveAssignment('script', cleared), 'gemini-api', 'cleared → back to the global default');
+  assert(cleared.features.script === undefined, "'default' clears the override");
+  eq(resolveAssignment('script', Object.fromEntries(Object.entries(cleared.features).map(([feature, route]) => [feature, route.providerId]))), 'gemini-api', 'cleared → back to the global default');
 } catch (error) {
   assert(false, `unexpected error: ${String(error)}`);
 } finally {

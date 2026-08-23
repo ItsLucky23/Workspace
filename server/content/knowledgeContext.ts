@@ -13,7 +13,10 @@ const MAX_TOTAL_CHARS = 6000;
 export async function buildKnowledgeContext(prisma: PrismaClient, workspaceId: string): Promise<string> {
   const docs = await prisma.infoSource.findMany({
     //? ADR 0310 — archived docs stop grounding content generation too, not just the coding agent.
-    where: { workspaceId, mode: 'context-doc', enabled: true, archivedAt: null },
+    //? "Not archived" on MongoDB is BOTH an explicit null (un-archived) and a missing field (never
+    //? archived): Prisma's `archivedAt: null` matches only the former, which silently dropped every
+    //? fresh doc from the grounding.
+    where: { workspaceId, mode: 'context-doc', enabled: true, OR: [{ archivedAt: null }, { archivedAt: { isSet: false } }] },
     select: { name: true, content: true },
     orderBy: { name: 'asc' },
   });

@@ -537,12 +537,17 @@ export async function loadStageContextDocs(prisma: PrismaClient, workspaceId: st
       workspaceId,
       mode: 'context-doc',
       //? ADR 0310 — an archived doc must actually STOP reaching the agent, otherwise "archived" is a
-      //? label on a list rather than a decision about what the AI reads.
-      archivedAt: null,
-      OR: [
-        { source: 'starter', enabled: true, projectId },
-        { source: 'design-system', enabled: true },
-        ...(explicitIds.length > 0 ? [{ id: { in: explicitIds }, OR: [{ projectId }, { projectId: null }] }] : []),
+      //? label on a list rather than a decision about what the AI reads. On MongoDB "not archived" is
+      //? an explicit null OR a missing field — `archivedAt: null` alone excluded every never-archived doc.
+      AND: [
+        { OR: [{ archivedAt: null }, { archivedAt: { isSet: false } }] },
+        {
+          OR: [
+            { source: 'starter', enabled: true, projectId },
+            { source: 'design-system', enabled: true },
+            ...(explicitIds.length > 0 ? [{ id: { in: explicitIds }, OR: [{ projectId }, { projectId: null }] }] : []),
+          ],
+        },
       ],
     },
     select: { name: true, content: true },

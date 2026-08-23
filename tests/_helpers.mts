@@ -71,6 +71,9 @@ export async function db(): Promise<PrismaClient> {
 //? Media stays cheap + budget-capped (`WS_MEDIA_CHEAP=1`) so a live run is a few cents, not euros.
 export function enableLiveProviders(): { fal: boolean; elevenlabs: boolean; suno: boolean; gemini: boolean } {
   for (const [k, v] of Object.entries(stashedProviderKeys)) process.env[k] = v;
+  //? The TEXT transports read the host fallback as `WS_<PROVIDER>_KEY` (openaiCompatible envKey);
+  //? `GEMINI_API_KEY` alone is only the RAG-embed key. Mirror it so a live Gemini STT/vision turn resolves.
+  if ((process.env.GEMINI_API_KEY ?? '').length > 0 && (process.env.WS_GEMINI_API_KEY ?? '').length === 0) process.env.WS_GEMINI_API_KEY = process.env.GEMINI_API_KEY;
   process.env.WS_MEDIA_CHEAP = '1';
   return {
     fal: (process.env.FAL_KEY ?? '').length > 0,

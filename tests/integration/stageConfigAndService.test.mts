@@ -13,7 +13,8 @@ import { readFileSync } from 'node:fs';
 import { assert, eq, report } from '../_helpers.mts';
 import { serviceWorkdir, workdirOrRoot } from '../../server/deploy/servicePath.ts';
 import { renderStage } from '../../server/orchestrator/renderStage.ts';
-import { HOOK_CATALOG, STAGE_CONFIGS } from '../../src/workspaces/_data/seed.ts';
+import { HOOK_CATALOG } from '../../src/workspaces/_data/catalogs.ts';
+import { STAGE_CONFIGS } from '../../src/workspaces/_data/seed.ts';
 import type { PipelineStageCfg } from '../../src/workspaces/_data/types.ts';
 
 const read = (p: string): string => readFileSync(new URL(`../../${p}`, import.meta.url), 'utf8');
@@ -81,8 +82,10 @@ eq(HOOK_CATALOG.filter((h) => h.required === true).map((h) => h.key).join(','), 
 
 const runner = read('server/orchestrator/stageRunner.ts');
 assert(runner.includes('await startStageProcesses(container.name, cfg.processes)'), 'the stage actually starts its declared processes');
-assert(runner.includes("docker(['exec', '-d', container, 'sh', '-lc'"), 'detached, so a dev server keeps running through the turn');
-assert(runner.includes('quoteForShell'), 'and the cwd/env values are quoted rather than interpolated raw');
+//? ADR 0317 — the one shared implementation lives in server/container/runtimeProcesses.ts (stage + project).
+const runtimeProcesses = read('server/container/runtimeProcesses.ts');
+assert(runtimeProcesses.includes("'exec', '-d'"), 'detached, so a dev server keeps running through the turn');
+assert(runtimeProcesses.includes('quoteForShell'), 'and the cwd/env values are quoted rather than interpolated raw');
 
 assert(runner.includes('cfg.visibleStageIds.filter((id) => id !== stageKey)'), 'visibleStageIds is read');
 assert(runner.includes('toStageId: { in: visibleIds }'), 'and widens which stage outputs this stage can see');

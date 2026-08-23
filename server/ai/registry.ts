@@ -15,7 +15,8 @@ import { loadWorkspaceAiOverrides } from './workspaceAssignments';
 import { recordAiRun } from './activity';
 import { recordTurnSpend } from '../spend/record';
 import { claudeCliProvider } from './providers/claudeCli';
-import { AI_PROVIDER_LIST } from './providers/catalog';
+import { AI_PROVIDER_CATALOG, AI_PROVIDER_LIST, providerModalities, type AiModality } from './providers/catalog';
+import { listConnections } from './connections';
 import { openAiCompatibleProvider } from './providers/openaiCompatible';
 import { anthropicApiProvider } from './providers/anthropicApi';
 import type { AiCompletionRequest, AiCompletionResult, AiFeature, AiProvider, AiProviderId } from './types';
@@ -74,13 +75,36 @@ const PROVIDERS: Record<string, AiProvider> = Object.fromEntries(AI_PROVIDER_LIS
 //? P4-1 — walk the candidate chain and return the first backend that exists AND is available for this
 //? workspace (with the model the winning route carries, if any). Sequential on purpose: probing every
 //? backend up-front would cost a Claude-CLI spawn + N key reads per turn when the first candidate is fine.
-async function resolveAvailableRoute(candidates: { providerId: AiProviderId; model?: string }[], workspaceId?: string): Promise<{ provider: AiProvider; model?: string } | null> {
+//? A candidate that cannot take the request's INPUT (images → vision, audio → audio) is skipped even when
+//? it is available: a text-only backend "answering" a transcription request returned prose about a missing
+//? clip, which the caller then stored as the transcript.
+async function resolveAvailableRoute(candidates: { providerId: AiProviderId; model?: string }[], required: AiModality[], workspaceId?: string): Promise<{ provider: AiProvider; model?: string } | null> {
   for (const candidate of candidates) {
     const provider = PROVIDERS[candidate.providerId];
-    if (!provider) continue;
+    const meta = AI_PROVIDER_CATALOG[candidate.providerId];
+    if (!provider || !meta) continue;
+    const supported = providerModalities(meta);
+    if (!required.every((m) => supported.includes(m))) continue;
     if (await provider.available(workspaceId)) return { provider, ...(candidate.model === undefined ? {} : { model: candidate.model }) };
   }
   return null;
+}
+
+function requiredModalities(req: AiCompletionRequest): AiModality[] {
+  const out: AiModality[] = ['text'];
+  if ((req.imageUrls?.length ?? 0) > 0) out.push('vision');
+  if ((req.audioUrls?.length ?? 0) > 0) out.push('audio');
+  return out;
+}
+
+//? The fall-through rung of the chain ("any other backend") is limited to backends this WORKSPACE has
+//? connected on the AI page — not to whatever happens to be installed on the host. Host availability
+//? alone would silently route a workspace's unconfigured feature at the operator's Claude seat.
+async function connectedCatalogIds(workspaceId?: string): Promise<AiProviderId[]> {
+  if (!workspaceId) return [];
+  const connections = await listConnections(workspaceId);
+  const connected = new Set(connections.map((c) => c.providerId));
+  return AI_PROVIDER_LIST.map((m) => m.id).filter((id) => connected.has(id));
 }
 
 //? Run one AI completion for a feature. `overrides` is the explicit CALL-SITE assignment (wins over
@@ -104,9 +128,10 @@ export async function runAiCompletion(
     ...(callSite === undefined ? {} : { callSite: { providerId: callSite } }),
     ...(featureOverride === undefined ? {} : { featureOverride }),
     ...(wsOverrides.defaultRoute === undefined ? {} : { workspaceDefault: wsOverrides.defaultRoute }),
+    catalogIds: await connectedCatalogIds(req.workspaceId),
   });
   const startedAt = Date.now();
-  const route = await resolveAvailableRoute(candidates, req.workspaceId);
+  const route = await resolveAvailableRoute(candidates, requiredModalities(req), req.workspaceId);
   if (route === null) {
     const providerId = candidates[0]?.providerId ?? '';
     recordAiRun({ ...(req.workspaceId ? { workspaceId: req.workspaceId } : {}), feature, ...(req.label ? { label: req.label } : {}), prompt: req.prompt, output: '', providerId, status: 'error', error: 'ai.providerUnavailable', startedAt });

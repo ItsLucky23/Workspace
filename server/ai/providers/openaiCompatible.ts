@@ -9,14 +9,67 @@
 //? Which host answers is infrastructure; putting it in front of a user turns a working default into a
 //? box they can break, and the owner asked for it to be hidden.
 //?
-//? Deliberately text-only. Claiming multimodal per host without being able to verify it means a
-//? silently dropped attachment, which is worse than a backend that never offered to take one.
+//? Multimodal input rides the same shape: an image becomes an `image_url` data-URI part, audio an
+//? `input_audio` part (OpenAI and Google's Gemini endpoint both take them). Whether a HOST may receive
+//? such a request is decided by its catalog `modalities` — dispatch never routes an image/audio turn at
+//? a host not tagged for it, so an attachment is either delivered or the turn is refused, never dropped.
 //? @adr 0007
+
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 
 import { tryCatch } from '@luckystack/core';
 
+import { MEDIA_DIR } from '../../media/store';
 import { resolveProviderConfig } from '../providerConfig';
 import { providerBaseUrl, type AiProviderMeta } from './catalog';
+
+//? Local `/media/<file>` URLs are read off the media store; http(s) URLs are fetched. Bounded so one
+//? huge asset cannot blow the request; null on any failure, and the caller then refuses the turn rather
+//? than sending it without the attachment the feature depends on.
+const IMAGE_MIME_BY_EXT: Record<string, string> = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' };
+const AUDIO_FORMAT_BY_EXT: Record<string, string> = { '.mp3': 'mp3', '.wav': 'wav', '.ogg': 'ogg', '.webm': 'webm', '.m4a': 'm4a', '.aac': 'aac', '.flac': 'flac' };
+async function mediaBytes(url: string, maxBytes = 20_000_000): Promise<{ bytes: Buffer; ext: string } | null> {
+  const [err, out] = await tryCatch(async () => {
+    const ext = path.extname(new URL(url, 'http://x').pathname).toLowerCase();
+    let bytes: Buffer | null = null;
+    if (url.startsWith('/media/')) {
+      const file = path.join(MEDIA_DIR, url.slice('/media/'.length));
+      if (!existsSync(file)) return null;
+      bytes = readFileSync(file);
+    } else if (/^https?:\/\//.test(url)) {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      bytes = Buffer.from(await res.arrayBuffer());
+    } else {
+      return null;
+    }
+    if (bytes.length === 0 || bytes.length > maxBytes) return null;
+    return { bytes, ext };
+  });
+  return err ? null : (out ?? null);
+}
+
+export type ChatContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } }
+  | { type: 'input_audio'; input_audio: { data: string; format: string } };
+
+/** Resolve the request's attachments to content parts; null when any attachment could not be read. */
+export async function mediaParts(req: Pick<AiCompletionRequest, 'imageUrls' | 'audioUrls'>): Promise<ChatContentPart[] | null> {
+  const parts: ChatContentPart[] = [];
+  for (const url of req.imageUrls ?? []) {
+    const media = await mediaBytes(url);
+    if (media === null) return null;
+    parts.push({ type: 'image_url', image_url: { url: `data:${IMAGE_MIME_BY_EXT[media.ext] ?? 'image/png'};base64,${media.bytes.toString('base64')}` } });
+  }
+  for (const url of req.audioUrls ?? []) {
+    const media = await mediaBytes(url);
+    if (media === null) return null;
+    parts.push({ type: 'input_audio', input_audio: { data: media.bytes.toString('base64'), format: AUDIO_FORMAT_BY_EXT[media.ext] ?? media.ext.replace(/^\./, '') } });
+  }
+  return parts;
+}
 import type { AiCompletionRequest, AiCompletionResult, AiProvider } from '../types';
 
 /** `<base>/chat/completions`, trimming a trailing slash. Pure + exported so a test can pin it. */
@@ -27,14 +80,16 @@ interface ChatUsage { prompt_tokens?: number; completion_tokens?: number }
 interface ChatResponse { choices?: ChatChoice[]; usage?: ChatUsage; model?: string }
 
 /** The request body for one turn — the contract with every compatible host. Pure + exported. */
-export function chatBody(req: Pick<AiCompletionRequest, 'prompt' | 'system'>, model: string, temperature: number | null): Record<string, unknown> {
+export function chatBody(req: Pick<AiCompletionRequest, 'prompt' | 'system'>, model: string, temperature: number | null, parts: ChatContentPart[] = []): Record<string, unknown> {
   return {
     model,
     messages: [
       //? `system` first when present — the same role the other transports give it, so one feature's
       //? prompt behaves the same whichever backend answers it.
       ...(req.system ? [{ role: 'system', content: req.system }] : []),
-      { role: 'user', content: req.prompt },
+      //? A plain string for a text turn (what every host accepts); the content-array shape only when
+      //? there are attachments to carry.
+      { role: 'user', content: parts.length === 0 ? req.prompt : [{ type: 'text', text: req.prompt }, ...parts] },
     ],
     //? Omitted, not null: several compatible hosts reject `temperature: null` outright.
     ...(temperature === null ? {} : { temperature }),
@@ -95,7 +150,11 @@ export function openAiCompatibleProvider(meta: AiProviderMeta): AiProvider {
       //? P4-2 — a per-feature model pin (`providerId:model` route) beats the connection's picked model.
       const model = opts?.model !== undefined && opts.model.length > 0 ? opts.model : cfg.model;
       if (apiKey.length === 0 && meta.keyUrl.length > 0) return { ok: false, text: '', providerId: meta.id, error: 'ai.providerUnavailable' };
-      const [error, body] = await call(apiKey, model, chatBody(req, model, null), req.timeoutMs ?? 60_000);
+      //? An attachment the feature depends on that cannot be read fails the turn; sending the prompt
+      //? without it would make the model describe a missing file as if it were the answer.
+      const parts = await mediaParts(req);
+      if (parts === null) return { ok: false, text: '', providerId: meta.id, error: 'ai.attachmentUnreadable' };
+      const [error, body] = await call(apiKey, model, chatBody(req, model, null, parts), req.timeoutMs ?? 60_000);
       if (error) return { ok: false, text: '', providerId: meta.id, error: error.message };
 
       const parsed = body as ChatResponse | null;
