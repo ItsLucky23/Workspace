@@ -24,7 +24,7 @@ export const NAV_CATEGORIES: NavCategory[] = ['develop', 'content', 'insights'];
 //? PATH prefixes (relative to /workspaces), not view ids: `/workspaces/content/settings` resolves to
 //? the view `content` so the rail keeps highlighting Content, yet it is its own page with its own
 //? tabs. Matching on the path keeps those two concerns apart instead of forcing one to bend.
-export const TRAIL_ROOTS: readonly string[] = ['workspace', 'settings', 'develop/pipeline', 'content/settings'];
+export const TRAIL_ROOTS: readonly string[] = ['workspace', 'settings', 'develop/pipeline', 'content/settings', 'insights/usage'];
 
 export const VIEW_CATEGORY: Record<string, NavCategory> = {
   board: 'develop',

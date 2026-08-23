@@ -18,6 +18,7 @@ import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../../_components/Icon';
 import { AvatarBubble, Disclosure, EmptyState, IconButton, InfoTip, SectionCard, Tabs, WsButton } from '../../_components/primitives';
+import { useTrailSegment } from '../../_components/sections';
 import { StatCard } from '../../_components/dataDisplay';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { Member, Ticket } from '../../_data/types';
@@ -44,7 +45,7 @@ interface DiagnoseEntry {
 export default function Usage() {
   const { openTicket, navigate, focusSetup, tickets, membersById, usage, insights, analytics, budget, budgets, editBudget, resumeSpend, diagnoseRootCause, suggestions, acceptSuggestion, dismissSuggestion, toggleAi } = useWorkspaces();
   const translate = useTranslator();
-  const [tab, setTab] = useState<UsageTab>('usage');
+  const [tab, setTab] = useTrailSegment<UsageTab>(0, ['usage', 'delivery', 'people'], 'usage');
   //? root-cause (ADR 0042) — a symptom → the likely-culprit merge as a rollback suggestion (AI panel).
   const [symptom, setSymptom] = useState('');
   //? Client-side trace of diagnose calls this session (audit finding: zero on-page feedback + no history).

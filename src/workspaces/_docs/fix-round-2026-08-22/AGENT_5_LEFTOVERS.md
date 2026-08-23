@@ -38,12 +38,12 @@ Workspaces is a self-hosted AI dev-orchestration + content platform on the Lucky
   - **Now:** Needs `InviteEntry` type + snapshot projection (server/read/workspaceSnapshot.ts) + provider typing to carry the raw roleKey/label for invites, mirroring what Agent 1 did for members (F-024).
   - **Result:** _(fill in: fixed <commit> / already-fixed / invalid: <reason>)_
 
-- [ ] **F-122** · LOW · `inconsistency` — The Usage page's three tabs (Usage/Delivery/People) are React state, not URL trail — unlike settings/workspace/pipeline/content-settings, a deep link or refresh always lands on the first tab and back does not walk out of a tab.
+- [x] **F-122** · LOW · `inconsistency` — The Usage page's three tabs (Usage/Delivery/People) are React state, not URL trail — unlike settings/workspace/pipeline/content-settings, a deep link or refresh always lands on the first tab and back does not walk out of a tab.
   - **Where (audit baseline 55ff5b7 — code has moved, re-locate):** `src/workspaces/insights/usage/page.tsx:56`
   - **Evidence:** useState<UsageTab> at line 56; 'usage' (and 'insights/usage') is absent from TRAIL_ROOTS in _data/nav.ts, which is an explicit allowlist. The deliberate-allowlist comment exists, but Usage is exactly the kind of multi-tab page ADR 0312 targeted.
   - **Original fix hint:** Add 'insights/usage' to TRAIL_ROOTS and switch the page to useTrailSegment(0, ['usage','delivery','people'], 'usage').
   - **Now:** Needs the `_data/nav.ts` trail-root contract: register the Usage page as a trail root and switch its tabs to `useTrailSegment` like the other sub-navigated pages.
-  - **Result:** _(fill in: fixed <commit> / already-fixed / invalid: <reason>)_
+  - **Result:** fixed — registered `insights/usage` in `TRAIL_ROOTS` and switched the page to `useTrailSegment(0, ['usage', 'delivery', 'people'], 'usage')`; tab deep links and browser Back now use the shared URL trail.
 
 - [x] **F-051** · MEDIUM · `duplicate` — Two components both named TerminalPanel duplicate the drag-resize machinery verbatim and present two conflicting models of the same ticket container; 'Open in Terminals' from the ticket tab lands on a page where the process tabs the user was viewing do not exist.
   - **Where (audit baseline 55ff5b7 — code has moved, re-locate):** `src/workspaces/develop/board/[ticketId]/TerminalPanel.tsx:28`
