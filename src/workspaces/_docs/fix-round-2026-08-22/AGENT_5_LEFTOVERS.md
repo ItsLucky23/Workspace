@@ -94,12 +94,12 @@ Workspaces is a self-hosted AI dev-orchestration + content platform on the Lucky
   - **Now:** OWNER DECISION TAKEN: give `generateDocs` a UI — a "Generate context doc from repo" action on `develop/sources/page.tsx` (where the context docs live), with the usual SavePill/notify feedback and a disabled state when no repo is linked.
   - **Result:** _(fill in: fixed <commit> / already-fixed / invalid: <reason>)_
 
-- [ ] **F-083** · LOW · `missing-ui` — The ai-provider-health route ('feeds the health indicator in the workspace AI settings') has no UI caller — the gap-fix that created it was itself orphaned by the later AI-page rework, recreating the exact "exported for a UI that never came" state its header complains about.
+- [x] **F-083** · LOW · `missing-ui` — The ai-provider-health route ('feeds the health indicator in the workspace AI settings') has no UI caller — the gap-fix that created it was itself orphaned by the later AI-page rework, recreating the exact "exported for a UI that never came" state its header complains about.
   - **Where (audit baseline 55ff5b7 — code has moved, re-locate):** `src/workspaces/_api/aiProviderHealth_v1.ts:1`
   - **Evidence:** grep 'workspaces/aiProviderHealth' over src/**.tsx (excluding _api/_sync/tests) = 0 hits. The reworked AI page (commits 66279f6/f6c12be) uses aiConnection add/test/remove via the aiConnection _sync route plus snapshot aiConnections/aiProviderCatalog instead.
   - **Original fix hint:** Either delete the route (+ its tests + generated map entry regen) since per-connection ai-connection-test supersedes it, or add the intended health chip on the AI page (workspace/aiProviders.tsx) calling it on mount.
   - **Now:** VERIFY FIRST: Agent 4 (P4-7) now calls `aiProviderHealth_v1` from the AiBehaviorTab routing picker. If that is the caller this finding asked for, mark "already-fixed" with the file:line of the call and do nothing else.
-  - **Result:** _(fill in: fixed <commit> / already-fixed / invalid: <reason>)_
+  - **Result:** already-fixed — `src/workspaces/workspace/page.tsx:1374` calls `apiRequest({ name: 'workspaces/aiProviderHealth', version: 'v1', ... })`; the result feeds the routing-picker availability at lines 1407–1421.
 
 - [ ] **F-121** · LOW · `dead-ui` — Dead exports in the shared layer: GROUP_LABELS (Shell.tsx:88) is exported but consumed nowhere (the rail translates workspaces.nav.* keys instead), and Backdrop (motion.tsx:106) has no consumer.
   - **Where (audit baseline 55ff5b7 — code has moved, re-locate):** `src/workspaces/_shell/Shell.tsx:88`
