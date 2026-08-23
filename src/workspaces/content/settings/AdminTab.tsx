@@ -11,9 +11,8 @@ import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../../_components/Icon';
 import { Disclosure, SectionCard, Toggle, WsButton } from '../../_components/primitives';
-import { FormSection, SettingRow } from '../../_components/settings';
+import { FormSection, SavePill, SettingRow, useAutosave } from '../../_components/settings';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
-import { SavedNote } from './SavedNote';
 import { fieldCls, PUBLISH_PLATFORMS } from './shared';
 
 //? Q5 — media providers (image/video/3d + voice/sfx + music) only. The AI TEXT backend (Gemini, Claude,
@@ -77,31 +76,30 @@ function BudgetCard() {
   const [enabled, setEnabled] = useState(budget.enabled);
   const [capEuros, setCapEuros] = useState((budget.capCents / 100).toString());
   const [alertPct, setAlertPct] = useState(budget.alertPct.toString());
-  const [saved, setSaved] = useState(false);
+  const budgetStatus = useAutosave([enabled, capEuros, alertPct], () => {
+    const alert = Math.round(Number(alertPct));
+    editMediaBudget({ enabled, capCents: Math.max(0, Math.round(Number(capEuros) * 100)) || 0, alertPct: Number.isFinite(alert) ? Math.min(100, Math.max(0, alert)) : 80 });
+  });
   const numCls = `rounded-lg border border-container2-border bg-container2 px-3 py-2 text-base md:text-sm text-title tabular-nums focus:outline-none focus:ring-2 focus:ring-focus-ring disabled:opacity-50`;
-  const save = () => {
-    editMediaBudget({ enabled, capCents: Math.max(0, Math.round(Number(capEuros) * 100)) || 0, alertPct: Math.min(100, Math.max(0, Math.round(Number(alertPct)))) || 80 });
-    setSaved(true);
-  };
+
   return (
     <SectionCard title={translate({ key: 'workspaces.content.budgetSectionTitle' })} desc={translate({ key: 'workspaces.content.budgetSectionDesc' })}>
       <label className={`flex items-center gap-2 text-sm mb-3 cursor-pointer`}>
-        <input type="checkbox" checked={enabled} onChange={(e) => { setEnabled(e.target.checked); setSaved(false); }} className={`accent-primary`} />
+        <input type="checkbox" checked={enabled} onChange={(e) => { setEnabled(e.target.checked); }} className={`accent-primary`} />
         <span className={`text-title`}>{translate({ key: 'workspaces.content.budgetEnabled' })}</span>
       </label>
       <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3`}>
         <label className={`flex flex-col gap-1 text-sm`}>
           <span className={`text-muted`}>{translate({ key: 'workspaces.content.budgetCap' })}</span>
-          <input type="number" min="0" step="1" value={capEuros} onChange={(e) => { setCapEuros(e.target.value); setSaved(false); }} disabled={!enabled} className={numCls} />
+          <input type="number" min="0" step="1" value={capEuros} onChange={(e) => { setCapEuros(e.target.value); }} disabled={!enabled} className={numCls} />
         </label>
         <label className={`flex flex-col gap-1 text-sm`}>
           <span className={`text-muted`}>{translate({ key: 'workspaces.content.budgetAlert' })}</span>
-          <input type="number" min="0" max="100" step="5" value={alertPct} onChange={(e) => { setAlertPct(e.target.value); setSaved(false); }} disabled={!enabled} className={numCls} />
+          <input type="number" min="0" max="100" step="5" value={alertPct} onChange={(e) => { setAlertPct(e.target.value); }} disabled={!enabled} className={numCls} />
         </label>
       </div>
       <div className={`mt-4 flex flex-wrap items-center gap-3`}>
-        <WsButton className={`min-h-11`} onClick={save}>{translate({ key: 'workspaces.content.budgetSave' })}</WsButton>
-        {saved && <SavedNote text={translate({ key: 'workspaces.content.budgetSaved' })} />}
+        <SavePill status={budgetStatus} />
       </div>
       {/* Audit finding: this cap and the workspace-wide AI/token caps on Usage look like the same
           concept but are two separate budgets (media generation spend vs metered API spend) — say so
@@ -163,9 +161,10 @@ function ModelOverridesBody() {
 //? indented below it.
 function GenerationDefaultsCard() {
   const translate = useTranslator();
-  const { content, saveMediaProvider } = useWorkspaces();
+  const { content, saveMediaProvider, activeWorkspace } = useWorkspaces();
   const prefs = content.mediaPrefs;
   const [voiceId, setVoiceId] = useState(prefs.voiceId);
+  const voiceStatus = useAutosave([voiceId], () => { if (voiceId.trim() !== prefs.voiceId) saveMediaProvider({ voiceId: voiceId.trim() }); }, { resetKey: activeWorkspace.id });
   const onOffLabel = (on: boolean) => translate({ key: on ? 'workspaces.account.enabled' : 'workspaces.account.off' });
   return (
     <FormSection title={translate({ key: 'workspaces.content.genDefaultsTitle' })} desc={translate({ key: 'workspaces.content.genDefaultsDesc' })}>
@@ -183,7 +182,7 @@ function GenerationDefaultsCard() {
         label={translate({ key: 'workspaces.content.voiceIdLabel' })}
         help={translate({ key: 'workspaces.content.voiceIdDesc' })}
         stacked
-        control={<input value={voiceId} onChange={(e) => { setVoiceId(e.target.value); }} onBlur={() => { if (voiceId.trim() !== prefs.voiceId) saveMediaProvider({ voiceId: voiceId.trim() }); }} placeholder={translate({ key: 'workspaces.content.voiceIdPlaceholder' })} className={`w-full ${fieldCls}`} />}
+        control={<div className={`flex items-center gap-2`}><input value={voiceId} onChange={(e) => { setVoiceId(e.target.value); }} placeholder={translate({ key: 'workspaces.content.voiceIdPlaceholder' })} className={`w-full ${fieldCls}`} /><SavePill status={voiceStatus} /></div>}
       />
     </FormSection>
   );

@@ -26,3 +26,13 @@
 - Verified programmatically that Phase A has zero unchecked findings and Phase B has zero checked findings.
 **Files touched**: `src/workspaces/_docs/fix-round-2026-08-22/AGENT_3_CONTENT_SHELL.md`
 **Notes / decisions**: This is a tracking-only closure; no Phase B implementation was started.
+
+## 2026-08-23 08:48 — Phase B merged-code verification and clusters
+**User prompt (summary)**: Re-read Agent 3 Content Shell, execute Phase B after merging main, re-verify every finding, and revisit Phase A skips.
+**What I did**:
+- Re-verified all 22 Phase B findings against the merged code; recorded five already-fixed findings, fixed the confirmed shell/search/settings/marketing issues, and kept ownership-blocked items explicit.
+- Added translated navigation labels and accessibility behavior, shared desktop/mobile notifications, module-aware mobile bottom navigation, gated search actions with keyboard result selection, mobile account controls, workspace-settings cross-links, dirty Dockerfile protection, RBAC/settings translation, setup-checklist routing, content autosave, and marketing copilot/refine fixes.
+- Revisited Phase A skips: marked F-039 already-fixed after the merged CodePanel wiring; completed F-063/F-072/F-062/F-069; improved F-111 to partial; retained explicit skips for cross-owner contracts/routes.
+- Ticked every Phase B checkbox and refreshed every Phase A Result line in the handoff.
+**Files touched**: `src/workspaces/_shell/Shell.tsx`, `src/workspaces/_shell/MobileChrome.tsx`, `src/workspaces/_components/SearchPalette.tsx`, `src/workspaces/_components/SetupWizard.tsx`, `src/workspaces/workspace/page.tsx`, `src/workspaces/content/settings/AdminTab.tsx`, `src/workspaces/content/settings/BrandStylesTab.tsx`, `src/workspaces/content/marketing/page.tsx`, `src/workspaces/content/studio/page.tsx`, `src/_locales/en.json`, `src/_locales/nl.json`, `src/_locales/de.json`, `src/_locales/fr.json`, `src/workspaces/_docs/fix-round-2026-08-22/AGENT_3_CONTENT_SHELL.md`
+**Notes / decisions**: F-114 is partial because shared PopMenu is outside ownership. F-121 remains skipped because `GROUP_LABELS` is required by the navStructure contract test and `Backdrop` is outside ownership. No Agent 2-owned files were edited.

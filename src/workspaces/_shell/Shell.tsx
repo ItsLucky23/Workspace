@@ -19,7 +19,7 @@ import Icon, { type IconName } from '../_components/Icon';
 import { ModulePicker } from '../_components/ModulePicker';
 import { Glossary } from '../_components/Glossary';
 import { Collapse, Popover, SPRING_SOFT } from '../_components/motion';
-import { AvatarBubble, AvatarStack, IconButton, WsButton, useClickAway } from '../_components/primitives';
+import { AvatarBubble, AvatarStack, FOCUS_RING, IconButton, WsButton, useClickAway } from '../_components/primitives';
 import { SetupNotice } from '../_components/SetupNotice';
 import { WORKSPACE_MODULES, isSectionEnabled, sectionsForModules, type WorkspaceModuleId } from '../_data/modules';
 import { NAV_CATEGORIES, type NavCategory } from '../_data/nav';
@@ -50,6 +50,46 @@ function notificationIcon(type: NotificationItem['type']): IconName {
     case 'container-failure': { return 'triangle-exclamation'; }
     default: { return 'bell'; }
   }
+}
+
+export const formatUnreadCount = (count: number): string => count > 9 ? '9+' : String(count);
+
+export function openWorkspaceNotification(n: NotificationItem, { openTicket, navigate, markNotificationRead, close }: {
+  openTicket: (id: string) => void;
+  navigate: (view: WsView) => void;
+  markNotificationRead: (id: string) => void;
+  close: () => void;
+}): void {
+  const link = n.deepLink;
+  if (link?.ticketId) openTicket(link.ticketId);
+  else if (link?.view) navigate(link.view);
+  markNotificationRead(n.id);
+  close();
+}
+
+export function NotificationList({ notifications, onOpen, empty }: { notifications: NotificationItem[]; onOpen: (n: NotificationItem) => void; empty: string }) {
+  if (notifications.length === 0) return <div className="px-2.5 py-4 text-center text-sm text-muted">{empty}</div>;
+  return (
+    <>
+      {notifications.map((n) => (
+        <button
+          key={n.id} type="button" onClick={() => { onOpen(n); }}
+          className={`flex items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors cursor-pointer hover:bg-container2 ${n.read ? '' : 'bg-primary/5'}`}
+        >
+          <span className={`w-5 h-5 mt-0.5 rounded-md flex items-center justify-center shrink-0 ${n.read ? 'bg-container2 text-muted' : 'bg-primary/12 text-primary'}`}>
+            <Icon name={notificationIcon(n.type)} className="text-xs" />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="flex items-center gap-1.5">
+              <span className="text-sm font-medium text-title truncate">{n.title}</span>
+              {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
+            </span>
+            <span className="block text-xs text-muted line-clamp-2">{n.body}</span>
+          </span>
+        </button>
+      ))}
+    </>
+  );
 }
 
 //? No-bounce spring for the AI-panel width animation — bounce would overshoot
@@ -128,9 +168,10 @@ export const NAV_BOTTOM: NavDef[] = [
   { id: 'settings', icon: 'gear', label: 'Settings' },
 ];
 
-const roleChip = (role: string) => (
-  <span className="rounded-full bg-container2 px-2 py-0.5 text-[11px] font-medium capitalize text-muted">{role}</span>
-);
+const roleChip = (role: string, translate: ReturnType<typeof useTranslator>) => {
+  const key = role === 'owner' || role === 'admin' || role === 'member' ? `workspaces.nav.role${role[0]?.toUpperCase() ?? ''}${role.slice(1)}` : null;
+  return <span className="rounded-full bg-container2 px-2 py-0.5 text-[11px] font-medium capitalize text-muted">{key ? translate({ key }) : role}</span>;
+};
 
 const LANGUAGES = ['en', 'nl', 'de', 'fr'] as const;
 type Language = typeof LANGUAGES[number];
@@ -162,7 +203,7 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
     return (
       <button
         key={it.id} type="button" onClick={() => { if (isAi) { toggleAi(); } else { navigate(it.id); } }}
-        title={expanded ? undefined : it.label}
+        title={expanded ? undefined : translate({ key: `workspaces.nav.${it.id}` })}
         className={`group relative flex items-center gap-3 rounded-xl h-10 px-3 transition-colors cursor-pointer ${active ? 'bg-container2 text-title' : 'text-muted hover:bg-container2 hover:text-common'}`}
       >
         <span className="relative w-5 text-center text-base">
@@ -170,7 +211,7 @@ export function NavRail({ expanded, setExpanded }: { expanded: boolean; setExpan
           {badge > 0 && <span className="absolute -top-1.5 -right-2 min-w-4 h-4 px-1 rounded-full bg-primary text-title-primary text-[10px] font-semibold flex items-center justify-center">{badge}</span>}
           {badge === 0 && present > 0 && <span title={translate({ key: 'workspaces.shell.viewPresence', params: [{ key: 'n', value: String(present) }] })} className="absolute -top-1.5 -right-2 min-w-4 h-4 px-1 rounded-full bg-secondary text-common-secondary text-[10px] font-semibold flex items-center justify-center">{present}</span>}
         </span>
-        {expanded && <span className="text-sm font-medium whitespace-nowrap">{it.label}</span>}
+        {expanded && <span className="text-sm font-medium whitespace-nowrap">{translate({ key: `workspaces.nav.${it.id}` })}</span>}
       </button>
     );
   };
@@ -317,15 +358,7 @@ export function TopBar({ onCmdK }: { onCmdK: () => void }) {
     navigate, openTicket, workspaces, activeWorkspace, setActiveWorkspace, createWorkspace, members, presentUserIds,
     notifications, unreadNotifications, markNotificationRead, markAllNotificationsRead,
   } = useWorkspaces();
-  //? #120 — a notification's deep-link is a real destination: open its ticket (or navigate to its view),
-  //? then mark read + close the popover. Falls back to just marking read when there is no deep-link.
-  const openNotification = (n: (typeof notifications)[number]) => {
-    const link = n.deepLink;
-    if (link?.ticketId) openTicket(link.ticketId);
-    else if (link?.view) navigate(link.view);
-    markNotificationRead(n.id);
-    setNotifOpen(false);
-  };
+  //? #120 — notification navigation is shared with the mobile sheet so icon, unread and deep-link behavior cannot drift.
   const translate = useTranslator();
   const [wsOpen, setWsOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -354,7 +387,7 @@ export function TopBar({ onCmdK }: { onCmdK: () => void }) {
                     <span className="w-5 h-5 rounded-md bg-container2 text-[11px] font-bold flex items-center justify-center">{w.name[0]}</span>
                     {w.name}
                   </span>
-                  {w.id === activeWorkspace.id ? <Icon name="check" className="text-xs text-primary" /> : roleChip(w.role)}
+                  {w.id === activeWorkspace.id ? <Icon name="check" className="text-xs text-primary" /> : roleChip(w.role, translate)}
                 </button>
               ))}
               <div className="my-1 h-px bg-divider" />
@@ -388,7 +421,7 @@ export function TopBar({ onCmdK }: { onCmdK: () => void }) {
         <div className="relative" ref={notifRef}>
           <button type="button" onClick={() => { setNotifOpen((o) => !o); }} title={translate({ key: 'workspaces.shell.notifications' })} className="relative inline-flex items-center justify-center w-9 h-9 rounded-xl text-common hover:bg-container2 transition-colors cursor-pointer">
             <Icon name="bell" />
-            {unreadNotifications > 0 && <span className="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-wrong text-white text-[10px] font-semibold flex items-center justify-center">{unreadNotifications}</span>}
+            {unreadNotifications > 0 && <span className="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-wrong text-title-primary text-[10px] font-semibold flex items-center justify-center">{formatUnreadCount(unreadNotifications)}</span>}
           </button>
           <Popover open={notifOpen} className="absolute right-0 mt-1 w-80 rounded-xl border border-container1-border bg-container1 p-1 shadow-lg z-30">
             <div className="flex items-center justify-between gap-2 px-2.5 py-1.5">
@@ -404,23 +437,11 @@ export function TopBar({ onCmdK }: { onCmdK: () => void }) {
               {notifications.length === 0 && (
                 <div className="px-2.5 py-4 text-center text-sm text-muted">{translate({ key: 'workspaces.shell.noNotifications' })}</div>
               )}
-              {notifications.map((n) => (
-                <button
-                  key={n.id} type="button" onClick={() => { openNotification(n); }}
-                  className={`flex items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors cursor-pointer hover:bg-container2 ${n.read ? '' : 'bg-primary/5'}`}
-                >
-                  <span className={`w-5 h-5 mt-0.5 rounded-md flex items-center justify-center shrink-0 ${n.read ? 'bg-container2 text-muted' : 'bg-primary/12 text-primary'}`}>
-                    <Icon name={notificationIcon(n.type)} className="text-xs" />
-                  </span>
-                  <span className="flex-1 min-w-0">
-                    <span className="flex items-center gap-1.5">
-                      <span className="text-sm font-medium text-title truncate">{n.title}</span>
-                      {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
-                    </span>
-                    <span className="block text-xs text-muted line-clamp-2">{n.body}</span>
-                  </span>
-                </button>
-              ))}
+              <NotificationList
+                notifications={notifications}
+                empty={translate({ key: 'workspaces.shell.noNotifications' })}
+                onOpen={(n) => { openWorkspaceNotification(n, { openTicket, navigate, markNotificationRead, close: () => { setNotifOpen(false); } }); }}
+              />
             </div>
           </Popover>
         </div>
@@ -484,6 +505,7 @@ export function PausedBanner() {
 //? the AI panel's left edge instead of running over it. Hidden when nothing is open.
 export function TabBar() {
   const { view, navigate, openTabs, closeTab, tickets } = useWorkspaces();
+  const translate = useTranslator();
   //? Status lookup so the tab bar can colour its dots without re-deriving ticket logic.
   const statusLookup: Record<string, string> = Object.fromEntries(tickets.map((t) => [t.id, t.status]));
 
@@ -493,11 +515,18 @@ export function TabBar() {
     <div className="hidden md:flex items-center gap-1 h-11 px-3 border-b border-divider bg-background shrink-0">
       <div className="flex-1 flex items-center gap-1 overflow-x-auto ws-no-scrollbar">
         {openTabs.map((id) => (
-          <div key={id} onClick={() => { navigate(id); }} className={`group relative flex items-center gap-2 rounded-lg pl-3 pr-2 h-8 text-sm whitespace-nowrap cursor-pointer transition-colors ${view === id ? 'text-title' : 'text-muted hover:text-common'}`}>
+          <div
+            key={id}
+            role="button"
+            tabIndex={0}
+            onClick={() => { navigate(id); }}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(id); } }}
+            className={`group relative flex items-center gap-2 rounded-lg pl-3 pr-2 h-8 text-sm whitespace-nowrap cursor-pointer transition-colors ${FOCUS_RING} ${view === id ? 'text-title' : 'text-muted hover:text-common'}`}
+          >
             {view === id && <span className="absolute inset-0 rounded-lg bg-container1 shadow-sm" />}
             <span className="relative z-10 w-1.5 h-1.5 rounded-full" style={{ background: statusColor(statusLookup[id]) }} />
             <span className="relative z-10">{id}</span>
-            <button type="button" aria-label="Close tab" onClick={(e) => { e.stopPropagation(); closeTab(id); }} className="relative z-10 w-4 h-4 flex items-center justify-center rounded text-muted hover:text-title hover:bg-container2 opacity-60 group-hover:opacity-100"><Icon name="xmark" className="text-xs" /></button>
+            <button type="button" aria-label={translate({ key: 'workspaces.nav.closeTab' })} onClick={(e) => { e.stopPropagation(); closeTab(id); }} className="relative z-10 w-4 h-4 flex items-center justify-center rounded text-muted hover:text-title hover:bg-container2 opacity-60 group-hover:opacity-100"><Icon name="xmark" className="text-xs" /></button>
           </div>
         ))}
       </div>
@@ -1097,25 +1126,24 @@ export function MobileBottomBar({ onFab }: { onFab: () => void }) {
   let active = view;
   if (aiOpen) active = 'ai';
   else if (isTicketView(view)) active = 'board';
-  //? Module gating: drop the dev-only sections a content/design workspace turned off;
-  //? 'ai' is non-gateable and always kept.
-  const items: NavDef[] = [
-    { id: 'board', icon: 'table-columns', label: 'Board' },
-    { id: 'terminals', icon: 'terminal', label: 'Terminals' },
-    { id: 'activity', icon: 'wave-square', label: 'Activity' },
-    { id: 'ai', icon: 'robot', label: 'AI' },
-  ].filter((it) => isSectionEnabled(activeWorkspace.enabledSections, it.id));
+  //? Module gating: show the first enabled destination from each nav group, then the AI toggle;
+  //? unlike the old fixed dev list this leaves a useful phone nav in every workspace type.
+  const groupItems = GROUP_ORDER.flatMap((group) => NAV_ITEMS.filter((it) => it.group === group && isSectionEnabled(activeWorkspace.enabledSections, it.id)).slice(0, 1));
+  const ai = NAV_BOTTOM.find((it) => it.id === 'ai');
+  const items: NavDef[] = [...groupItems, ...(ai ? [ai] : [])];
+  const fabIndex = Math.min(2, Math.max(0, items.length - 1));
+  const translate = useTranslator();
   return (
     <nav className="md:hidden flex items-center justify-around h-16 border-t border-divider bg-container1 relative shrink-0">
       {items.map((it, i) => (
         <div key={it.id} className="contents">
-          {i === 2 && (
-            <button type="button" onClick={onFab} aria-label="New" className="w-12 h-12 -mt-6 rounded-full bg-primary text-title-primary shadow-lg flex items-center justify-center cursor-pointer">
+          {i === fabIndex && (
+            <button type="button" onClick={onFab} aria-label={translate({ key: 'workspaces.nav.fabNew' })} className="w-12 h-12 -mt-6 rounded-full bg-primary text-title-primary shadow-lg flex items-center justify-center cursor-pointer">
               <Icon name="plus" className="text-lg" />
             </button>
           )}
           <button type="button" onClick={() => { if (it.id === 'ai') { toggleAi(); } else { navigate(it.id); } }} className={`flex flex-col items-center justify-center gap-1 flex-1 h-full text-xs cursor-pointer ${active === it.id ? 'text-primary' : 'text-muted'}`}>
-            <Icon name={it.icon} className="text-lg" /> {it.label}
+            <Icon name={it.icon} className="text-lg" /> {translate({ key: `workspaces.nav.${it.id}` })}
           </button>
         </div>
       ))}

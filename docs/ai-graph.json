@@ -3,7 +3,7 @@
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
     "nodes": 457,
-    "edges": 689,
+    "edges": 687,
     "symbols": 867,
     "callEdges": 289
   },
@@ -2737,7 +2737,15 @@
     },
     {
       "from": "workspaces/_components/SearchPalette.tsx",
+      "to": "workspaces/_data/modules.ts"
+    },
+    {
+      "from": "workspaces/_components/SearchPalette.tsx",
       "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/_components/SearchPalette.tsx",
+      "to": "workspaces/_shell/Shell.tsx"
     },
     {
       "from": "workspaces/_components/SearchPalette.tsx",
@@ -2809,19 +2817,7 @@
     },
     {
       "from": "workspaces/_components/SetupWizard.tsx",
-      "to": "workspaces/_components/Icon.tsx"
-    },
-    {
-      "from": "workspaces/_components/SetupWizard.tsx",
-      "to": "workspaces/_components/primitives.tsx"
-    },
-    {
-      "from": "workspaces/_components/SetupWizard.tsx",
-      "to": "workspaces/_functions/useEscapeKey.ts"
-    },
-    {
-      "from": "workspaces/_components/SetupWizard.tsx",
-      "to": "workspaces/_shell/WorkspacesContext.tsx"
+      "to": "workspaces/_components/SetupChecklist.tsx"
     },
     {
       "from": "workspaces/_components/VideoTimelineEditor.tsx",
@@ -3405,6 +3401,10 @@
     },
     {
       "from": "workspaces/content/marketing/page.tsx",
+      "to": "workspaces/content/studio/page.tsx"
+    },
+    {
+      "from": "workspaces/content/marketing/page.tsx",
       "to": "workspaces/content/studio/promptStack.tsx"
     },
     {
@@ -3481,10 +3481,6 @@
     },
     {
       "from": "workspaces/content/settings/AdminTab.tsx",
-      "to": "workspaces/content/settings/SavedNote.tsx"
-    },
-    {
-      "from": "workspaces/content/settings/AdminTab.tsx",
       "to": "workspaces/content/settings/shared.ts"
     },
     {
@@ -3509,15 +3505,15 @@
     },
     {
       "from": "workspaces/content/settings/BrandStylesTab.tsx",
+      "to": "workspaces/_components/settings.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/BrandStylesTab.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
       "from": "workspaces/content/settings/BrandStylesTab.tsx",
       "to": "workspaces/content/settings/portalForms.tsx"
-    },
-    {
-      "from": "workspaces/content/settings/BrandStylesTab.tsx",
-      "to": "workspaces/content/settings/SavedNote.tsx"
     },
     {
       "from": "workspaces/content/settings/BrandStylesTab.tsx",
@@ -4957,10 +4953,6 @@
     },
     {
       "from": "workspaces/workspace/page.tsx",
-      "to": "workspaces/_components/SetupWizard.tsx"
-    },
-    {
-      "from": "workspaces/workspace/page.tsx",
       "to": "workspaces/_data/capabilities.ts"
     },
     {
@@ -5800,6 +5792,7 @@
     "workspaces/_components/Glossary.tsx": [
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
+      "workspaces/_components/SearchPalette.tsx",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Shell.tsx",
       "workspaces/_shell/WorkspacesShell.tsx",
@@ -5920,6 +5913,7 @@
     "workspaces/_components/ModulePicker.tsx": [
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
+      "workspaces/_components/SearchPalette.tsx",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Onboarding.tsx",
       "workspaces/_shell/Shell.tsx",
@@ -6118,6 +6112,7 @@
     "workspaces/_components/settings.tsx": [
       "settings/page.tsx",
       "workspaces/content/settings/AdminTab.tsx",
+      "workspaces/content/settings/BrandStylesTab.tsx",
       "workspaces/content/settings/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/aiProviders.tsx",
@@ -6126,6 +6121,7 @@
     "workspaces/_components/SetupChecklist.tsx": [
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
+      "workspaces/_components/SetupWizard.tsx",
       "workspaces/_shell/WorkspacesShell.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx"
     ],
@@ -6133,6 +6129,7 @@
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
       "workspaces/_components/AutomationPanel.tsx",
+      "workspaces/_components/SearchPalette.tsx",
       "workspaces/_components/VideoTimelineEditor.tsx",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Shell.tsx",
@@ -6141,6 +6138,7 @@
       "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/documents/[docId]/page.tsx",
       "workspaces/content/insights/page.tsx",
+      "workspaces/content/marketing/page.tsx",
       "workspaces/content/page.tsx",
       "workspaces/content/settings/ChannelsTab.tsx",
       "workspaces/content/settings/page.tsx",
@@ -6166,9 +6164,6 @@
       "workspaces/workspace/page.tsx",
       "workspaces/workspace/skillsEditor.tsx"
     ],
-    "workspaces/_components/SetupWizard.tsx": [
-      "workspaces/workspace/page.tsx"
-    ],
     "workspaces/_components/VideoTimelineEditor.tsx": [
       "workspaces/content/[pieceId]/page.tsx"
     ],
@@ -6182,8 +6177,10 @@
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
       "workspaces/_components/AutomationPanel.tsx",
+      "workspaces/_components/SearchPalette.tsx",
       "workspaces/_components/SetupChecklist.tsx",
       "workspaces/_components/SetupNotice.tsx",
+      "workspaces/_components/SetupWizard.tsx",
       "workspaces/_components/VideoTimelineEditor.tsx",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Shell.tsx",
@@ -6192,6 +6189,7 @@
       "workspaces/content/[pieceId]/page.tsx",
       "workspaces/content/documents/[docId]/page.tsx",
       "workspaces/content/insights/page.tsx",
+      "workspaces/content/marketing/page.tsx",
       "workspaces/content/page.tsx",
       "workspaces/content/settings/ChannelsTab.tsx",
       "workspaces/content/settings/page.tsx",
@@ -6234,7 +6232,9 @@
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
       "workspaces/_components/ModulePicker.tsx",
+      "workspaces/_components/SearchPalette.tsx",
       "workspaces/_components/SetupChecklist.tsx",
+      "workspaces/_components/SetupWizard.tsx",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Onboarding.tsx",
       "workspaces/_shell/Shell.tsx",
@@ -6255,6 +6255,7 @@
     "workspaces/_data/nav.ts": [
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
+      "workspaces/_components/SearchPalette.tsx",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Shell.tsx",
       "workspaces/_shell/WorkspacesProvider.tsx",
@@ -6264,6 +6265,7 @@
     "workspaces/_data/packs.ts": [
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
+      "workspaces/_components/SearchPalette.tsx",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Onboarding.tsx",
       "workspaces/_shell/Shell.tsx",
@@ -6535,6 +6537,7 @@
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
       "workspaces/_components/SetupChecklist.tsx",
+      "workspaces/_components/SetupWizard.tsx",
       "workspaces/_shell/WorkspacesShell.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx",
       "workspaces/settings/page.tsx"
@@ -6549,6 +6552,7 @@
       "workspaces/_components/ImageEditor.tsx",
       "workspaces/_components/ImageRegionEditor.tsx",
       "workspaces/_components/MediaUploadButton.tsx",
+      "workspaces/_components/SearchPalette.tsx",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Shell.tsx",
       "workspaces/_shell/WorkspacesShell.tsx",
@@ -6564,10 +6568,8 @@
     "workspaces/_functions/useEscapeKey.ts": [
       "workspaces/_components/ImageEditor.tsx",
       "workspaces/_components/ImageRegionEditor.tsx",
-      "workspaces/_components/SetupWizard.tsx",
       "workspaces/_components/VideoTimelineEditor.tsx",
-      "workspaces/content/[pieceId]/page.tsx",
-      "workspaces/workspace/page.tsx"
+      "workspaces/content/[pieceId]/page.tsx"
     ],
     "workspaces/_shell/MobileChrome.tsx": [
       "_components/templates/TemplateProvider.tsx",
@@ -6584,6 +6586,7 @@
     "workspaces/_shell/Shell.tsx": [
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
+      "workspaces/_components/SearchPalette.tsx",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/WorkspacesShell.tsx",
       "workspaces/_shell/WorkspacesTemplate.tsx"
@@ -6713,11 +6716,6 @@
       "workspaces/content/settings/ChannelsTab.tsx",
       "workspaces/content/settings/page.tsx"
     ],
-    "workspaces/content/settings/SavedNote.tsx": [
-      "workspaces/content/settings/AdminTab.tsx",
-      "workspaces/content/settings/BrandStylesTab.tsx",
-      "workspaces/content/settings/page.tsx"
-    ],
     "workspaces/content/settings/shared.ts": [
       "workspaces/content/settings/AdminTab.tsx",
       "workspaces/content/settings/BrandStylesTab.tsx",
@@ -6754,6 +6752,9 @@
       "workspaces/content/marketing/cards.tsx",
       "workspaces/content/marketing/page.tsx",
       "workspaces/content/studio/page.tsx"
+    ],
+    "workspaces/content/studio/page.tsx": [
+      "workspaces/content/marketing/page.tsx"
     ],
     "workspaces/content/studio/previews.tsx": [
       "workspaces/content/marketing/cards.tsx",
@@ -6957,7 +6958,7 @@
       "id": "workspaces/_components/Icon.tsx",
       "kind": "other",
       "dependents": 92,
-      "directDependents": 79
+      "directDependents": 78
     },
     {
       "id": "workspaces/_components/motion.tsx",
@@ -6993,13 +6994,13 @@
       "id": "workspaces/_components/primitives.tsx",
       "kind": "other",
       "dependents": 82,
-      "directDependents": 78
+      "directDependents": 77
     },
     {
       "id": "workspaces/_shell/WorkspacesContext.tsx",
       "kind": "other",
       "dependents": 72,
-      "directDependents": 63
+      "directDependents": 62
     },
     {
       "id": "_components/ConfirmMenu.tsx",
@@ -7028,25 +7029,25 @@
     {
       "id": "workspaces/_data/capabilities.ts",
       "kind": "other",
-      "dependents": 37,
+      "dependents": 40,
       "directDependents": 4
     },
     {
       "id": "workspaces/_components/SetupNotice.tsx",
       "kind": "other",
-      "dependents": 35,
+      "dependents": 37,
       "directDependents": 24
     },
     {
       "id": "workspaces/_data/modules.ts",
       "kind": "other",
-      "dependents": 20,
-      "directDependents": 14
+      "dependents": 22,
+      "directDependents": 15
     },
     {
       "id": "workspaces/_functions/uploadMedia.ts",
       "kind": "other",
-      "dependents": 16,
+      "dependents": 17,
       "directDependents": 4
     },
     {

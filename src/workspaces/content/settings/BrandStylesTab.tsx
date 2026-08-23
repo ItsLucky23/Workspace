@@ -13,9 +13,9 @@ import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 import Icon from '../../_components/Icon';
 import { MediaUploadButton } from '../../_components/MediaUploadButton';
 import { Disclosure, EmptyState, PopMenu, SectionCard, WsButton } from '../../_components/primitives';
+import { SavePill, useAutosave, type SaveStatus } from '../../_components/settings';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { StyleEditorForm, StyleImportForm, type StyleDraft } from './portalForms';
-import { SavedNote } from './SavedNote';
 import { fieldCls, mediaSrc } from './shared';
 
 //? Q2 — the persistent brand/product context folded into EVERY creative generation. Saved via the
@@ -25,28 +25,27 @@ function BrandContextCard() {
   const { activeWorkspace, saveProductContext, saveBrandLogo } = useWorkspaces();
   const hasSaved = (activeWorkspace.productContext ?? '').trim().length > 0;
   const [value, setValue] = useState(activeWorkspace.productContext ?? '');
-  const [saved, setSaved] = useState(false);
+  const status = useAutosave([value], () => { saveProductContext(value.trim()); }, { resetKey: activeWorkspace.id });
   //? The brand logo the render WATERMARK overlays (the ffmpeg overlay's logo source, not decoration).
-  const [logoSet, setLogoSet] = useState(false);
+  const [logoStatus, setLogoStatus] = useState<SaveStatus>('idle');
   return (
     <SectionCard
       title={translate({ key: hasSaved ? 'workspaces.content.brandContextTitle' : 'workspaces.content.brandEmptyTitle' })}
       desc={translate({ key: hasSaved ? 'workspaces.content.brandContextDesc' : 'workspaces.content.brandEmptySub' })}
     >
       <textarea
-        value={value} onChange={(e) => { setValue(e.target.value); setSaved(false); }} rows={4}
+        value={value} onChange={(e) => { setValue(e.target.value); }} rows={4}
         placeholder={translate({ key: 'workspaces.content.brandContextPlaceholder' })}
         className={`w-full ${fieldCls} resize-none`}
       />
       <div className={`mt-3 flex flex-wrap items-center gap-3`}>
-        <WsButton className={`min-h-11`} onClick={() => { saveProductContext(value.trim()); setSaved(true); }}>{translate({ key: 'workspaces.content.brandContextSave' })}</WsButton>
-        {saved && <SavedNote text={translate({ key: 'workspaces.content.brandContextSaved' })} />}
+        <SavePill status={status} />
       </div>
       <div className={`mt-4 pt-3 border-t border-divider flex flex-wrap items-center justify-between gap-3`}>
         <span className={`text-sm text-common`} title={translate({ key: 'workspaces.content.brandLogoHint' })}>{translate({ key: 'workspaces.content.brandLogoLabel' })}</span>
         <div className={`flex items-center gap-2`}>
-          {logoSet && <SavedNote text={translate({ key: 'workspaces.content.brandLogoSet' })} />}
-          <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*" labelKey="workspaces.content.brandLogoUpload" icon="image" onUploaded={(url) => { saveBrandLogo(url); setLogoSet(true); }} />
+          <SavePill status={logoStatus} />
+          <MediaUploadButton workspaceId={activeWorkspace.id} accept="image/*" labelKey="workspaces.content.brandLogoUpload" icon="image" onUploaded={(url) => { saveBrandLogo(url); setLogoStatus('saved'); }} />
         </div>
       </div>
     </SectionCard>

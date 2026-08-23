@@ -37,7 +37,8 @@ export default function Studio() { return <StudioSurface />; }
 //? #109 — AI-drives-UI: map a copilot prefill (free-form field→value hints) onto the brief-form fields.
 //? Returns null when the prefill carries nothing brief-shaped, so a directive aimed at another page's form
 //? is never swallowed here. Aliases cover the likely model spellings ("product", "brief", "description").
-function briefDraftFromPrefill(prefill: Record<string, string>): BriefDraft | null {
+// eslint-disable-next-line react-refresh/only-export-components -- the marketing route reuses this mapper
+export function briefDraftFromPrefill(prefill: Record<string, string>): BriefDraft | null {
   const pick = (...keys: string[]) => { for (const k of keys) { const v = prefill[k]; if (v !== undefined && v.trim().length > 0) return v.trim(); } return ''; };
   const draft: BriefDraft = {
     name: pick('name'),
@@ -82,8 +83,8 @@ export function StudioSurface() {
   //? form remounts with the values. `seq` keeps repeated directives distinct.
   const [prefillDraft, setPrefillDraft] = useState<{ seq: number; values: BriefDraft } | null>(null);
 
-  //? #109 — AI-drives-UI: a copilot directive that navigated here (or to the marketing variant, which embeds
-  //? this same surface) with brief-shaped hints opens the NEW-brief form prefilled, then consumes the prefill
+  //? #109 — AI-drives-UI: a copilot directive that navigated here with brief-shaped hints opens the
+  //? NEW-brief form prefilled, then consumes the prefill
   //? so it fires exactly once. Non-brief-shaped prefills are left alone (guard: briefDraftFromPrefill → null),
   //? and the user still submits the form themselves — nothing is auto-saved.
   useEffect(() => {
@@ -114,6 +115,7 @@ export function StudioSurface() {
     await generateArtifact(selected.id, kind, trimmedRefine || undefined);
     //? I4 bug fix — record which refine text produced this artifact (Generate AND Regenerate both
     //? land here, sharing the one refine box), so a later card never silently inherits a stale value.
+    setRefine('');
     setBusyKind(null);
   };
 
@@ -324,7 +326,10 @@ export function StudioSurface() {
                             label={translate({ key: 'workspaces.tips.studio.regenerateLabel' })}
                             title={translate({ key: 'workspaces.tips.studio.regenerateTitle' })}
                             body={translate({ key: 'workspaces.tips.studio.regenerateBody' })}
-                            points={[{ id: 'published', label: translate({ key: 'workspaces.tips.studio.regeneratePublished' }), desc: translate({ key: 'workspaces.tips.studio.regeneratePublishedDesc' }) }]}
+                            points={[
+                              { id: 'published', label: translate({ key: 'workspaces.tips.studio.regeneratePublished' }), desc: translate({ key: 'workspaces.tips.studio.regeneratePublishedDesc' }) },
+                              { id: 'refine', label: translate({ key: 'workspaces.tips.studio.regenerateRefineCleared' }), desc: translate({ key: 'workspaces.tips.studio.regenerateRefineClearedDesc' }) },
+                            ]}
                           />
                         </div>
                         {artifacts.length === 0 && !busyKind && (
