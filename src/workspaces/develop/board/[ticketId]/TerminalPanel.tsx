@@ -25,7 +25,7 @@ import { useWorkspaces } from '../../../_shell/WorkspacesContext';
 const WORKDIR_LABEL = '· /work';
 const tabCls = (on: boolean): string => `rounded-md px-2 py-0.5 text-xs font-mono cursor-pointer transition-colors ${on ? 'bg-white/10 text-terminal-text' : 'text-terminal-muted hover:text-terminal-text'}`;
 
-export default function TerminalPanel({ ticketId }: { ticketId: string }) {
+export default function TicketTerminalPanel({ ticketId }: { ticketId: string }) {
   const translate = useTranslator();
   const ctx = useWorkspaces();
   const workspaceId = ctx.activeWorkspace.id;

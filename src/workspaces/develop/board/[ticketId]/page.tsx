@@ -13,7 +13,7 @@ import { menuHandler } from 'src/_functions/menuHandler';
 
 import ActivityPanel from './ActivityPanel';
 import CodePanel from './CodePanel';
-import TerminalPanel from './TerminalPanel';
+import TicketTerminalPanel from './TerminalPanel';
 import TimeTravelForm, { type TravelSpec } from './TimeTravelForm';
 import MrReviewPanel from '../../../_components/MrReviewPanel';
 import Icon from '../../../_components/Icon';
@@ -103,7 +103,7 @@ export default function TicketPage({ params }: { params: Record<string, string |
         <div className={`mx-auto w-full ${wide ? 'max-w-5xl' : 'max-w-3xl'}`}>
           {tab === 'overview' && <OverviewTab ticket={ticket} stage={stage?.name} />}
           {tab === 'code' && <CodePanel ticket={ticket} workspaceId={ctx.activeWorkspace.id} initialMode={codePreview?.mode} initialFile={codePreview?.file} />}
-          {tab === 'terminal' && <TerminalPanel ticketId={ticket.id} />}
+          {tab === 'terminal' && <TicketTerminalPanel ticketId={ticket.id} />}
           {tab === 'review' && <MrReviewPanel ticket={ticket} onPreviewFile={(path, mode) => { setCodePreview({ mode, file: path }); setTab('code'); }} />}
           {tab === 'activity' && <ActivityPanel ticket={ticket} />}
         </div>
