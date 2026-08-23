@@ -1,5 +1,7 @@
 # Workspaces — Build Program (gefaseerd, ultracode-uitvoerbaar)
 
+> **HISTORISCH (verplaatst uit `workspaces-handoff/` op 2026-08-23).** Het bouwprogramma is volledig uitgevoerd; de `build-plans/`-links hieronder verwijzen naar de verwijderde handoff-map. Actuele status: `branch-logs/main.md` + de `*_PROGRAM.md`-docs in deze map.
+
 > Dit is het **uitvoerbare bouwprogramma** voor Workspaces. Het vertaalt de design-corpus (`src/workspaces/_docs/`) + de tool-bouwplannen (`build-plans/`) naar fases en stappen die een AI met **ultracode** kan uitvoeren. Status + voortgang staan in **[`BUILD_LOG.md`](./BUILD_LOG.md)** — lees dat eerst als je verdergaat.
 >
 > **Bouwdoel:** een **verse repo** die `@luckystack/*` installeert (zie `src/workspaces/_docs/PORT_MANIFEST.md` + `MIGRATION.md`). Dit is GEEN bouw binnen de framework-monorepo.

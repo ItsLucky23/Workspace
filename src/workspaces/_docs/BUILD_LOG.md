@@ -1,5 +1,7 @@
 # Workspaces — Build Log
 
+> **HISTORISCH (verplaatst uit `workspaces-handoff/` op 2026-08-23; laatste echte update 2026-07-01).** Niet meer bijgehouden — de levende voortgang staat in `branch-logs/main.md`.
+
 > **Lees dit eerst bij verdergaan.** Dit is de levende voortgangsstatus van het bouwprogramma ([`BUILD_PROGRAM.md`](./BUILD_PROGRAM.md)). De uitvoerende AI **leest** de "Volgende actie", doet die stap volgens het uitvoeringsmodel, en **werkt daarna dit bestand bij** (vink af, verzet de pointer, append een logregel).
 
 **Laatst bijgewerkt:** 2026-07-01 (Fase 1: backend + read/write-path END-TO-END getest tegen echte Mongo via echte HTTP — seed/snapshot/control-API bewezen)
