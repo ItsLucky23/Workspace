@@ -18,9 +18,10 @@ import { isSectionEnabled } from '../../_data/modules';
 import type { StudioArtifact, StudioArtifactKind, StudioBrief } from '../../_data/types';
 import { BrandDiffList } from '../studio/BrandDiffList';
 import { buildBrandDiff } from '../studio/brandDiff';
+import { briefDraftFromPrefill } from '../studio/page';
 import { ContentPromptPreview } from '../studio/promptStack';
 import { BrandPanel } from '../studio/BrandPanel';
-import { BriefForm } from '../studio/BriefForm';
+import { BriefForm, type BriefDraft } from '../studio/BriefForm';
 import { KIND_ICONS, MARKETER_KINDS } from '../studio/kinds';
 import { ArtifactCard } from './cards';
 
@@ -32,7 +33,7 @@ type View = 'main' | 'brand' | 'form';
 
 export default function Marketing() {
   const translate = useTranslator();
-  const { studioBriefs, studioArtifacts, studioBrand, generateArtifact, deleteBrief, deleteArtifact, promoteBrand, runContentOp, activeWorkspace, focusSetup } = useWorkspaces();
+  const { studioBriefs, studioArtifacts, studioBrand, generateArtifact, deleteBrief, deleteArtifact, promoteBrand, runContentOp, activeWorkspace, focusSetup, copilotPrefill, consumeCopilotPrefill } = useWorkspaces();
   //? Send-to-Content: only offered when the content lane is enabled for this workspace.
   const contentOn = isSectionEnabled(activeWorkspace.enabledSections, 'content');
 
@@ -41,8 +42,21 @@ export default function Marketing() {
   //? The brief being edited (null = create). Explicit state — NOT derived from the selection — so the
   //? auto-select effect below can never flip a create form into an edit form mid-flight.
   const [formTarget, setFormTarget] = useState<StudioBrief | null>(null);
+  const [prefillDraft, setPrefillDraft] = useState<{ seq: number; values: BriefDraft } | null>(null);
   const [busyKind, setBusyKind] = useState<StudioArtifactKind | null>(null);
   const [refine, setRefine] = useState('');   //? I4 — an optional refine instruction applied to (re)generation.
+
+  //? #109 — marketing has its own layout, so it must consume brief-shaped copilot prefills here rather
+  //? than relying on Studio's separate route to do it.
+  useEffect(() => {
+    if (!copilotPrefill) return;
+    const values = briefDraftFromPrefill(copilotPrefill);
+    if (!values) return;
+    setPrefillDraft((p) => ({ seq: (p?.seq ?? 0) + 1, values }));
+    setFormTarget(null);
+    setView('form');
+    consumeCopilotPrefill();
+  }, [copilotPrefill, consumeCopilotPrefill]);
 
   //? Auto-selection: the first brief auto-selects, and a deleted selected brief falls back to
   //? studioBriefs[0] — the main area never goes blank.
@@ -144,10 +158,11 @@ export default function Marketing() {
       {view === 'form' && (
         <div className={`p-5 md:p-6 max-w-2xl`}>
           <BriefForm compact
-            key={formTarget?.id ?? 'new'}
+            key={formTarget?.id ?? (prefillDraft ? `prefill-${String(prefillDraft.seq)}` : 'new')}
             brief={formTarget}
-            onSaved={() => { if (!formTarget) setSelectedId(null); setView('main'); }}
-            onCancel={studioBriefs.length > 0 ? backToMain : undefined}
+            {...(!formTarget && prefillDraft ? { initial: prefillDraft.values } : {})}
+            onSaved={() => { if (!formTarget) setSelectedId(null); setPrefillDraft(null); setView('main'); }}
+            onCancel={studioBriefs.length > 0 ? () => { setPrefillDraft(null); backToMain(); } : undefined}
           />
         </div>
       )}
