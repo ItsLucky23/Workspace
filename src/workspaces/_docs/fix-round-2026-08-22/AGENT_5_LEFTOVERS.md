@@ -80,12 +80,12 @@ Workspaces is a self-hosted AI dev-orchestration + content platform on the Lucky
   - **Now:** Brand over three stores/pages: do NOT add a fourth copy. Implement the fixHint's single-owner direction; if it needs a server prompt-precedence change, do it (you own server/ too) but keep it minimal and tested.
   - **Result:** _(fill in: fixed <commit> / already-fixed / invalid: <reason>)_
 
-- [ ] **F-084** · LOW · `duplicate` — listPats is a dead duplicate read: the settings API-tokens panel now gets PATs preloaded in the snapshot (snap.pats), and nothing calls the route anymore.
+- [x] **F-084** · LOW · `duplicate` — listPats is a dead duplicate read: the settings API-tokens panel now gets PATs preloaded in the snapshot (snap.pats), and nothing calls the route anymore.
   - **Where (audit baseline 55ff5b7 — code has moved, re-locate):** `src/workspaces/_api/listPats_v1.ts:1`
   - **Evidence:** server/read/workspaceSnapshot.ts:256 comment: 'Was a mount-time GET (workspaces/listPats) on every settings visit' — the X3 preload replaced it. grep for client callers of 'workspaces/listPats' = 0 (issuePat and revokePat still have callers).
   - **Original fix hint:** Delete listPats_v1.ts + listPats_v1.tests.ts and regenerate the API maps, or keep it deliberately as the post-issue refresh read and actually call it after issuePat instead of the full snapshot refetch.
   - **Now:** OWNER DECISION TAKEN: delete the dead `listPats` route + its test + any client caller remnants (the snapshot path is authoritative). Run `npm run generateArtifacts` after removing the route.
-  - **Result:** _(fill in: fixed <commit> / already-fixed / invalid: <reason>)_
+  - **Result:** fixed — deleted the unused route and per-route test; regenerated API artifacts; the snapshot preload remains the sole PAT read path.
 
 - [ ] **F-085** · LOW · `missing-ui` — The generateDocs route (AI-author a project-summary context doc from the linked repo) is reachable from no UI — its own header says 'the trigger button + live surfacing are a later UI slice' that never came, so users can only get generated docs via the scanDocs path.
   - **Where (audit baseline 55ff5b7 — code has moved, re-locate):** `src/workspaces/_api/generateDocs_v1.ts:4`

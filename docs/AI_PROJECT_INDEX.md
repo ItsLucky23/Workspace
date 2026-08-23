@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (67)
+## API routes (66)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -45,7 +45,6 @@
 | `api/workspaces/getDockerfile/v1` | POST | login | 30 | — | yes | — | Workspaces — [get-dockerfile] register-flow C: read the persisted draft |
 | `api/workspaces/issuePat/v1` | POST | login | 10 | — | yes | — | X3 — issue a Personal Access Token for the public API. Membership-gated (the caller must be a member of the |
 | `api/workspaces/knowledgeGraph/v1` | POST | login | 12 | — | yes | — | Workspaces — [knowledge-graph] (N1) the Obsidian-view data: the workspace knowledge as nodes (sources / |
-| `api/workspaces/listPats/v1` | POST | login | 30 | — | yes | — | X3 — list the caller's Personal Access Tokens for a workspace (prefix + name + scopes; NEVER the raw token |
 | `api/workspaces/markRead/v1` | POST | login | 30 | — | yes | — | Workspaces — [mark-read] typed per-action write route (Fase-0 split). Marks one |
 | `api/workspaces/openEditor/v1` | POST | login | 12 | — | yes | — | Workspaces — [open-editor] open the real per-ticket VS Code (openvscode-server in the |
 | `api/workspaces/openPreview/v1` | POST | login | 12 | — | yes | — | Workspaces — [open-preview] start the ticket's app dev-server in its container + expose it at |
@@ -162,9 +161,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 30 |
-| _(unowned)_ | 108 |
+| _(unowned)_ | 107 |
 
-**Test coverage**: 136/138 routes have a per-route `.tests.ts`.
+**Test coverage**: 135/137 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 
