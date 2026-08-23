@@ -17,12 +17,12 @@ Workspaces is a self-hosted AI dev-orchestration + content platform on the Lucky
 
 ## Items (suggested order: verifications first, then dedups, then the server-side ones)
 
-- [ ] **F-045** · MEDIUM · `not-persisted` — The Interviewer conversation vanishes on every navigation/reload even though the server durably records every turn — and those recorded turns instead resurface inside the shell AI-panel's chat, interleaving interviewer Q&A into the assistant conversation.
+- [x] **F-045** · MEDIUM · `not-persisted` — The Interviewer conversation vanishes on every navigation/reload even though the server durably records every turn — and those recorded turns instead resurface inside the shell AI-panel's chat, interleaving interviewer Q&A into the assistant conversation.
   - **Where (audit baseline 55ff5b7 — code has moved, re-locate):** `src/workspaces/develop/interviewer/page.tsx:56`
   - **Evidence:** messages is plain useState (page.tsx:56), never hydrated. aiChat_v1.ts:45-55 enqueues op 'chat-turn-record' for every turn ('#111 — persist the turn so the chat survives reload / is cross-device'). The only reader of that log is the shell chat: WorkspacesProvider.tsx:1247-1251 hydrates setChat from snap.chat. So interviewer turns are write-only for this page and leak into the AI panel's history (both surfaces share one per-workspace chat log).
   - **Original fix hint:** Either hydrate the Interviewer's messages from the same persisted snap.chat the provider exposes (filtering or tagging interviewer turns, e.g. a source field on chat-turn-record), or stop persisting interviewer turns into the shared assistant log; pick one owner for the persisted chat log.
   - **Now:** Needs API/Conductor/snapshot files — you own them now. Agent 1 already added conversation history to the chat call; this item is about PERSISTING the interviewer conversation server-side so it survives navigation/reload.
-  - **Result:** _(fill in: fixed <commit> / already-fixed / invalid: <reason>)_
+  - **Result:** fixed — `aiChat` now tags interviewer turns in the existing persisted table, the snapshot exposes that source, the provider separates Assistant and Interviewer histories, and the Interviewer hydrates from its persisted turns without leaking them into the shell AI panel.
 
 - [x] **F-037** · MEDIUM · `not-persisted` — Dismissing an AI suggestion (the 'Dismiss' button in the Shell AI panel and on the usage page's root-cause card) only hides it in this browser session — it reappears after every reload and stays visible for every other member.
   - **Where (audit baseline 55ff5b7 — code has moved, re-locate):** `src/workspaces/_shell/WorkspacesProvider.tsx:1506`

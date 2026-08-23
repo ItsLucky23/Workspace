@@ -922,6 +922,8 @@ export interface ChatMessage {
   id: string;
   role: 'user' | 'ai';
   text: string;
+  //? Assistant and Interviewer share the persisted table but render in separate surfaces.
+  source?: 'assistant' | 'interviewer';
   questionSetId?: string; // renders a QuestionSet card inline in the Assistant chat (ERRATA E4)
   proposal?: ChatProposal; // an AI action proposal rendered with an Accept button
   plan?: ChatPlan;         // O-A — a multi-step intake plan rendered with an Approve-plan button

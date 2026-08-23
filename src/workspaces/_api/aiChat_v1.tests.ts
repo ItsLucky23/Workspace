@@ -50,6 +50,22 @@ export const customTests: CustomTestCase[] = [
     },
   },
   {
+    name: 'interviewer surface persists turns separately from the Assistant surface',
+    run: async (ctx: TestContext) => {
+      const { userId, workspaceId } = await loginSeededUser(ctx, 'aichat_interviewer');
+      try {
+        const message = 'how is the repository structured?';
+        const res = await ctx.callApi<{ workspaceId: string; message: string; surface: 'interviewer' }, AiChatResponse>({ workspaceId, message, surface: 'interviewer' });
+        ctx.expect.eq(res.status, 'success', 'interviewer aiChat returns status "success" on the pre-AI early return');
+        const messages = await ctx.prisma.workspaceChatMessage.findMany({ where: { workspaceId, userId } });
+        ctx.expect.eq(messages.length, 2, 'the interviewer turn is persisted as exactly two rows');
+        ctx.expect.ok(messages.every((row) => row.role === 'interviewer-user' || row.role === 'interviewer-ai'), 'interviewer rows carry the isolated source prefix');
+      } finally {
+        await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
+      }
+    },
+  },
+  {
     name: 'a caller who is not a member of the target workspace is rejected with auth.forbidden',
     run: async (ctx: TestContext) => {
       const { userId, workspaceId } = await loginSeededUser(ctx, 'aichat_c2');

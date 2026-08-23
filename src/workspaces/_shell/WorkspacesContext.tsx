@@ -73,6 +73,7 @@ export interface WorkspacesCtx {
   aiOpen: boolean;
   toggleAi: () => void;
   chat: ChatMessage[];
+  interviewerChat: ChatMessage[];
   sendChat: (text: string) => void;
   //? #109 — AI-drives-UI: apply a copilot directive (navigate + drop form pre-fill); the target page consumes it.
   applyCopilot: (directive: CopilotDirective) => void;

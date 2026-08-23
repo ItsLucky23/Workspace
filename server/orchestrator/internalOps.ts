@@ -136,7 +136,7 @@ export interface WorktreeFileSaveInternalAction extends InternalActionBase {
 export interface ChatTurnRecordInternalAction extends InternalActionBase {
   op: 'chat-turn-record';
   target: { userMessageId: string; aiMessageId: string };
-  payload: { userText: string; aiText: string };
+  payload: { userText: string; aiText: string; surface?: 'assistant' | 'interviewer' };
 }
 
 export interface DesignLibraryWriteInternalAction extends InternalActionBase {
@@ -738,6 +738,7 @@ export function assertValidInternalAction(action: unknown): asserts action is In
     if (!/^[a-f\d]{24}$/i.test(action.target.userMessageId) || !/^[a-f\d]{24}$/i.test(action.target.aiMessageId)) throw new Error('[internal-op] invalid chat message id');
     assertRequiredString('payload.userText', action.payload.userText, 64_000);
     assertString('payload.aiText', action.payload.aiText, 64_000);
+    if (action.payload.surface !== undefined && action.payload.surface !== 'assistant' && action.payload.surface !== 'interviewer') throw new Error('[internal-op] invalid chat surface');
     return;
   }
   if (action.op === 'design-library-write') {

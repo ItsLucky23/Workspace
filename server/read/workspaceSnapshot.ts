@@ -832,7 +832,12 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       gitConfig,
       workspacePaused,
       //? #111 — reverse the newest-first read window to chronological for the chat pane.
-      chat: chatRows.toReversed().map((c): ChatMessage => ({ id: c.id, role: c.role === 'user' ? 'user' : 'ai', text: c.text })),
+      chat: chatRows.toReversed().map((c): ChatMessage => ({
+        id: c.id,
+        role: c.role === 'user' || c.role === 'interviewer-user' ? 'user' : 'ai',
+        text: c.text,
+        ...(c.role === 'interviewer-user' || c.role === 'interviewer-ai' ? { source: 'interviewer' } : {}),
+      })),
       //? #76 — the caller's persisted SSH keys (account-global).
       sshKeys: sshKeyRows.map((k): SshKeyEntry => ({ id: k.id, name: k.name, type: k.type, fingerprint: k.fingerprint, added: formatTime(k.createdAt), lastUsed: k.lastUsedAt ? formatTime(k.lastUsedAt) : '—', userId: k.userId })),
       myInvites,

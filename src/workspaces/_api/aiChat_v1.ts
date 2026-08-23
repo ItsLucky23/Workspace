@@ -20,7 +20,7 @@ export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
 export interface ApiParams {
-  data: { workspaceId: string; message: string; projectId?: string; history?: { role: string; text: string }[]; clientRequestId?: string };
+  data: { workspaceId: string; message: string; projectId?: string; history?: { role: string; text: string }[]; surface?: 'assistant' | 'interviewer'; clientRequestId?: string };
   user: SessionLayout;
   functions: Functions;
 }
@@ -29,6 +29,7 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
   const workspaceId = data.workspaceId;
   const message = data.message.trim();
   if (!workspaceId || message.length === 0) return { status: 'error', errorCode: 'api.invalidRequest' };
+  const surface = data.surface === 'interviewer' ? 'interviewer' : 'assistant';
   //? Membership gate — the AI must never expose one workspace's state to a non-member.
   const member = await functions.db.prisma.workspaceMember.findFirst({ where: { workspaceId, userId: user.id }, select: { id: true } });
   if (!member) return { status: 'error', errorCode: 'auth.forbidden' };
@@ -49,7 +50,7 @@ export const main = async ({ data, user, functions }: ApiParams): Promise<ApiRes
       userMessageId: deterministicObjectId(workspaceId, `${user.id}:${clientRequestId}`, 'chat-user'),
       aiMessageId: deterministicObjectId(workspaceId, `${user.id}:${clientRequestId}`, 'chat-ai'),
     },
-    payload: { userText: message, aiText: result.reply },
+    payload: { userText: message, aiText: result.reply, surface },
     userId: user.id,
     clientRequestId: `chat-turn:${clientRequestId}`,
   });

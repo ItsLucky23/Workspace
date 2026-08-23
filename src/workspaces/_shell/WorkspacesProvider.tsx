@@ -1271,6 +1271,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   const [navStack, setNavStack] = useState<WsView[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
   const [chat, setChat] = useState<ChatMessage[]>([]);
+  const interviewerChat = useMemo(() => snap.chat.filter((message) => message.source === 'interviewer'), [snap.chat]);
   //? #111 — hydrate the chat pane from the persisted per-user history on workspace switch
   //? (and initial load). The ref holds the latest snapshot chat so that board-write refetches
   //? don't clobber in-session turns (proposals/plans aren't persisted server-side); only an
@@ -1278,7 +1279,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   const snapChatRef = useRef<ChatMessage[]>(snap.chat);
   snapChatRef.current = snap.chat;
   useEffect(() => {
-    const persisted = snapChatRef.current;
+    const persisted = snapChatRef.current.filter((message) => message.source !== 'interviewer');
     setChat(persisted.length > 0 ? persisted : welcomeChat);
   }, [snap.activeWorkspaceId, welcomeChat]);
   const [stageOverrides, setStageOverrides] = useState<Record<string, string>>({});
@@ -1575,6 +1576,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       aiOpen,
       toggleAi: () => { setAiOpen((o) => !o); },
       chat,
+      interviewerChat,
       sendChat,
       //? #109 — apply an AI-drives-UI copilot directive: drop the prefill for the target page, then navigate there.
       applyCopilot: (d) => { setCopilotPrefill(d.prefill ?? null); void navigate(pathForView(d.navigate)); },
@@ -2078,7 +2080,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       activityEvents: snap.events,
       ticketNotes: snap.notes,
     };
-  }, [view, location.pathname, navStack, recent, openTabs, isMobile, theme, setTheme, offline, queuedWrites, retryQueuedWrites, parkWrite, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, wantWorkspaceId, currentProjectScope, afterWrite, quickAddApi, sprintCreateApi, editSprintApi, createProjectApi, createFromTemplateApi, applyDesignTokensApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, disconnectForgeApi, deployEnvApi, teardownEnvApi, rollbackEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, viewCounts, agentTerm, copilotPrefill, trail, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut, pendingAnswers]);
+  }, [view, location.pathname, navStack, recent, openTabs, isMobile, theme, setTheme, offline, queuedWrites, retryQueuedWrites, parkWrite, activeSuggestions, navigate, currentUser, sshKeys, sshUserId, addSshKey, removeSshKey, aiOpen, chat, interviewerChat, sendChat, acceptChatProposal, acceptChatPlan, rejectChatProposal, snap, wantWorkspaceId, currentProjectScope, afterWrite, quickAddApi, sprintCreateApi, editSprintApi, createProjectApi, createFromTemplateApi, applyDesignTokensApi, createServiceApi, deleteServiceApi, provisionServiceStackApi, teardownServiceStackApi, dbConnectApi, dbMigrateCreateApi, dbMigrateApplyApi, dbIntrospectApi, connectForgeApi, disconnectForgeApi, deployEnvApi, teardownEnvApi, rollbackEnvApi, promoteEnvApi, exportBuildApi, scanIndexApi, ragIndex, mrActionApi, mrByBranch, presence, viewCounts, agentTerm, copilotPrefill, trail, setTicketPresence, claimTicketApi, membersById, stageOverrides, loading, refetch, signOut, pendingAnswers]);
 
   return <WorkspacesContextProvider value={ctx}>{children}</WorkspacesContextProvider>;
 }

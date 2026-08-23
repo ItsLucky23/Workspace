@@ -53,8 +53,11 @@ const STARTERS: { icon: IconName; key: string }[] = [
 
 export default function Interviewer() {
   const translate = useTranslator();
-  const { activeWorkspace, activeProject, interviewFindings, makeTicketFromFinding, dismissFinding, runAgentRole, openTicket, navigate } = useWorkspaces();
-  const [messages, setMessages] = useState<Msg[]>([]);
+  const { activeWorkspace, activeProject, interviewerChat, interviewFindings, makeTicketFromFinding, dismissFinding, runAgentRole, openTicket, navigate } = useWorkspaces();
+  const [messages, setMessages] = useState<Msg[]>(() => interviewerChat.map((message) => ({ id: message.id, role: message.role, text: message.text })));
+  useEffect(() => {
+    if (interviewerChat.length > 0) setMessages(interviewerChat.map((message) => ({ id: message.id, role: message.role, text: message.text })));
+  }, [interviewerChat]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   //? Secondary surface: 'findings' swaps the middle area for the persisted findings list (header pill).
@@ -80,7 +83,7 @@ export default function Interviewer() {
     setDraft('');
     setBusy(true);
     void (async () => {
-      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/aiChat', version: 'v1', data: { workspaceId, message: trimmed, ...(activeProject ? { projectId: activeProject.id } : {}), ...(history.length > 0 ? { history } : {}), clientRequestId: globalThis.crypto.randomUUID() } }));
+      const [error, res] = await tryCatch(() => apiRequest({ name: 'workspaces/aiChat', version: 'v1', data: { workspaceId, message: trimmed, surface: 'interviewer', ...(activeProject ? { projectId: activeProject.id } : {}), ...(history.length > 0 ? { history } : {}), clientRequestId: globalThis.crypto.randomUUID() } }));
       setMessages((prev) => prev.map((m) => {
         if (m.id !== aiId) return m;
         if (error || res?.status !== 'success' || res.result.error) return { ...m, pending: false, text: translate({ key: 'workspaces.interviewer.error' }) };

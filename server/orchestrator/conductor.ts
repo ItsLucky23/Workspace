@@ -1453,9 +1453,10 @@ async function executeAction(action: WriterAction): Promise<unknown> {
     return cas.applied ? (cas.result ?? { ok: true }) : { ok: false, error: 'write.superseded' };
   }
   if (action.op === 'chat-turn-record') {
+    const rolePrefix = action.payload.surface === 'interviewer' ? 'interviewer-' : '';
     const identities = [
-      { id: action.target.userMessageId, role: 'user', text: action.payload.userText },
-      { id: action.target.aiMessageId, role: 'ai', text: action.payload.aiText },
+      { id: action.target.userMessageId, role: `${rolePrefix}user`, text: action.payload.userText },
+      { id: action.target.aiMessageId, role: `${rolePrefix}ai`, text: action.payload.aiText },
     ];
     const existing = await prisma.workspaceChatMessage.findMany({ where: { id: { in: identities.map((entry) => entry.id) } } });
     for (const row of existing) {

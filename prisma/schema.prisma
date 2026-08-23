@@ -1442,7 +1442,7 @@ model WorkspaceChatMessage {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   workspaceId String   @db.ObjectId
   userId      String   @db.ObjectId               // whose chat (per-user Assistant scope)
-  role        String                              // 'user' | 'ai'
+  role        String                              // 'user' | 'ai' for Assistant; 'interviewer-user' | 'interviewer-ai' for Interviewer
   text        String
   createdAt   DateTime @default(now())
 
