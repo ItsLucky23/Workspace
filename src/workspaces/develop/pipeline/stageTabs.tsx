@@ -16,7 +16,7 @@ import { Collapse } from '../../_components/motion';
 import { Disclosure, IconButton, InfoDot, InfoTip, Segmented, Toggle, WsButton } from '../../_components/primitives';
 import { EmptyPicker } from '../../_components/SetupNotice';
 import { resolveAiLayers } from '../../_functions/aiLayers';
-import { COMMAND_CATALOG, HOOK_CATALOG, NETWORK_CATEGORIES } from '../../_data/seed';
+import { COMMAND_CATALOG, HOOK_CATALOG, NETWORK_CATEGORIES } from '../../_data/catalogs';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { StageBlueprint } from './presets';
 import type { CommandMode, NetworkMode, PipelineStageCfg, StageEffort, StageModelChoice, StageModelTier, ToolTier } from '../../_data/types';
@@ -87,8 +87,6 @@ function FieldLabel({ title, hint, note, info }: { title: string; hint?: string;
 export function GeneralTab({ s, update, bp }: TabProps) {
   const translate = useTranslator();
   const { activeWorkspace, aiSkills } = useWorkspaces();
-  const [addingStatus, setAddingStatus] = useState(false);
-  const [newStatus, setNewStatus] = useState('');
   //? ADR 0308 — all five layers resolved for THIS stage, so the preview below shows the real
   //? composed prompt (workspace + skills + this stage's three fields) rather than the stage half.
   const layers = resolveAiLayers({ workspace: activeWorkspace, skills: aiSkills, stage: s });
@@ -125,22 +123,12 @@ export function GeneralTab({ s, update, bp }: TabProps) {
       <div>
         <FieldLabel title={translate({ key: 'workspaces.pipeline.statuses' })} hint={translate({ key: 'workspaces.pipeline.statusesHint' })} />
         <div className="flex flex-wrap items-center gap-2">
-          {s.statuses.map((st) => (
-            <span key={st.key} className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${st.kind === 'base' ? 'bg-container2 text-common' : 'bg-primary/12 text-primary'}`}>
+          {s.statuses.filter((st) => st.kind === 'base').map((st) => (
+            <span key={st.key} className="inline-flex items-center gap-1.5 rounded-full bg-container2 px-2.5 py-1 text-xs font-medium text-common">
               {st.label}
-              {st.kind === 'custom' && <button type="button" onClick={() => { update({ statuses: s.statuses.filter((x) => x.key !== st.key) }); }} aria-label={translate({ key: 'workspaces.pipeline.removeStatus', params: [{ key: 'name', value: st.label }] })} className="cursor-pointer hover:text-wrong"><Icon name="xmark" className="text-[10px]" /></button>}
             </span>
           ))}
         </div>
-        {/* KISS — the add-status input stays collapsed until asked for (same pattern as AddCommandForm). */}
-        {!addingStatus && <div className="mt-2"><WsButton variant="secondary" icon="plus" onClick={() => { setAddingStatus(true); }}>{translate({ key: 'workspaces.pipeline.addStatus' })}</WsButton></div>}
-        <Collapse open={addingStatus}>
-          <div className="flex items-center gap-2 mt-2">
-            <input value={newStatus} onChange={(e) => { setNewStatus(e.target.value); }} placeholder={translate({ key: 'workspaces.pipeline.addStatusPlaceholder' })} className={inputCls} />
-            <WsButton variant="secondary" onClick={() => { const l = newStatus.trim(); if (!l) return; update({ statuses: [...s.statuses, { key: l.toLowerCase().replaceAll(/\s+/g, '-'), label: l, kind: 'custom' }] }); setNewStatus(''); setAddingStatus(false); }}>{translate({ key: 'workspaces.pipeline.add' })}</WsButton>
-            <WsButton variant="ghost" onClick={() => { setNewStatus(''); setAddingStatus(false); }}>{translate({ key: 'workspaces.pipeline.cancel' })}</WsButton>
-          </div>
-        </Collapse>
       </div>
 
       {/* The full composed text, at the BOTTOM and collapsed. It used to sit on top of the very fields
@@ -352,7 +340,7 @@ export function CommandsTab({ s, update }: TabProps) {
   const catalogPatterns = useMemo(() => new Set(COMMAND_CATALOG.flatMap((g) => g.commands.map((c) => c.pattern))), []);
   const custom = s.commands.filter((c) => !catalogPatterns.has(c.pattern));
   const customCats = [...new Set(custom.map((c) => c.category ?? 'Custom'))];
-  const formCategories = [...new Set([...COMMAND_CATALOG.map((g) => g.category), ...customCats])];
+  const formCategories = [...new Set([...COMMAND_CATALOG.map((g) => translate({ key: g.categoryKey })), ...customCats])];
   const modeOf = (pattern: string) => s.commands.find((c) => c.pattern === pattern)?.mode ?? null;
   const setMode = (pattern: string, mode: CommandMode | null) => {
     if (mode === null) { update({ commands: s.commands.filter((c) => c.pattern !== pattern) }); return; }
@@ -372,10 +360,10 @@ export function CommandsTab({ s, update }: TabProps) {
         info={<InfoTip align="start" title={translate({ key: 'workspaces.tips.pipeline.commandsBaselineTitle' })} body={translate({ key: 'workspaces.tips.pipeline.commandsBaselineBody' })} />}
       />
       {COMMAND_CATALOG.map((group) => (
-        <div key={group.category}>
-          <div className="text-xs font-medium uppercase tracking-wide text-muted mb-2">{group.category}</div>
+        <div key={group.categoryKey}>
+          <div className="text-xs font-medium uppercase tracking-wide text-muted mb-2">{translate({ key: group.categoryKey })}</div>
           <div className="flex flex-col gap-1.5">
-            {group.commands.map((c) => <CommandRow key={c.pattern} title={c.label} pattern={c.pattern} desc={c.desc} mode={modeOf(c.pattern)} onMode={(m) => { setMode(c.pattern, m); }} />)}
+            {group.commands.map((c) => <CommandRow key={c.pattern} title={translate({ key: c.labelKey })} pattern={c.pattern} desc={translate({ key: c.descKey })} mode={modeOf(c.pattern)} onMode={(m) => { setMode(c.pattern, m); }} />)}
           </div>
         </div>
       ))}
@@ -684,7 +672,7 @@ export function NetworkTab({ s, update }: TabProps) {
               {NETWORK_CATEGORIES.map((c) => (
                 <button key={c.key} type="button" onClick={() => { toggleCat(c.key); }} className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-left cursor-pointer transition-colors ${n.categories.includes(c.key) ? 'border-primary/40 bg-primary/5' : 'border-container1-border hover:bg-container2/40'}`}>
                   <Icon name={n.categories.includes(c.key) ? 'circle-check' : 'plus'} className={`text-xs shrink-0 ${n.categories.includes(c.key) ? 'text-primary' : 'text-muted'}`} />
-                  <div className="min-w-0 flex-1"><div className="text-sm text-title">{c.label}</div><div className="text-xs text-muted truncate">{c.desc}</div></div>
+                  <div className="min-w-0 flex-1"><div className="text-sm text-title">{translate({ key: c.labelKey })}</div><div className="text-xs text-muted truncate">{translate({ key: c.descKey })}</div></div>
                 </button>
               ))}
             </div>
@@ -712,23 +700,23 @@ export function NetworkTab({ s, update }: TabProps) {
 /* ----------------------------------------------------------------- Hooks */
 export function HooksTab({ s, update }: TabProps) {
   const translate = useTranslator();
-  const categories = [...new Set(HOOK_CATALOG.map((h) => h.category))];
+  const categories = [...new Set(HOOK_CATALOG.map((h) => h.categoryKey))];
   return (
     <div className="flex flex-col gap-5 max-w-3xl">
       <FieldLabel title={translate({ key: 'workspaces.pipeline.lifecycleHooks' })} hint={translate({ key: 'workspaces.pipeline.lifecycleHooksHint' })} />
       {categories.map((cat) => (
         <div key={cat}>
-          <div className="text-xs font-medium uppercase tracking-wide text-muted mb-2">{cat}</div>
+          <div className="text-xs font-medium uppercase tracking-wide text-muted mb-2">{translate({ key: cat })}</div>
           <div className="flex flex-col gap-1.5">
-            {HOOK_CATALOG.filter((h) => h.category === cat).map((h) => (
+            {HOOK_CATALOG.filter((h) => h.categoryKey === cat).map((h) => (
               <div key={h.key} className="flex items-start gap-3 rounded-xl border border-container1-border px-3 py-2.5">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-mono text-title">{h.label}</span>
+                    <span className="text-sm font-mono text-title">{translate({ key: h.labelKey })}</span>
                     <span className="rounded-md bg-container2 px-1.5 py-0.5 text-[10px] font-mono text-muted">{h.matcher}</span>
                   </div>
-                  <div className="text-xs text-muted mt-0.5">{h.desc}</div>
-                  <div className="text-[11px] text-primary mt-0.5">{translate({ key: 'workspaces.pipeline.stageFeeds', params: [{ key: 'feeds', value: h.feeds }] })}</div>
+                  <div className="text-xs text-muted mt-0.5">{translate({ key: h.descKey })}</div>
+                  <div className="text-[11px] text-primary mt-0.5">{translate({ key: 'workspaces.pipeline.stageFeeds', params: [{ key: 'feeds', value: translate({ key: h.feedsKey }) }] })}</div>
                 </div>
                 {/* F29 — a required hook shows as permanently on rather than as a switch that silently
                     refuses: the engine's turn-detection depends on it. */}

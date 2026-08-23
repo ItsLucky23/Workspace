@@ -567,13 +567,13 @@
       "customInstructionsHint": "Wordt in de CLAUDE.md van de stage geladen — domeinregels + doelen per stage.",
       "customInstructionsPlaceholder": "bijv. Volg het plan exact. Houd wijzigingen chirurgisch.",
       "statuses": "Statussen",
-      "statusesHint": "Basisstatussen zijn er altijd. “Gestopt” wordt gezet als je alle AI's stopt of de abonnementslimiet bereikt is. Voeg eigen chips toe voor deze stage.",
+      "statusesHint": "Dit zijn de engine-statussen. Eigen stage-statussen worden niet door tickets gebruikt en staan daarom niet in deze editor.",
       "addStatusPlaceholder": "Eigen status toevoegen…",
       "add": "Toevoegen",
       "contextDocs": "Contextdocs",
       "contextDocsHint": "Wordt één keer in de container geladen, alleen-lezen.",
-      "skillsMcp": "Skills / MCP",
-      "skillsMcpHint": "Wordt op aanvraag opgehaald. Bevroren per commit of live.",
+      "skillsMcp": "Datatools / MCP",
+      "skillsMcpHint": "Kies welke capability-tools deze stage mag aanroepen. De status bij Bronnen is informatief; deze stagekeuze is de effectieve instelling.",
       "modeOff": "Uit",
       "modeAllow": "Toestaan",
       "modeAsk": "Vragen",
@@ -659,7 +659,7 @@
       "tabHooks": "Hooks",
       "pipelineTitle": "Pipeline",
       "headerSummary": "{{name}} · {{count}} stages · de AI schuift tickets hier doorheen",
-      "validateWithAi": "Valideren met AI",
+      "validateWithAi": "Pipeline controleren",
       "addStage": "Stage toevoegen",
       "findingsCount": "{{count}} bevinding(en)",
       "aiOn": "AI aan",
@@ -758,7 +758,28 @@
       "tipTitle": "Hoe deze prompt is opgebouwd",
       "tipPosition": "Dit veld is {{channel}} {{n}} van {{total}}.",
       "tipThisField": " — dit veld",
-      "goto_skillsStage": "Kies op het Context-tabblad van deze stage"
+      "goto_skillsStage": "Kies op het Context-tabblad van deze stage",
+      "catalog": {
+        "categories": { "events": "Events & status", "lifecycle": "Lifecycle", "packageManagers": "Pakketbeheerders", "buildRun": "Bouwen & uitvoeren", "testing": "Testen", "versionControl": "Versiebeheer", "filesystem": "Bestanden & edits", "containers": "Containers & infra", "database": "Database-CLI's", "network": "Netwerk & gevaarlijk" },
+        "hooks": {
+          "stop": { "label": "Stop", "feeds": "klaar / input nodig + verplaatsen", "desc": "Markeert de stage als klaar (of input nodig als hij idle is) en voert de pipeline-verplaatsing uit. De engine heeft dit nodig." },
+          "postToolUse": { "label": "PostToolUse", "feeds": "TicketEvent → live activiteit", "desc": "Registreert elk commando en bestand als event, zodat de beurt achteraf te volgen is." },
+          "preCompact": { "label": "PreCompact", "feeds": "gecontroleerde overdracht", "desc": "Geeft de orchestrator een eigen overdracht voordat automatische compactie ondoorzichtig wordt." }
+        },
+        "commands": {
+          "npmInstall": { "label": "npm install", "desc": "Installeer Node-dependencies uit package.json." }, "npmCi": { "label": "npm ci", "desc": "Schone installatie uit de lockfile." }, "pnpmInstall": { "label": "pnpm install", "desc": "Installeer dependencies met pnpm." }, "yarnInstall": { "label": "yarn install", "desc": "Installeer dependencies met Yarn." }, "dotnetRestore": { "label": "dotnet restore", "desc": "Herstel NuGet-pakketten." }, "goModDownload": { "label": "go mod download", "desc": "Download Go-modules." }, "pipInstall": { "label": "pip install …", "desc": "Installeer Python-pakketten met pip." },
+          "npmRunBuild": { "label": "npm run build", "desc": "Voer het buildscript van het project uit." }, "npmRunAny": { "label": "npm run …", "desc": "Voer een package.json-script uit." }, "dotnetBuild": { "label": "dotnet build", "desc": "Compileer een .NET-project." }, "goBuild": { "label": "go build …", "desc": "Compileer Go-pakketten." }, "make": { "label": "make …", "desc": "Voer een Makefile-target uit." },
+          "npmRunTest": { "label": "npm run test…", "desc": "Voer testscripts uit." }, "npmCoverage": { "label": "npm run coverage", "desc": "Voer de tests met coverage uit." }, "dotnetTest": { "label": "dotnet test", "desc": "Voer .NET-tests uit." }, "goTest": { "label": "go test ./...", "desc": "Voer alle Go-tests uit." },
+          "gitAdd": { "label": "git add …", "desc": "Zet bestanden klaar voor een commit." }, "gitCommit": { "label": "git commit …", "desc": "Maak een commit op de ticketbranch." }, "gitCheckout": { "label": "git checkout …", "desc": "Wissel branch of herstel bestanden." }, "gitPush": { "label": "git push …", "desc": "Push commits naar de remote." }, "gitRebase": { "label": "git rebase …", "desc": "Rebase de branch; wees voorzichtig." },
+          "editFiles": { "label": "Bestanden bewerken", "desc": "Wijzig bestaande bestanden in de worktree." }, "writeFiles": { "label": "Bestanden schrijven", "desc": "Maak bestanden in de worktree." }, "mkdir": { "label": "mkdir …", "desc": "Maak mappen." }, "rm": { "label": "rm …", "desc": "Verwijder bestanden — destructief." },
+          "docker": { "label": "docker …", "desc": "Voer Docker-commando's uit in de container." }, "dockerCompose": { "label": "docker compose …", "desc": "Beheer compose-services." }, "kubectl": { "label": "kubectl …", "desc": "Werk met een Kubernetes-cluster." },
+          "psql": { "label": "psql …", "desc": "PostgreSQL-CLI." }, "mysql": { "label": "mysql …", "desc": "MySQL-CLI." }, "redisCli": { "label": "redis-cli …", "desc": "Redis-CLI." }, "mongosh": { "label": "mongosh …", "desc": "MongoDB-shell." },
+          "curl": { "label": "curl …", "desc": "Doe HTTP-requests; combineer met een netwerkallowlist." }, "npmPublish": { "label": "npm publish", "desc": "Publiceer een pakket naar de registry." }, "sudo": { "label": "sudo …", "desc": "Draai als root — gevaarlijk." }, "rmRf": { "label": "rm -rf …", "desc": "Recursief geforceerd verwijderen — gevaarlijk." }
+        },
+        "network": {
+          "packageRegistries": { "label": "Pakketregisters", "desc": "npm, NuGet, Go proxy, PyPI, crates.io" }, "sourceHosts": { "label": "Source-hosts", "desc": "github.com, gitlab.com, bitbucket.org" }, "aiApis": { "label": "AI-API's", "desc": "api.anthropic.com, api.openai.com" }, "cdns": { "label": "CDN's", "desc": "jsdelivr, unpkg, cloudflare" }, "cloud": { "label": "Cloudproviders", "desc": "AWS-, GCP- en Azure-endpoints" }, "social": { "label": "Social & media", "desc": "twitter/x, youtube, reddit" }, "trackers": { "label": "Ads & trackers", "desc": "analytics + advertentienetwerken" }
+        }
+      }
     },
     "tips": {
       "automations": {
@@ -1068,7 +1089,7 @@
         "noSkills": "Vaardigheden en MCP-tools zijn capaciteiten die de AI op aanvraag aanroept. Er is nog niets in de app dat er een aanmaakt, en de repository indexeren vult deze lijst ook niet.",
         "toolTierBody": "Lezen geeft de stap geen beperkte toegang, maar helemaal geen. Alleen Schrijven geeft de stap de tool echt; bij Lezen wordt de tool niet in de container geïnstalleerd, omdat een externe tool niet gedwongen kan worden alleen te lezen. Als je een tool aanzet, staat hij standaard op Lezen — kies dus Schrijven als de stap hem echt nodig heeft.",
         "toolTierTitle": "Lezen betekent: helemaal niet meegeleverd",
-        "validateLocalBody": "Ondanks de naam komt er geen AI aan te pas en verlaat er niets je browser. Workspaces loopt de stappen op het scherm langs vijf vaste regels en toont wat het vindt. Het beoordeelt wat er nu op het scherm staat, inclusief wijzigingen die je nog niet hebt opgeslagen.",
+        "validateLocalBody": "Er verlaat niets je browser. Workspaces loopt de stages op het scherm langs vijf vaste regels en toont wat het vindt, inclusief wijzigingen die je nog niet hebt opgeslagen.",
         "validateLocalTitle": "Deze controle draait in je browser",
         "noSkillsAlt": "Geschreven instructies die de AI moet volgen zijn iets anders — verwarrend genoeg ook Vaardigheden genoemd — en die kun je wél zelf aanmaken:",
         "noSkillsAltCta": "open AI-instellingen",
@@ -1856,6 +1877,7 @@
       "confirmDestructiveTitle": "Bevestig destructieve actie",
       "confirmDestructiveContent": "Deze actie is destructief of moeilijk terug te draaien: {{summary}}. Doorgaan?",
       "aiError": "De AI is nu niet beschikbaar. Probeer het opnieuw.",
+      "aiWelcome": "Hoi — ik ben je Workspace-AI. Vraag me een ticket te verplaatsen (bijv. ‘verplaats DEV-1240 naar review’), de voortgang samen te vatten of gerelateerd werk te koppelen. Ik kan elke actie hier uitvoeren.",
       "aiReject": "Weigeren",
       "aiDeclined": "Geweigerd",
       "aiAccept": "Accepteren",
@@ -2474,6 +2496,13 @@
       "changedFilesCount": "{{count}} gewijzigde bestanden",
       "addReference": "Referentie toevoegen…",
       "noActivity": "Nog geen activiteit",
+      "activityTypeCommand": "Commando",
+      "activityTypeFileChange": "Bestandswijziging",
+      "activityTypeAiMessage": "AI-bericht",
+      "activityTypeStatusChange": "Statuswijziging",
+      "activityTypeMr": "Merge request",
+      "activityTypeComment": "Commentaar",
+      "activityTypeCi": "CI",
       "whyThisLink": "Waarom deze link?",
       "relatedTickets": "Gerelateerde tickets",
       "linkTicket": "Ticket koppelen…",
@@ -2531,8 +2560,8 @@
       "codeIndex": "Code-index",
       "ragNotIndexedHint": "Koppel een repository en draai 'Code herindexeren' via het Onderhoud-menu om je codebase doorzoekbaar te maken voor de AI.",
       "emptyDocsSub": "Bronnen zijn wat je workspace-AI leest voordat die aan het werk gaat. Upload een spec of notities (.md/.txt), of koppel een repository en scan die om automatisch documenten te genereren.",
-      "emptySkillsTitle": "Nog geen skills",
-      "emptySkillsSub": "Vaardigheden en MCP-tools zijn capaciteiten die de AI op aanvraag kan aanroepen. Er is nog niets in de app dat er een aanmaakt, dus deze lijst blijft leeg — opnieuw indexeren vult hem niet. Geschreven instructie-vaardigheden zijn iets anders en staan in werkruimte-instellingen → AI.",
+      "emptySkillsTitle": "Nog geen capabilities",
+      "emptySkillsSub": "Capabilities en MCP-tools zijn tools die de AI op aanvraag kan aanroepen. Er is nog niets in de app dat er een aanmaakt, dus deze lijst blijft leeg — opnieuw indexeren vult hem niet. Geschreven instructie-skills zijn iets anders en staan in werkruimte-instellingen → AI.",
       "noStages": "Geen stages",
       "summary": "Samenvatting",
       "source": "Bron",
@@ -2545,7 +2574,7 @@
       "live": "Live",
       "status": "Status",
       "lastIndexed": "Laatst geïndexeerd",
-      "enabledByStages": "Ingeschakeld door stages",
+      "enabledByStages": "Gekozen door stages",
       "ragBehind": "RAG-index loopt 3 commits achter op main.",
       "ragBehindHint": "Open tickets blijven bevroren op hun eigen commit; herindexeer om de live snapshot te verversen.",
       "reindex": "Herindexeren",
@@ -2557,7 +2586,7 @@
       "regenerate": "Opnieuw genereren",
       "details": "Details",
       "tabDocs": "Contextdocs",
-      "tabSkills": "Skills / MCP",
+      "tabSkills": "Capabilities / MCP",
       "title": "Bronnen",
       "uploadSpec": "Spec uploaden",
       "scanRepo": "Repository scannen",
@@ -2578,7 +2607,9 @@
       "archivedCount": "Gearchiveerd ({{n}})",
       "emptyFile": "Dit bestand is leeg en is niet geüpload.",
       "uploadQueued": "Upload staat klaar.",
-      "reindexFailed": "Het herindexeren is niet afgerond. Probeer het opnieuw."
+      "reindexFailed": "Het herindexeren is niet afgerond. Probeer het opnieuw.",
+      "capabilityAvailable": "Beschikbaar",
+      "capabilityUnavailable": "Niet geselecteerd"
     },
     "mr": {
       "runCi": "CI draaien",
@@ -3356,7 +3387,12 @@
       "creatorAssignee": "Aanmaker · toegewezene",
       "clearSelection": "Selectie wissen",
       "filterArchived": "Gearchiveerd",
-      "restore": "Terugzetten"
+      "restore": "Terugzetten",
+      "timeNow": "nu",
+      "timeMinutes": "{{n}}m",
+      "timeHours": "{{n}}u",
+      "timeDays": "{{n}}d",
+      "timeWeeks": "{{n}}w"
     },
     "placeholder": {
       "comingNext": "{{title}} — komt hierna",

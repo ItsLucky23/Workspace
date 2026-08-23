@@ -567,13 +567,13 @@
       "customInstructionsHint": "Chargées dans le CLAUDE.md de l’étape — règles métier + objectifs par étape.",
       "customInstructionsPlaceholder": "ex. Suivez le plan à la lettre. Gardez des changements chirurgicaux.",
       "statuses": "Statuts",
-      "statusesHint": "Les statuts de base sont toujours présents. « Arrêté » est appliqué lorsque vous arrêtez toutes les IA ou que la limite d’abonnement est atteinte. Ajoutez des puces personnalisées pour cette étape.",
+      "statusesHint": "Voici les statuts du moteur. Les statuts personnalisés ne sont pas utilisés par les tickets et restent donc hors de cet éditeur.",
       "addStatusPlaceholder": "Ajouter un statut personnalisé…",
       "add": "Ajouter",
       "contextDocs": "Documents de contexte",
       "contextDocsHint": "Chargés une fois dans le conteneur, en lecture seule.",
-      "skillsMcp": "Skills / MCP",
-      "skillsMcpHint": "Interrogés à la demande. Figés par commit ou en direct.",
+      "skillsMcp": "Outils de données / MCP",
+      "skillsMcpHint": "Choisissez les outils de capacité que cette étape peut appeler. Le statut dans Sources est informatif ; cette sélection d’étape est le réglage effectif.",
       "modeOff": "Désactivé",
       "modeAllow": "Autoriser",
       "modeAsk": "Demander",
@@ -659,7 +659,7 @@
       "tabHooks": "Hooks",
       "pipelineTitle": "Pipeline",
       "headerSummary": "{{name}} · {{count}} étapes · l’IA fait avancer les tickets à travers elles",
-      "validateWithAi": "Valider avec l’IA",
+      "validateWithAi": "Vérifier le pipeline",
       "addStage": "Ajouter une étape",
       "findingsCount": "{{count}} constat(s)",
       "aiOn": "IA activée",
@@ -758,7 +758,28 @@
       "tipTitle": "Comment ce prompt est composé",
       "tipPosition": "Ce champ est {{channel}} {{n}} sur {{total}}.",
       "tipThisField": " — ce champ",
-      "goto_skillsStage": "Choisir dans l'onglet Contexte de cette étape"
+      "goto_skillsStage": "Choisir dans l'onglet Contexte de cette étape",
+      "catalog": {
+        "categories": { "events": "Événements et statut", "lifecycle": "Cycle de vie", "packageManagers": "Gestionnaires de paquets", "buildRun": "Build et exécution", "testing": "Tests", "versionControl": "Contrôle de version", "filesystem": "Fichiers et édition", "containers": "Conteneurs et infra", "database": "CLIs de base de données", "network": "Réseau et dangereux" },
+        "hooks": {
+          "stop": { "label": "Stop", "feeds": "terminé / entrée requise + déplacement", "desc": "Marque l'étape comme terminée (ou en attente d'entrée) et applique la logique de déplacement. Le moteur en dépend." },
+          "postToolUse": { "label": "PostToolUse", "feeds": "TicketEvent → activité en direct", "desc": "Enregistre chaque commande et modification de fichier comme événement." },
+          "preCompact": { "label": "PreCompact", "feeds": "transfert contrôlé", "desc": "Signale à l'orchestrateur d'effectuer son propre transfert plutôt qu'une compaction opaque." }
+        },
+        "commands": {
+          "npmInstall": { "label": "npm install", "desc": "Installer les dépendances Node de package.json." }, "npmCi": { "label": "npm ci", "desc": "Installation propre depuis le lockfile." }, "pnpmInstall": { "label": "pnpm install", "desc": "Installer les dépendances avec pnpm." }, "yarnInstall": { "label": "yarn install", "desc": "Installer les dépendances avec Yarn." }, "dotnetRestore": { "label": "dotnet restore", "desc": "Restaurer les paquets NuGet." }, "goModDownload": { "label": "go mod download", "desc": "Télécharger les modules Go." }, "pipInstall": { "label": "pip install …", "desc": "Installer des paquets Python avec pip." },
+          "npmRunBuild": { "label": "npm run build", "desc": "Lancer le script de build du projet." }, "npmRunAny": { "label": "npm run …", "desc": "Lancer un script package.json." }, "dotnetBuild": { "label": "dotnet build", "desc": "Compiler un projet .NET." }, "goBuild": { "label": "go build …", "desc": "Compiler des paquets Go." }, "make": { "label": "make …", "desc": "Lancer une cible Makefile." },
+          "npmRunTest": { "label": "npm run test…", "desc": "Lancer les scripts de test." }, "npmCoverage": { "label": "npm run coverage", "desc": "Lancer la suite avec la couverture." }, "dotnetTest": { "label": "dotnet test", "desc": "Lancer les tests .NET." }, "goTest": { "label": "go test ./...", "desc": "Lancer tous les tests Go." },
+          "gitAdd": { "label": "git add …", "desc": "Préparer des fichiers pour le commit." }, "gitCommit": { "label": "git commit …", "desc": "Créer un commit sur la branche du ticket." }, "gitCheckout": { "label": "git checkout …", "desc": "Changer de branche ou restaurer des fichiers." }, "gitPush": { "label": "git push …", "desc": "Pousser les commits vers le dépôt distant." }, "gitRebase": { "label": "git rebase …", "desc": "Rebaser la branche, avec prudence." },
+          "editFiles": { "label": "Modifier les fichiers", "desc": "Modifier les fichiers existants de la worktree." }, "writeFiles": { "label": "Écrire des fichiers", "desc": "Créer des fichiers dans la worktree." }, "mkdir": { "label": "mkdir …", "desc": "Créer des dossiers." }, "rm": { "label": "rm …", "desc": "Supprimer des fichiers — destructif." },
+          "docker": { "label": "docker …", "desc": "Lancer des commandes Docker dans le conteneur." }, "dockerCompose": { "label": "docker compose …", "desc": "Gérer les services Compose." }, "kubectl": { "label": "kubectl …", "desc": "Interagir avec un cluster Kubernetes." },
+          "psql": { "label": "psql …", "desc": "CLI PostgreSQL." }, "mysql": { "label": "mysql …", "desc": "CLI MySQL." }, "redisCli": { "label": "redis-cli …", "desc": "CLI Redis." }, "mongosh": { "label": "mongosh …", "desc": "Shell MongoDB." },
+          "curl": { "label": "curl …", "desc": "Faire des requêtes HTTP ; utiliser une allowlist réseau." }, "npmPublish": { "label": "npm publish", "desc": "Publier un paquet dans le registre." }, "sudo": { "label": "sudo …", "desc": "Exécuter en root — dangereux." }, "rmRf": { "label": "rm -rf …", "desc": "Supprimer récursivement et de force — dangereux." }
+        },
+        "network": {
+          "packageRegistries": { "label": "Registres de paquets", "desc": "npm, NuGet, proxy Go, PyPI, crates.io" }, "sourceHosts": { "label": "Hôtes source", "desc": "github.com, gitlab.com, bitbucket.org" }, "aiApis": { "label": "API d'IA", "desc": "api.anthropic.com, api.openai.com" }, "cdns": { "label": "CDN", "desc": "jsdelivr, unpkg, cloudflare" }, "cloud": { "label": "Fournisseurs cloud", "desc": "points de terminaison AWS, GCP, Azure" }, "social": { "label": "Réseaux et médias", "desc": "twitter/x, youtube, reddit" }, "trackers": { "label": "Publicités et traceurs", "desc": "analytics et réseaux publicitaires" }
+        }
+      }
     },
     "tips": {
       "automations": {
@@ -1068,7 +1089,7 @@
         "noSkills": "Les compétences et outils MCP sont des capacités que l'IA appelle à la demande. Rien dans l'application n'en crée pour l'instant, et indexer le dépôt ne remplira pas cette liste non plus.",
         "toolTierBody": "Lecture ne donne pas un accès limité à l'étape, mais aucun accès. Seul Écriture confie réellement l'outil à l'étape ; avec Lecture, l'outil n'est pas installé dans le conteneur, car un outil externe ne peut pas être contraint de rester en lecture seule. Activer un outil le règle par défaut sur Lecture : choisissez Écriture si l'étape en a vraiment besoin.",
         "toolTierTitle": "Lecture signifie : pas fourni du tout",
-        "validateLocalBody": "Malgré son nom, aucune IA n'intervient et rien ne quitte votre navigateur. Workspaces confronte les étapes affichées à cinq règles fixes et liste ce qu'il trouve. Il juge ce qui est à l'écran en ce moment, y compris les modifications que vous n'avez pas encore enregistrées.",
+        "validateLocalBody": "Rien ne quitte votre navigateur. Workspaces confronte les étapes affichées à cinq règles fixes et liste ce qu'il trouve, y compris les modifications que vous n'avez pas encore enregistrées.",
         "validateLocalTitle": "Cette vérification s'exécute dans votre navigateur",
         "noSkillsAlt": "Les instructions écrites que l'IA doit suivre sont autre chose — appelées elles aussi Compétences, ce qui prête à confusion — et celles-là, vous pouvez les créer :",
         "noSkillsAltCta": "ouvrir les paramètres IA",
@@ -1856,6 +1877,7 @@
       "confirmDestructiveTitle": "Confirmer l’action destructive",
       "confirmDestructiveContent": "Cette action est destructive ou difficile à annuler : {{summary}}. Continuer ?",
       "aiError": "L’IA est indisponible pour le moment. Réessayez.",
+      "aiWelcome": "Bonjour — je suis votre IA Workspace. Demandez-moi de déplacer un ticket (par ex. « déplacer DEV-1240 vers Review »), de résumer l’avancement ou de relier du travail associé. Je peux exécuter chaque action ici.",
       "aiReject": "Refuser",
       "aiDeclined": "Refusé",
       "aiAccept": "Accepter",
@@ -2474,6 +2496,13 @@
       "changedFilesCount": "{{count}} fichiers modifiés",
       "addReference": "Ajouter une référence…",
       "noActivity": "Pas encore d’activité",
+      "activityTypeCommand": "Commande",
+      "activityTypeFileChange": "Modification de fichier",
+      "activityTypeAiMessage": "Message IA",
+      "activityTypeStatusChange": "Changement de statut",
+      "activityTypeMr": "Merge request",
+      "activityTypeComment": "Commentaire",
+      "activityTypeCi": "CI",
       "whyThisLink": "Pourquoi ce lien ?",
       "relatedTickets": "Tickets associés",
       "linkTicket": "Lier un ticket…",
@@ -2531,8 +2560,8 @@
       "codeIndex": "Index du code",
       "ragNotIndexedHint": "Liez un dépôt et lancez « Réindexer le code » depuis le menu Maintenance pour rendre votre code consultable par l'IA.",
       "emptyDocsSub": "Les sources sont ce que l'IA de votre workspace lit avant de travailler. Téléversez une spec ou des notes (.md/.txt), ou liez un dépôt et scannez-le pour générer des documents automatiquement.",
-      "emptySkillsTitle": "Pas encore de skills",
-      "emptySkillsSub": "Les compétences et outils MCP sont des capacités que l'IA peut appeler à la demande. Rien dans l'application n'en crée pour l'instant, cette liste reste donc vide — réindexer ne la remplit pas. Les compétences d'instructions écrites sont autre chose et se trouvent dans les paramètres de l'espace → IA.",
+      "emptySkillsTitle": "Pas encore de capacités",
+      "emptySkillsSub": "Les capacités et outils MCP sont appelés par l'IA à la demande. Rien dans l'application n'en crée pour l'instant, cette liste reste donc vide — réindexer ne la remplit pas. Les skills d'instructions écrites sont autre chose et se trouvent dans les paramètres de l'espace → IA.",
       "noStages": "Aucune étape",
       "summary": "Résumé",
       "source": "Source",
@@ -2545,7 +2574,7 @@
       "live": "En direct",
       "status": "Statut",
       "lastIndexed": "Dernière indexation",
-      "enabledByStages": "Activé par les étapes",
+      "enabledByStages": "Sélectionné par les étapes",
       "ragBehind": "L’index RAG est en retard de 3 commits sur main.",
       "ragBehindHint": "Les tickets ouverts restent figés sur leur propre commit ; réindexez pour rafraîchir l’instantané en direct.",
       "reindex": "Réindexer",
@@ -2557,7 +2586,7 @@
       "regenerate": "Régénérer",
       "details": "Détails",
       "tabDocs": "Documents de contexte",
-      "tabSkills": "Skills / MCP",
+      "tabSkills": "Capacités / MCP",
       "title": "Sources",
       "uploadSpec": "Téléverser une spec",
       "scanRepo": "Analyser le dépôt",
@@ -2578,7 +2607,9 @@
       "archivedCount": "Archivés ({{n}})",
       "emptyFile": "Ce fichier est vide et n’a pas été téléversé.",
       "uploadQueued": "Téléversement ajouté à la file.",
-      "reindexFailed": "La réindexation n’est pas terminée. Réessayez."
+      "reindexFailed": "La réindexation n’est pas terminée. Réessayez.",
+      "capabilityAvailable": "Disponible",
+      "capabilityUnavailable": "Non sélectionné"
     },
     "mr": {
       "runCi": "Lancer la CI",
@@ -3356,7 +3387,12 @@
       "creatorAssignee": "Créateur · assigné",
       "clearSelection": "Effacer la sélection",
       "filterArchived": "Archivés",
-      "restore": "Restaurer"
+      "restore": "Restaurer",
+      "timeNow": "maintenant",
+      "timeMinutes": "{{n}} min",
+      "timeHours": "{{n}} h",
+      "timeDays": "{{n}} j",
+      "timeWeeks": "{{n}} sem."
     },
     "placeholder": {
       "comingNext": "{{title}} — bientôt disponible",

@@ -237,7 +237,7 @@ export default function Answers() {
   const { tickets } = useWorkspaces();
 
   const answerQueue = useMemo(() => tickets
-    .filter((t) => t.archived !== true && ((t.needsInput ?? '').length > 0 || t.status === 'needs-input'))
+    .filter((t) => t.archived !== true && (t.needsInput ?? '').length > 0)
     .map((t) => ({
       ticketKey: t.id, title: t.title, question: t.needsInput ?? '',
       priority: t.priority ?? 'normal', stageId: t.stageId,

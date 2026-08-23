@@ -567,13 +567,13 @@
       "customInstructionsHint": "Loaded into the stage's CLAUDE.md — domain rules + per-stage goals.",
       "customInstructionsPlaceholder": "e.g. Follow the plan exactly. Keep changes surgical.",
       "statuses": "Statuses",
-      "statusesHint": "Base statuses are always present. “Stopped” is set when you stop all AIs or the subscription limit is hit. Add custom chips for this stage.",
+      "statusesHint": "These are the engine statuses. Custom stage statuses are not used by tickets and are kept out of this editor.",
       "addStatusPlaceholder": "Add custom status…",
       "add": "Add",
       "contextDocs": "Context docs",
       "contextDocsHint": "Loaded into the container once, read-only.",
-      "skillsMcp": "Skills / MCP",
-      "skillsMcpHint": "Queried on demand. Frozen-per-commit or live.",
+      "skillsMcp": "Data tools / MCP",
+      "skillsMcpHint": "Select the capability tools this stage may call. The Sources status is informational; this stage selection is the effective control.",
       "modeOff": "Off",
       "modeAllow": "Allow",
       "modeAsk": "Ask",
@@ -659,7 +659,7 @@
       "tabHooks": "Hooks",
       "pipelineTitle": "Pipeline",
       "headerSummary": "{{name}} · {{count}} stages · the AI moves tickets through these",
-      "validateWithAi": "Validate with AI",
+      "validateWithAi": "Check pipeline",
       "addStage": "Add stage",
       "findingsCount": "{{count}} finding(s)",
       "aiOn": "AI on",
@@ -673,7 +673,7 @@
       "deleteStageConfirmContent": "Tickets in this stage move to the next one. This cannot be undone.",
       "warnBlind": "{{name}} has AI on but no skills enabled — it'll work blind.",
       "warnNoInstructions": "{{name}} has no custom instructions.",
-      "warnWriteAccess": "{{name}} has write access to a service — usually only Implementatie needs that.",
+      "warnWriteAccess": "{{name}} has write access to a service — usually only Implementation needs that.",
       "warnNetworkOff": "{{name}} has network off but uses skills that may need egress.",
       "warnRagMismatch": "Refined loads RAG but Plan does not — the decision stage usually needs more context, not less.",
       "hookRequired": "always on",
@@ -758,7 +758,28 @@
       "tipTitle": "How this prompt is composed",
       "tipPosition": "This field is {{channel}} {{n}} of {{total}}.",
       "tipThisField": " — this field",
-      "goto_skillsStage": "Pick on this stage's Context tab"
+      "goto_skillsStage": "Pick on this stage's Context tab",
+      "catalog": {
+        "categories": { "events": "Events & status", "lifecycle": "Lifecycle", "packageManagers": "Package managers", "buildRun": "Build & run", "testing": "Testing", "versionControl": "Version control", "filesystem": "Filesystem & edits", "containers": "Containers & infra", "database": "Database CLIs", "network": "Network & dangerous" },
+        "hooks": {
+          "stop": { "label": "Stop", "feeds": "done / needs-input + move", "desc": "Marks the stage done (or needs-input if idle) and runs the pipeline move logic. The engine depends on this." },
+          "postToolUse": { "label": "PostToolUse", "feeds": "TicketEvent → live activity", "desc": "Records each command and file change as an event, so the turn has a readable trail afterwards." },
+          "preCompact": { "label": "PreCompact", "feeds": "controlled handoff", "desc": "Signals the orchestrator to do its own handoff instead of an opaque automatic compaction." }
+        },
+        "commands": {
+          "npmInstall": { "label": "npm install", "desc": "Install Node dependencies from package.json." }, "npmCi": { "label": "npm ci", "desc": "Clean install from the lockfile." }, "pnpmInstall": { "label": "pnpm install", "desc": "Install dependencies with pnpm." }, "yarnInstall": { "label": "yarn install", "desc": "Install dependencies with Yarn." }, "dotnetRestore": { "label": "dotnet restore", "desc": "Restore NuGet packages." }, "goModDownload": { "label": "go mod download", "desc": "Download Go modules." }, "pipInstall": { "label": "pip install …", "desc": "Install Python packages with pip." },
+          "npmRunBuild": { "label": "npm run build", "desc": "Run the project build script." }, "npmRunAny": { "label": "npm run …", "desc": "Run a package.json script." }, "dotnetBuild": { "label": "dotnet build", "desc": "Compile a .NET project." }, "goBuild": { "label": "go build …", "desc": "Compile Go packages." }, "make": { "label": "make …", "desc": "Run a Makefile target." },
+          "npmRunTest": { "label": "npm run test…", "desc": "Run test scripts." }, "npmCoverage": { "label": "npm run coverage", "desc": "Run the test suite with coverage." }, "dotnetTest": { "label": "dotnet test", "desc": "Run .NET tests." }, "goTest": { "label": "go test ./...", "desc": "Run all Go tests." },
+          "gitAdd": { "label": "git add …", "desc": "Stage files for commit." }, "gitCommit": { "label": "git commit …", "desc": "Create a commit on the ticket branch." }, "gitCheckout": { "label": "git checkout …", "desc": "Switch branches or restore files." }, "gitPush": { "label": "git push …", "desc": "Push commits to the remote." }, "gitRebase": { "label": "git rebase …", "desc": "Rebase the branch; use with care." },
+          "editFiles": { "label": "Edit files", "desc": "Modify existing files in the worktree." }, "writeFiles": { "label": "Write files", "desc": "Create files in the worktree." }, "mkdir": { "label": "mkdir …", "desc": "Create directories." }, "rm": { "label": "rm …", "desc": "Delete files — destructive." },
+          "docker": { "label": "docker …", "desc": "Run Docker commands inside the container." }, "dockerCompose": { "label": "docker compose …", "desc": "Manage compose services." }, "kubectl": { "label": "kubectl …", "desc": "Interact with a Kubernetes cluster." },
+          "psql": { "label": "psql …", "desc": "PostgreSQL CLI." }, "mysql": { "label": "mysql …", "desc": "MySQL CLI." }, "redisCli": { "label": "redis-cli …", "desc": "Redis CLI." }, "mongosh": { "label": "mongosh …", "desc": "MongoDB shell." },
+          "curl": { "label": "curl …", "desc": "Make HTTP requests; pair with a network allow-list." }, "npmPublish": { "label": "npm publish", "desc": "Publish a package to the registry." }, "sudo": { "label": "sudo …", "desc": "Run as root — dangerous." }, "rmRf": { "label": "rm -rf …", "desc": "Recursive force delete — dangerous." }
+        },
+        "network": {
+          "packageRegistries": { "label": "Package registries", "desc": "npm, NuGet, Go proxy, PyPI, crates.io" }, "sourceHosts": { "label": "Source hosts", "desc": "github.com, gitlab.com, bitbucket.org" }, "aiApis": { "label": "AI APIs", "desc": "api.anthropic.com, api.openai.com" }, "cdns": { "label": "CDNs", "desc": "jsdelivr, unpkg, cloudflare" }, "cloud": { "label": "Cloud providers", "desc": "AWS, GCP, Azure endpoints" }, "social": { "label": "Social & media", "desc": "twitter/x, youtube, reddit" }, "trackers": { "label": "Ads & trackers", "desc": "analytics + ad networks" }
+        }
+      }
     },
     "tips": {
       "automations": {
@@ -1068,7 +1089,7 @@
         "noSkills": "Skills and MCP tools are capabilities the AI calls on demand. Nothing in the app creates one yet, and indexing the repository will not fill this list either.",
         "toolTierBody": "Read does not give the stage limited access — it gives none at all. Only Write actually hands the tool to the stage; with Read the tool is not installed in the container, because an outside tool cannot be forced to stay read-only. Switching a tool on selects Read by default, so choose Write if the stage really needs it.",
         "toolTierTitle": "Read means the tool is left out entirely",
-        "validateLocalBody": "Despite the name, no AI is involved and nothing leaves your browser. Workspaces checks the stages on screen against five fixed rules and lists what it finds. It judges what is on screen right now, including changes you have not saved yet.",
+        "validateLocalBody": "Nothing leaves your browser. Workspaces checks the stages on screen against five fixed rules and lists what it finds, including changes you have not saved yet.",
         "validateLocalTitle": "This check runs in your browser",
         "noSkillsAlt": "Written instructions the AI should follow are a different thing, confusingly also called Skills — and those you can create:",
         "noSkillsAltCta": "open AI settings",
@@ -1856,6 +1877,7 @@
       "confirmDestructiveTitle": "Confirm destructive action",
       "confirmDestructiveContent": "This action is destructive or hard to reverse: {{summary}}. Continue?",
       "aiError": "The AI is unavailable right now. Please try again.",
+      "aiWelcome": "Hi — I'm your Workspace-AI. Ask me to move a ticket (e.g. “move DEV-1240 to review”), summarise progress, or link related work. I can drive every action in here.",
       "aiReject": "Reject",
       "aiDeclined": "Declined",
       "aiAccept": "Accept",
@@ -2474,6 +2496,13 @@
       "changedFilesCount": "{{count}} changed files",
       "addReference": "Add reference…",
       "noActivity": "No activity yet",
+      "activityTypeCommand": "Command",
+      "activityTypeFileChange": "File change",
+      "activityTypeAiMessage": "AI message",
+      "activityTypeStatusChange": "Status change",
+      "activityTypeMr": "Merge request",
+      "activityTypeComment": "Comment",
+      "activityTypeCi": "CI",
       "whyThisLink": "Why this link?",
       "relatedTickets": "Related tickets",
       "linkTicket": "Link ticket…",
@@ -2531,8 +2560,8 @@
       "codeIndex": "Code index",
       "ragNotIndexedHint": "Link a repo and run 'Reindex code' from the Maintenance menu to make your codebase searchable for the AI.",
       "emptyDocsSub": "Sources are what your workspace AI reads before it works. Upload a spec or notes (.md/.txt), or link a repo and scan it to generate docs automatically.",
-      "emptySkillsTitle": "No skills yet",
-      "emptySkillsSub": "Skills and MCP tools are capabilities the AI can call on demand. Nothing in the app creates one yet, so this list stays empty — reindexing does not fill it. Written instruction skills are a separate thing and live in workspace settings → AI.",
+      "emptySkillsTitle": "No capabilities yet",
+      "emptySkillsSub": "Capabilities and MCP tools are tools the AI can call on demand. Nothing in the app creates one yet, so this list stays empty — reindexing does not fill it. Written instruction skills are a separate thing and live in workspace settings → AI.",
       "noStages": "No stages",
       "summary": "Summary",
       "source": "Source",
@@ -2545,7 +2574,7 @@
       "live": "Live",
       "status": "Status",
       "lastIndexed": "Last indexed",
-      "enabledByStages": "Enabled by stages",
+      "enabledByStages": "Selected by stages",
       "ragBehind": "RAG index is behind main by 3 commits.",
       "ragBehindHint": "Open tickets stay frozen on their own commit; reindex to refresh the live snapshot.",
       "reindex": "Reindex",
@@ -2557,7 +2586,7 @@
       "regenerate": "Regenerate",
       "details": "Details",
       "tabDocs": "Context docs",
-      "tabSkills": "Skills / MCP",
+      "tabSkills": "Capabilities / MCP",
       "title": "Sources",
       "uploadSpec": "Upload spec",
       "scanRepo": "Scan repository",
@@ -2578,7 +2607,9 @@
       "archivedCount": "Archived ({{n}})",
       "emptyFile": "This file is empty, so it was not uploaded.",
       "uploadQueued": "Upload queued.",
-      "reindexFailed": "Reindexing did not finish. Try again."
+      "reindexFailed": "Reindexing did not finish. Try again.",
+      "capabilityAvailable": "Available",
+      "capabilityUnavailable": "Not selected"
     },
     "mr": {
       "runCi": "Run CI",
@@ -3356,7 +3387,12 @@
       "creatorAssignee": "Creator · assignee",
       "clearSelection": "Clear selection",
       "filterArchived": "Archived",
-      "restore": "Restore"
+      "restore": "Restore",
+      "timeNow": "now",
+      "timeMinutes": "{{n}}m",
+      "timeHours": "{{n}}h",
+      "timeDays": "{{n}}d",
+      "timeWeeks": "{{n}}w"
     },
     "placeholder": {
       "comingNext": "{{title}} — coming next",

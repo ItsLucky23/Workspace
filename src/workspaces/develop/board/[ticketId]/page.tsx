@@ -171,14 +171,15 @@ function TicketControls({ ticket, primary, onOpenTerminal }: { ticket: Ticket; p
   //? teardown) gated on the development module + admin/owner (fail-open: an unresolved
   //? role is not 'member').
   const showDevOps = isModuleEnabled(ctx.activeWorkspace.enabledSections, 'development') && ctx.activeWorkspace.role !== 'member';
+  const paused = ticket.status === 'paused';
   const agentMenu: PopMenuItem[] = [
-    //? Same guard as the board card: without a linked repo, "pause" is a meaningless status flip —
-    //? explain the blocker instead (owner report 2026-07-20).
-    { label: translate({ key: 'workspaces.ticket.pauseAgent' }), icon: 'pause', onClick: () => { if (!ctx.repo.linked) { notify.warning({ key: 'workspaces.board.agentNeedsRepo' }); return; } ctx.pauseTicket(ticket.id); } },
-    { label: translate({ key: 'workspaces.ticket.resumeAgent' }), icon: 'play', onClick: () => { ctx.resumeTicket(ticket.id); } },
+    paused
+      ? { label: translate({ key: 'workspaces.ticket.resumeAgent' }), icon: 'play', onClick: () => { ctx.resumeTicket(ticket.id); } }
+      : { label: translate({ key: 'workspaces.ticket.pauseAgent' }), icon: 'pause', onClick: () => { if (!ctx.repo.linked) { notify.warning({ key: 'workspaces.board.agentNeedsRepo' }); return; } ctx.pauseTicket(ticket.id); } },
+
     { label: translate({ key: 'workspaces.ticket.critiquePlan' }), icon: 'wand-magic-sparkles', onClick: () => { ctx.planCritique(ticket.id); } },
     { divider: true },
-    { label: translate({ key: 'workspaces.ticket.openTerminal' }), icon: 'terminal', onClick: () => { ctx.navigate('terminals'); } },
+    { label: translate({ key: 'workspaces.ticket.openTerminal' }), icon: 'terminal', onClick: () => { ctx.navigate('terminals', [ticket.id]); } },
     //? Fase 2: the GitLab deep-link op doesn't exist yet — HIDDEN until it does (PopMenuItem has no
     //? disabled state, and a dead menu item that swallows the click is worse than no item).
     //? Restore here with the real deep-link: { label: translate({ key: 'workspaces.ticket.gitlab' }), icon: 'up-right-from-square', onClick: ... }
@@ -349,7 +350,6 @@ function TicketMeta({ ticket }: { ticket: Ticket }) {
       {ticket.branch && <MetaChip icon="diagram-project" text={translate({ key: 'workspaces.ticket.branchChipLabel', params: [{ key: 'branch', value: ticket.branch }] })} />}
       {ticket.mr && ticket.mr !== '—' && <MetaChip icon="code-merge" text={ticket.mr} />}
       {ticket.costLabel && <MetaChip icon="chart-column" text={ticket.costLabel} />}
-      <MetaChip icon="up-right-from-square" text={translate({ key: 'workspaces.ticket.previewLive' })} tone="correct" />
       {ticket.labels.map((l) => <LabelChip key={l} name={l} />)}
     </>
   );
