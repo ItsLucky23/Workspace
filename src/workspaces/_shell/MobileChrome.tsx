@@ -6,7 +6,7 @@ import { useState } from 'react';
 
 import { AnimatePresence, motion } from 'motion/react';
 
-import { useTranslator } from '@luckystack/core/client';
+import { apiRequest, i18nNotify as notify, useTranslator, useUpdateLanguage, getActiveLanguage } from '@luckystack/core/client';
 
 import Icon from '../_components/Icon';
 import { SPRING_SHEET } from '../_components/motion';
@@ -14,25 +14,24 @@ import { AvatarBubble, IconButton } from '../_components/primitives';
 import { isSectionEnabled } from '../_data/modules';
 import { menuHandler } from 'src/_functions/menuHandler';
 
-import { CreateProjectForm, CreateWorkspaceForm, GROUP_ORDER, NAV_BOTTOM, NAV_ITEMS } from './Shell';
+import { CreateProjectForm, CreateWorkspaceForm, formatUnreadCount, GROUP_ORDER, NAV_BOTTOM, NAV_ITEMS, NotificationList, openWorkspaceNotification } from './Shell';
 import { isTicketView, useWorkspaces } from './WorkspacesContext';
+
+const LANGUAGES = ['en', 'nl', 'de', 'fr'] as const;
+type Language = typeof LANGUAGES[number];
+const isLanguage = (value: string): value is Language => LANGUAGES.includes(value as Language);
 
 export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
   const translate = useTranslator();
-  const { view, navigate, openTicket, currentUser, activeWorkspace, workspaces, setActiveWorkspace, createWorkspace, notifications, unreadNotifications, markNotificationRead, markAllNotificationsRead, toggleAi, projects, activeProjectId, setActiveProject, createProject, createFromTemplate, templates } = useWorkspaces();
+  const { view, navigate, openTicket, currentUser, activeWorkspace, workspaces, setActiveWorkspace, createWorkspace, notifications, unreadNotifications, markNotificationRead, markAllNotificationsRead, toggleAi, projects, activeProjectId, setActiveProject, createProject, createFromTemplate, templates, theme, setTheme, signOut } = useWorkspaces();
+  const updateLanguage = useUpdateLanguage();
+  const initialLanguage = getActiveLanguage();
+  const [activeLang, setActiveLang] = useState<Language>(() => (isLanguage(initialLanguage) ? initialLanguage : 'en'));
   const [drawer, setDrawer] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const onTicket = isTicketView(view);
 
-  //? #116/#120 — tapping a notification follows its deep-link (open the ticket / view), marks it read,
-  //? and closes the sheet. Falls back to just marking read when there is no deep-link.
-  const openNotification = (n: (typeof notifications)[number]) => {
-    const link = n.deepLink;
-    if (link?.ticketId) openTicket(link.ticketId);
-    else if (link?.view) navigate(link.view);
-    markNotificationRead(n.id);
-    setNotifOpen(false);
-  };
+  //? #116/#120 — notification navigation, iconography and unread formatting are shared with desktop.
 
   return (
     <>
@@ -55,7 +54,7 @@ export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
             primitive doesn't expose — bumped to the same 44px touch target by hand. */}
         <button type="button" onClick={() => { setNotifOpen(true); }} className="relative w-11 h-11 flex items-center justify-center rounded-xl text-common hover:bg-container2 cursor-pointer" title={translate({ key: 'workspaces.shell.notifications' })}>
           <Icon name="bell" />
-          {unreadNotifications > 0 && <span className="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-wrong text-[10px] font-bold text-title-primary flex items-center justify-center">{unreadNotifications > 9 ? '9+' : unreadNotifications}</span>}
+          {unreadNotifications > 0 && <span className="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-wrong text-[10px] font-bold text-title-primary flex items-center justify-center">{formatUnreadCount(unreadNotifications)}</span>}
         </button>
         <AvatarBubble user={currentUser} size={30} />
       </header>
@@ -71,14 +70,11 @@ export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
                 {unreadNotifications > 0 && <button type="button" onClick={markAllNotificationsRead} className="text-xs font-medium text-primary hover:text-primary-hover cursor-pointer">{translate({ key: 'workspaces.shell.markAllRead' })}</button>}
               </div>
               <div className="flex-1 overflow-y-auto flex flex-col gap-1">
-                {notifications.length === 0 && <div className="px-2 py-6 text-center text-sm text-muted">{translate({ key: 'workspaces.shell.noNotifications' })}</div>}
-                {notifications.map((n) => (
-                  <button key={n.id} type="button" onClick={() => { openNotification(n); }}
-                    className={`flex flex-col gap-0.5 rounded-lg px-3 py-2 text-left transition-colors cursor-pointer hover:bg-container2 ${n.read ? '' : 'bg-primary/5'}`}>
-                    <span className="text-sm font-medium text-title">{n.title}</span>
-                    {n.body.length > 0 && <span className="text-xs text-muted">{n.body}</span>}
-                  </button>
-                ))}
+                <NotificationList
+                  notifications={notifications}
+                  empty={translate({ key: 'workspaces.shell.noNotifications' })}
+                  onOpen={(n) => { openWorkspaceNotification(n, { openTicket, navigate, markNotificationRead, close: () => { setNotifOpen(false); } }); }}
+                />
               </div>
             </motion.div>
           </>
@@ -110,7 +106,7 @@ export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
                       {items.map((it) => (
                         <button key={it.id} type="button" onClick={() => { navigate(it.id); setDrawer(false); }}
                           className={`flex items-center gap-3 rounded-xl h-11 px-3 text-sm font-medium transition-colors cursor-pointer ${view === it.id ? 'bg-container2 text-title' : 'text-common hover:bg-container2'}`}>
-                          <span className="w-5 text-center"><Icon name={it.icon} /></span> {it.label}
+                          <span className="w-5 text-center"><Icon name={it.icon} /></span> {translate({ key: `workspaces.nav.${it.id}` })}
                         </button>
                       ))}
                     </div>
@@ -121,7 +117,7 @@ export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
                 {NAV_BOTTOM.filter((it) => isSectionEnabled(activeWorkspace.enabledSections, it.id)).map((it) => (
                   <button key={it.id} type="button" onClick={() => { if (it.id === 'ai') toggleAi(); else navigate(it.id); setDrawer(false); }}
                     className={`flex items-center gap-3 rounded-xl h-11 px-3 text-sm font-medium transition-colors cursor-pointer ${view === it.id ? 'bg-container2 text-title' : 'text-common hover:bg-container2'}`}>
-                    <span className="w-5 text-center"><Icon name={it.icon} /></span> {it.label}
+                    <span className="w-5 text-center"><Icon name={it.icon} /></span> {translate({ key: `workspaces.nav.${it.id}` })}
                   </button>
                 ))}
               </div>
@@ -165,6 +161,16 @@ export function MobileHeader({ onCmdK }: { onCmdK: () => void }) {
                     <span className="w-6 h-6 flex items-center justify-center shrink-0"><Icon name="plus" /></span>
                   <span className="truncate">{translate({ key: 'workspaces.shell.createWorkspace' })}</span>
                 </button>
+              </div>
+              <div className="shrink-0 border-t border-divider pt-2 flex flex-col gap-1">
+                <div className="flex items-center gap-2 px-3 py-2">
+                  <AvatarBubble user={currentUser} size={28} />
+                  <div className="min-w-0 flex-1"><div className="text-sm font-semibold text-title truncate">{currentUser.name}</div><div className="text-xs text-muted truncate">{currentUser.email}</div></div>
+                </div>
+                <button type="button" onClick={() => { setDrawer(false); navigate('settings'); }} className="flex items-center gap-3 rounded-xl h-11 px-3 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name="user" className="w-5 text-center" /> {translate({ key: 'workspaces.shell.account' })}</button>
+                <button type="button" onClick={() => { const nextTheme = theme === 'dark' ? 'light' : 'dark'; setTheme(nextTheme); void apiRequest({ name: 'settings/updateUser', version: 'v1', data: { theme: nextTheme } }).then((response) => { if (response.status !== 'success') notify.error({ key: 'settings.failedUpdateUser' }); }); }} className="flex items-center gap-3 rounded-xl h-11 px-3 text-sm text-common hover:bg-container2 cursor-pointer"><Icon name={theme === 'dark' ? 'sun' : 'moon'} className="w-5 text-center" /> {translate({ key: 'workspaces.shell.themeLabel', params: [{ key: 'theme', value: theme }] })}</button>
+                <div className="flex items-center gap-3 px-3 py-2 text-sm text-common"><Icon name="language" className="w-5 text-center" /><span>{translate({ key: 'workspaces.account.language' })}</span><div className="flex items-center gap-1 ml-auto">{LANGUAGES.map((code) => <button key={code} type="button" onClick={() => { const previous = activeLang; setActiveLang(code); updateLanguage(code); void apiRequest({ name: 'settings/updateUser', version: 'v1', data: { language: code } }).then((response) => { if (response.status === 'success') return; setActiveLang(previous); updateLanguage(previous); notify.error({ key: 'settings.failedUpdateUser' }); }); }} className={`rounded-md px-1.5 py-0.5 text-xs uppercase cursor-pointer ${activeLang === code ? 'bg-primary text-common-primary' : 'text-muted hover:bg-container2 hover:text-common'}`}>{code}</button>)}</div></div>
+                <button type="button" onClick={() => { setDrawer(false); signOut(); }} className="flex items-center gap-3 rounded-xl h-11 px-3 text-sm text-wrong hover:bg-wrong/10 cursor-pointer"><Icon name="right-from-bracket" className="w-5 text-center" /> {translate({ key: 'workspaces.shell.signOut' })}</button>
               </div>
             </motion.div>
           </>

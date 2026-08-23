@@ -181,6 +181,7 @@ Every typed sync route in this project. Sourced from `_ProjectSyncTypeMap` in `s
 | `workspaces/triggerAction/v1` | — | — | ✓ |
 | `workspaces/uiReviewAction/v1` | — | — | ✓ |
 | `workspaces/uiReviewCreate/v1` | — | — | ✓ |
+| `workspaces/unarchive/v1` | — | — | ✓ |
 | `workspaces/workspaceDirty/v1` | — | — | — |
 
 ### Server-injected `functions.*` map
