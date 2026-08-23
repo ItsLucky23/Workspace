@@ -41,7 +41,7 @@ function blankStage(projectId: string, id: string, name: string, order: number, 
     ],
     processes: [], visibleStageIds: [],
     modelCfg: { autoEscalate: false, base: { model: bp?.model ?? 'sonnet', effort: bp?.effort ?? 'medium', maxTurns: bp?.maxTurns ?? 12 }, rules: [] },
-    network: { enabled: true, mode: 'whitelist', categories: ['package-registries', 'source-hosts'], domains: [] },
+    network: { enabled: true, mode: 'whitelist', categories: ['package-registries', 'source-hosts', 'ai-apis'], domains: [] },
     //? F-008 — `{}` like the conductor writes it: the engine enables a hook unless it is explicitly false,
     //? and the Hooks tab renders `?? true`, so the optimistic copy no longer flips after the refetch.
     hooks: {},
@@ -61,11 +61,13 @@ export const template = 'workspaces';
 //? deep link to an advanced tab resolves (the tab bar then surfaces it), while an unknown segment
 //? still falls back to General instead of rendering an empty panel.
 const STAGE_TAB_IDS = ['general', 'context', 'model', 'commands', 'integrations', 'visibility', 'process', 'carryover', 'network', 'hooks'];
+const BASIC_STAGE_TAB_IDS = ['general', 'context', 'model'];
 
 export default function Pipeline() {
   const translate = useTranslator();
   const { activeWorkspace, activeProjectId, stageConfigs, tickets, skills, saveStageConfig, createStage, deleteStage, reorderStages, navigate } = useWorkspaces();
   const presetData = usePipelinePresets(activeWorkspace.id);
+  const showAdvanced = activeWorkspace.role !== 'member';
   const [stages, setStages] = useState<PipelineStageCfg[]>(stageConfigs);
   //? ADR 0312 — the selected stage and its tab are the URL
   //? (`/workspaces/develop/pipeline/<stageId>/context`), so a stage is linkable and the "open this
@@ -75,7 +77,7 @@ export default function Pipeline() {
   //? The stage is level 0 and is often implicit (the page opens on the first stage without it being
   //? in the URL), so the tab writer is told what that resolved to — otherwise a tab click would write
   //? the tab into the stage slot.
-  const [tab, setTab] = useTrailSegment(1, STAGE_TAB_IDS, 'general', [selectedId]);
+  const [tab, setTab] = useTrailSegment(1, showAdvanced ? STAGE_TAB_IDS : BASIC_STAGE_TAB_IDS, 'general', [selectedId]);
 
   const [warnings, setWarnings] = useState<StageWarning[]>([]);
 
@@ -127,21 +129,21 @@ export default function Pipeline() {
     clearDirty(s.id);
   };
 
-  const move = (dir: -1 | 1) => { setStages((p) => {
-    const i = p.findIndex((x) => x.id === selectedId);
+  const move = (dir: -1 | 1) => {
+    const i = stages.findIndex((x) => x.id === selectedId);
     const j = i + dir;
-    if (j < 0 || j >= p.length) return p;
-    const copy = [...p];
+    if (j < 0 || j >= stages.length) return;
+    const copy = [...stages];
     const a = copy[i];
     const b = copy[j];
-    if (!a || !b) return p;
+    if (!a || !b) return;
     copy[i] = b;
     copy[j] = a;
     const reordered = copy.map((st, idx) => ({ ...st, order: idx }));
+    setStages(reordered);
     //? R1 — persist the new order (stage ids in sequence) so a reorder survives a refresh.
     if (activeProjectId) reorderStages(activeProjectId, reordered.map((st) => st.id));
-    return reordered;
-  }); };
+  };
 
   const addStage = (kind: StageKind) => {
     if (!activeProjectId) return;
@@ -183,7 +185,7 @@ export default function Pipeline() {
         w.push({ stageId: st.id, severity: 'info', text: translate({ key: 'workspaces.pipeline.warnBlind', params: [{ key: 'name', value: st.name }] }) });
       if (st.aiEnabled && !st.customInstructions.trim())
         w.push({ stageId: st.id, severity: 'info', text: translate({ key: 'workspaces.pipeline.warnNoInstructions', params: [{ key: 'name', value: st.name }] }) });
-      if (st.tools.some((t) => t.tier === 'rw') && st.id !== 'impl')
+      if (st.tools.some((t) => t.tier === 'rw') && st.kind !== 'code')
         w.push({ stageId: st.id, severity: 'warn', text: translate({ key: 'workspaces.pipeline.warnWriteAccess', params: [{ key: 'name', value: st.name }] }) });
       if (st.aiEnabled && !st.network.enabled && st.skillKeys.length > 0)
         w.push({ stageId: st.id, severity: 'info', text: translate({ key: 'workspaces.pipeline.warnNetworkOff', params: [{ key: 'name', value: st.name }] }) });
@@ -205,7 +207,6 @@ export default function Pipeline() {
   //? tabs (commands, integrations, visibility, process, carryover, network egress, lifecycle hooks) sit
   //? behind ONE "Advanced" menu, role-gated to admin/owner (fail-open: unresolved role ≠ 'member'). When
   //? an advanced tab is active it appears as a fourth tab so you can see where you are.
-  const showAdvanced = activeWorkspace.role !== 'member';
   const basicTabs: TabDef[] = [
     { id: 'general', label: translate({ key: 'workspaces.pipeline.tabGeneral' }), icon: 'sliders' },
     { id: 'context', label: translate({ key: 'workspaces.pipeline.tabContext' }), icon: 'book-open' },

@@ -110,11 +110,13 @@ export function emptyPromptFields(stage: PipelineStageCfg, data: PipelinePresetD
 /** The pipeline menu: fill the blanks, or switch tier. Renders nothing until the defaults have loaded. */
 export function PresetMenu({ data, stages, tickets }: { data: PipelinePresetData; stages: PipelineStageCfg[]; tickets: { stageId: string }[] }) {
   const translate = useTranslator();
-  const { activeProjectId, applyPipelinePreset } = useWorkspaces();
+  const { activeProjectId, stageConfigs, applyPipelinePreset } = useWorkspaces();
   if (data.presets.length === 0 || !activeProjectId) return null;
 
   const current = currentPreset(data, stages);
-  const blanks = stages.reduce((n, s) => n + emptyPromptFields(s, data), 0);
+  //? The Conductor fills persisted rows, not this page's unsaved draft. Count the same snapshot rows
+  //? that the write will inspect so the confirmation cannot promise a different number.
+  const blanks = stageConfigs.reduce((n, s) => n + emptyPromptFields(s, data), 0);
 
   const fill = (): void => {
     void menuHandler.confirm({

@@ -69,8 +69,16 @@ export default function AutomationPanel() {
   const matchStageItems: DropdownItem[] = [{ id: '', value: '', item: translate({ key: 'workspaces.automation.matchAnyStage' }) }, ...stageItems];
 
   const reset = () => { setCreating(false); setName(''); setTitle(''); setBody(''); setSignalKind(''); setRoleKey(''); setTargetStage(''); setMatchStage(''); setDebounce(''); setWebhookUrl(''); setCommand(''); setAiPrompt(''); setRequiresApproval(false); };
+  const webhookValid = /^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(webhookUrl.trim());
+  let actionReady = true;
+  if (action === 'start-stage') actionReady = stageItems.length > 0 && targetStage.length > 0;
+  if (action === 'invoke-agent-role') actionReady = roleKey.length > 0;
+  if (action === 'webhook') actionReady = webhookValid;
+  if (action === 'run-command') actionReady = command.trim().length > 0;
+  if (action === 'invoke-workspace-ai') actionReady = aiPrompt.trim().length > 0;
+  const canCreate = name.trim().length > 0 && actionReady;
   const create = () => {
-    if (!name.trim()) return;
+    if (!canCreate) return;
     const params: Record<string, unknown> = {};
     if (action === 'notify') { params.title = title || name; params.body = body; }
     if (action === 'emit-signal') { params.kind = signalKind.trim() || 'custom'; }
@@ -311,7 +319,7 @@ export default function AutomationPanel() {
           </div>
           <div className="flex items-center justify-end gap-2">
             <WsButton variant="ghost" onClick={reset}>{translate({ key: 'workspaces.shell.cancel' })}</WsButton>
-            <WsButton icon="plus" onClick={create}>{translate({ key: 'workspaces.automation.create' })}</WsButton>
+            <WsButton icon="plus" disabled={!canCreate} onClick={create}>{translate({ key: 'workspaces.automation.create' })}</WsButton>
           </div>
         </div>
       </Collapse>

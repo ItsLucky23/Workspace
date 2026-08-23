@@ -5,10 +5,10 @@
 //? DEV-1240…DEV-1251, 5 members). Typed against `_data/types.ts` so it lines up
 //? with the real Prisma model. No server, no fetching — imported directly.
 
+import { HOOK_KEYS } from './catalogs';
 import type {
   ActivityEvent,
   AiSuggestion,
-  ChatMessage,
   InfoDoc,
   InviteEntry,
   EnvVar,
@@ -423,14 +423,6 @@ export const DEFAULT_PERM_ROLES: PermRole[] = [
   { key: 'member', name: 'Member', perms: MEMBER_PERMS },
 ];
 
-//? Workspace-AI seed conversation.
-export const INITIAL_CHAT: ChatMessage[] = [
-  {
-    id: 'm0', role: 'ai',
-    text: "Hi — I'm your Workspace-AI. Ask me to move a ticket (e.g. “move DEV-1240 to review”), summarise progress, or link related work. I can drive every action in here.",
-  },
-];
-
 //? ---------------------------------------------------------------- pipeline config
 //? Catalogs for the pipeline editor. Skills reference SKILLS, context docs
 //? reference DOCS. Everything is stack-agnostic (works on Node / .NET / Go / …),
@@ -445,72 +437,10 @@ export const INITIAL_CHAT: ChatMessage[] = [
 //?
 //? `required` marks a hook the engine itself depends on: the Stop hook is how a turn is detected as
 //? finished, so it is shown but not switchable — the alternative is a stage that hangs forever.
-export const HOOK_CATALOG: { key: string; label: string; category: string; matcher: string; feeds: string; desc: string; required?: true }[] = [
-  { key: 'Stop', label: 'Stop', category: 'Events & status', matcher: 'stage-AI finished', feeds: 'done / needs-input + move', desc: 'Marks the stage done (or needs-input if idle) and runs the pipeline-move logic. The engine depends on this.', required: true },
-  { key: 'PostToolUse', label: 'PostToolUse', category: 'Events & status', matcher: 'every tool call', feeds: 'TicketEvent → live activity', desc: 'Records each command and file change as an event, so the turn has a readable trail afterwards.' },
-  { key: 'PreCompact', label: 'PreCompact', category: 'Lifecycle', matcher: 'about to auto-compact', feeds: 'controlled handoff', desc: 'Signals the orchestrator to do its own handoff instead of an opaque automatic compaction.' },
-];
-
-const HOOK_KEYS = HOOK_CATALOG.map((h) => h.key);
 
 //? Common, Claude-relevant command patterns to whitelist, grouped by category.
 //? Each maps to a `.claude` permission rule. Stack-agnostic on purpose. `desc`
 //? feeds the ? info popover in the editor.
-export const COMMAND_CATALOG: { category: string; commands: { pattern: string; label: string; desc: string }[] }[] = [
-  { category: 'Package managers', commands: [
-    { pattern: 'Bash(npm install)', label: 'npm install', desc: 'Install Node dependencies from package.json.' },
-    { pattern: 'Bash(npm ci)', label: 'npm ci', desc: 'Clean install from the lockfile (CI-style, reproducible).' },
-    { pattern: 'Bash(pnpm install)', label: 'pnpm install', desc: 'Install dependencies with pnpm.' },
-    { pattern: 'Bash(yarn install)', label: 'yarn install', desc: 'Install dependencies with Yarn.' },
-    { pattern: 'Bash(dotnet restore)', label: 'dotnet restore', desc: 'Restore NuGet packages for a .NET project.' },
-    { pattern: 'Bash(go mod download)', label: 'go mod download', desc: 'Download Go module dependencies.' },
-    { pattern: 'Bash(pip install:*)', label: 'pip install …', desc: 'Install Python packages with pip.' },
-  ] },
-  { category: 'Build & run', commands: [
-    { pattern: 'Bash(npm run build)', label: 'npm run build', desc: 'Run the project build script.' },
-    { pattern: 'Bash(npm run *)', label: 'npm run …', desc: 'Run any package.json script (broad — covers all run targets).' },
-    { pattern: 'Bash(dotnet build)', label: 'dotnet build', desc: 'Compile a .NET project/solution.' },
-    { pattern: 'Bash(go build:*)', label: 'go build …', desc: 'Compile Go packages.' },
-    { pattern: 'Bash(make:*)', label: 'make …', desc: 'Run Makefile targets.' },
-  ] },
-  { category: 'Testing', commands: [
-    { pattern: 'Bash(npm run test:*)', label: 'npm run test…', desc: 'Run test scripts (test, test:unit, test:e2e, …).' },
-    { pattern: 'Bash(npm run coverage)', label: 'npm run coverage', desc: 'Run the test suite with coverage.' },
-    { pattern: 'Bash(dotnet test)', label: 'dotnet test', desc: 'Run the .NET test suite.' },
-    { pattern: 'Bash(go test ./...)', label: 'go test ./...', desc: 'Run all Go tests in the module.' },
-  ] },
-  { category: 'Version control', commands: [
-    { pattern: 'Bash(git add:*)', label: 'git add …', desc: 'Stage files for commit.' },
-    { pattern: 'Bash(git commit:*)', label: 'git commit …', desc: 'Create a commit on the ticket branch.' },
-    { pattern: 'Bash(git checkout:*)', label: 'git checkout …', desc: 'Switch branches / restore files.' },
-    { pattern: 'Bash(git push:*)', label: 'git push …', desc: 'Push commits to the remote (opens/updates the MR).' },
-    { pattern: 'Bash(git rebase:*)', label: 'git rebase …', desc: 'Rebase the branch — history rewrite, use with care.' },
-  ] },
-  { category: 'Filesystem & edits', commands: [
-    { pattern: 'Edit(*)', label: 'Edit files', desc: 'Modify existing files in the worktree.' },
-    { pattern: 'Write(*)', label: 'Write files', desc: 'Create new files in the worktree.' },
-    { pattern: 'Bash(mkdir:*)', label: 'mkdir …', desc: 'Create directories.' },
-    { pattern: 'Bash(rm:*)', label: 'rm …', desc: 'Delete files — destructive.' },
-  ] },
-  { category: 'Containers & infra', commands: [
-    { pattern: 'Bash(docker:*)', label: 'docker …', desc: 'Run Docker commands inside the container.' },
-    { pattern: 'Bash(docker compose:*)', label: 'docker compose …', desc: 'Bring up/down compose services.' },
-    { pattern: 'Bash(kubectl:*)', label: 'kubectl …', desc: 'Interact with a Kubernetes cluster — high blast radius.' },
-  ] },
-  { category: 'Database CLIs', commands: [
-    { pattern: 'Bash(psql:*)', label: 'psql …', desc: 'PostgreSQL CLI.' },
-    { pattern: 'Bash(mysql:*)', label: 'mysql …', desc: 'MySQL CLI.' },
-    { pattern: 'Bash(redis-cli:*)', label: 'redis-cli …', desc: 'Redis CLI.' },
-    { pattern: 'Bash(mongosh:*)', label: 'mongosh …', desc: 'MongoDB shell.' },
-  ] },
-  { category: 'Network & dangerous', commands: [
-    { pattern: 'Bash(curl:*)', label: 'curl …', desc: 'HTTP requests — can exfiltrate; pair with a Network allow-list.' },
-    { pattern: 'Bash(npm publish)', label: 'npm publish', desc: 'Publish a package to the registry — almost always Deny.' },
-    { pattern: 'Bash(sudo:*)', label: 'sudo …', desc: 'Run as root — almost always Deny.' },
-    { pattern: 'Bash(rm -rf:*)', label: 'rm -rf …', desc: 'Recursive force delete — almost always Deny.' },
-  ] },
-];
-
 //? Integration TYPES (templates) — picked when setting up a workspace tool. Each
 //? carries default config fields + a default MCP command. Stack-agnostic; custom
 //? allowed too.
@@ -544,19 +474,6 @@ export const INTEGRATION_TOOLS: IntegrationTool[] = [
   { id: 'tool-mongodb', name: 'MongoDB', type: 'mongodb', fields: [{ id: 'imf1', label: 'Connection string', envVarId: 'env-mongo' }], mcp: { enabled: true, command: 'node /pty-agent/mcp/mongo.js' } },
   { id: 'tool-redis', name: 'Redis', type: 'redis', fields: [{ id: 'imf2', label: 'URL', envVarId: 'env-redis' }], mcp: { enabled: true, command: 'node /pty-agent/mcp/redis.js' } },
 ];
-
-//? Network egress category presets (whitelist/blacklist building blocks).
-export const NETWORK_CATEGORIES: { key: string; label: string; desc: string }[] = [
-  { key: 'package-registries', label: 'Package registries', desc: 'npm, NuGet, Go proxy, PyPI, crates.io' },
-  { key: 'source-hosts', label: 'Source hosts', desc: 'github.com, gitlab.com, bitbucket.org' },
-  { key: 'ai-apis', label: 'AI APIs', desc: 'api.anthropic.com, api.openai.com' },
-  { key: 'cdns', label: 'CDNs', desc: 'jsdelivr, unpkg, cloudflare' },
-  { key: 'cloud', label: 'Cloud providers', desc: 'AWS, GCP, Azure endpoints' },
-  { key: 'social', label: 'Social & media', desc: 'twitter/x, youtube, reddit' },
-  { key: 'trackers', label: 'Ads & trackers', desc: 'analytics + ad networks' },
-];
-
-
 
 const baseStatuses = (): StageStatusCfg[] => [
   { key: 'needs-input', label: 'Needs input', kind: 'base' },

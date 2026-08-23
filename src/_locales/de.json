@@ -567,13 +567,13 @@
       "customInstructionsHint": "Wird in die CLAUDE.md der Stage geladen — Domänenregeln + Ziele pro Stage.",
       "customInstructionsPlaceholder": "z. B. Halte dich exakt an den Plan. Halte Änderungen chirurgisch.",
       "statuses": "Status",
-      "statusesHint": "Basis-Status sind immer vorhanden. „Gestoppt“ wird gesetzt, wenn du alle AIs stoppst oder das Abo-Limit erreicht wird. Füge eigene Chips für diese Stage hinzu.",
+      "statusesHint": "Das sind die Status der Engine. Eigene Stage-Status werden von Tickets nicht verwendet und bleiben daher aus diesem Editor heraus.",
       "addStatusPlaceholder": "Eigenen Status hinzufügen…",
       "add": "Hinzufügen",
       "contextDocs": "Kontext-Docs",
       "contextDocsHint": "Wird einmalig in den Container geladen, schreibgeschützt.",
-      "skillsMcp": "Skills / MCP",
-      "skillsMcpHint": "Auf Abruf abgefragt. Pro Commit eingefroren oder live.",
+      "skillsMcp": "Datentools / MCP",
+      "skillsMcpHint": "Wähle die Capability-Tools, die diese Stage aufrufen darf. Der Status unter Quellen ist informativ; diese Stage-Auswahl ist die wirksame Einstellung.",
       "modeOff": "Aus",
       "modeAllow": "Erlauben",
       "modeAsk": "Fragen",
@@ -659,7 +659,7 @@
       "tabHooks": "Hooks",
       "pipelineTitle": "Pipeline",
       "headerSummary": "{{name}} · {{count}} Stages · die AI bewegt Tickets durch diese",
-      "validateWithAi": "Mit AI validieren",
+      "validateWithAi": "Pipeline prüfen",
       "addStage": "Stage hinzufügen",
       "findingsCount": "{{count}} Befund(e)",
       "aiOn": "AI an",
@@ -758,7 +758,28 @@
       "tipTitle": "Wie dieser Prompt aufgebaut ist",
       "tipPosition": "Dieses Feld ist {{channel}} {{n}} von {{total}}.",
       "tipThisField": " — dieses Feld",
-      "goto_skillsStage": "Auf dem Kontext-Tab dieser Stufe wählen"
+      "goto_skillsStage": "Auf dem Kontext-Tab dieser Stufe wählen",
+      "catalog": {
+        "categories": { "events": "Ereignisse & Status", "lifecycle": "Lebenszyklus", "packageManagers": "Paketmanager", "buildRun": "Bauen & Ausführen", "testing": "Tests", "versionControl": "Versionsverwaltung", "filesystem": "Dateien & Bearbeitung", "containers": "Container & Infrastruktur", "database": "Datenbank-CLIs", "network": "Netzwerk & gefährlich" },
+        "hooks": {
+          "stop": { "label": "Stop", "feeds": "fertig / Eingabe nötig + Verschieben", "desc": "Markiert die Stage als fertig (oder als Eingabe nötig) und bewegt das Ticket weiter. Die Engine benötigt diesen Hook." },
+          "postToolUse": { "label": "PostToolUse", "feeds": "TicketEvent → Live-Aktivität", "desc": "Zeichnet jedes Kommando und jede Dateiänderung als Event auf." },
+          "preCompact": { "label": "PreCompact", "feeds": "kontrollierte Übergabe", "desc": "Signalisiert dem Orchestrator eine eigene Übergabe statt einer undurchsichtigen automatischen Komprimierung." }
+        },
+        "commands": {
+          "npmInstall": { "label": "npm install", "desc": "Node-Abhängigkeiten aus package.json installieren." }, "npmCi": { "label": "npm ci", "desc": "Saubere Installation aus der Lockfile." }, "pnpmInstall": { "label": "pnpm install", "desc": "Abhängigkeiten mit pnpm installieren." }, "yarnInstall": { "label": "yarn install", "desc": "Abhängigkeiten mit Yarn installieren." }, "dotnetRestore": { "label": "dotnet restore", "desc": "NuGet-Pakete wiederherstellen." }, "goModDownload": { "label": "go mod download", "desc": "Go-Module herunterladen." }, "pipInstall": { "label": "pip install …", "desc": "Python-Pakete mit pip installieren." },
+          "npmRunBuild": { "label": "npm run build", "desc": "Das Build-Skript des Projekts ausführen." }, "npmRunAny": { "label": "npm run …", "desc": "Ein package.json-Skript ausführen." }, "dotnetBuild": { "label": "dotnet build", "desc": "Ein .NET-Projekt kompilieren." }, "goBuild": { "label": "go build …", "desc": "Go-Pakete kompilieren." }, "make": { "label": "make …", "desc": "Ein Makefile-Ziel ausführen." },
+          "npmRunTest": { "label": "npm run test…", "desc": "Test-Skripte ausführen." }, "npmCoverage": { "label": "npm run coverage", "desc": "Die Tests mit Coverage ausführen." }, "dotnetTest": { "label": "dotnet test", "desc": ".NET-Tests ausführen." }, "goTest": { "label": "go test ./...", "desc": "Alle Go-Tests ausführen." },
+          "gitAdd": { "label": "git add …", "desc": "Dateien für den Commit vormerken." }, "gitCommit": { "label": "git commit …", "desc": "Einen Commit auf dem Ticket-Branch erstellen." }, "gitCheckout": { "label": "git checkout …", "desc": "Branch wechseln oder Dateien wiederherstellen." }, "gitPush": { "label": "git push …", "desc": "Commits zum Remote pushen." }, "gitRebase": { "label": "git rebase …", "desc": "Den Branch rebasen; mit Vorsicht verwenden." },
+          "editFiles": { "label": "Dateien bearbeiten", "desc": "Bestehende Dateien in der Worktree ändern." }, "writeFiles": { "label": "Dateien schreiben", "desc": "Dateien in der Worktree erstellen." }, "mkdir": { "label": "mkdir …", "desc": "Verzeichnisse erstellen." }, "rm": { "label": "rm …", "desc": "Dateien löschen — destruktiv." },
+          "docker": { "label": "docker …", "desc": "Docker-Befehle im Container ausführen." }, "dockerCompose": { "label": "docker compose …", "desc": "Compose-Dienste verwalten." }, "kubectl": { "label": "kubectl …", "desc": "Mit einem Kubernetes-Cluster arbeiten." },
+          "psql": { "label": "psql …", "desc": "PostgreSQL-CLI." }, "mysql": { "label": "mysql …", "desc": "MySQL-CLI." }, "redisCli": { "label": "redis-cli …", "desc": "Redis-CLI." }, "mongosh": { "label": "mongosh …", "desc": "MongoDB-Shell." },
+          "curl": { "label": "curl …", "desc": "HTTP-Anfragen senden; mit einer Netzwerk-Allowlist kombinieren." }, "npmPublish": { "label": "npm publish", "desc": "Ein Paket in der Registry veröffentlichen." }, "sudo": { "label": "sudo …", "desc": "Als Root ausführen — gefährlich." }, "rmRf": { "label": "rm -rf …", "desc": "Rekursiv und erzwungen löschen — gefährlich." }
+        },
+        "network": {
+          "packageRegistries": { "label": "Paket-Registries", "desc": "npm, NuGet, Go-Proxy, PyPI, crates.io" }, "sourceHosts": { "label": "Source-Hosts", "desc": "github.com, gitlab.com, bitbucket.org" }, "aiApis": { "label": "AI-APIs", "desc": "api.anthropic.com, api.openai.com" }, "cdns": { "label": "CDNs", "desc": "jsdelivr, unpkg, cloudflare" }, "cloud": { "label": "Cloud-Anbieter", "desc": "AWS-, GCP-, Azure-Endpunkte" }, "social": { "label": "Social & Medien", "desc": "twitter/x, youtube, reddit" }, "trackers": { "label": "Ads & Tracker", "desc": "Analytics- und Werbenetzwerke" }
+        }
+      }
     },
     "tips": {
       "automations": {
@@ -1068,7 +1089,7 @@
         "noSkills": "Fähigkeiten und MCP-Tools sind Funktionen, die die KI bei Bedarf aufruft. Nichts in der App legt bisher eine an, und das Indexieren des Repositorys füllt diese Liste ebenfalls nicht.",
         "toolTierBody": "Lesen gibt der Stufe keinen eingeschränkten Zugriff, sondern überhaupt keinen. Nur Schreiben übergibt der Stufe das Werkzeug wirklich; bei Lesen wird es gar nicht erst in den Container eingebunden, weil sich ein fremdes Werkzeug nicht zwingen lässt, nur zu lesen. Beim Einschalten steht ein Werkzeug standardmäßig auf Lesen – wählen Sie also Schreiben, wenn die Stufe es wirklich braucht.",
         "toolTierTitle": "Lesen bedeutet: gar nicht eingebunden",
-        "validateLocalBody": "Trotz des Namens ist keine KI beteiligt und nichts verlässt Ihren Browser. Workspaces prüft die Stufen auf dem Bildschirm anhand von fünf festen Regeln und listet die Funde auf. Bewertet wird, was gerade auf dem Bildschirm steht – einschließlich noch nicht gespeicherter Änderungen.",
+        "validateLocalBody": "Nichts verlässt Ihren Browser. Workspaces prüft die Stufen auf dem Bildschirm anhand von fünf festen Regeln und listet die Funde auf – einschließlich noch nicht gespeicherter Änderungen.",
         "validateLocalTitle": "Diese Prüfung läuft in Ihrem Browser",
         "noSkillsAlt": "Geschriebene Anweisungen, denen die KI folgen soll, sind etwas anderes — verwirrenderweise ebenfalls Fähigkeiten genannt — und die kannst du selbst anlegen:",
         "noSkillsAltCta": "KI-Einstellungen öffnen",
@@ -1856,6 +1877,7 @@
       "confirmDestructiveTitle": "Destruktive Aktion bestätigen",
       "confirmDestructiveContent": "Diese Aktion ist destruktiv oder schwer rückgängig zu machen: {{summary}}. Fortfahren?",
       "aiError": "Die KI ist gerade nicht verfügbar. Bitte erneut versuchen.",
+      "aiWelcome": "Hallo — ich bin deine Workspace-KI. Bitte mich, ein Ticket zu verschieben (z. B. „DEV-1240 nach Review verschieben“), den Fortschritt zusammenzufassen oder verwandte Arbeit zu verknüpfen. Ich kann jede Aktion hier ausführen.",
       "aiReject": "Ablehnen",
       "aiDeclined": "Abgelehnt",
       "aiAccept": "Übernehmen",
@@ -2474,6 +2496,13 @@
       "changedFilesCount": "{{count}} geänderte Dateien",
       "addReference": "Referenz hinzufügen…",
       "noActivity": "Noch keine Aktivität",
+      "activityTypeCommand": "Befehl",
+      "activityTypeFileChange": "Dateiänderung",
+      "activityTypeAiMessage": "KI-Nachricht",
+      "activityTypeStatusChange": "Statusänderung",
+      "activityTypeMr": "Merge Request",
+      "activityTypeComment": "Kommentar",
+      "activityTypeCi": "CI",
       "whyThisLink": "Warum dieser Link?",
       "relatedTickets": "Verwandte Tickets",
       "linkTicket": "Ticket verknüpfen…",
@@ -2531,8 +2560,8 @@
       "codeIndex": "Code-Index",
       "ragNotIndexedHint": "Verknüpfe ein Repository und führe 'Code neu indizieren' im Wartung-Menü aus, damit die AI deine Codebasis durchsuchen kann.",
       "emptyDocsSub": "Quellen sind das, was deine Workspace-AI liest, bevor sie arbeitet. Lade eine Spec oder Notizen hoch (.md/.txt) oder verknüpfe ein Repository und scanne es, um Dokumente automatisch zu erzeugen.",
-      "emptySkillsTitle": "Noch keine Skills",
-      "emptySkillsSub": "Fähigkeiten und MCP-Tools sind Funktionen, die die KI bei Bedarf aufrufen kann. Nichts in der App legt bisher eine an, diese Liste bleibt also leer — erneutes Indexieren füllt sie nicht. Geschriebene Anweisungs-Fähigkeiten sind etwas anderes und stehen in den Workspace-Einstellungen → KI.",
+      "emptySkillsTitle": "Noch keine Capabilities",
+      "emptySkillsSub": "Capabilities und MCP-Tools sind Funktionen, die die KI bei Bedarf aufrufen kann. Nichts in der App legt bisher eine an, diese Liste bleibt also leer — erneutes Indexieren füllt sie nicht. Geschriebene Instruktions-Skills sind etwas anderes und stehen in den Workspace-Einstellungen → KI.",
       "noStages": "Keine Stages",
       "summary": "Zusammenfassung",
       "source": "Quelle",
@@ -2545,7 +2574,7 @@
       "live": "Live",
       "status": "Status",
       "lastIndexed": "Zuletzt indexiert",
-      "enabledByStages": "Aktiviert von Stages",
+      "enabledByStages": "Von Stages ausgewählt",
       "ragBehind": "Der RAG-Index liegt 3 Commits hinter main.",
       "ragBehindHint": "Offene Tickets bleiben auf ihrem eigenen Commit eingefroren; reindexiere, um den Live-Snapshot zu aktualisieren.",
       "reindex": "Reindexieren",
@@ -2557,7 +2586,7 @@
       "regenerate": "Neu generieren",
       "details": "Details",
       "tabDocs": "Kontext-Docs",
-      "tabSkills": "Skills / MCP",
+      "tabSkills": "Capabilities / MCP",
       "title": "Quellen",
       "uploadSpec": "Spec hochladen",
       "scanRepo": "Repository scannen",
@@ -2578,7 +2607,9 @@
       "archivedCount": "Archiviert ({{n}})",
       "emptyFile": "Diese Datei ist leer und wurde nicht hochgeladen.",
       "uploadQueued": "Upload vorgemerkt.",
-      "reindexFailed": "Die Indizierung wurde nicht abgeschlossen. Versuche es erneut."
+      "reindexFailed": "Die Indizierung wurde nicht abgeschlossen. Versuche es erneut.",
+      "capabilityAvailable": "Verfügbar",
+      "capabilityUnavailable": "Nicht ausgewählt"
     },
     "mr": {
       "runCi": "CI ausführen",
@@ -3356,7 +3387,12 @@
       "creatorAssignee": "Ersteller · Zuständiger",
       "clearSelection": "Auswahl aufheben",
       "filterArchived": "Archiviert",
-      "restore": "Wiederherstellen"
+      "restore": "Wiederherstellen",
+      "timeNow": "jetzt",
+      "timeMinutes": "{{n}} Min.",
+      "timeHours": "{{n}} Std.",
+      "timeDays": "{{n}} T.",
+      "timeWeeks": "{{n}} Wo."
     },
     "placeholder": {
       "comingNext": "{{title}} — kommt als Nächstes",

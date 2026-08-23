@@ -26,7 +26,6 @@ import { menuHandler } from 'src/_functions/menuHandler';
 import { isChatEnabledOp } from '../_data/chatOps';
 import { VIEW_CATEGORY, TRAIL_ROOTS } from '../_data/nav';
 import { executeTrackedChatDispatch, isChatProposalForProject } from '../_functions/chatDispatch';
-import { INITIAL_CHAT } from '../_data/seed';
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
@@ -1256,6 +1255,12 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     void p.then((response) => { if (!reportRequestFailure(response)) refetch(); }, () => { notify.error({ key: 'workspaces.syncFailed' }); });
   }, [refetch]);
 
+  const translate = useTranslator();
+  const welcomeChat = useMemo<ChatMessage[]>(() => [{
+    id: 'm0', role: 'ai',
+    text: translate({ key: 'workspaces.shell.aiWelcome' }),
+  }], [translate]);
+
   // UI-only state (not yet server-backed).
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [aiOpen, setAiOpen] = useState(true);
@@ -1263,7 +1268,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   const sshKeys = snap.sshKeys;
   const [navStack, setNavStack] = useState<WsView[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
-  const [chat, setChat] = useState<ChatMessage[]>(INITIAL_CHAT);
+  const [chat, setChat] = useState<ChatMessage[]>([]);
   //? #111 — hydrate the chat pane from the persisted per-user history on workspace switch
   //? (and initial load). The ref holds the latest snapshot chat so that board-write refetches
   //? don't clobber in-session turns (proposals/plans aren't persisted server-side); only an
@@ -1272,8 +1277,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   snapChatRef.current = snap.chat;
   useEffect(() => {
     const persisted = snapChatRef.current;
-    setChat(persisted.length > 0 ? persisted : INITIAL_CHAT);
-  }, [snap.activeWorkspaceId]);
+    setChat(persisted.length > 0 ? persisted : welcomeChat);
+  }, [snap.activeWorkspaceId, welcomeChat]);
   const [stageOverrides, setStageOverrides] = useState<Record<string, string>>({});
   //? P4 — the optimistic AI-move override (moveTicket) is TRANSIENT: once the authoritative ticket delta
   //? lands with the server's `stageId`, drop any override that now matches it so the server stage wins. A
@@ -1319,8 +1324,6 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     for (const [uid, v] of Object.entries(viewPresence)) { if (uid === currentUser.id) continue; counts[v.view] = (counts[v.view] ?? 0) + 1; }
     return counts;
   }, [viewPresence, currentUser.id]);
-
-  const translate = useTranslator();
 
   //? Send a chat message to the live Workspace-AI: echo the user turn + a pending AI
   //? bubble immediately, then resolve it with the AI's reply and (if any) a VALIDATED

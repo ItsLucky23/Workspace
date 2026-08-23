@@ -225,7 +225,7 @@ function DocCard({ doc, onOpen, onSetAiEditable, onOpenStage }: { doc: InfoDoc; 
   );
 }
 
-function SkillRow({ skill, onToggle, onOpenStage }: { skill: SkillEntry; onToggle: () => void; onOpenStage: (stage: string) => void }) {
+function SkillRow({ skill, onOpenStage }: { skill: SkillEntry; onOpenStage: (stage: string) => void }) {
   const translate = useTranslator();
   const { scanIndex } = useWorkspaces();
   const menuItems: PopMenuItem[] = [{ label: translate({ key: 'workspaces.sources.details' }), onClick: () => { openDetail(<SkillDetail skill={skill} onOpenStage={onOpenStage} />); } }];
@@ -241,7 +241,9 @@ function SkillRow({ skill, onToggle, onOpenStage }: { skill: SkillEntry; onToggl
         </div>
         <div className={`text-xs text-muted truncate`}>{skill.status}{skill.model ? ` · ${skill.model}` : ''}</div>
       </div>
-      <Toggle on={skill.on} onChange={onToggle} ariaLabel={skill.name} />
+      <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium ${skill.on ? 'bg-correct/15 text-correct' : 'bg-container2 text-muted'}`}>
+        {translate({ key: skill.on ? 'workspaces.sources.capabilityAvailable' : 'workspaces.sources.capabilityUnavailable' })}
+      </span>
       <PopMenu items={menuItems} ariaLabel={skill.name} />
     </div>
   );
@@ -395,7 +397,7 @@ export default function Sources() {
             : (
               <div className={`grid grid-cols-1 lg:grid-cols-2 gap-2`}>
                 {skills.map((s) => (
-                  <SkillRow key={s.id} skill={s} onToggle={() => { toggleSkill(s.id, !s.on); }} onOpenStage={onOpenStage} />
+                  <SkillRow key={s.id} skill={s} onOpenStage={onOpenStage} />
                 ))}
               </div>
             )

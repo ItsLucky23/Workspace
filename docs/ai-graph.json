@@ -2,10 +2,10 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 456,
-    "edges": 688,
-    "symbols": 865,
-    "callEdges": 288
+    "nodes": 457,
+    "edges": 689,
+    "symbols": 867,
+    "callEdges": 289
   },
   "nodes": [
     {
@@ -1040,6 +1040,11 @@
     },
     {
       "id": "workspaces/_data/capabilities.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_data/catalogs.ts",
       "kind": "other",
       "route": null
     },
@@ -2847,6 +2852,10 @@
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
+      "from": "workspaces/_data/seed.ts",
+      "to": "workspaces/_data/catalogs.ts"
+    },
+    {
       "from": "workspaces/_data/types.ts",
       "to": "workspaces/_functions/controlApi.ts"
     },
@@ -3013,10 +3022,6 @@
     {
       "from": "workspaces/_shell/WorkspacesProvider.tsx",
       "to": "workspaces/_data/nav.ts"
-    },
-    {
-      "from": "workspaces/_shell/WorkspacesProvider.tsx",
-      "to": "workspaces/_data/seed.ts"
     },
     {
       "from": "workspaces/_shell/WorkspacesProvider.tsx",
@@ -4548,6 +4553,10 @@
     },
     {
       "from": "workspaces/develop/interviewer/page.tsx",
+      "to": "workspaces/_components/SetupNotice.tsx"
+    },
+    {
+      "from": "workspaces/develop/interviewer/page.tsx",
       "to": "workspaces/_data/types.ts"
     },
     {
@@ -4628,7 +4637,7 @@
     },
     {
       "from": "workspaces/develop/pipeline/stageTabs.tsx",
-      "to": "workspaces/_data/seed.ts"
+      "to": "workspaces/_data/catalogs.ts"
     },
     {
       "from": "workspaces/develop/pipeline/stageTabs.tsx",
@@ -6146,6 +6155,7 @@
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/code/page.tsx",
       "workspaces/develop/designer/page.tsx",
+      "workspaces/develop/interviewer/page.tsx",
       "workspaces/develop/pipeline/page.tsx",
       "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
@@ -6196,6 +6206,7 @@
       "workspaces/develop/board/page.tsx",
       "workspaces/develop/code/page.tsx",
       "workspaces/develop/designer/page.tsx",
+      "workspaces/develop/interviewer/page.tsx",
       "workspaces/develop/pipeline/page.tsx",
       "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
@@ -6205,6 +6216,12 @@
       "workspaces/workspace/aiProviders.tsx",
       "workspaces/workspace/page.tsx",
       "workspaces/workspace/skillsEditor.tsx"
+    ],
+    "workspaces/_data/catalogs.ts": [
+      "workspaces/_data/seed.ts",
+      "workspaces/develop/pipeline/page.tsx",
+      "workspaces/develop/pipeline/stageTabs.tsx",
+      "workspaces/workspace/page.tsx"
     ],
     "workspaces/_data/chatOps.ts": [
       "_components/templates/TemplateProvider.tsx",
@@ -6254,12 +6271,6 @@
       "workspaces/_shell/WorkspacesTemplate.tsx"
     ],
     "workspaces/_data/seed.ts": [
-      "_components/templates/TemplateProvider.tsx",
-      "main.tsx",
-      "workspaces/_shell/WorkspacesProvider.tsx",
-      "workspaces/_shell/WorkspacesTemplate.tsx",
-      "workspaces/develop/pipeline/page.tsx",
-      "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/workspace/page.tsx"
     ],
     "workspaces/_data/types.ts": [
@@ -7017,14 +7028,14 @@
     {
       "id": "workspaces/_data/capabilities.ts",
       "kind": "other",
-      "dependents": 36,
+      "dependents": 37,
       "directDependents": 4
     },
     {
       "id": "workspaces/_components/SetupNotice.tsx",
       "kind": "other",
-      "dependents": 34,
-      "directDependents": 23
+      "dependents": 35,
+      "directDependents": 24
     },
     {
       "id": "workspaces/_data/modules.ts",
@@ -9036,6 +9047,18 @@
       "id": "workspaces/_api/workspaceImport_v1.ts::main",
       "file": "workspaces/_api/workspaceImport_v1.ts",
       "name": "main",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_data/catalogs.ts::<module>",
+      "file": "workspaces/_data/catalogs.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_data/catalogs.ts::command",
+      "file": "workspaces/_data/catalogs.ts",
+      "name": "command",
       "kind": "function"
     },
     {
@@ -12419,6 +12442,10 @@
       "to": "workspaces/_api/studioGenerate_v1.ts::resultError"
     },
     {
+      "from": "workspaces/_data/catalogs.ts::<module>",
+      "to": "workspaces/_data/catalogs.ts::command"
+    },
+    {
       "from": "workspaces/_data/seed.ts::<module>",
       "to": "workspaces/_data/seed.ts::baseStatuses"
     },
@@ -13531,6 +13558,9 @@
     ],
     "workspaces/_api/studioGenerate_v1.ts::resultError": [
       "workspaces/_api/studioGenerate_v1.ts::main"
+    ],
+    "workspaces/_data/catalogs.ts::command": [
+      "workspaces/_data/catalogs.ts::<module>"
     ],
     "workspaces/_data/modules.ts::sanitizeSections": [
       "workspaces/_sync/saveSections_server_v1.ts::main"
