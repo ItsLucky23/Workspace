@@ -269,7 +269,7 @@ const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activ
   projects: [], services: [], serviceStacks: [], dbConnections: [], migrations: [], environments: [], buildArtifacts: [], templates: listTemplates(),
   members: [], tickets: [], stages: [], stageConfigs: [], aiOverrides: [], aiConnections: [], aiProviderCatalog: [], aiFeatureDefaults: {}, customTasks: [], outputTemplates: [], aiSkills: [], documents: [], documentTemplates: [], sprints: [], suggestions: [], budget: null, budgets: [],
   docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [],
-  readiness: { repoLinked: false, aiText: false, media: { fal: false, elevenlabs: false, suno: false }, publishing: false, docker: false, push: false, secretManager: false, codingAgent: { claudeCode: false, piAgent: false, codexAuth: false } },
+  readiness: { repoLinked: false, aiText: false, media: { fal: false, elevenlabs: false, suno: false }, publishing: false, docker: false, push: false, secretManager: false, codingAgent: { claudeCode: false, claudeAuth: false, piAgent: false, codexAuth: false } },
   codingAgent: DEFAULT_CODING_AGENT,
   myPerms: [], myRoleKey: 'member',
   repo: { linked: false }, gitConfig: DEFAULT_GIT_CONFIG, workspacePaused: false,

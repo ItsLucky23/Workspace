@@ -17,6 +17,8 @@ import type { AiCompletionRequest, AiCompletionResult, AiProvider } from '../typ
 
 //? conpty/spawn on Windows cannot resolve a bare `pi` (npm shim) — call the `.cmd` shim via a shell there.
 const PI_BIN = process.env.WS_PI_BIN ?? 'pi';
+//? The resolved bin, for the seat-login PTY (workspacesTerminal.ts) — same resolution, one source of truth.
+export function piCliBin(): string { return PI_BIN; }
 const PI_PROVIDER = 'openai-codex';
 export const CODEX_DEFAULT_MODEL = 'gpt-5.4-mini';
 

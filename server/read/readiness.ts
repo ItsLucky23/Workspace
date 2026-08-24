@@ -10,15 +10,21 @@
 import { dockerAvailable } from '../container/runtime';
 import { claudeCliAvailable } from '../ai/providers/claudeCli';
 import { piCliAvailable } from '../ai/providers/piCli';
+import { hostClaudeAuthPresent } from '../orchestrator/codingAgents/claudeCode';
 import { hostPiAuthHas } from '../orchestrator/codingAgents/piAgent';
 import { AI_PROVIDER_CATALOG } from '../ai/providers/catalog';
 import type { WorkspaceReadiness } from '../../src/workspaces/_data/types';
 
 //? Host-global readiness (identical for every workspace on this instance) — the part worth caching.
-interface HostReadiness { docker: boolean; claudeCli: boolean; piAgent: boolean; codexAuth: boolean; push: boolean; secretManager: boolean }
+interface HostReadiness { docker: boolean; claudeCli: boolean; claudeAuth: boolean; piAgent: boolean; codexAuth: boolean; push: boolean; secretManager: boolean }
 
 const HOST_TTL_MS = 30_000;
 let hostCache: { at: number; value: HostReadiness } | null = null;
+
+//? Drop the cached host block NOW — for the moment a probe's ground truth just changed (a seat login
+//? finished in the browser terminal). Without this the UI keeps saying "not signed in" for up to a TTL
+//? after the user watched the login succeed.
+export function resetHostReadiness(): void { hostCache = null; }
 
 //? Probe the host at most once per TTL. `now` is injected so the caller controls the clock (and tests can
 //? pin it). A missing VAPID/enc key is a plain env-presence check; docker is the only real (cached) probe.
@@ -28,6 +34,7 @@ export async function hostReadiness(now: number): Promise<HostReadiness> {
   const value: HostReadiness = {
     docker,
     claudeCli: claudeCliAvailable(),
+    claudeAuth: hostClaudeAuthPresent(),
     piAgent: piCliAvailable(),
     codexAuth: hostPiAuthHas('openai-codex'),
     push: (process.env.WS_VAPID_PUBLIC ?? '').trim().length > 0 && (process.env.WS_VAPID_PRIVATE ?? '').trim().length > 0,
@@ -79,6 +86,6 @@ export async function buildReadiness(now: number, input: WorkspaceReadinessInput
     docker: host.docker,
     push: host.push,
     secretManager: host.secretManager,
-    codingAgent: { claudeCode: host.claudeCli, piAgent: host.piAgent, codexAuth: host.codexAuth },
+    codingAgent: { claudeCode: host.claudeCli, claudeAuth: host.claudeAuth, piAgent: host.piAgent, codexAuth: host.codexAuth },
   };
 }

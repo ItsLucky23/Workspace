@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (241)
+## Decisions (242)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -254,6 +254,7 @@
 | 0321 | The coding agent is any subscription CLI in a PTY — never metered | 🟢 accepted | ai-providers, pipeline, billing, invariant-6 | — | `docs/decisions/0321-coding-agent-is-any-subscription-cli-in-a-pty-never-metered.md` |
 | 0322 | Coding-agent seats are Claude and Codex; pi is the Codex harness (forced), optional for Claude (warned) | 🟢 accepted | ai-providers, pipeline, billing, invariant-6, pi-agent, codex | — | `docs/decisions/0322-coding-agent-seats-claude-and-codex-with-pi-as-the-codex-harness.md` |
 | 0323 | Prompt composition order is one spec the server maps over, not a mirror the UI maintains | 🟢 accepted | ai, prompt, ux, correctness, orchestrator, testing | — | `docs/decisions/0323-prompt-composition-order-is-one-spec-the-server-maps-over.md` |
+| 0324 | Seat login is a purpose-bound host PTY over the terminal relay, not a control-op | 🟢 accepted | security, coding-agent, terminal, hosting, ux | — | `docs/decisions/0324-seat-login-is-a-purpose-bound-host-pty-not-a-control-op.md` |
 
 ## Summaries
 
@@ -2216,6 +2217,14 @@ _(no Decision section found — fill it in)_
 `aiLayers.ts` is the **spec**, and the server **maps over it**:
 
 → `docs/decisions/0323-prompt-composition-order-is-one-spec-the-server-maps-over.md`
+
+### 0324 — Seat login is a purpose-bound host PTY over the terminal relay, not a control-op
+
+**0324** · accepted · tags: security, coding-agent, terminal, hosting, ux · 2026-08-24
+
+A **seat-login PTY**: the `ws-term:start` payload may carry `seat: 'claude' | 'codex'` instead of a workspace/ticket container target. The server then:
+
+→ `docs/decisions/0324-seat-login-is-a-purpose-bound-host-pty-not-a-control-op.md`
 
 ## Code governed by decisions
 

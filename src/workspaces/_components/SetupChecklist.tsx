@@ -62,7 +62,7 @@ const collapsedKey = (workspaceId: string): string => `ws:setup-collapsed:${work
 
 export default function SetupChecklist() {
   const translate = useTranslator();
-  const { activeWorkspace, activeProject, readiness, tickets, docs, can, focusSetup, quickAdd, toggleAi } = useWorkspaces();
+  const { activeWorkspace, activeProject, readiness, codingAgent, tickets, docs, can, focusSetup, quickAdd, toggleAi } = useWorkspaces();
   const [open, setOpen] = useState(true);
 
   //? Read on mount + whenever the workspace changes, so each workspace keeps its own collapsed state.
@@ -101,10 +101,21 @@ export default function SetupChecklist() {
   const devEnabled = isSectionEnabled(sections, 'board') || isSectionEnabled(sections, 'pipeline');
   const contentEnabled = isSectionEnabled(sections, 'content') || isSectionEnabled(sections, 'designer');
 
+  //? The coding seat is host-level. When the harness CLI itself is missing there is nothing a UI login
+  //? can fix (that is a host install, not a setting), so the row only measures the missing LOGIN — CLI
+  //? present, auth absent — and otherwise counts as done, so it can never make the list immortal on a
+  //? host without the CLI (the ADR 0316 retirement rule).
+  const seatAuthDone = codingAgent.subscription === 'codex'
+    ? (!readiness.codingAgent.piAgent || readiness.codingAgent.codexAuth)
+    : (!readiness.codingAgent.claudeCode || readiness.codingAgent.claudeAuth);
+
   const steps: ChecklistStep[] = [
     //? The AI key comes first for every workspace: without it nothing generates, whatever the module.
     { id: 'aiKey', icon: 'robot', done: readiness.aiText, cap: 'workspaceSettings', target: { view: 'workspace', tab: 'aibehavior', section: 'backends' } },
     ...(devEnabled ? [
+      //? The subscription seat that writes the code (ADR 0324): sign the host CLI in via the browser
+      //? terminal on the same Backends section the aiKey row points at.
+      { id: 'seatAuth', icon: 'terminal' as IconName, done: seatAuthDone, cap: 'workspaceSettings' as CapKey, target: { view: 'workspace' as WsView, tab: 'aibehavior', section: 'backends' } },
       { id: 'repo', icon: 'code-branch', done: readiness.repoLinked, cap: 'workspaceSettings' as CapKey, target: { view: 'workspace' as WsView, tab: 'repository', section: 'link' } },
       //? Absorbed from the board's first-steps banner: an ACT, not a setting, and measurable — this
       //? project having a ticket is exactly what the banner used to test before showing itself.

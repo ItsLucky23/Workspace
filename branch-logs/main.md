@@ -6179,3 +6179,23 @@ bundle) groen · test:ws 336/336 · sweep 473/0 · Playwright 42/42.
 **Files touched:** `package.json`, `scripts/bundleServer.mjs`, `server/server.ts`,
 `server/container/egress.ts`, `docs/HOSTING.md`, `src/workspaces/_docs/SEAT_LOGIN_WEB_UI.md` (nieuw),
 `branch-logs/main.md`, `branch-logs/INDEX.md`.
+
+## 2026-08-24 12:26 — Web-UI seat-login (ADR 0324): login-PTY in de browser + readiness claudeAuth
+
+**User prompt:** "ik heb zojuist ingelogd in pi met openai. bouw nu de reminaing items"
+
+**What I did:**
+- **Pi-fix eerst:** de handmatige pi-login van de owner was als root in `/root/.pi/agent/auth.json` beland i.p.v. `PI_CODING_AGENT_DIR`; gekopieerd naar `/var/lib/workspaces/auth/pi-agent/auth.json` (0600, lucky23) → `pi auth check --provider openai-codex` = **ready** op de Pi.
+- **Seat-login-PTY** (`server/hooks/workspacesTerminal.ts`): `ws-term:start` accepteert nu `seat: 'claude'|'codex'` — vaste server-side argv (`seatLoginCommand`: `claude /login`; pi-TUI gepind op `--provider openai-codex` want pi 0.84.2 hééft geen `auth login`-subcommando), allowlist-only env (`buildClaudeCliEnv`/`buildPiCliEnv`), 15-min wall-clock cap (interrupt→kill, lesson 0009). Autorisatie: `authorizeSeatLogin` = host-superadmin-only (`User.admin` of `WS_SUPERADMIN_EMAILS`, ADR 0287; eerste echte call-site van `hostSuperadmin.ts`). Bij exit: `refreshProjectedClaudeAuth`/`refreshProjectedPiAuth` + `resetHostReadiness()` (nieuw) + `broadcastWorkspaceDirty` → seat wordt live groen in alle clients. GEEN control-op (bewuste afwijking van de ontwerpschets §5): sessie-vormige flow hoort niet in de seriële Conductor-lease en een `excluded`-op zou de `opEffectCoverage`-guard breken — vastgelegd in ADR 0324.
+- **Readiness:** nieuw veld `readiness.codingAgent.claudeAuth` (`hostClaudeAuthPresent` in `claudeCode.ts`: host-creds óf projectie, presence-only) + `resetHostReadiness()`-export; beide EMPTY-literals (snapshot + provider) bijgewerkt.
+- **Client:** `XtermTerminal` krijgt `seat`-prop + optionele `ticketKey`, `startPayload`-helper zodat `restartSession` het volledige startpayload herspeelt, en nieuwe `disposeSession()` (login-paneel is transient — geen eeuwig levende detached PTY zoals de ticket-terminals). `CodingAgentSection` (aiProviders.tsx): gap-kaarten `needClaudeAuth` (nieuw) + `needCodexAuth` krijgen een "Inloggen via de browser-terminal"-knop met inline terminal-paneel. `SetupChecklist`: nieuwe `seatAuth`-rij (dev-module; telt als done wanneer de harness-CLI zelf ontbreekt — ADR 0316-retirement-regel).
+- **Locales ×4:** `needClaudeAuth*`, `seatLoginCta/Close/Hint_claude/Hint_codex`, `checklist.seatAuthLabel/Desc`.
+- **Tests/gates:** nieuw `tests/unit/seatLogin.test.mts` (vaste argv + superadmin-gate, injected deps); lint 0 errors, build+serverbundle groen, ai:lint schoon, test:unit 134/134.
+- **Docs:** ADR `0324-seat-login-is-a-purpose-bound-host-pty-not-a-control-op.md`; `SEAT_LOGIN_WEB_UI.md` → status GEBOUWD + afwijkingen; `docs/HOSTING.md` §Claude auth: browser-login-flow + root-pi-auth-valkuil.
+- **Correctie op eerdere entry:** de claim "TOTP_ENCRYPTION_KEY ontbrak in de SM-store" was fout — de store had de key (basisnaam, geen `_V1`-suffix in de store-keys); mijn literal in de Pi-`.env.local` overschaduwde juist de pointer. Literal verwijderd, pointer→V1 actief, health 200.
+
+**Files touched:** `server/hooks/workspacesTerminal.ts`, `server/read/readiness.ts`, `server/read/workspaceSnapshot.ts`, `server/orchestrator/codingAgents/claudeCode.ts`, `server/ai/providers/claudeCli.ts`, `server/ai/providers/piCli.ts`, `src/workspaces/_data/types.ts`, `src/workspaces/_components/XtermTerminal.tsx`, `src/workspaces/_components/SetupChecklist.tsx`, `src/workspaces/workspace/aiProviders.tsx`, `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/_locales/{en,nl,de,fr}.json`, `tests/unit/seatLogin.test.mts` (nieuw), `docs/decisions/0324-*.md` (nieuw), `src/workspaces/_docs/SEAT_LOGIN_WEB_UI.md`, `docs/HOSTING.md`, `docs/AI_DECISIONS_INDEX.md`, `docs/AI_CAPABILITIES.md`, `docs/ai-graph.json`.
+
+**Notes:** test:ws + sweep + Playwright draaien hierna (push-ritueel); agent-4-scoping van F-007/Ticket.files/UI-audit is rapport-only voor de owner (Report Without Auto-Fixing).
+
+**Naschrift (gates-run):** test:ws 336/337 + de ene faler (`contentScript`) solo groen (bekende parallel-flake); sweep+per-route 473/0; Playwright 42/42 — maar één spec (`boardTicket.spec.ts:133`) brak eerst reproduceerbaar door de nieuwe checklist-rij: op het 720px-testviewport liet de uitgeklapte 9-rijen-checklist de kanban-kolom ~90px over, waardoor het kaart-klikpunt permanent onder de sticky kolomheader viel. Fix in de spec: checklist eerst inklappen (rijenaantal groeit met het product; de spec mag daar niet van afhangen).

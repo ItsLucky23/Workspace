@@ -43,6 +43,13 @@ export async function projectClaudeAuth(container: string, runDocker: RunDocker)
     + 'rm -f ' + CAPTURE + '; true']);
 }
 
+//? Presence-only host probe for readiness: does the host (or the projection) hold Claude credentials?
+//? Mirrors refreshProjectedClaudeAuth's source resolution; never reads the file's contents.
+export function hostClaudeAuthPresent(env: NodeJS.ProcessEnv = process.env): boolean {
+  const hostCreds = path.join(env.CLAUDE_CONFIG_DIR ?? path.join(homedir(), '.claude'), '.credentials.json');
+  return existsSync(hostCreds) || existsSync(path.join(authProjectionDir(), '.credentials.json'));
+}
+
 export function claudeAuthStatusLoggedIn(raw: string): boolean {
   const [error, parsed] = tryCatchSync(() => JSON.parse(raw) as unknown);
   return !error && parsed !== null && typeof parsed === 'object' && 'loggedIn' in parsed

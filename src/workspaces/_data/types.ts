@@ -1013,7 +1013,8 @@ export interface CodingAgentConfig {
 }
 //? Host-level readiness of the two harnesses (presence only, never a credential).
 export interface CodingAgentReadiness {
-  claudeCode: boolean;   // `claude` binary + login on the host
+  claudeCode: boolean;   // `claude` binary on the host
+  claudeAuth: boolean;   // host (or projection) holds Claude Code credentials
   piAgent: boolean;      // `pi` binary on the host
   codexAuth: boolean;    // `~/.pi/agent/auth.json` holds an openai-codex OAuth entry
 }

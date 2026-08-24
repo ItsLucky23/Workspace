@@ -123,6 +123,15 @@ ticket as `stuck` instead of creating recurring four-minute timeout turns. Re-ru
 `claude -p`, the Agent SDK, or an API key: those use the separately metered pool and violate the PTY-billing
 contract.
 
+Since 2026-08-24 (ADR 0324) both seat logins can also be done **from the browser**: a host superadmin opens
+Workspace → AI behavior → Backends, and the "not signed in" notice offers *Log in via the browser terminal* —
+a purpose-bound PTY that runs exactly `claude /login` (Claude seat) or the pi TUI pinned to `openai-codex`
+(Codex seat; type `/login` inside) with the service's own env, so `CLAUDE_CONFIG_DIR`/`PI_CODING_AGENT_DIR`
+land the credentials where the pipeline reads them. The SSH recipe above remains the recovery path. For the
+Codex seat, note the pi CLI stores auth in `PI_CODING_AGENT_DIR` (prod: `/var/lib/workspaces/auth/pi-agent`);
+a login run as root in a plain shell lands in `/root/.pi/agent/auth.json` and must be copied over (mode 0600,
+owned by the service user).
+
 Ticket commits live in the container-owned `/work` named volume. Push-on-approval therefore exports the exact
 branch as a credential-free, size-bounded `git bundle`, imports it into a fresh host-controlled bare scratch repo,
 and only then performs the authenticated forge push. Do not restore the old host-`worktrees/<ticket>` push path:

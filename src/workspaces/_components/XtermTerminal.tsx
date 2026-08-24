@@ -40,11 +40,20 @@ interface Session {
   el: HTMLDivElement;
   started: boolean;
   workspaceId: string;
-  ticketKey: string;
+  ticketKey?: string;
+  seat?: 'claude' | 'codex';
   notConnectedMessage: string;
   processExitedMessage: (exitCode: number) => string;
 }
 const sessions = new Map<string, Session>();
+
+//? The full ws-term:start payload from the stored session identity, so restartSession replays exactly
+//? what the component first sent (incl. the seat-login variant, ADR 0324).
+const startPayload = (sessionId: string, e: Session): object => ({
+  id: sessionId, cols: e.term.cols, rows: e.term.rows, workspaceId: e.workspaceId,
+  ...(e.ticketKey === undefined ? {} : { ticketKey: e.ticketKey }),
+  ...(e.seat === undefined ? {} : { seat: e.seat }),
+});
 
 //? #14 — panel-menu actions operate on the live session registry. clear/copyBuffer are client-side
 //? (xterm buffer); kill/restart emit to the ws-term relay (workspacesTerminal.ts) — the only writer.
@@ -64,8 +73,19 @@ export function restartSession(sessionId: string): void {
   void getSocket().then((s) => {
     if (!s) return;
     s.emit('ws-term:kill', { id: sessionId });
-    s.emit('ws-term:start', { id: sessionId, cols: e.term.cols, rows: e.term.rows, workspaceId: e.workspaceId, ticketKey: e.ticketKey });
+    s.emit('ws-term:start', startPayload(sessionId, e));
   });
+}
+
+//? Drop the client-side session entirely (a seat-login panel is transient: closing it should not keep a
+//? detached xterm + PTY alive the way the ticket terminals deliberately do).
+export function disposeSession(sessionId: string): void {
+  const e = sessions.get(sessionId);
+  if (!e) return;
+  killSession(sessionId);
+  e.term.dispose();
+  e.el.remove();
+  sessions.delete(sessionId);
 }
 
 let socketPromise: Promise<LiveSocket | null> | null = null;
@@ -97,7 +117,7 @@ const ensureRouting = (): void => {
 
 //? The browser sends workspace+ticket identity, never a Docker object name. The server derives and verifies
 //? the canonical labelled container before opening the shell; there is no host-shell fallback.
-export default function XtermTerminal({ sessionId, workspaceId, ticketKey, className }: { sessionId: string; workspaceId: string; ticketKey: string; className?: string }) {
+export default function XtermTerminal({ sessionId, workspaceId, ticketKey, seat, className }: { sessionId: string; workspaceId: string; ticketKey?: string; seat?: 'claude' | 'codex'; className?: string }) {
   const translate = useTranslator();
   const mountRef = useRef<HTMLDivElement>(null);
 
@@ -118,7 +138,7 @@ export default function XtermTerminal({ sessionId, workspaceId, ticketKey, class
       term.loadAddon(fit);
       term.open(el);
       term.onData((d) => { void getSocket().then((s) => s?.emit('ws-term:input', { id: sessionId, data: d })); });
-      entry = { term, fit, el, started: false, workspaceId, ticketKey, notConnectedMessage, processExitedMessage };
+      entry = { term, fit, el, started: false, workspaceId, ...(ticketKey === undefined ? {} : { ticketKey }), ...(seat === undefined ? {} : { seat }), notConnectedMessage, processExitedMessage };
       sessions.set(sessionId, entry);
     }
     const e = entry;
@@ -139,7 +159,7 @@ export default function XtermTerminal({ sessionId, workspaceId, ticketKey, class
       e.started = true;
       void getSocket().then((s) => {
         if (!s) { e.term.write(`${ESC}[33m${e.notConnectedMessage}${ESC}[0m\r\n`); return; }
-        s.emit('ws-term:start', { id: sessionId, cols: e.term.cols, rows: e.term.rows, workspaceId, ticketKey });
+        s.emit('ws-term:start', startPayload(sessionId, e));
       });
     }
 
@@ -151,7 +171,7 @@ export default function XtermTerminal({ sessionId, workspaceId, ticketKey, class
       ro.disconnect();
       if (e.el.parentNode === host) e.el.remove();
     };
-  }, [sessionId, workspaceId, ticketKey, translate]);
+  }, [sessionId, workspaceId, ticketKey, seat, translate]);
 
   return <div ref={mountRef} className={`bg-terminal-bg ${className ?? ''}`} />;
 }

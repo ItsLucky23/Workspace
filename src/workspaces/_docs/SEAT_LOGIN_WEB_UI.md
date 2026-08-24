@@ -1,4 +1,13 @@
-# Seat-login via de web-UI (owner-richting 2026-08-24 — NOG NIET GEBOUWD)
+# Seat-login via de web-UI (owner-richting 2026-08-24 — GEBOUWD 2026-08-24, ADR 0324)
+
+> **Status: gebouwd.** De uiteindelijke vorm wijkt op twee punten af van de schets hieronder:
+> (1) géén control-API-op maar directe autorisatie in de socket-handler (`authorizeSeatLogin`,
+> host-superadmin-only) — een minutenlange PTY hoort niet in de seriële Conductor-lease, en een
+> `excluded`-op zou de `opEffectCoverage`-guard breken (rij in effectMatrix kan dus ook niet);
+> (2) pi 0.84.2 heeft géén `pi auth login`-subcommando — de Codex-login is de pi-TUI gepind op
+> `--provider openai-codex`, waarin de user `/login` typt. Zie ADR 0324 voor de volledige rationale;
+> implementatie: `server/hooks/workspacesTerminal.ts` (seatLoginCommand/authorizeSeatLogin/
+> attachSeatLoginPty), `readiness.codingAgent.claudeAuth`, `CodingAgentSection` + `SetupChecklist`.
 
 **Wens (letterlijk):** "we willen dalijk kunnen inloggen via de browser … bij subscription setup een
 terminal krijgen en daarop die login-flow doorlopen … het project moet gewoon installen en runnen zijn

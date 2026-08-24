@@ -3,7 +3,7 @@
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
     "nodes": 463,
-    "edges": 724,
+    "edges": 725,
     "symbols": 892,
     "callEdges": 303
   },
@@ -5067,6 +5067,10 @@
     },
     {
       "from": "workspaces/workspace/aiProviders.tsx",
+      "to": "workspaces/_components/XtermTerminal.tsx"
+    },
+    {
+      "from": "workspaces/workspace/aiProviders.tsx",
       "to": "workspaces/_data/types.ts"
     },
     {
@@ -6445,7 +6449,9 @@
       "workspaces/develop/board/[ticketId]/TerminalPanel.tsx",
       "workspaces/develop/board/[ticketId]/page.tsx",
       "workspaces/develop/terminals/TerminalPanel.tsx",
-      "workspaces/develop/terminals/page.tsx"
+      "workspaces/develop/terminals/page.tsx",
+      "workspaces/workspace/aiProviders.tsx",
+      "workspaces/workspace/page.tsx"
     ],
     "workspaces/_data/capabilities.ts": [
       "_components/templates/TemplateProvider.tsx",

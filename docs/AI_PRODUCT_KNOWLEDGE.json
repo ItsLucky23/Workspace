@@ -1,6 +1,6 @@
 {
-  "hash": "9453ffb666ea3f2d",
-  "chunkCount": 258,
+  "hash": "1a40e5508c14306d",
+  "chunkCount": 259,
   "chunks": [
     {
       "id": "cap-001",
@@ -1549,6 +1549,12 @@
       "kind": "decision",
       "title": "Prompt composition order is one spec the server maps over, not a mirror the UI maintains",
       "text": "ADR 0323: Prompt composition order is one spec the server maps over, not a mirror the UI maintains. ADR 0311 corrected ADR 0308's \"one stack of five\" into two channels, and guarded the correction with a source-text test that read `server/orchestrator/renderStage.ts` and matched expressions. The correction was itself wrong in two places, and the test pinned both errors (the open \"server side not verified\" item from the 2026-08-21 UI-audit round): 1. The preview put the stage's **handover instruction** at system position 3. The server renders the **incoming** handover there (`renderIncomingHandover`), and the handover instruction at position 6, after the carry-over fence it shapes. 2. The **definition of done** — user-editable on the same General tab — is system entry 4 on the server and was absent from the preview, so the \"n of 5\" badge undercounted. 3. The workspace AI page showed the two-channel stage model although the runs that page steers most directly (chat, documents, content, studio) take the **one-shot** path: a single system string with no project channel, where skills sit between the product-capability index and the feature's prompt. 4. Text fidelity: the server prepends `Write all output in <lang>.` to the workspace layer and wraps the skills block in a `## Active skills` / `### Skill:` shape; the preview showed bare fields. Root cause: `src/workspaces/_functions/aiLayers.ts` was a hand-maintained **mirror** of the server. A mirror drifts the first time someone edi"
+    },
+    {
+      "id": "adr-0324",
+      "kind": "decision",
+      "title": "Seat login is a purpose-bound host PTY over the terminal relay, not a control-op",
+      "text": "ADR 0324: Seat login is a purpose-bound host PTY over the terminal relay, not a control-op. The coding seats (ADR 0322: Claude Code on a Claude subscription, pi on a Codex/ChatGPT subscription) authenticate through interactive OAuth flows in their CLIs. Until now that meant SSH-ing into the host, exporting the right config-dir env and running the CLI by hand (docs/HOSTING.md §Claude auth) — exactly the \"extra server step\" the owner ruled out for the install story on 2026-08-24: *\"het project moet gewoon installen en runnen zijn … géén extra stap dat iemand ook nog op de server moet inloggen; liever een web-UI met een beetje hulp via de terminal.\"* The terminal relay (`server/hooks/workspacesTerminal.ts`) already streams PTYs to the browser, but its header states a hard invariant: NO host-shell mode, for anyone. The design sketch (`src/workspaces/_docs/SEAT_LOGIN_WEB_UI.md` §5) assumed the flow would be a control-op with an effectMatrix row. Decision: A **seat-login PTY**: the `ws-term:start` payload may carry `seat: 'claude' | 'codex'` instead of a workspace/ticket container target. The server then: - authorizes via `authorizeSeatLogin` — **host-superadmin only** (`User.admin` or `WS_SUPERADMIN_EMAILS`, ADR 0287), because the flow writes the HOST CLI's OAuth store that every workspace's pipeline borrows; - spawns a **fixed, server-side argv** (`seatLoginCommand`): `claude /login`, or the pi TUI pinned to `--provider openai-codex` (pi 0.84.2 has no `auth login` subcommand — `p"
     }
   ]
 }

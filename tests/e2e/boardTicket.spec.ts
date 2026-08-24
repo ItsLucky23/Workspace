@@ -137,6 +137,12 @@ test.describe('ticket page', () => {
 
     const title = `E2E ticket detail ${String(Date.now())}`;
     await createTicket(page, title);
+    //? Collapse the setup checklist first: at the 720px test viewport its expanded height leaves the
+    //? kanban column barely ~90px tall, and the card's click point then sits permanently under the
+    //? column's sticky header. The checklist's row count grows with the product (ADR 0324 added a
+    //? seat-auth row), so this spec must not depend on how much of the column happens to be visible.
+    await page.getByTestId('ws-setup-checklist').getByRole('button', { name: /Finish setting up this workspace/ }).click();
+
     const card = ticketCards(page).filter({ hasText: title });
     await expect(card).toBeVisible();
     await card.click();

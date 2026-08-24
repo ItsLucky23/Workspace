@@ -147,7 +147,7 @@ const EMPTY_SNAP: Snap = {
   ticketArtifactLinks: [],
   chat: [],
   sshKeys: [],
-  readiness: { repoLinked: false, aiText: false, media: { fal: false, elevenlabs: false, suno: false }, publishing: false, docker: false, push: false, secretManager: false, codingAgent: { claudeCode: false, piAgent: false, codexAuth: false } },
+  readiness: { repoLinked: false, aiText: false, media: { fal: false, elevenlabs: false, suno: false }, publishing: false, docker: false, push: false, secretManager: false, codingAgent: { claudeCode: false, claudeAuth: false, piAgent: false, codexAuth: false } },
   codingAgent: { subscription: 'claude', harness: 'claude-code', tierModels: { haiku: 'haiku', sonnet: 'sonnet', opus: 'opus' } },
   myPerms: [], myRoleKey: 'member',
   pats: [],

@@ -20,6 +20,8 @@ const CAPTURE_SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), '
 //? conpty on Windows cannot resolve a bare `claude`; use the known install path there.
 //? In the Linux base image the CLI is on PATH → `claude`. Override with WS_CLAUDE_BIN.
 const CLAUDE_BIN = process.env.WS_CLAUDE_BIN ?? (process.platform === 'win32' ? 'C:/Users/mathi/.local/bin/claude.exe' : 'claude');
+//? The resolved bin, for the seat-login PTY (workspacesTerminal.ts) — same resolution, one source of truth.
+export function claudeCliBin(): string { return CLAUDE_BIN; }
 
 //? One-shot completions receive all context inline and must never inspect or mutate the host. `*`
 //? fails closed for future tools; the named rules keep Bash/Read/Task/MCP denial explicit and auditable.

@@ -26,6 +26,7 @@ import Icon from '../_components/Icon';
 import { FormSection, INPUT_CLS_FULL as inputCls, SettingRow } from '../_components/settings';
 import { EmptyPicker, SetupNotice } from '../_components/SetupNotice';
 import { WsButton } from '../_components/primitives';
+import XtermTerminal, { disposeSession } from '../_components/XtermTerminal';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { AiConnection, AiProviderOption, CodingAgentConfig, CodingHarness, CodingSubscription, StageModelTier } from '../_data/types';
 
@@ -294,8 +295,12 @@ const CODING_MODEL_SUGGESTIONS: Record<string, string[]> = {
 
 export function CodingAgentSection() {
   const translate = useTranslator();
-  const { codingAgent, saveCodingAgent, readiness } = useWorkspaces();
+  const { codingAgent, saveCodingAgent, readiness, activeWorkspace } = useWorkspaces();
   const [draft, setDraft] = useState<CodingAgentConfig>(codingAgent);
+  //? Which seat's login terminal is open inline (ADR 0324) — the server closes the PTY on exit and pings
+  //? the room, so readiness flips without a manual refresh.
+  const [loginSeat, setLoginSeat] = useState<'claude' | 'codex' | null>(null);
+  const closeLogin = (): void => { if (loginSeat !== null) disposeSession(`seat-login:${loginSeat}`); setLoginSeat(null); };
   //? The broadcast delta is the confirmation: it replaces snap.codingAgent, which resyncs the draft.
   useEffect(() => { setDraft(codingAgent); }, [codingAgent]);
 
@@ -316,11 +321,14 @@ export function CodingAgentSection() {
   const subItems = (['claude', 'codex'] as const).map((s) => ({ id: s, value: s, item: translate({ key: `workspaces.codingAgent.sub_${s}` }) }));
   const harnessItems = (['claude-code', 'pi-agent'] as const).map((h) => ({ id: h, value: h, item: translate({ key: `workspaces.codingAgent.harness_${h}` }) }));
 
-  //? Host-level gaps for the CURRENT draft — infra-only notices (no in-app fix; the hint is the host command).
-  const gaps: { key: 'needClaudeCli' | 'needPi' | 'needCodexAuth' }[] = [
+  //? Host-level gaps for the CURRENT draft. A missing BINARY is infra-only (the hint is the host command);
+  //? a missing LOGIN carries a `login` seat — fixable from here via the seat-login terminal (ADR 0324,
+  //? host-superadmin only; anyone else gets an immediate exit 126 in the terminal).
+  const gaps: { key: 'needClaudeCli' | 'needPi' | 'needCodexAuth' | 'needClaudeAuth'; login?: 'claude' | 'codex' }[] = [
     ...(draft.harness === 'claude-code' && !ready.claudeCode ? [{ key: 'needClaudeCli' as const }] : []),
     ...(draft.harness === 'pi-agent' && !ready.piAgent ? [{ key: 'needPi' as const }] : []),
-    ...(draft.subscription === 'codex' && !ready.codexAuth ? [{ key: 'needCodexAuth' as const }] : []),
+    ...(draft.subscription === 'claude' && draft.harness === 'claude-code' && ready.claudeCode && !ready.claudeAuth ? [{ key: 'needClaudeAuth' as const, login: 'claude' as const }] : []),
+    ...(draft.subscription === 'codex' && !ready.codexAuth ? [{ key: 'needCodexAuth' as const, ...(ready.piAgent ? { login: 'codex' as const } : {}) }] : []),
   ];
 
   return (
@@ -353,8 +361,24 @@ export function CodingAgentSection() {
             body={translate({ key: `workspaces.codingAgent.${g.key}Body` })}
             hint={<span className={`font-mono`}>{translate({ key: `workspaces.codingAgent.${g.key}Hint` })}</span>}
           />
+          {g.login !== undefined && loginSeat === null && (
+            <div className={`pt-2`}>
+              <WsButton icon="terminal" onClick={() => { setLoginSeat(g.login ?? null); }}>{translate({ key: 'workspaces.codingAgent.seatLoginCta' })}</WsButton>
+            </div>
+          )}
         </div>
       ))}
+      {loginSeat !== null && (
+        <div className={`px-5 pb-3`}>
+          <div className={`rounded-xl border border-container2-border overflow-hidden`}>
+            <div className={`flex items-center justify-between gap-3 bg-container2 px-3 py-2`}>
+              <div className={`text-xs text-common leading-relaxed`}>{translate({ key: `workspaces.codingAgent.seatLoginHint_${loginSeat}` })}</div>
+              <WsButton icon="xmark" onClick={closeLogin}>{translate({ key: 'workspaces.codingAgent.seatLoginClose' })}</WsButton>
+            </div>
+            <XtermTerminal sessionId={`seat-login:${loginSeat}`} workspaceId={activeWorkspace.id} seat={loginSeat} className={`h-80`} />
+          </div>
+        </div>
+      )}
       {CODING_TIERS.map((tier) => (
         <SettingRow
           key={tier}

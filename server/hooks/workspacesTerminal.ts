@@ -3,6 +3,11 @@
 //? owners, host superadmins, development, or production. The product terminal is a repo-container tool;
 //? host administration belongs outside the application control plane.
 //?
+//? ONE deliberate, narrow exception (ADR 0324): the SEAT-LOGIN PTY. A host superadmin can open the
+//? subscription-seat login flow (`claude /login`, or the pi TUI pinned to openai-codex) in the browser
+//? so a fresh install never needs an SSH session to sign the coding seat in. The client names a SEAT,
+//? never a command — the argv is a fixed server-side constant — so this is still not a host shell.
+//?
 //? Security boundary: the browser sends workspaceId + ticketKey, never a Docker object name. The server
 //? authenticates the socket itself, checks workTickets in that workspace, derives the canonical container
 //? name, and verifies its immutable workspace/ticket labels before opening a PTY.
@@ -18,6 +23,8 @@ import {
 } from '@luckystack/core';
 import * as pty from 'node-pty';
 
+import { buildClaudeCliEnv, claudeCliBin } from '../ai/providers/claudeCli';
+import { buildPiCliEnv, piCliBin } from '../ai/providers/piCli';
 import { CAP, hasCapability } from '../control/rbac';
 import {
   DOCKER_BIN,
@@ -27,6 +34,13 @@ import {
   isWorkspaceTicketContainer,
 } from '../container/runtime';
 import { connectPtyAgent, resolvePtyAgentPort } from '../container/ptyAgentClient';
+import { refreshProjectedClaudeAuth } from '../orchestrator/codingAgents/claudeCode';
+import { refreshProjectedPiAuth } from '../orchestrator/codingAgents/piAgent';
+import { broadcastWorkspaceDirty } from '../read/broadcast';
+import { resetHostReadiness } from '../read/readiness';
+import { isHostSuperadmin } from '../security/hostSuperadmin';
+
+export type SeatLoginSeat = 'claude' | 'codex';
 
 interface TermMsg {
   id: string;
@@ -35,6 +49,7 @@ interface TermMsg {
   data?: string;
   workspaceId?: string;
   ticketKey?: string;
+  seat?: SeatLoginSeat;
 }
 
 interface TermHandle {
@@ -64,7 +79,40 @@ function readTermMsg(value: unknown): TermMsg | null {
     ...(typeof row.data === 'string' ? { data: row.data } : {}),
     ...(typeof row.workspaceId === 'string' ? { workspaceId: row.workspaceId } : {}),
     ...(typeof row.ticketKey === 'string' ? { ticketKey: row.ticketKey } : {}),
+    ...(row.seat === 'claude' || row.seat === 'codex' ? { seat: row.seat } : {}),
   };
+}
+
+//? Pure: the FIXED argv per seat — the client only ever names a seat, never a command. `claude /login`
+//? opens Claude Code straight into its login flow; pi has no login subcommand (verified 0.84.2: `pi auth`
+//? is print/check only), so the Codex seat opens the pi TUI pinned to openai-codex, where `/login` runs
+//? the OAuth flow. On Windows the pi bin is an npm `.cmd` shim conpty cannot exec directly — wrap in cmd.exe.
+export function seatLoginCommand(seat: SeatLoginSeat, platform: NodeJS.Platform = process.platform): { file: string; args: string[] } {
+  if (seat === 'claude') return { file: claudeCliBin(), args: ['/login'] };
+  const piArgs = ['--provider', 'openai-codex'];
+  return platform === 'win32'
+    ? { file: 'cmd.exe', args: ['/c', piCliBin(), ...piArgs] }
+    : { file: piCliBin(), args: piArgs };
+}
+
+export interface SeatLoginAuthorizationDependencies {
+  getIdentity: (userId: string) => Promise<{ admin?: boolean | null; email?: string | null } | null>;
+}
+
+const seatLoginAuthorizationDependencies: SeatLoginAuthorizationDependencies = {
+  getIdentity: async (userId) => await getPrismaClient().user.findUnique({ where: { id: userId }, select: { admin: true, email: true } }),
+};
+
+//? Seat login is HOST-level — it writes the host CLI's OAuth store, which every workspace's pipeline
+//? borrows — so workspace RBAC is the wrong gate: only a host superadmin (User.admin or
+//? WS_SUPERADMIN_EMAILS, ADR 0287) may open it. Exported with injected deps for unit tests.
+export async function authorizeSeatLogin(
+  userId: string,
+  dependencies: SeatLoginAuthorizationDependencies = seatLoginAuthorizationDependencies,
+): Promise<boolean> {
+  if (userId.length === 0) return false;
+  const identity = await dependencies.getIdentity(userId);
+  return identity !== null && isHostSuperadmin(identity);
 }
 
 export interface TerminalAuthorizationDependencies {
@@ -132,11 +180,52 @@ export const registerWorkspacesTerminalHooks = (): void => {
         attachPty(id, term);
       };
 
+      //? Seat-login PTY (ADR 0324): fixed argv on the HOST, allowlist-only child env (no app/db/provider
+      //? secrets cross into the CLI). A login flow lasts minutes, never stands — hard wall-clock cap;
+      //? interrupt before kill because a hard kill of a live CLI crashes Windows conpty (lesson 0009).
+      const SEAT_LOGIN_TIMEOUT_MS = 15 * 60_000;
+      const attachSeatLoginPty = (id: string, seat: SeatLoginSeat, workspaceId: string | undefined, cols: number, rows: number): void => {
+        const { file, args } = seatLoginCommand(seat);
+        const env = seat === 'claude'
+          ? { ...buildClaudeCliEnv(), TERM: 'xterm-256color' }
+          : { ...buildPiCliEnv(), TERM: 'xterm-256color' };
+        const [spawnError, term] = tryCatchSync(() => pty.spawn(file, args, { name: 'xterm-256color', cols, rows, cwd: process.cwd(), env }));
+        if (spawnError || !term) { emitExit(id, 1); return; }
+        const timer = setTimeout(() => {
+          tryCatchSync(() => { term.write('\u0003'); });
+          setTimeout(() => { tryCatchSync(() => { term.kill(); }); }, 1500);
+        }, SEAT_LOGIN_TIMEOUT_MS);
+        sessions.set(id, fromPty(term));
+        term.onData((data) => { socket.emit('ws-term:out', { id, data }); });
+        term.onExit(({ exitCode }) => {
+          clearTimeout(timer);
+          //? The flow's whole point: pull the fresh host credentials into the container projection and
+          //? recompute host readiness, then ping the room so every open client sees the seat turn green.
+          tryCatchSync(() => { if (seat === 'claude') refreshProjectedClaudeAuth(); else refreshProjectedPiAuth('openai-codex'); });
+          resetHostReadiness();
+          if (workspaceId !== undefined && WORKSPACE_ID.test(workspaceId)) broadcastWorkspaceDirty(workspaceId);
+          emitExit(id, exitCode);
+          sessions.delete(id);
+        });
+        getLogger().info(`[workspaces] seat-login PTY opened (seat=${seat}, user=${session.id})`);
+      };
+
       socket.on('ws-term:start', (raw: unknown) => {
         const payload = readTermMsg(raw);
         if (!payload || sessions.has(payload.id) || starting.has(payload.id)) return;
         starting.add(payload.id);
         void (async () => {
+          if (payload.seat !== undefined) {
+            const seat = payload.seat;
+            if (!(await authorizeSeatLogin(session.id))) { emitExit(payload.id, 126); return; }
+            attachSeatLoginPty(
+              payload.id, seat, payload.workspaceId,
+              Math.max(20, Math.min(400, Math.round(payload.cols ?? 80))),
+              Math.max(5, Math.min(200, Math.round(payload.rows ?? 24))),
+            );
+            return;
+          }
+
           const target = await authorizeTerminalTarget({
             workspaceId: payload.workspaceId,
             ticketKey: payload.ticketKey,
