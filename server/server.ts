@@ -148,7 +148,12 @@ import { serveFavicon, serveFile } from './prod/serveFile';
     defaultPort: ports.backend,
     serveFile,
     serveFavicon,
-    loadGeneratedMaps: (preset: string) => import(`./prod/generatedApis.${preset}`),
+    //? The `default` branch is a STATIC specifier on purpose: esbuild inlines it into
+    //? `dist/server.js` (scripts/bundleServer.mjs), where the template-literal fallback stays a
+    //? runtime import that plain node cannot resolve to a `.ts` file. Extra presets keep working
+    //? under tsx via the fallback; when one is added, give it its own static branch too.
+    loadGeneratedMaps: (preset: string) =>
+      preset === 'default' ? import('./prod/generatedApis.default') : import(`./prod/generatedApis.${preset}`),
   });
 
   const runtimeProjectConfig = getProjectConfig();

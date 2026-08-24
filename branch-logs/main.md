@@ -6145,3 +6145,37 @@ Regressietest `tests/unit/mediaDirResolution.test.mts` (4 asserts). 15 bestanden
 **Open vragen → aan de user gemeld in de sessie-samenvatting** (DNS kale hostnaam, OAuth-prod-keys,
 Atlas-Local voor $vectorSearch, `dist/server.js`-vs-tsx-contract, egress-allowlist, superadmin-mail,
 pi/Codex-seat-login op de Pi, salvage-map opruimen).
+
+## 2026-08-24 — Antwoorden-ronde: bundler echt werkend, egress voor Codex-seat, pi/claude op de host
+
+**User prompt:** antwoorden op de 9 open vragen (DNS gezet; "bundler re-wiren"; RAG lightweight;
+pi-login doet owner zelf; punt 9 = login via web-UI als richting).
+
+**Wat ik deed:**
+1. **Bundler re-wired én werkend gemaakt** — `npm run build` bevat nu `bundle:server`. Aansluiten alleen
+   was niet genoeg: (a) de `luckystack/`-overlay wordt runtime als `.ts` geïmporteerd (tsx-only) →
+   `scripts/bundleServer.mjs` enumereert de overlay build-time (zelfde regels als de framework-walk,
+   `OVERLAY_ORDER`-import) en genereert een stdin-entry die ze via `registerOverlayLoader` inlined;
+   (b) `server/server.ts:151` had een template-literal dynamic import voor de generated maps → statische
+   `default`-tak zodat esbuild hem bundelt. Smoke-proof: `node dist/server.js default 4996` met
+   NODE_ENV=production → livez/readyz/healthz/SPA 200 + API-guard antwoordt. (`luckystack/i18n/` is
+   client-side via Vite — bewust niet in de serverbundel.)
+2. **Egress-gap Codex-seat**: `.openai.com` + `.chatgpt.com` aan `DEFAULT_ALLOW` (`egress.ts`) — de
+   pi-harness praat vanuit de worker-container met ChatGPT; onder `WS_EGRESS=enforce` was elke
+   Codex-ticket doodgelopen.
+3. **RAG-advies**: geen Atlas Local nodig — `server/rag/index.ts` scoort vectors in-process; kale
+   mongod volstaat (0 extra werk).
+4. **Pi-host**: `pi@0.84.2` + `claude@2.1.198` systeembreed (`/usr/local`, root-prefix bleek
+   /root/pi-node), systeem-node 20.20.2 → 22.23.2 (pi's undici vereist het; matcht dev/lockfile);
+   `PI_CODING_AGENT_DIR=/var/lib/workspaces/auth/pi-agent` in Pi-`.env.local` (ProtectHome). Claude-auth
+   geverifieerd: `loggedIn: true` (max) — juli-credentials nog geldig. Salvage-map + juli-stash
+   opgeruimd (user-akkoord). DNS kale host live (A-record door owner) → https 200.
+5. **Punt 9 vastgelegd**: `src/workspaces/_docs/SEAT_LOGIN_WEB_UI.md` — seat-login via de web-UI
+   (doel-gebonden PTY, superadmin-only, control-API-op), nog niet gebouwd.
+
+**Gates:** lint 0 fouten (2 bekende warnings) · ai:lint schoon · build (typecheck+vite+compose-runner+
+bundle) groen · test:ws 336/336 · sweep 473/0 · Playwright 42/42.
+
+**Files touched:** `package.json`, `scripts/bundleServer.mjs`, `server/server.ts`,
+`server/container/egress.ts`, `docs/HOSTING.md`, `src/workspaces/_docs/SEAT_LOGIN_WEB_UI.md` (nieuw),
+`branch-logs/main.md`, `branch-logs/INDEX.md`.

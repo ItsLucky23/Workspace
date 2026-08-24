@@ -26,6 +26,9 @@ const DEFAULT_ALLOW = [
   '.npmjs.org', '.yarnpkg.com', '.pypi.org', '.pythonhosted.org', '.crates.io',
   '.github.com', '.githubusercontent.com', '.gitlab.com', '.googlesource.com',
   '.debian.org', '.ubuntu.com', '.alpinelinux.org', '.anthropic.com', '.googleapis.com',
+  //? ADR 0322 — the pi harness drives a Codex (ChatGPT) seat from inside the worker container; its
+  //? auth + completions traffic goes to these hosts, so an enforced egress must let them through.
+  '.openai.com', '.chatgpt.com',
 ];
 
 //? GAP_SCAN E3 — the egress posture, shipped report-first.

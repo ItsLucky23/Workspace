@@ -155,6 +155,11 @@ For Pi releases, transfer the exact locally verified `dist/` instead of rebuildi
 run only `npm ci` and the small architecture-relevant `npm run compose-runner:build` step on the host. Compare
 source/artifact checksums before restarting the service (lesson 0027).
 
+Since 2026-08-24 `npm run build` also emits the bundled server entry `dist/server.js`
+(`scripts/bundleServer.mjs`, all deps external), so `npm run prod` works as documented. The deployed
+systemd unit still runs the equivalent `tsx server/server.ts` path; switching its `ExecStart` to
+`node dist/server.js default 3003` is optional — both load the same generated maps and env files.
+
 ---
 
 ## 3. Wildcard TLS (both backends)
