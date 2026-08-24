@@ -263,7 +263,7 @@ export interface WorkspacesCtx {
   //? Pipeline (7a.2) — full per-stage config from the DB composites.
   stageConfigs: PipelineStageCfg[];
   //? Resolves to whether the write landed, so the stage editor clears its dirty flag only on success.
-  saveStageConfig: (cfg: PipelineStageCfg) => Promise<boolean>;
+  saveStageConfig: (cfg: PipelineStageCfg) => Promise<boolean>; // luckystack-allow i18n-jsx: type annotation — the heuristic misreads `<boolean>` as a JSX element
   //? I1 — run the built-in CI at a ticket's MR head (ci-run control-op via projectAdmin).
   //? Per-service CI: no `serviceId` runs EVERY unit (the MR button); passing one is the per-unit retry.
   //? `null` explicitly means the project root unit, so it is distinct from "not given".
