@@ -6112,3 +6112,36 @@ src/workspaces/_shell/WorkspacesProvider.tsx, tests/_helpers.mts, 9 test-/spec-f
 **Open:** contentControl-sweepcase is onder volle suite-load een latency-flake (live fal) — overweeg een
 ruimere timeout of stub-modus voor die ene case. `contentAutomation` eerder één keer flaky door cron-tick-
 interferentie tussen test-workspaces (solo + run 2 groen).
+
+## 2026-08-24 — Push-ritual + pi5-productie-update (28 jul → d6fc956) + WS_MEDIA_DIR-fix
+
+**User prompt:** "je mag alles pushen en over punt 2, je mag 'ssh pi5' doen … het project opzetten om
+die te testen omtrent hosting … doe zo veel mogelijk zonder mijn input en stel daarna alle open vragen."
+
+**Wat ik deed (push):** volledig ritual opnieuw: test:ws 335/335 (418s) · sweep solo 473/0 · Playwright
+42/42 · build groen → `git push origin main` (31b031d..d6fc956, pre-push-gate incl. tsc groen).
+
+**Wat ik deed (pi5):** er stond al een volledige juli-deploy (`/var/www/workspace.keetlerop.nl`,
+systemd `workspaces-app` op :3003 achter nginx, `app.workspace.keetlerop.nl` + wildcard-cert, secret-
+manager + egress-squid + compose-runner + incus-firewall services). Die in-place bijgewerkt i.p.v. een
+nieuwe map: (1) app-dir ge-git-ificeerd (bundle → fetch → checkout `d6fc956`; juli-delta + stale files
+in stash; 43 verouderde tracked files weg, o.a. `listPats_v1.ts` die anders als stale route zou
+registreren); (2) build-artefacten (dist/, generatedApis, generated types/schemas/docs) via tarball
+overgezet (lesson 0027: niet op de Pi viten); (3) `npm ci` + `prisma generate` + `db push` (indexes in
+sync) + compose-runner gebouwd en naar `/opt/workspaces-compose-runner/` gekopieerd; (4) alle 8 docker-
+images arm64 herbouwd — base + 7 stacks — **pi 0.84.2 + claude 2.1.198 nu in de prod-base**; (5) services
+herstart: livez/readyz/healthz 200, cron-loops draaien, extern serveert de verse build (asset-hash
+gematcht). `TOTP_ENCRYPTION_KEY` ontbrak in de SM-store → literal op de Pi in `.env.local` gezet.
+
+**Bug gevonden + gefixt (WS_MEDIA_DIR):** álle prod-media stond in `<app-dir>/var/lib/workspaces/media`
+i.p.v. `/var/lib/workspaces/media` (echte dir was leeg). Root cause `server/media/store.ts:12`:
+`path.join(cwd, WS_MEDIA_DIR)` — join respecteert een absoluut tweede argument niet. Fix: `path.resolve`.
+Regressietest `tests/unit/mediaDirResolution.test.mts` (4 asserts). 15 bestanden (8.7M) gesalvaged naar
+`/var/lib/workspaces/salvage-app-relative-var-2026-08-24/` én teruggezet in de echte media-dir.
+
+**Files touched:** `server/media/store.ts`, `tests/unit/mediaDirResolution.test.mts` (nieuw),
+`branch-logs/main.md`, `branch-logs/INDEX.md`. (Pi-kant: geen repo-files.)
+
+**Open vragen → aan de user gemeld in de sessie-samenvatting** (DNS kale hostnaam, OAuth-prod-keys,
+Atlas-Local voor $vectorSearch, `dist/server.js`-vs-tsx-contract, egress-allowlist, superadmin-mail,
+pi/Codex-seat-login op de Pi, salvage-map opruimen).

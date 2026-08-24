@@ -9,7 +9,9 @@ import path from 'node:path';
 
 import { tryCatchSync } from '@luckystack/core';
 
-export const MEDIA_DIR = path.join(process.cwd(), (process.env.WS_MEDIA_DIR ?? '').trim() || 'data/media');
+//? `path.resolve`, not `path.join`: join(cwd, '/var/lib/…') yields `<cwd>/var/lib/…`, so an ABSOLUTE
+//? WS_MEDIA_DIR silently landed inside the app dir in production (found 2026-08-24 on the pi5 deploy).
+export const MEDIA_DIR = path.resolve(process.cwd(), (process.env.WS_MEDIA_DIR ?? '').trim() || 'data/media');
 export const MEDIA_QUARANTINE_DIR = path.join(MEDIA_DIR, '.quarantine');
 const MEDIA_OWNER_DIR = path.join(MEDIA_DIR, '.owners');
 
