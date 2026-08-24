@@ -83,51 +83,6 @@ export const TICKETS: Ticket[] = [
     description:
       'On slow (3G) connections the Avatar component briefly renders the colour-initials fallback before the image loads, then swaps to the image — a visible flicker. Cache the load/fail state per avatar identity so the first resolution fans out to every instance, and hold the previous frame during refetch.',
     carryOver: 'From Plan: keep the fallback identity key stable across `?v=` cache-busts; do not change the public Avatar API.',
-    files: [
-      {
-        path: 'src/_components/Avatar.tsx', add: 12, del: 4,
-        diff: [
-          { kind: 'hunk', text: '@@ -18,9 +18,17 @@ export default function Avatar({ user }) {' },
-          { kind: 'ctx', oldNo: 18, newNo: 18, text: '  const { avatarStatuses, setAvatarStatus } = useAvatarContext();' },
-          { kind: 'del', oldNo: 19, text: '  const status = avatarStatuses[user.avatar];' },
-          { kind: 'add', newNo: 19, text: '  const statusKey = getAvatarStatusKey(user.avatar, user.name);' },
-          { kind: 'add', newNo: 20, text: '  const status = avatarStatuses[statusKey];' },
-          { kind: 'ctx', oldNo: 20, newNo: 21, text: '  const showFallback = !user.avatar || status === "fallback";' },
-          { kind: 'add', newNo: 22, text: '  // hold the previous frame during refetch to avoid the flicker' },
-          { kind: 'ctx', oldNo: 21, newNo: 23, text: '  return showFallback ? <Fallback /> : <img … />;' },
-        ],
-      },
-      {
-        path: 'src/_providers/avatarProvider.tsx', add: 28, del: 2,
-        diff: [
-          { kind: 'hunk', text: '@@ -4,6 +4,14 @@ const AvatarContext = createContext(null);' },
-          { kind: 'ctx', oldNo: 4, newNo: 4, text: 'export function AvatarProvider({ children }) {' },
-          { kind: 'del', oldNo: 5, text: '  const [statuses, setStatuses] = useState({});' },
-          { kind: 'add', newNo: 5, text: '  const [statuses, setStatuses] = useState({});' },
-          { kind: 'add', newNo: 6, text: '  const setAvatarStatus = useCallback((key, status) => {' },
-          { kind: 'add', newNo: 7, text: '    setStatuses((prev) => (prev[key] === status ? prev : { ...prev, [key]: status }));' },
-          { kind: 'add', newNo: 8, text: '  }, []);' },
-          { kind: 'ctx', oldNo: 6, newNo: 9, text: '  return <AvatarContext.Provider value={{ statuses, setAvatarStatus }}>{children}</AvatarContext.Provider>;' },
-        ],
-      },
-      {
-        path: 'src/_components/Avatar.test.tsx', add: 16, del: 0,
-        diff: [
-          { kind: 'hunk', text: '@@ -0,0 +1,16 @@' },
-          { kind: 'add', newNo: 1, text: 'it("holds the previous frame during refetch", async () => {' },
-          { kind: 'add', newNo: 2, text: '  const { rerender } = render(<Avatar user={user} />);' },
-          { kind: 'add', newNo: 3, text: '  expect(screen.queryByRole("img")).toBeNull();' },
-          { kind: 'add', newNo: 4, text: '  // … fans out the first resolution to every instance' },
-          { kind: 'add', newNo: 5, text: '});' },
-        ],
-      },
-    ],
-    links: [{ id: 'DEV-1245', rel: 'relates to', ai: true, reason: 'Both tickets touch the Avatar render path — DEV-1245’s board cards render AvatarStacks, so the fallback-flicker fix here affects how they paint on first load.' }],
-    history: [
-      { stage: 'Refined', summary: 'Repro confirmed on throttled 3G; root-caused to per-instance state.', done: true },
-      { stage: 'Plan', summary: 'Chose a shared AvatarProvider status map keyed by file id + cache-bust.', done: true },
-      { stage: 'Implementatie', summary: 'In progress — provider wired, tests being written.', done: false },
-    ],
   },
   {
     id: 'DEV-1245', workspaceId: WS, projectId: PRJ, stageId: 'impl', status: 'busy', hasTerminal: true,
@@ -149,11 +104,6 @@ export const TICKETS: Ticket[] = [
     description: 'Add Microsoft (Entra ID) as an OAuth provider alongside GitLab/GitHub. Needs a decision on where the client secret lives per-workspace.',
     carryOver: 'From Refined: SSO must reuse the existing provider-button flow in LoginForm; no new auth surface.',
     needsInput: 'Where should the Microsoft client secret live — the per-workspace token vault from DEV-1249, or env for now?',
-    links: [{ id: 'DEV-1249', rel: 'relates to', ai: true, reason: 'DEV-1249 builds the per-workspace token vault. The Microsoft client secret needed here is exactly the kind of credential that vault is meant to store — likely a shared dependency.' }],
-    history: [
-      { stage: 'Refined', summary: 'Scoped to Entra ID only for v1.', done: true },
-      { stage: 'Plan', summary: 'Waiting on secret-storage decision.', done: false },
-    ],
   },
   {
     id: 'DEV-1247', workspaceId: WS, projectId: PRJ, stageId: 'plan', status: 'busy', hasTerminal: false,

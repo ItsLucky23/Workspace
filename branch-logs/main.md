@@ -6199,3 +6199,17 @@ bundle) groen · test:ws 336/336 · sweep 473/0 · Playwright 42/42.
 **Notes:** test:ws + sweep + Playwright draaien hierna (push-ritueel); agent-4-scoping van F-007/Ticket.files/UI-audit is rapport-only voor de owner (Report Without Auto-Fixing).
 
 **Naschrift (gates-run):** test:ws 336/337 + de ene faler (`contentScript`) solo groen (bekende parallel-flake); sweep+per-route 473/0; Playwright 42/42 — maar één spec (`boardTicket.spec.ts:133`) brak eerst reproduceerbaar door de nieuwe checklist-rij: op het 720px-testviewport liet de uitgeklapte 9-rijen-checklist de kanban-kolom ~90px over, waardoor het kaart-klikpunt permanent onder de sticky kolomheader viel. Fix in de spec: checklist eerst inklappen (rijenaantal groeit met het product; de spec mag daar niet van afhangen).
+
+## 2026-08-24 14:05 — Ticket.files-opruiming + stage-save eerlijk gemaakt (owner-keuzes punt 2+3)
+
+**User prompt:** "punt 2. dit mag dus weg, … punt 3 dit moet ook gefixt worden …"
+
+**What I did:**
+- **`Ticket.files` weg (+ zelfde dode klasse `links`/`history`):** de drie seed-era velden op het client-`Ticket`-type verwijderd (`types.ts`) samen met de nu-onwijsde interfaces `TicketLink` (client-mirror; het Prisma-model blijft — conductor/accept-suggestion gebruiken dat) en `StageHistoryEntry`; de 50 regels prototype-diff/links/history uit `seed.ts` (DEV-1240 + DEV-1241) verwijderd. `TicketFile` blijft als render-shape van de diff-viewer (comment zegt dat nu expliciet). Doc-correcties: statusblok in `CODE_EDITOR.md` §2.2 + één-regel-notes in `features/07`/`features/08` (de gebouwde fallback rendert uit de ingebouwde MR-view via `mrFilesToTicketFiles()`, niet uit een persisted veld); stale `types.ts:88`-pointer in `prisma/schema.prisma` bij `TicketLink` herschreven.
+- **Stage-save-bug gefixt (UI-audit C1, al gelogd als "geen enkele bevestiging"):** `saveStageConfig` in de provider geeft nu `Promise<boolean>` terug (fout → bestaande `reportRequestFailure`-toast resp. `workspaces.syncFailed`); de pipeline-pagina wist `dirty` pas bij bevestigd succes, houdt bij falen draft + unsaved-dot, en de "Save stage"-knop is disabled tijdens de vlucht. Bewust de kleine eerlijke fix, niet de ADR-0309-autosave-migratie (aparte beslissing, staat open).
+
+**Files touched:** `src/workspaces/_data/types.ts`, `src/workspaces/_data/seed.ts`, `src/workspaces/_shell/WorkspacesContext.tsx`, `src/workspaces/_shell/WorkspacesProvider.tsx`, `src/workspaces/develop/pipeline/page.tsx`, `src/workspaces/_docs/CODE_EDITOR.md`, `src/workspaces/_docs/features/{07_CODE_CHANGES_REVIEW,08_CODEBASE_VIEWER}.md`, `prisma/schema.prisma` (comment-only).
+
+**Verify:** lint 0 errors · build+bundle groen · ai:lint schoon · test:unit 134/134 · test:ws 337/337 · Playwright 42/42 (1 cold-start-flake solo groen) · sweep: zie naschrift.
+
+**Naschrift:** sweep + per-route 473 passed / 0 failed / 122 skipped.

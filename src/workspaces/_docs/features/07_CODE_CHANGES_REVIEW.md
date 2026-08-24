@@ -64,6 +64,8 @@ This surface is **not a separate editor** — it is the **UI-Builder CodebaseEdi
 
 Additive — but almost everything reuses existing names. The changed-files set is the existing **`Ticket.files: TicketFile[]`** (`path/add/del/diff`); the frozen snapshot is the existing **`CarryOver.envelope.commitHash`** ([02 §4]); the approve gate is the existing **`QuestionSet`/`Question(kind:'approve')`** ([02 §5]). 07 introduces only the **baseline selector** UI-state and reuses 08's editor contract types.
 
+> **2026-08-24:** `Ticket.files` was removed (never written server-side); the built diff view renders from the built-in MR view via `mrFilesToTicketFiles()` — see `CODE_EDITOR.md` §2.2.
+
 | Field / type | Type | On / new | Validation |
 |---|---|---|---|
 | `DiffBaseline` | `'whole-ticket' \| 'stage-delta'` | new (ui-only) | one of the two; defaults `'whole-ticket'` (D10) |

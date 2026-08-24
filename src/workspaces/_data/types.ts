@@ -268,9 +268,6 @@ export interface Ticket {
   //? the position in the stored list (the conductor resolves by that index). Only UNRESOLVED ones.
   advisoryQuestions?: { index: number; q: string; assumption: string }[];
   priority?: TicketPriority; // low|normal|high|urgent — `urgent` = hotfix/security tier (force-passes the capacity cap, #12)
-  files?: TicketFile[];
-  links?: TicketLink[];
-  history?: StageHistoryEntry[];
 }
 
 export interface DiffLine {
@@ -280,6 +277,9 @@ export interface DiffLine {
   text: string;
 }
 
+//? The diff VIEWER's shape (FileDiffViewer/DiffView/ticketDiff) — populated at render time from the
+//? built-in MR view via `mrFilesToTicketFiles`, never persisted. The seed-era `Ticket.files` field that
+//? once carried this shape was removed 2026-08-24 (the server never wrote it).
 export interface TicketFile {
   path: string;
   add: number;
@@ -506,19 +506,6 @@ export interface PatSummary { id: string; name: string; prefix: string; scopes: 
 export interface PromptExperimentSummary {
   id: string; feature: string; name: string; status: string; variantA: string; variantB: string; createdAt: number;
   trialsA: number; trialsB: number; meanA: number; meanB: number; lift: number; winner: string; verdict: string;
-}
-
-export interface TicketLink {
-  id: string;            // related ticket id
-  rel: 'relates to' | 'blocks' | 'duplicates';
-  ai: boolean;           // AI-suggested
-  reason?: string;       // why the AI proposed the link (shown on the ? hover)
-}
-
-export interface StageHistoryEntry {
-  stage: string;
-  summary: string;
-  done: boolean;
 }
 
 //? The read-projection of `WorkspaceSuggestion` (04b §8). Canonical model shape is

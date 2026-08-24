@@ -998,7 +998,8 @@ model Ticket {
 }
 
 //? A ticket↔ticket relation. `ai` = AI-suggested; `reason` = why (shown on hover).
-//? Prototype mirror: `TicketLink` (types.ts:88).
+//? Written by accept-suggestion (collision radar); read by the Conductor's blocks-relation checks.
+//? (The seed-era client mirror interface in types.ts was removed 2026-08-24 — nothing renders links yet.)
 model TicketLink {
   id             String   @id @default(auto()) @map("_id") @db.ObjectId
   workspaceId    String   @db.ObjectId

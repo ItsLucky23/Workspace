@@ -1910,7 +1910,15 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       unarchiveTickets: (ids) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/unarchive', version: 'v1', data: { ticketIds: ids, clientRequestId: nextReqId() }, receiver: room }); },
       toggleSkill: (id, on) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/skillToggle', version: 'v1', data: { sourceId: id, on, clientRequestId: nextReqId() }, receiver: room }); },
       stageConfigs: snap.stageConfigs,
-      saveStageConfig: (cfg) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/saveStageConfig', version: 'v1', data: { stageId: cfg.id, projectId: cfg.projectId, cfg, clientRequestId: nextReqId() }, receiver: room }); },
+      //? Reports whether the write landed (UI-audit gap: the old fire-and-forget cleared the editor's
+      //? dirty flag optimistically and a failed save showed nothing). Failure paths reuse the same
+      //? toasts as observeSync; the caller keeps its draft when this resolves false.
+      saveStageConfig: (cfg) => {
+        const room = snap.activeWorkspaceId;
+        if (!room) return Promise.resolve(false);
+        return syncRequest({ name: 'workspaces/saveStageConfig', version: 'v1', data: { stageId: cfg.id, projectId: cfg.projectId, cfg, clientRequestId: nextReqId() }, receiver: room })
+          .then((response) => !reportRequestFailure(response), () => { notify.error({ key: 'workspaces.syncFailed' }); return false; });
+      },
       //? I1 — projectAdmin resolves + executes immutable-ref CI outside the writer, then dispatches its report.
       runCi: (ticketKey, serviceId) => { const room = snap.activeWorkspaceId; const projectId = snap.activeProjectId; if (room && projectId) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'ci-run', projectId, ticketKey, ...(serviceId === undefined ? {} : { serviceId }), clientRequestId: nextReqId() }, receiver: room }); },
       //? R1 — persist stage add/remove/reorder through the existing stageCreate/Delete/Reorder `_sync` routes

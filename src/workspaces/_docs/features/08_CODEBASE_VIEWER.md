@@ -104,7 +104,7 @@ Additive UI-only types for the editor host contract (the editor's own internal m
 | `CodebaseEditorHandle` | imperative handle (4 methods) | new (ui-only) | captured via `onReady`; never persisted |
 | `CodebaseEditorProps` | mount props | new (ui-only) | `baselineCommit` non-empty; `mode:'edit'` only if RBAC + container allow |
 
-No new **persisted** model. The snapshot itself is the existing worktree frozen at `CarryOver.envelope.commitHash` ([02 §4]); `TicketFile[]` is already on `Ticket.files`.
+No new **persisted** model. The snapshot itself is the existing worktree frozen at `CarryOver.envelope.commitHash` ([02 §4]); `TicketFile[]` is already on `Ticket.files`. *(2026-08-24: `Ticket.files` was removed — the built view renders from the built-in MR view via `mrFilesToTicketFiles()`; see `CODE_EDITOR.md` §2.2.)*
 
 **INDEX delta:** EditorMode, CodeRange, CodebaseEditorHandle, CodebaseEditorProps
 

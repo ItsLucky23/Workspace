@@ -121,7 +121,15 @@ export default function Pipeline() {
     setDirty((prev) => { if (!prev.has(id)) return prev; const next = new Set(prev); next.delete(id); return next; });
     setRemoteChanged((prev) => { if (!prev.has(id)) return prev; const next = new Set(prev); next.delete(id); return next; });
   };
-  const save = () => { if (s) { saveStageConfig(s); clearDirty(s.id); } };
+  //? Clear dirty only when the server confirms — a failed save keeps the draft + the unsaved-dot, and
+  //? the provider's failure toast says why. The old path cleared optimistically and swallowed failures.
+  const [saveBusy, setSaveBusy] = useState(false);
+  const save = () => {
+    if (!s || saveBusy) return;
+    const id = s.id;
+    setSaveBusy(true);
+    void saveStageConfig(s).then((ok) => { setSaveBusy(false); if (ok) clearDirty(id); });
+  };
   const discardEdits = () => {
     if (!s) return;
     const live = stageConfigs.find((st) => st.id === s.id);
@@ -330,7 +338,7 @@ export default function Pipeline() {
                       <span className="hidden sm:inline">{translate({ key: 'workspaces.pipeline.unsavedChanges' })}</span>
                     </span>
                   )}
-                  <WsButton icon="check" onClick={save}>{translate({ key: 'workspaces.pipeline.saveStage' })}</WsButton>
+                  <WsButton icon="check" onClick={save} disabled={saveBusy}>{translate({ key: 'workspaces.pipeline.saveStage' })}</WsButton>
                   <PopMenu
                     ariaLabel={translate({ key: 'workspaces.pipeline.stageActions' })}
                     items={[

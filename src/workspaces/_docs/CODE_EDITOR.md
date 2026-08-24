@@ -73,6 +73,12 @@ The reference is `ui-builder/src/sandbox/_components/editor/BaseCodeEditor.tsx` 
 
 ### 2.2 As an OPTIONAL read-only inline-diff FALLBACK
 
+> **Status 2026-08-24 (F-006/F-014, built):** the fallback ships, but it renders from the **built-in MR
+> view** — `ctx.mrByBranch` → `mrFilesToTicketFiles()` (`CodePanel.tsx`, `ticketDiff.ts`) — not from a
+> persisted `Ticket.files` field. That field never existed server-side and was removed from the client
+> type + seed on 2026-08-24; `TicketFile` survives only as the viewer's render shape. Mentions of
+> `Ticket.files` below (and in [features/07]/[features/08]) are historical design intent.
+
 When **no VS Code session is up** (editor server not yet started, cold-start in progress, CapacityManager queued the editor, or the ticket has no live container), the changes page degrades to a **read-only inline-diff fallback** rather than a blank pane:
 
 - The fallback is the existing read-only **`FileDiffViewer` / `DiffView`** ([features/07] §interim, [features/08] interim) — a GitLab-MR-style changed-files list + inline `correct`/`wrong`-wash diff rendered from **`Ticket.files: TicketFile[]`** (`path/add/del/diff`), at the frozen `commitHash` ([02 §4]). It needs **no container** and **no LSP** — it reads the diff the orchestrator already has from the `PostToolUse(Edit/Write)` → `file-change` `TicketEvent` stream ([02 §3]).
