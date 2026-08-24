@@ -29,7 +29,7 @@ import { executeTrackedChatDispatch, isChatProposalForProject } from '../_functi
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
-  PipelineStageCfg, RagIndexStatus, RepoInfo, AiSkillEntry, DocumentEntry, DocumentTemplateEntry, SkillEntry, Sprint,
+  PipelineStageCfg, RagIndexStatus, RepoInfo, AiSkillEntry, DocumentEntry, DocumentTemplateEntry, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink, UiReviewSummary,
   ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, ContentSnapshot,
@@ -67,7 +67,6 @@ interface Snap {
   budgets: WorkspaceBudget[];
   capacity?: { active: number; queued: number; limit: number }; // #105/#19
   docs: InfoDoc[];
-  skills: SkillEntry[];
   roles: PermRole[];
   envVars: EnvVar[];
   integrations: IntegrationTool[];
@@ -127,9 +126,9 @@ const EMPTY_SNAP: Snap = {
   workspaces: [], activeWorkspaceId: null, projects: [], activeProjectId: null, services: [], serviceStacks: [], dbConnections: [], migrations: [], environments: [], buildArtifacts: [],
   templates: [],
   members: [], tickets: [], stages: [], sprints: [],
-  suggestions: [], budget: null, budgets: [], docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [],
+  suggestions: [], budget: null, budgets: [], docs: [], roles: [], envVars: [], integrations: [], invites: [], events: [],
   notifications: [], stageConfigs: [], aiOverrides: [], aiConnections: [], aiProviderCatalog: [], aiFeatureDefaults: {}, customTasks: [], outputTemplates: [], aiSkills: [], documents: [], documentTemplates: [], myInvites: [], notes: [], repo: { linked: false },
-  gitConfig: { branchStrategy: 'ticket-prefix', defaultBranchType: 'feature', branchTemplate: '{{type}}/{{key}}-{{slug}}', pushPolicy: 'local-only', targetBranch: 'main', protectedBranches: ['main', 'master'], commitSigning: false },
+  gitConfig: { branchStrategy: 'ticket-prefix', defaultBranchType: 'feature', branchTemplate: '{{type}}/{{key}}-{{slug}}', pushPolicy: 'local-only', targetBranch: 'main', protectedBranches: ['main', 'master'] },
   workspacePaused: false,
   usage: { byTicket: [], activity: [], totalTokens: 0, totalTurns: 0, byAi: [], byUser: [] },
   insights: { avgCycleHours: 0, throughput7d: 0, avgTokensPerTicket: 0, doneCount: 0, openCount: 0 },
@@ -891,11 +890,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     callback: ({ serverOutput }) => {
       if (serverOutput.status !== 'success') return;
       const { sourceId, on } = serverOutput;
-      //? An InfoSource id may be a skill (SkillEntry.on) or a context-doc (aiEditable) —
-      //? both back onto `enabled`, so update whichever list holds it.
+      //? A context-doc's `aiEditable` backs onto InfoSource.enabled.
       setSnap((s) => ({
         ...s,
-        skills: s.skills.map((sk) => (sk.id === sourceId ? { ...sk, on } : sk)),
         docs: s.docs.map((d) => (d.id === sourceId ? { ...d, aiEditable: on } : d)),
       }));
     },
@@ -1581,13 +1578,6 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
           const send = () => { void syncRequest({ name: 'workspaces/acceptSuggestion', version: 'v1', data: { suggestionId: id, clientRequestId: reqId }, receiver: room }); };
           if (offlineRef.current) parkWrite(send); else send();
         }
-        //? #109 — a COPILOT suggestion ("AI drives the UI") carries a { navigate } directive in its patch:
-        //? on accept, drive the client there (the accept-suggestion op above flips its status server-side).
-        const sug = snap.suggestions.find((s) => s.id === id);
-        if (sug?.type === 'copilot' && sug.patch !== null && typeof sug.patch === 'object') {
-          const target = (sug.patch as Record<string, unknown>).navigate;
-          if (typeof target === 'string' && target.length > 0) void navigate(pathForView(target));
-        }
         setLocalSuggestionsDismissed((prev) => [...prev, id]);
       },
       notifications: snap.notifications,
@@ -2038,7 +2028,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       members: snap.members,
       membersById,
       ticketMembers: (ticket) => {
-        const ids = [ticket.creatorId, ticket.assigneeId, ...ticket.viewers].filter((x): x is string => x !== undefined && x !== '');
+        const ids = [ticket.creatorId, ticket.assigneeId].filter((x): x is string => x !== undefined && x !== '');
         return [...new Set(ids)].map((id) => membersById[id]).filter((m): m is Member => m !== undefined);
       },
       stages: snap.stages,
@@ -2116,7 +2106,6 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       saveStyle: (feature, key, label, systemPrompt, preview) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'save-style', feature, key, label, systemPrompt, ...(preview ? { previewAssetUrl: preview.previewAssetUrl, previewKind: preview.previewKind } : {}), clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       deleteStyle: (feature, key) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'delete-style', feature, key, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       docs: snap.docs,
-      skills: snap.skills,
       invites: snap.invites,
       activityEvents: snap.events,
       ticketNotes: snap.notes,

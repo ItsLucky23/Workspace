@@ -79,7 +79,7 @@ export function aiRouteCandidates(input: AiRouteInput): AiRoute[] {
     input.workspaceDefault,
     { providerId: DEFAULT_ASSIGNMENTS[input.feature] },
   ];
-  const ids = input.catalogIds ?? AI_PROVIDER_LIST.map((m) => m.id);
+  const ids = input.catalogIds ?? AI_PROVIDER_LIST.filter((m) => m.surface === 'text').map((m) => m.id);
   const out: AiRoute[] = [];
   const seen = new Set<AiProviderId>();
   for (const route of [...preferred, ...ids.map((providerId) => ({ providerId }))]) {

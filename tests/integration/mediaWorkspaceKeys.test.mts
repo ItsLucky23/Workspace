@@ -34,6 +34,12 @@ try {
   eq(cfg.keys.fal, 'ws-fal-secret', 'the stored provider key decrypts back to plaintext');
   eq(cfg.overrides['image-gen'], 'fal', 'the stored per-feature override is parsed');
 
+  // ---- Fase 5.2: an AiConnection row is now the canonical key store — it WINS over the legacy EnvVar ----
+  const conn = await prisma.aiConnection.create({ data: { workspaceId: ws.id, providerId: 'fal', model: '', apiKey: encryptSecret('conn-fal-secret') } });
+  const cfg2 = await loadWorkspaceMediaConfig(prisma, ws.id);
+  eq(cfg2.keys.fal, 'conn-fal-secret', 'a keyed fal AiConnection overrides the legacy __provider_key_fal EnvVar');
+  await prisma.aiConnection.delete({ where: { id: conn.id } });
+
   // ---- the registry CONSUMES it: dispatch leaves the stub path (goes live, then fails on the bogus base) ----
   const withKey = await runMediaGeneration({ feature: 'image-gen', prompt: 'a T-Rex', workspaceId: ws.id });
   assert(!withKey.stub, 'a per-workspace key flips the provider LIVE — no longer a stub');

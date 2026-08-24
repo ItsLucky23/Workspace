@@ -32,7 +32,7 @@ async function poll<T>(fn: () => Promise<T | null>, timeoutMs = 4000, stepMs = 5
 //? Seed a context doc directly (this route retires docs; creating one is addInfoDoc's job).
 async function seedDoc(ctx: TestContext, workspaceId: string, name: string): Promise<string> {
   const row = await ctx.prisma.infoSource.create({
-    data: { workspaceId, mode: 'context-doc', source: 'uploaded', name, content: '# seed', summary: 'seed', note: 'uploaded', enabled: false, usedByStages: [] },
+    data: { workspaceId, mode: 'context-doc', source: 'uploaded', name, content: '# seed', summary: 'seed', note: 'uploaded', enabled: false },
   });
   return row.id;
 }

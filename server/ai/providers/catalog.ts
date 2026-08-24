@@ -1,4 +1,5 @@
-//? What can be connected as a TEXT backend, as data.
+//? @adr 0325
+//? What can be connected as a backend — text, media and embedding in ONE catalog — as data.
 //?
 //? Two things the owner asked for shape this file:
 //?
@@ -18,7 +19,15 @@
 
 //? `pi-cli` (ADR 0322) = the second subscription transport: pi on the Codex seat, headless-json for one-shot
 //? features (the coding agent uses the same seat interactively — see orchestrator/codingAgents).
-export type AiTransport = 'claude-cli' | 'pi-cli' | 'openai-compatible' | 'anthropic';
+//? `media-adapter` / `embedding` (Fase 5.2) are not TEXT transports: they mark entries the text dispatch
+//? must never route to — media entries run through server/media/registry (per-adapter implementations)
+//? and embedding entries through server/rag/embed. They live in THIS catalog so provider identity,
+//? key storage (AiConnection) and the settings UI have exactly one level, not five.
+export type AiTransport = 'claude-cli' | 'pi-cli' | 'openai-compatible' | 'anthropic' | 'media-adapter' | 'embedding';
+
+//? Which PLANE a provider serves. The text dispatch, the media registry and the RAG embedder each
+//? filter the shared catalog on this — a media id can never be picked as a text backend and vice versa.
+export type AiSurface = 'text' | 'media' | 'embedding';
 
 //? What a backend can actually take as INPUT. A request carrying images needs 'vision', one carrying
 //? audio needs 'audio' — routing a speech-to-text turn at a text-only backend produced "no audio clip
@@ -30,6 +39,8 @@ export interface AiModelChoice { id: string; label: string }
 export interface AiProviderMeta {
   id: string;
   label: string;
+  /** Which plane this backend serves: text completions, media generation, or RAG embeddings. */
+  surface: AiSurface;
   /** How it is paid for and signed in — decides the whole shape of its add-form. */
   kind: 'subscription' | 'api-key';
   /** Which implementation runs it. Several entries may share one. */
@@ -58,7 +69,7 @@ export function providerModalities(meta: AiProviderMeta): AiModality[] {
 //? record's value type is `| undefined` under strict indexing, and a cast to remove that would be
 //? exactly the kind of paper-over this codebase forbids.
 export const ANTHROPIC_META: AiProviderMeta = {
-  id: 'anthropic-api', label: 'Anthropic API', kind: 'api-key', transport: 'anthropic',
+  id: 'anthropic-api', label: 'Anthropic API', surface: 'text', kind: 'api-key', transport: 'anthropic',
   models: [
     { id: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5' },
     { id: 'claude-opus-4-1', label: 'Claude Opus 4.1' },
@@ -72,21 +83,21 @@ export const ANTHROPIC_META: AiProviderMeta = {
 export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
   //? ---------------------------------------------------------------- subscription
   'claude-cli': {
-    id: 'claude-cli', label: 'Claude Code', kind: 'subscription', transport: 'claude-cli',
+    id: 'claude-cli', label: 'Claude Code', surface: 'text', kind: 'subscription', transport: 'claude-cli',
     models: [], defaultModel: '', baseUrl: '', keyUrl: '', baseUrlEnv: '',
   },
   //? Codex (ChatGPT Plus/Pro) through pi — signed in on the host with `pi` → `/login`. Like Claude Code it
   //? is a seat, not a key: no model picker on connect (a feature route may still pin `codex-cli:<model>`;
   //? the coding-agent tiers have their own map). Text-only on the one-shot path.
   'codex-cli': {
-    id: 'codex-cli', label: 'Codex (ChatGPT subscription)', kind: 'subscription', transport: 'pi-cli',
+    id: 'codex-cli', label: 'Codex (ChatGPT subscription)', surface: 'text', kind: 'subscription', transport: 'pi-cli',
     models: [], defaultModel: '', baseUrl: '', keyUrl: '', baseUrlEnv: '',
   },
 
   //? ---------------------------------------------------------------- api key, native shapes
   'anthropic-api': ANTHROPIC_META,
   'gemini-api': {
-    id: 'gemini-api', label: 'Gemini', kind: 'api-key', transport: 'openai-compatible', modalities: ['vision', 'audio'],
+    id: 'gemini-api', label: 'Gemini', surface: 'text', kind: 'api-key', transport: 'openai-compatible', modalities: ['vision', 'audio'],
     //? P4-6 — short, currently-shipping; the live listing (P4-4) is the real source.
     models: [
       { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
@@ -104,7 +115,7 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
   //? These are not "more names": each one is a host that speaks the transport above, so connecting one
   //? works the day it is added. That is the whole reason the transport is a first-class concept.
   'openai-api': {
-    id: 'openai-api', label: 'OpenAI', kind: 'api-key', transport: 'openai-compatible', modalities: ['vision'],
+    id: 'openai-api', label: 'OpenAI', surface: 'text', kind: 'api-key', transport: 'openai-compatible', modalities: ['vision'],
     //? P4-6 — short, currently-shipping; the live listing (P4-4) is the real source.
     models: [
       { id: 'gpt-5', label: 'GPT-5' },
@@ -118,7 +129,7 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
     baseUrlEnv: 'WS_OPENAI_BASE_URL',
   },
   'openrouter-api': {
-    id: 'openrouter-api', label: 'OpenRouter', kind: 'api-key', transport: 'openai-compatible', modalities: ['vision'],
+    id: 'openrouter-api', label: 'OpenRouter', surface: 'text', kind: 'api-key', transport: 'openai-compatible', modalities: ['vision'],
     //? A gateway in front of many vendors — its model ids are `vendor/model`, and the "other" escape
     //? hatch matters more here than anywhere else, because its catalog changes weekly.
     models: [
@@ -133,7 +144,7 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
     baseUrlEnv: 'WS_OPENROUTER_BASE_URL',
   },
   'groq-api': {
-    id: 'groq-api', label: 'Groq', kind: 'api-key', transport: 'openai-compatible',
+    id: 'groq-api', label: 'Groq', surface: 'text', kind: 'api-key', transport: 'openai-compatible',
     models: [
       { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B' },
       { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B (instant)' },
@@ -145,7 +156,7 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
     baseUrlEnv: 'WS_GROQ_BASE_URL',
   },
   'deepseek-api': {
-    id: 'deepseek-api', label: 'DeepSeek', kind: 'api-key', transport: 'openai-compatible',
+    id: 'deepseek-api', label: 'DeepSeek', surface: 'text', kind: 'api-key', transport: 'openai-compatible',
     //? Stable aliases — DeepSeek moves these to each new V3.x release, so they stay current by themselves.
     models: [
       { id: 'deepseek-chat', label: 'DeepSeek Chat (V3.x)' },
@@ -156,7 +167,7 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
     baseUrlEnv: 'WS_DEEPSEEK_BASE_URL',
   },
   'mistral-api': {
-    id: 'mistral-api', label: 'Mistral', kind: 'api-key', transport: 'openai-compatible',
+    id: 'mistral-api', label: 'Mistral', surface: 'text', kind: 'api-key', transport: 'openai-compatible',
     models: [
       { id: 'mistral-large-latest', label: 'Mistral Large' },
       { id: 'mistral-medium-latest', label: 'Mistral Medium' },
@@ -170,7 +181,7 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
   //? P4-5 — four more hosts that speak the same transport (ADR 0321: no Azure — its per-deployment URL
   //? scheme needs a transport tweak, deferred until there is a concrete need). Data only, by design.
   'xai-api': {
-    id: 'xai-api', label: 'xAI (Grok)', kind: 'api-key', transport: 'openai-compatible',
+    id: 'xai-api', label: 'xAI (Grok)', surface: 'text', kind: 'api-key', transport: 'openai-compatible',
     models: [
       { id: 'grok-4', label: 'Grok 4' },
       { id: 'grok-4-fast-reasoning', label: 'Grok 4 Fast (reasoning)' },
@@ -182,7 +193,7 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
     baseUrlEnv: 'WS_XAI_BASE_URL',
   },
   'together-api': {
-    id: 'together-api', label: 'Together', kind: 'api-key', transport: 'openai-compatible',
+    id: 'together-api', label: 'Together', surface: 'text', kind: 'api-key', transport: 'openai-compatible',
     //? Open-weight models under `org/Model` ids; the live listing (P4-4) is the real catalog here.
     models: [
       { id: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', label: 'Llama 3.3 70B Turbo' },
@@ -194,7 +205,7 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
     baseUrlEnv: 'WS_TOGETHER_BASE_URL',
   },
   'fireworks-api': {
-    id: 'fireworks-api', label: 'Fireworks', kind: 'api-key', transport: 'openai-compatible',
+    id: 'fireworks-api', label: 'Fireworks', surface: 'text', kind: 'api-key', transport: 'openai-compatible',
     //? Ids carry the `accounts/fireworks/models/` prefix — that IS the model name on this host.
     models: [
       { id: 'accounts/fireworks/models/llama-v3p3-70b-instruct', label: 'Llama 3.3 70B' },
@@ -206,7 +217,7 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
     baseUrlEnv: 'WS_FIREWORKS_BASE_URL',
   },
   'cerebras-api': {
-    id: 'cerebras-api', label: 'Cerebras', kind: 'api-key', transport: 'openai-compatible',
+    id: 'cerebras-api', label: 'Cerebras', surface: 'text', kind: 'api-key', transport: 'openai-compatible',
     models: [
       { id: 'llama-3.3-70b', label: 'Llama 3.3 70B' },
       { id: 'llama3.1-8b', label: 'Llama 3.1 8B' },
@@ -218,7 +229,7 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
     baseUrlEnv: 'WS_CEREBRAS_BASE_URL',
   },
   'local-openai': {
-    id: 'local-openai', label: 'Local / self-hosted', kind: 'api-key', transport: 'openai-compatible',
+    id: 'local-openai', label: 'Local / self-hosted', surface: 'text', kind: 'api-key', transport: 'openai-compatible',
     //? Ollama, llama.cpp, vLLM, LM Studio — anything serving the OpenAI shape on your own machine.
     //? The model name is whatever you pulled, so the list is a hint and "other" is the normal path.
     models: [
@@ -227,6 +238,41 @@ export const AI_PROVIDER_CATALOG: Record<string, AiProviderMeta> = {
     ],
     defaultModel: 'llama3.1',
     baseUrl: 'http://localhost:11434/v1', keyUrl: '', baseUrlEnv: 'WS_LOCAL_AI_BASE_URL',
+  },
+
+  //? ---------------------------------------------------------------- media (Fase 5.2)
+  //? The asset-producing backends. Their implementations live in server/media/providers (the media
+  //? registry dispatches by id, not transport); the entries exist here so their KEYS live in the same
+  //? AiConnection store, their identity is validated by the same `isKnownAiProviderId`, and the settings
+  //? UI shows every backend on ONE page. `models` stays empty — media model choice is per-feature
+  //? (`__media_model_<feature>`, the content-settings overrides), not per-connection.
+  'fal': {
+    id: 'fal', label: 'fal.ai (image · video · 3D)', surface: 'media', kind: 'api-key', transport: 'media-adapter',
+    models: [], defaultModel: '', baseUrl: '', keyUrl: 'https://fal.ai/dashboard/keys', baseUrlEnv: '',
+  },
+  'elevenlabs': {
+    id: 'elevenlabs', label: 'ElevenLabs (voice · sfx)', surface: 'media', kind: 'api-key', transport: 'media-adapter',
+    models: [], defaultModel: '', baseUrl: '', keyUrl: 'https://elevenlabs.io/app/settings/api-keys', baseUrlEnv: 'ELEVENLABS_BASE',
+  },
+  'suno': {
+    id: 'suno', label: 'Suno (music)', surface: 'media', kind: 'api-key', transport: 'media-adapter',
+    models: [], defaultModel: '', baseUrl: '', keyUrl: 'https://sunoapi.org/api-key', baseUrlEnv: 'SUNO_BASE',
+  },
+
+  //? ---------------------------------------------------------------- embedding (Fase 5.2)
+  //? The RAG embedders. Exactly one is ACTIVE per workspace (`__ai_provider_embedding`); vectors only
+  //? compare within one embedder, so the choice is stamped per chunk (`embedTag`) and retrieval gates
+  //? on it — switching embedders requires a re-index, which the sources page drives.
+  'gemini-embedding': {
+    id: 'gemini-embedding', label: 'Gemini embeddings', surface: 'embedding', kind: 'api-key', transport: 'embedding',
+    models: [{ id: 'gemini-embedding-001', label: 'gemini-embedding-001 (3072-dim)' }],
+    defaultModel: 'gemini-embedding-001',
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta', keyUrl: 'https://aistudio.google.com/apikey', baseUrlEnv: '',
+  },
+  'local-embedding': {
+    id: 'local-embedding', label: 'Local (offline, deterministic)', surface: 'embedding', kind: 'api-key', transport: 'embedding',
+    //? keyUrl '' ⇒ no key required (same rule as local-openai): the hashed-trigram embedder runs in-process.
+    models: [], defaultModel: '', baseUrl: '', keyUrl: '', baseUrlEnv: '',
   },
 };
 
@@ -239,6 +285,15 @@ export function knownAiProviderIds(): string[] {
   return Object.keys(AI_PROVIDER_CATALOG);
 }
 export const isKnownAiProviderId = (id: string): boolean => Object.hasOwn(AI_PROVIDER_CATALOG, id);
+
+/** The surface a provider id serves; unknown ids default to 'text' (legacy rows render, never dispatch). */
+export function providerSurface(id: string): AiSurface {
+  return AI_PROVIDER_CATALOG[id]?.surface ?? 'text';
+}
+/** The catalog slice for one surface — what each plane's dispatch/UI may offer. */
+export function providersFor(surface: AiSurface): AiProviderMeta[] {
+  return AI_PROVIDER_LIST.filter((meta) => meta.surface === surface);
+}
 
 /** The endpoint a backend talks to: an operator env override, else its catalog default. */
 export function providerBaseUrl(meta: AiProviderMeta): string {

@@ -36,6 +36,5 @@ eq(dflt.pushPolicy, 'local-only', 'null → default push policy');
 eq(normalizeGitConfig({ branchStrategy: 'bogus', pushPolicy: 'nope' }).branchStrategy, 'ticket-prefix', 'bogus strategy → default');
 eq(normalizeGitConfig({ branchStrategy: 'bogus' }).pushPolicy, 'local-only', 'bogus push policy → default');
 eq(normalizeGitConfig({ protectedBranches: ['dev', 42, 'main'] }).protectedBranches.length, 2, 'non-string protected branches dropped');
-eq(normalizeGitConfig({ commitSigning: true }).commitSigning, true, 'commitSigning passthrough');
 
 report('tests/unit/branchStrategy.test.mts');

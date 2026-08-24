@@ -82,4 +82,7 @@ export interface MediaProvider {
   supports: MediaFeature[];
   available: (apiKey?: string) => Promise<boolean>;   //? `apiKey` = per-workspace key; falls back to the env key
   generate: (req: MediaGenerationRequest) => Promise<MediaGenerationResult>;
+  //? Fase 5.2 — a REAL credential probe for the settings page's "Test" button (the media half of
+  //? `ai-connection-test`): one cheap authenticated request proves the key, without generating anything.
+  ping: (apiKey?: string) => Promise<{ ok: boolean; error?: string }>;
 }

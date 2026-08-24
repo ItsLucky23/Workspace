@@ -9,7 +9,7 @@ import { createContext, use } from 'react';
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, CodingAgentConfig, CopilotDirective, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
-  PipelineStageCfg, RagIndexStatus, RepoInfo, AiSkillEntry, DocumentEntry, DocumentTemplateEntry, DocumentTemplateSection, SkillEntry, Sprint,
+  PipelineStageCfg, RagIndexStatus, RepoInfo, AiSkillEntry, DocumentEntry, DocumentTemplateEntry, DocumentTemplateSection, Sprint,
   SshKeyEntry, Ticket, TicketNote, TicketPriority, Workspace, WorkspaceBudget, WorkspaceUsage, WorkspaceInsights, WorkspaceAnalytics, WorkspaceTrigger,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary, AiRun, DesignArtifact, InterviewFinding, TicketArtifactLink, UiReviewSummary,
   ProjectSummary, ServiceSummary, ServiceStackSummary, DbConnectionSummary, MigrationSummary, EnvironmentSummary, BuildArtifactSummary, ContentSnapshot,
@@ -353,14 +353,14 @@ export interface WorkspacesCtx {
 
   //? ----- live tenant data (from the `workspaces/snapshot` read; MIGRATION §4) -----
   //? These replace the screens' old direct `_data/seed` DATA imports. Static
-  //? CATALOGS (HOOK_CATALOG, COMMAND_CATALOG, INTEGRATION_TYPES, NETWORK_CATEGORIES,
+  //? CATALOGS (HOOK_CATALOG, COMMAND_CATALOG, INTEGRATION_TYPES,
   //? CARRY_VARS, RBAC_CAPABILITIES, ROLE_DISPLAY, …) stay as `_data/seed` imports.
   loading: boolean;                    // snapshot still loading
   refetch: () => void;                 // re-pull the snapshot (after a control-API write)
   tickets: Ticket[];                   // was TICKETS
   members: Member[];                   // was Object.values(MEMBERS)
   membersById: Record<string, Member>; // was MEMBERS (keyed by user id)
-  //? Resolve a ticket's people (creator + assignee + viewers) to Member objects via
+  //? Resolve a ticket's people (creator + assignee) to Member objects via
   //? the live members — replaces the seed `ticketLinkedMembers(t)` helper (which keyed
   //? on the dummy MEMBERS map; real tickets carry real user ids).
   ticketMembers: (ticket: Ticket) => Member[];
@@ -423,7 +423,6 @@ export interface WorkspacesCtx {
   saveStyle: (feature: string, key: string, label: string, systemPrompt: string, preview?: { previewAssetUrl: string; previewKind: string }) => void;
   deleteStyle: (feature: string, key: string) => void;
   docs: InfoDoc[];                     // was DOCS (InfoSource mode='context-doc')
-  skills: SkillEntry[];                // was SKILLS (InfoSource mode='skill')
   invites: InviteEntry[];              // was INVITES
   activityEvents: ActivityEvent[];     // was EVENTS
   ticketNotes: TicketNote[];           // user comments on tickets (WorkspaceNote projection)

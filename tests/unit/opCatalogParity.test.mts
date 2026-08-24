@@ -61,7 +61,7 @@ try {
   assert(!isChatEnabledOp('save-env'), 'the client type-guard rejects a non-tranche op');
 
   // ---- (3) secret-bearing + plumbing ops are EXCLUDED (never proposable via chat)
-  for (const op of ['save-env', 'save-integration', 'save-media-provider', 'gitlab-settings', 'forge-connect', 'db-connect', 'account-disconnect', 'copilot-propose', 'accept-suggestion', 'mark-read', 'project-runtime-save'] as const) {
+  for (const op of ['save-env', 'save-integration', 'save-media-provider', 'gitlab-settings', 'forge-connect', 'db-connect', 'account-disconnect', 'accept-suggestion', 'mark-read', 'project-runtime-save'] as const) {
     eq(PROPOSE_CATALOG[op].mode, 'excluded', `${op} is excluded from the chat surface`);
     eq(validateGenericAction({ op }, ctx), null, `${op} never validates as a generic proposal`);
   }
@@ -104,7 +104,7 @@ try {
 
   //? There is no ambiguous `later` bucket left. Duplicate aliases, full-state timeline replacements and
   //? cross-workspace operations are explicitly excluded; the one safe missing effect is dispatchable.
-  for (const op of ['content-create', 'content-reorder-beats', 'content-save-scenes', 'raise-cap', 'gitlab-verify', 'copy-workspace-assets'] as const) {
+  for (const op of ['content-create', 'content-save-scenes', 'copy-workspace-assets'] as const) {
     eq(PROPOSE_CATALOG[op].mode, 'excluded', `${op} is consciously excluded from chat`);
     eq(validateGenericAction({ op }, ctx), null, `${op} cannot enter a chat proposal`);
   }

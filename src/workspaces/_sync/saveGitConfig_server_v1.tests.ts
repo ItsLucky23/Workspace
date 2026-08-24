@@ -19,7 +19,6 @@ interface GitConfigInput {
     pushPolicy: 'local-only' | 'push' | 'merge-request';
     targetBranch: string;
     protectedBranches: string[];
-    commitSigning: boolean;
   };
   clientRequestId: string;
 }
@@ -57,7 +56,6 @@ const NEW_CONFIG: GitConfigInput['gitConfig'] = {
   pushPolicy: 'push',
   targetBranch: 'develop',
   protectedBranches: ['develop', 'main'],
-  commitSigning: true,
 };
 
 export const customTests: CustomTestCase[] = [
@@ -85,7 +83,6 @@ export const customTests: CustomTestCase[] = [
         ctx.expect.eq(persisted?.branchStrategy, 'typed', 'persisted branchStrategy matches');
         ctx.expect.eq(persisted?.pushPolicy, 'push', 'persisted pushPolicy matches');
         ctx.expect.eq(persisted?.targetBranch, 'develop', 'persisted targetBranch matches');
-        ctx.expect.eq(persisted?.commitSigning, true, 'persisted commitSigning matches');
       } finally {
         await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
       }

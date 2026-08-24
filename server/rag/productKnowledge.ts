@@ -14,7 +14,7 @@ import path from 'node:path';
 import { getPrismaClient, tryCatch } from '@luckystack/core';
 import type { PrismaClient } from '@prisma/client';
 
-import { embedTexts, embedTag } from './embed';
+import { embedTextsTagged, embedTag } from './embed';
 import { retrieve, type RetrievedChunk } from './index';
 
 //? The marker value binds the corpus hash to the EMBEDDER identity — so switching embedder (e.g. adding a
@@ -53,11 +53,12 @@ export async function indexProductKnowledge(prisma: PrismaClient): Promise<Produ
   const chunks = corpus.chunks.filter((c) => typeof c.text === 'string' && c.text.trim().length > 0);
   //? Embed every chunk + the marker (the hash) in one batch, so the marker also gets a real vector.
   const texts = [...chunks.map((c) => c.text), corpus.hash];
-  const [embErr, vectors] = await tryCatch(() => embedTexts(texts, { workspaceId: PRODUCT_WS, feature: 'rag-product' }));
-  if (embErr || !Array.isArray(vectors)) return { ok: false, entries: 0, error: 'product.embedFailed' };
+  const [embErr, embedded] = await tryCatch(() => embedTextsTagged(texts, { workspaceId: PRODUCT_WS, feature: 'rag-product' }));
+  if (embErr || !embedded) return { ok: false, entries: 0, error: 'product.embedFailed' };
+  const { vectors, tag } = embedded;
   await prisma.ragEntry.deleteMany({ where: { workspaceId: PRODUCT_WS, commitHash: PRODUCT_COMMIT } });
-  const rows = chunks.map((c, i) => ({ workspaceId: PRODUCT_WS, commitHash: PRODUCT_COMMIT, filePath: c.id, chunkId: '0', content: c.text, embedding: vectors[i] ?? [] }));
-  rows.push({ workspaceId: PRODUCT_WS, commitHash: PRODUCT_COMMIT, filePath: META_PATH, chunkId: '0', content: markerValue(corpus.hash), embedding: vectors[chunks.length] ?? [] });
+  const rows = chunks.map((c, i) => ({ workspaceId: PRODUCT_WS, commitHash: PRODUCT_COMMIT, filePath: c.id, chunkId: '0', content: c.text, embedding: vectors[i] ?? [], embedTag: tag }));
+  rows.push({ workspaceId: PRODUCT_WS, commitHash: PRODUCT_COMMIT, filePath: META_PATH, chunkId: '0', content: markerValue(corpus.hash), embedding: vectors[chunks.length] ?? [], embedTag: tag });
   await prisma.ragEntry.createMany({ data: rows });
   return { ok: true, entries: chunks.length, hash: corpus.hash };
 }

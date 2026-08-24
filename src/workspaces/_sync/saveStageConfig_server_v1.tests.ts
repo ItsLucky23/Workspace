@@ -51,7 +51,7 @@ function baseCfg(projectId: string, stageId: string): PipelineStageCfg {
     aiEnabled: true,
     customInstructions: `updated instructions ${String(Date.now())}`,
     handoverPrompt: '',
-    skillKeys: [], aiSkillIds: [],
+    aiSkillIds: [],
     sourceIds: [],
     commands: [],
     tools: [],
@@ -59,7 +59,6 @@ function baseCfg(projectId: string, stageId: string): PipelineStageCfg {
     processes: [],
     visibleStageIds: [],
     modelCfg: { autoEscalate: false, base: { model: 'sonnet', effort: 'medium', maxTurns: 20 }, rules: [] },
-    network: { enabled: false, mode: 'whitelist', categories: [], domains: [] },
     hooks: {},
   };
 }

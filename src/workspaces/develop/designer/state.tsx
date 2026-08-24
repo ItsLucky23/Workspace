@@ -2,8 +2,9 @@
 //? from a single component list into a broad visual editor with several sections (Components /
 //? Styles / Animations / Themes / Typography), all previewing under the SAME active theme + style,
 //? so their selection lives here in one context instead of being prop-drilled through every section.
-//? Every library (themes/styles/anims) is client-held: seeds now + AI-generated + user edits; each
-//? item can be renamed, duplicated and (for non-seeds) removed. Persistence lands in a later phase.
+//? Every library (themes/styles/anims) mixes seeds + AI-generated + user edits; each item can be
+//? renamed, duplicated and (for non-seeds) removed. Non-seed items persist per workspace through
+//? the `designerLibrary` API (save / delete / setActive) and are re-hydrated on load.
 
 /* eslint-disable react-refresh/only-export-components -- context module: the useDesigner hook is co-exported with the DesignerProvider by design (dev-only fast-refresh rule) */
 import { createContext, use, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';

@@ -12,12 +12,22 @@ import { assert, eq, report } from '../_helpers.mts';
 
 /* ------------------------------------------------------------ the catalog is honest */
 
-const TRANSPORTS = new Set(['claude-cli', 'openai-compatible', 'anthropic', 'pi-cli']);
+const TEXT_TRANSPORTS = new Set(['claude-cli', 'openai-compatible', 'anthropic', 'pi-cli']);
 for (const meta of AI_PROVIDER_LIST) {
+  eq(meta.id, AI_PROVIDER_CATALOG[meta.id]?.id, `${meta.id} is keyed by its own id`);
+
+  //? Fase 5.2 — media/embedding entries are MARKERS for their own adapters (media registry / embed.ts):
+  //? their transport must be the matching marker so the text dispatch can never pick them up, and the
+  //? text-shaped rules below (models offered, http endpoint, env repoint) do not apply to them.
+  if (meta.surface !== 'text') {
+    eq(meta.transport, meta.surface === 'media' ? 'media-adapter' : 'embedding', `${meta.id}'s transport matches its ${meta.surface} surface`);
+    if (meta.surface === 'media') eq(meta.models.length, 0, `${meta.id} (media) has no per-connection model — model choice is per-feature`);
+    continue;
+  }
+
   //? A backend whose transport has no implementation is the "looks connected, fails at the first
   //? turn" defect this page exists to prevent — the one thing this file must make impossible.
-  assert(TRANSPORTS.has(meta.transport), `${meta.id} names a transport that exists`);
-  eq(meta.id, AI_PROVIDER_CATALOG[meta.id]?.id, `${meta.id} is keyed by its own id`);
+  assert(TEXT_TRANSPORTS.has(meta.transport), `${meta.id} names a transport that exists`);
 
   if (meta.kind === 'subscription') {
     //? Signed in on the host: a key field or a model dropdown for it would be boxes that do nothing.
@@ -61,6 +71,18 @@ assert(!('azure-openai' in AI_PROVIDER_CATALOG), 'no Azure entry (ADR 0321: defe
   //? A self-hosted server has no key to fetch, and demanding one would block the one backend that
   //? costs nothing to try.
   eq(local?.keyUrl, '', 'the local backend needs no key');
+}
+
+/* ------------------------------------------------------------ Fase 5.2 — the non-text planes */
+
+{
+  //? The unification's contract: all three planes live in ONE catalog, and the embedders are exactly
+  //? the pair the per-workspace embedder setting can name.
+  eq(AI_PROVIDER_LIST.filter((m) => m.surface === 'media').map((m) => m.id).toSorted().join(','), 'elevenlabs,fal,suno', 'the three media backends are catalog entries');
+  const gem = AI_PROVIDER_CATALOG['gemini-embedding'];
+  assert(gem !== undefined && gem.models.some((m) => m.id === gem.defaultModel), 'gemini-embedding offers its default model');
+  //? Same rule as local-openai: keyUrl '' ⇒ no key required — the local embedder runs in-process.
+  eq(AI_PROVIDER_CATALOG['local-embedding']?.keyUrl, '', 'the local embedder needs no key');
 }
 
 /* ------------------------------------------------------------ endpoint resolution */

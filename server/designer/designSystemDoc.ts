@@ -131,5 +131,5 @@ export async function rebuildDesignSystemDoc(prisma: PrismaClient, workspaceId: 
   const existing = await prisma.infoSource.findFirst({ where: { workspaceId, mode: 'context-doc', source: 'design-system' }, select: { id: true } });
   await (existing
     ? prisma.infoSource.update({ where: { id: existing.id }, data: { content, enabled: true } })
-    : prisma.infoSource.create({ data: { workspaceId, mode: 'context-doc', source: 'design-system', name: 'Design system', content, enabled: true, usedByStages: [] } }));
+    : prisma.infoSource.create({ data: { workspaceId, mode: 'context-doc', source: 'design-system', name: 'Design system', content, enabled: true } }));
 }

@@ -1,6 +1,7 @@
-//? Workspaces — [skill-toggle] REALTIME write via `_sync`. Enables/disables a workflow capability
-//? (canonical Skill) or context document (InfoSource), then broadcasts the id + new state; every client
-//? flips it in place (no refetch). Requires editPipeline (OP_CAPABILITY).
+//? Workspaces — [skill-toggle] REALTIME write via `_sync`. Enables/disables a Sources context
+//? document (InfoSource), then broadcasts the id + new state; every client flips it in place
+//? (no refetch). The frozen op name predates the capability-skill layer's removal. Requires
+//? editPipeline (OP_CAPABILITY).
 
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, SyncServerResponse } from '../../../src/_sockets/apiTypes.generated';

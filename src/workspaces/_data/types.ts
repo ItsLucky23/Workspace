@@ -74,7 +74,6 @@ export interface GitConfig {
   pushPolicy: PushPolicy;             // how committed work leaves the container
   targetBranch: string;               // MR/push target, e.g. 'main'
   protectedBranches: string[];        // never commit directly to these
-  commitSigning: boolean;             // git commit -S in the container
 }
 
 export interface Workspace {
@@ -240,9 +239,8 @@ export interface Ticket {
   stageId: string;       // current pipeline column → PipelineStage.id (free string)
   status: TicketStatus;  // StageStatus.key within the stage
   labels: string[];      // GitLab-native, cached
-  creatorId?: string;    // who created the ticket (shown first); falls back to viewers[0]
-  assigneeId?: string;   // who picked it up (shown second); falls back to next viewer
-  viewers: string[];     // ui-only: member ids currently viewing (presence)
+  creatorId?: string;    // who created the ticket (shown first)
+  assigneeId?: string;   // who picked it up (shown second)
   hasTerminal: boolean;  // ui-only: a live terminal is attached
   branch?: string;
   mr?: string;           // ui-only shorthand ("!91 · draft"); canonical column is `mrUrl`
@@ -513,11 +511,11 @@ export interface PromptExperimentSummary {
 //? 'automation' (proposes a WorkspaceTrigger).
 export interface AiSuggestion {
   id: string;
-  type: 'link-tickets' | 'create-epic' | 'config-review' | 'maintenance' | 'automation' | 'copilot';
+  type: 'link-tickets' | 'create-epic' | 'config-review' | 'maintenance' | 'automation';
   title: string;
   body: string;
   ticketIds: string[];
-  patch?: unknown; // appliable config/automation patch { path, before, after }; #109 copilot: { navigate, prefill, op }
+  patch?: unknown; // appliable config/automation patch { path, before, after }
 }
 
 //? The canonical Assistant propose-only output (04b §8, B-23). `AiSuggestion` above
@@ -687,8 +685,7 @@ export interface AgentSession {
   lastHeartbeatAt?: string;
 }
 
-//? Sources — context docs (loaded as files) + skills/MCP (queried on demand).
-//? Mirrors InfoSource in DATAMODEL (mode 'context-doc' | 'skill').
+//? Sources — context docs (loaded as files). Mirrors InfoSource (mode 'context-doc').
 export interface InfoDoc {
   id: string;
   name: string;
@@ -697,7 +694,6 @@ export interface InfoDoc {
   note: string;              // "frozen @ abc123" | "spec"
   summary: string;           // one-liner of what the file/skill contains
   pendingBranches?: string[]; // branches whose changes aren't in this file yet
-  usedByStages?: string[];   // stage names that load this doc
   content: string;           // markdown/text shown in the read-only preview
   aiEditable: boolean;       // may the AI edit this doc? (docs-init per-file gate; backed by InfoSource.enabled)
   archived?: boolean;        // ADR 0310 — soft-archived: no longer fed to any AI, hidden behind the Archived view, restorable
@@ -705,6 +701,9 @@ export interface InfoDoc {
 
 //? ADR 0007 — one CONNECTED AI as the settings page sees it. `hasKey` is presence only; the
 //? credential never reaches the client, and the endpoint is not a client concept at all.
+//? Fase 5.2 — the shared provider catalog carries THREE planes; the settings page groups on it.
+export type AiSurface = 'text' | 'media' | 'embedding';
+
 export interface AiConnection {
   id: string;
   providerId: string;
@@ -713,6 +712,7 @@ export interface AiConnection {
   /** Empty for a host-CLI backend, which has no model concept. */
   model: string;
   kind: 'subscription' | 'api-key';
+  surface: AiSurface;
   hasKey: boolean;
   /** ISO timestamp of the last SUCCESSFUL credential probe — very different from "a key is present". */
   verifiedAt: string | null;
@@ -723,27 +723,15 @@ export interface AiConnection {
 export interface AiProviderOption {
   id: string;
   label: string;
+  surface: AiSurface;
   kind: 'subscription' | 'api-key';
   models: { id: string; label: string }[];
   defaultModel: string;
   keyUrl: string;
 }
 
-export interface SkillEntry {
-  id: string;
-  name: string;
-  kind: 'frozen' | 'live';
-  status: string;
-  model?: string;
-  on: boolean;
-  description?: string;      // what it does (Details)
-  usedByStages?: string[];   // stages that enable this skill
-  lastIndexed?: string;
-}
-
 //? SK1 (DOCUMENTS_AND_SKILLS) — the universal AI-skills layer: a workspace-scoped instruction block
-//? (humanizer, tone-of-voice, …) injected into AI runs at its apply-point groups. Distinct from the
-//? InfoSource-based `SkillEntry` workflow snippets above.
+//? (humanizer, tone-of-voice, …) injected into AI runs at its apply-point groups.
 export const AI_SKILL_APPLY_POINTS = ['all', 'content', 'studio', 'designer', 'dev', 'interviewer', 'documents', 'chat', 'custom'] as const;
 export type AiSkillApplyPoint = (typeof AI_SKILL_APPLY_POINTS)[number];
 export interface AiSkillEntry {
@@ -1007,9 +995,8 @@ export interface CodingAgentReadiness {
 }
 // provider-specific; a future capability registry replaces these (Q-MP-CAPREG).
 export type StageEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
-export type CommandMode = 'allow' | 'ask' | 'deny';
+export type CommandMode = 'allow' | 'deny';
 export type ToolTier = 'ro' | 'rw';
-export type NetworkMode = 'whitelist' | 'blacklist';
 
 //? title/desc/category are set for custom commands (catalog commands get those
 //? from COMMAND_CATALOG); they drive the ? info popover + grouping.
@@ -1058,10 +1045,6 @@ export interface StageModelChoice { model: StageModelTier; effort: StageEffort; 
 export interface ModelRule extends StageModelChoice { id: string; minScore: number }
 export interface StageModelCfg { autoEscalate: boolean; base: StageModelChoice; rules: ModelRule[]; contextBudgetTokens?: number /* 04b §13 — per-stage token budget → self-handoff */ }
 
-//? Network egress: allow-list (only these reachable) or block-list (everything
-//? except these), built from category presets + explicit hosts/prefixes (*.x.com).
-export interface StageNetworkCfg { enabled: boolean; mode: NetworkMode; categories: string[]; domains: string[] }
-
 //? One pipeline stage (meta) + its full editable config, flattened for the UI.
 //? `id` is a free string (not a fixed StageId) so custom stages can be added in
 //? the editor; `kind` is the typed semantic role (04b §12).
@@ -1085,11 +1068,9 @@ export interface PipelineStageCfg {
   userEditable?: boolean;            // edit-lock: may the user edit while this stage is active
   gateForApproval?: boolean;         // proceed-or-gate: gate for human approval before promoting
   // child collections
-  skillKeys: string[];
   //? Owner decision 2026-08-20 — which INSTRUCTION skills this stage runs with. A skill is no longer
-  //? switched on globally; the stage that wants it picks it. Empty = none. Distinct from `skillKeys`,
-  //? which holds the index-discovered CAPABILITY skills.
-  aiSkillIds: string[];               // enabled SkillEntry ids
+  //? switched on globally; the stage that wants it picks it. Empty = none.
+  aiSkillIds: string[];               // enabled AiSkillEntry ids
   sourceIds: string[];               // loaded InfoDoc ids (context docs)
   commands: StageCommandCfg[];
   tools: StageToolCfg[];
@@ -1097,7 +1078,6 @@ export interface PipelineStageCfg {
   processes: StageProcessCfg[];
   visibleStageIds: string[];
   modelCfg: StageModelCfg;
-  network: StageNetworkCfg;
   hooks: Record<string, boolean>;    // which lifecycle hooks fire
   wipLimit?: number;
 }

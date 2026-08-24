@@ -64,7 +64,9 @@ export function aiProviderById(id: string): AiProvider | undefined {
 //? one catalog entry and nothing else, which is what makes "more providers" a data change instead of
 //? a project. The two bespoke transports — the Claude Code subscription CLI and Anthropic's messages
 //? API — are named explicitly, because each is a real implementation.
-const PROVIDERS: Record<string, AiProvider> = Object.fromEntries(AI_PROVIDER_LIST.map((meta) => {
+//? Fase 5.2 — the catalog now also carries media + embedding entries; only the TEXT slice becomes a
+//? completion provider here (a fal/embedding id reaching this map would fabricate a bogus text backend).
+const PROVIDERS: Record<string, AiProvider> = Object.fromEntries(AI_PROVIDER_LIST.filter((meta) => meta.surface === 'text').map((meta) => {
   if (meta.transport === 'claude-cli') return [meta.id, claudeCliProvider];
   if (meta.transport === 'pi-cli') return [meta.id, codexCliProvider];
   if (meta.transport === 'anthropic') return [meta.id, anthropicApiProvider];
@@ -103,7 +105,7 @@ async function connectedCatalogIds(workspaceId?: string): Promise<AiProviderId[]
   if (!workspaceId) return [];
   const connections = await listConnections(workspaceId);
   const connected = new Set(connections.map((c) => c.providerId));
-  return AI_PROVIDER_LIST.map((m) => m.id).filter((id) => connected.has(id));
+  return AI_PROVIDER_LIST.filter((m) => m.surface === 'text').map((m) => m.id).filter((id) => connected.has(id));
 }
 
 //? Run one AI completion for a feature. `overrides` is the explicit CALL-SITE assignment (wins over

@@ -15,8 +15,8 @@ const wsId = ws.id;
 try {
   eq(await buildKnowledgeContext(prisma, wsId), '', 'no enabled docs → empty grounding');
 
-  await prisma.infoSource.create({ data: { workspaceId: wsId, mode: 'context-doc', source: 'uploaded', name: 'house.md', content: 'Always write in British English.', enabled: true, usedByStages: [] } });
-  await prisma.infoSource.create({ data: { workspaceId: wsId, mode: 'context-doc', source: 'uploaded', name: 'disabled.md', content: 'THIS SHOULD NOT APPEAR', enabled: false, usedByStages: [] } });
+  await prisma.infoSource.create({ data: { workspaceId: wsId, mode: 'context-doc', source: 'uploaded', name: 'house.md', content: 'Always write in British English.', enabled: true } });
+  await prisma.infoSource.create({ data: { workspaceId: wsId, mode: 'context-doc', source: 'uploaded', name: 'disabled.md', content: 'THIS SHOULD NOT APPEAR', enabled: false } });
 
   const ctx = await buildKnowledgeContext(prisma, wsId);
   assert(ctx.includes('British English'), 'an enabled doc is included in the grounding');

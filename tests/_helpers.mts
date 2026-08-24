@@ -96,7 +96,7 @@ const WORKSPACE_DELEGATES = [
   'personalAccessToken', 'outputTemplate', 'customAiTask', 'studioArtifact', 'designArtifact', 'interviewFinding', 'ticketArtifactLink',
   'mergeRequest', 'reviewThread', 'reviewComment', 'approval', 'channel', 'contentProject', 'contentAsset', 'script', 'beat',
   'videoScene', 'mediaJob', 'renderJob', 'stylePreset', 'document', 'documentTemplate', 'documentRevision', 'skill', 'referenceExample',
-  'mediaSpend', 'shortLink', 'publishJob', 'socialComment', 'mediaBudget',
+  'mediaSpend', 'shortLink', 'publishJob', 'socialComment', 'mediaBudget', 'aiConnection',
 ] as const satisfies readonly (keyof PrismaClient)[];
 
 async function deleteWorkspaceRows(delegate: unknown, workspaceId: string): Promise<void> {

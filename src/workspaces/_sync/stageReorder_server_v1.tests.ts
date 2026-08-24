@@ -44,9 +44,8 @@ async function seedStage(prisma: TestContext['prisma'], workspaceId: string, pro
     data: {
       workspaceId, projectId, key, kind: 'code', name: `Stage ${key}`, order, aiEnabled: true, wipLimit: null,
       roleKey: 'code', systemPrompt: '', customInstructions: '', handoverPrompt: '', definitionOfDone: '',
-      skillKeys: [], sourceIds: ['summary'], commands: [], tools: [], statuses: [], processes: [], visibleStageIds: [],
+      sourceIds: ['summary'], commands: [], tools: [], statuses: [], processes: [], visibleStageIds: [],
       modelCfg: { autoEscalate: false, base: { model: 'sonnet', effort: 'medium', maxTurns: 20 }, rules: [] },
-      network: { enabled: true, mode: 'whitelist', categories: ['package-registries', 'source-hosts', 'ai-apis'], domains: [] },
       hooks: {},
     },
   });

@@ -6,7 +6,7 @@
 
 import type { PrismaClient } from '@prisma/client';
 
-import { embedTexts } from '../rag/embed';
+import { embedTextsTagged } from '../rag/embed';
 import { retrieve, type RetrievedChunk } from '../rag';
 import { tryCatch } from '@luckystack/core';
 
@@ -21,10 +21,10 @@ function artifactText(kind: string, name: string, description: string): string {
 //? (Re)index one design artifact. Best-effort — a failed embed never fails the save.
 export async function indexDesignArtifact(prisma: PrismaClient, workspaceId: string, artifactId: string, kind: string, name: string, description: string): Promise<void> {
   const text = artifactText(kind, name, description);
-  const [err, vectors] = await tryCatch(() => embedTexts([text], { workspaceId, feature: 'rag-index' }));
-  if (err || !Array.isArray(vectors)) return;
+  const [err, embedded] = await tryCatch(() => embedTextsTagged([text], { workspaceId, feature: 'rag-index' }));
+  if (err || !embedded) return;
   await prisma.ragEntry.deleteMany({ where: { workspaceId, commitHash: DESIGN_LIBRARY_CORPUS, filePath: artifactId } });
-  await prisma.ragEntry.create({ data: { workspaceId, commitHash: DESIGN_LIBRARY_CORPUS, filePath: artifactId, chunkId: '0', content: text, embedding: vectors[0] ?? [] } });
+  await prisma.ragEntry.create({ data: { workspaceId, commitHash: DESIGN_LIBRARY_CORPUS, filePath: artifactId, chunkId: '0', content: text, embedding: embedded.vectors[0] ?? [], embedTag: embedded.tag } });
 }
 
 //? De-index one artifact (on delete).

@@ -158,16 +158,17 @@ export function renderStage(cfg: PipelineStageCfg, ctx: StageRenderCtx): StageAr
   //? Mapped over the spec so the ORDER cannot drift from what the preview says (F-075).
   const stageInstructions = AI_STAGE_SYSTEM_SPEC.map((entry) => systemText[entry.id]).filter((s) => s.trim().length > 0).join('\n\n');
 
-  //? settings.json — permissions derived from the stage commands (allow/ask/deny) + the
-  //? ws-verb allows + Read; deny always includes the auth-path denyRead (07b §2.4).
+  //? settings.json — permissions derived from the stage commands (allow/deny; an 'ask' tier
+  //? does not exist — nobody sits at the container PTY to answer a prompt, legacy 'ask' rows
+  //? read back as deny) + the ws-verb allows + Read; deny always includes the auth-path
+  //? denyRead (07b §2.4).
   const allow = [...WS_VERBS.map((v) => `Bash(ws ${v}:*)`), 'Read(**)', 'Glob(**)', 'Grep(**)', ...READ_ONLY_BASH, ...cfg.commands.filter((c) => c.mode === 'allow').map((c) => c.pattern)];
-  const ask = cfg.commands.filter((c) => c.mode === 'ask').map((c) => c.pattern);
-  const deny = [...cfg.commands.filter((c) => c.mode === 'deny').map((c) => c.pattern), 'Read(/auth/**)', 'Bash(cat /auth/*:*)'];
+  const deny = [...cfg.commands.filter((c) => c.mode !== 'allow').map((c) => c.pattern), 'Read(/auth/**)', 'Bash(cat /auth/*:*)'];
   const settingsJson = JSON.stringify({
     //? Model + effort wiring: `model` is the settings-side backstop of the spawn's `--model` flag;
     //? the effort knob becomes the extended-thinking budget the CLI actually honours.
     ...(ctx.modelChoice ? { model: ctx.modelChoice.model, env: { MAX_THINKING_TOKENS: String(effortThinkingTokens(ctx.modelChoice.effort)) } } : {}),
-    permissions: { allow, ask, deny },
+    permissions: { allow, deny },
     //? F29 — the stage's hook toggles were WRITTEN by the editor, round-tripped through the snapshot, and
     //? then ignored here: every container got the same three hooks regardless. They are honoured now.
     //? `Stop` is deliberately not switchable — the engine detects a finished turn by reading the file this
@@ -179,11 +180,10 @@ export function renderStage(cfg: PipelineStageCfg, ctx: StageRenderCtx): StageAr
     },
   }, null, 2);
 
-  //? .mcp.json — one stdio server per enabled skill (skill→command catalog deferred → placeholder), PLUS
-  //? (X1) one per enabled MCP integration tool: its command is parsed + its credentials injected as env, so
-  //? the user's own MCP server is actually mounted (was inert — only skill keys were emitted).
+  //? .mcp.json — (X1) one stdio server per enabled MCP integration tool: its command is parsed + its
+  //? credentials injected as env, so the user's own MCP server is actually mounted. (The old per-stage
+  //? capability-skill entries pointed at a `ws-skill` binary that never existed — removed with that layer.)
   const mcpServers: Record<string, { type: string; command: string; args: string[]; env?: Record<string, string> }> = {};
-  for (const key of cfg.skillKeys) mcpServers[key] = { type: 'stdio', command: 'ws-skill', args: [key] };
   for (const tool of ctx.integrations ?? []) {
     const parsed = parseMcpCommand(tool.command);
     if (parsed.command.length === 0) continue;

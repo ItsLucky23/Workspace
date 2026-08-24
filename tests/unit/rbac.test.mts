@@ -21,9 +21,9 @@ const ALL_OPS: ControlOp[] = [
   'role-create', 'role-update',
   // workspace settings
   'save-env', 'remove-env', 'save-integration', 'remove-integration',
-  'gitlab-settings', 'gitlab-verify', 'gitlab-resync', 'save-git-config',
+  'gitlab-settings', 'gitlab-resync', 'save-git-config',
   'link-repo', 'scan-docs',
-  'raise-cap', 'edit-budget', 'resume-spend',
+  'edit-budget', 'resume-spend',
   'skill-toggle', 'save-stage-config',
   // notifications
   'mark-read',

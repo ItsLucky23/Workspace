@@ -30,9 +30,8 @@ const cfg: PipelineStageCfg = {
   projectId: 'project-test', id: 'code', kind: 'code', name: 'Code', order: 2, aiEnabled: true,
   customInstructions: '@@TASK@@', handoverPrompt: '@@HANDOVER@@', definitionOfDone: '@@DOD@@', systemPrompt: '@@SYS@@',
   roleKey: 'coder', userEditable: true, gateForApproval: false,
-  skillKeys: [], aiSkillIds: ['sk1'], sourceIds: [], commands: [], tools: [], statuses: [], processes: [], visibleStageIds: [],
+  aiSkillIds: ['sk1'], sourceIds: [], commands: [], tools: [], statuses: [], processes: [], visibleStageIds: [],
   modelCfg: { autoEscalate: true, base: { model: 'sonnet', effort: 'medium', maxTurns: 20 }, rules: [] },
-  network: { enabled: false, mode: 'whitelist', categories: [], domains: [] },
   hooks: {},
 };
 

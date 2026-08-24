@@ -105,6 +105,11 @@ export async function runMediaGeneration(req: MediaGenerationRequest, overrides?
   return provider.generate({ ...req, ...(params ? { params } : {}), ...(apiKey ? { apiKey } : {}) });
 }
 
+//? Fase 5.2 — one media adapter by id, for the settings page's credential probe (`ai-connection-test`).
+export function mediaProviderById(id: string): MediaProvider | undefined {
+  return Object.hasOwn(MEDIA_PROVIDERS, id) ? MEDIA_PROVIDERS[id as MediaProviderId] : undefined;
+}
+
 //? Which media providers are usable right now (for the settings/health UI).
 export async function availableMediaProviders(): Promise<{ id: MediaProviderId; label: string; available: boolean }[]> {
   return Promise.all(Object.values(MEDIA_PROVIDERS).map(async (p) => ({ id: p.id, label: p.label, available: await p.available() })));

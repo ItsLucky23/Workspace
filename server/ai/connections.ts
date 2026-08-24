@@ -1,3 +1,4 @@
+//? @adr 0325
 //? ADR 0007 — the connected AIs as a LIST, and everything that follows from that.
 //?
 //? What this replaces: one configuration per provider, which could not express "two OpenAI models side
@@ -14,8 +15,8 @@
 import { getPrismaClient, tryCatch } from '@luckystack/core';
 
 import { decryptSecret, encryptSecret } from '../crypto/secretBox';
-import { AI_PROVIDER_CATALOG, isKnownAiProviderId } from './providers/catalog';
-import type { AiProviderMeta } from './providers/catalog';
+import { AI_PROVIDER_CATALOG, isKnownAiProviderId, providerSurface } from './providers/catalog';
+import type { AiProviderMeta, AiSurface } from './providers/catalog';
 import { AI_OVERRIDE_PREFIX, parseAiOverride } from './workspaceAssignments';
 
 export interface AiConnectionView {
@@ -24,6 +25,8 @@ export interface AiConnectionView {
   label: string;
   model: string;
   kind: 'subscription' | 'api-key';
+  /** Which plane the backend serves (Fase 5.2) — the settings page groups on it. */
+  surface: AiSurface;
   hasKey: boolean;
   verifiedAt: string | null;
   lastError: string | null;
@@ -43,6 +46,7 @@ export async function listConnections(workspaceId: string): Promise<AiConnection
     label: metaFor(r.providerId)?.label ?? r.providerId,
     model: r.model,
     kind: metaFor(r.providerId)?.kind ?? 'api-key',
+    surface: providerSurface(r.providerId),
     hasKey: (r.apiKey ?? '').length > 0,
     verifiedAt: r.verifiedAt === null ? null : r.verifiedAt.toISOString(),
     lastError: r.lastError,
@@ -74,12 +78,16 @@ export async function addConnection(input: AddConnectionInput): Promise<{ ok: bo
   //? A local/self-hosted backend legitimately has no key (`keyUrl` empty), so the key requirement
   //? follows "is there anywhere to get one", not merely "is it metered".
   if (meta.kind === 'api-key' && meta.keyUrl.length > 0 && apiKey.length === 0) return { ok: false, error: 'ai.keyRequired' };
-  if (meta.kind === 'api-key' && model.length === 0) return { ok: false, error: 'ai.modelRequired' };
+  //? A model is only a per-connection concept where the catalog offers models (text, and embedding's
+  //? pinned model). A media backend has NO model on the connection — its model choice is per-feature
+  //? (`__media_model_<feature>`) — so an empty model is its normal state, not an error.
+  if (meta.kind === 'api-key' && model.length === 0 && meta.models.length > 0 && meta.surface === 'text') return { ok: false, error: 'ai.modelRequired' };
+  const effectiveModel = model.length > 0 ? model : meta.defaultModel;
 
   const prisma = getPrismaClient();
   //? One connection per (provider, model): connecting the same model twice is a duplicate row that
   //? does nothing, and a delete would then only half-remove it.
-  const existing = await prisma.aiConnection.findFirst({ where: { workspaceId: input.workspaceId, providerId: input.providerId, model } });
+  const existing = await prisma.aiConnection.findFirst({ where: { workspaceId: input.workspaceId, providerId: input.providerId, model: effectiveModel } });
   if (existing) {
     //? Re-adding with a new key is how a user rotates a credential — accept it as an update rather than
     //? refusing and leaving them to delete-then-add.
@@ -88,7 +96,7 @@ export async function addConnection(input: AddConnectionInput): Promise<{ ok: bo
   }
   const created = await prisma.aiConnection.create({
     data: {
-      workspaceId: input.workspaceId, providerId: input.providerId, model,
+      workspaceId: input.workspaceId, providerId: input.providerId, model: effectiveModel,
       ...(apiKey.length > 0 ? { apiKey: encryptSecret(apiKey) } : {}),
     },
   });
@@ -116,6 +124,29 @@ export async function migrateLegacyGeminiKeys(): Promise<number> {
   return created;
 }
 
+//? Fase 5.2 — one-time migration of the media key store into THIS table (the single key store).
+//? `__provider_key_<fal|elevenlabs|suno>` EnvVars were the content-settings KeysCard's store; the card
+//? is gone and `loadWorkspaceMediaConfig` now reads AiConnection first (EnvVar stays as a runtime
+//? fallback for a failed/partial migration — reading a secret is safer than losing one). For every
+//? legacy row without a matching connection, create one; the legacy row is left in place (deleting
+//? secrets is not this migration's call — same policy as the Gemini migration above). Idempotent.
+export async function migrateLegacyMediaKeys(): Promise<number> {
+  const prisma = getPrismaClient();
+  const mediaIds = ['fal', 'elevenlabs', 'suno'];
+  const [, legacy] = await tryCatch(() => prisma.envVar.findMany({ where: { key: { in: mediaIds.map((id) => `__provider_key_${id}`) } }, select: { workspaceId: true, key: true, value: true } }));
+  let created = 0;
+  for (const row of legacy ?? []) {
+    const providerId = row.key.slice('__provider_key_'.length);
+    const [, existing] = await tryCatch(() => prisma.aiConnection.findFirst({ where: { workspaceId: row.workspaceId, providerId }, select: { id: true } }));
+    if (existing) continue;
+    const apiKey = (decryptSecret(row.value) ?? '').trim();
+    if (apiKey.length === 0) continue;
+    const [err, res] = await tryCatch(() => addConnection({ workspaceId: row.workspaceId, providerId, model: '', apiKey }));
+    if (!err && res?.ok) created += 1;
+  }
+  return created;
+}
+
 export interface Reassignment { feature: string; from: string; to: string | null }
 
 //? What removing this connection would DO to the rest of the configuration — computed before the
@@ -133,10 +164,13 @@ export async function reassignmentFor(workspaceId: string, connectionId: string)
   if (stillServed.has(target.providerId)) return [];
 
   const overrides = await prisma.envVar.findMany({ where: { workspaceId, key: { startsWith: AI_OVERRIDE_PREFIX } }, select: { key: true, value: true } });
-  const fallback = remaining[0]?.providerId ?? null;
+  //? Fase 5.2 — a feature can only move to a backend on the SAME surface: removing the last
+  //? embedding connection must not "reassign" the embedder to a text host.
+  const surface = providerSurface(target.providerId);
+  const fallback = remaining.find((r) => providerSurface(r.providerId) === surface)?.providerId ?? null;
   //? P4-2 — a stored value may be `providerId:model`; match on the PROVIDER part (includes the `_default` row).
   return overrides
-    .filter((o) => parseAiOverride(o.value)?.providerId === target.providerId)
+    .filter((o) => parseAiOverride(o.value, surface)?.providerId === target.providerId)
     .map((o) => ({ feature: o.key.slice(AI_OVERRIDE_PREFIX.length), from: target.providerId, to: fallback }));
 }
 

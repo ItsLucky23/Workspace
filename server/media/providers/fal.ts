@@ -262,6 +262,17 @@ export function createFalProvider(transport: FalTransport = realFalTransport): M
     label: 'Fal.ai',
     supports: SUPPORTED,
     available: (apiKey?: string) => Promise.resolve(Boolean((apiKey ?? process.env.FAL_KEY ?? '').trim())),
+    //? Fase 5.2 — credential probe: a status GET for a request id that cannot exist. A bad key is
+    //? rejected with 401/403 before routing; a valid key reaches the queue (404/422). Nothing is spent.
+    ping: async (apiKey?: string) => {
+      const key = (apiKey ?? process.env.FAL_KEY ?? '').trim();
+      if (key.length === 0) return { ok: false, error: 'media.noKey' };
+      const [err, res] = await tryCatch(() =>
+        // eslint-disable-next-line luckystack/no-raw-fetch-in-src
+        fetch(`${FAL_QUEUE_BASE}/fal-ai/flux/dev/requests/00000000-0000-0000-0000-000000000000/status`, { headers: { Authorization: `Key ${key}` } }));
+      if (err || !res) return { ok: false, error: 'media.pingFailed' };
+      return res.status === 401 || res.status === 403 ? { ok: false, error: 'media.badKey' } : { ok: true };
+    },
     generate: async (req: MediaGenerationRequest): Promise<MediaGenerationResult> => {
       if (!SUPPORTED.includes(req.feature)) return { ok: false, providerId: 'fal', costCents: 0, stub: false, error: 'media.featureUnsupported' };
       const fetchable = {

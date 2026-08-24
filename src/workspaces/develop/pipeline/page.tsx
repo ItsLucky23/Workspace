@@ -18,7 +18,7 @@ import { EmptyState, InfoTip, PopMenu, Tabs, Toggle, WsButton, type TabDef } fro
 import { useTrailSegment } from '../../_components/sections';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { PresetMenu, blueprintFor, usePipelinePresets } from './presets';
-import { CarryoverTab, CommandsTab, ContextTab, GeneralTab, HooksTab, IntegrationsTab, ModelTab, NetworkTab, ProcessTab, VisibilityTab } from './stageTabs';
+import { CarryoverTab, CommandsTab, ContextTab, GeneralTab, HooksTab, IntegrationsTab, ModelTab, ProcessTab, VisibilityTab } from './stageTabs';
 import type { StageBlueprint } from './presets';
 import type { PipelineStageCfg, StageWarning } from '../../_data/types';
 
@@ -34,14 +34,13 @@ function blankStage(projectId: string, id: string, name: string, order: number, 
     handoverPrompt: bp?.handoverPrompt ?? '', definitionOfDone: bp?.definitionOfDone ?? '',
     //? `['summary']` matches what `stage-create` writes server-side — an empty list here made the new
     //? stage flash with no carry-over source and then gain one on the refetch.
-    skillKeys: [], aiSkillIds: [], sourceIds: ['summary'], commands: [], tools: [],
+    aiSkillIds: [], sourceIds: ['summary'], commands: [], tools: [],
     statuses: [
       { key: 'needs-input', label: 'Needs input', kind: 'base' }, { key: 'busy', label: 'Busy', kind: 'base' },
       { key: 'stopped', label: 'Stopped', kind: 'base' }, { key: 'done', label: 'Done', kind: 'base' },
     ],
     processes: [], visibleStageIds: [],
     modelCfg: { autoEscalate: false, base: { model: bp?.model ?? 'sonnet', effort: bp?.effort ?? 'medium', maxTurns: bp?.maxTurns ?? 12 }, rules: [] },
-    network: { enabled: true, mode: 'whitelist', categories: ['package-registries', 'source-hosts', 'ai-apis'], domains: [] },
     //? F-008 — `{}` like the conductor writes it: the engine enables a hook unless it is explicitly false,
     //? and the Hooks tab renders `?? true`, so the optimistic copy no longer flips after the refetch.
     hooks: {},
@@ -60,12 +59,12 @@ export const template = 'workspaces';
 //? Every tab id, basic + advanced, in one list: the URL segment is validated against ALL of them so a
 //? deep link to an advanced tab resolves (the tab bar then surfaces it), while an unknown segment
 //? still falls back to General instead of rendering an empty panel.
-const STAGE_TAB_IDS = ['general', 'context', 'model', 'commands', 'integrations', 'visibility', 'process', 'carryover', 'network', 'hooks'];
+const STAGE_TAB_IDS = ['general', 'context', 'model', 'commands', 'integrations', 'visibility', 'process', 'carryover', 'hooks'];
 const BASIC_STAGE_TAB_IDS = ['general', 'context', 'model'];
 
 export default function Pipeline() {
   const translate = useTranslator();
-  const { activeWorkspace, activeProjectId, stageConfigs, tickets, skills, saveStageConfig, createStage, deleteStage, reorderStages, navigate } = useWorkspaces();
+  const { activeWorkspace, activeProjectId, stageConfigs, tickets, saveStageConfig, createStage, deleteStage, reorderStages, navigate } = useWorkspaces();
   const presetData = usePipelinePresets(activeWorkspace.id);
   const showAdvanced = activeWorkspace.role !== 'member';
   const [stages, setStages] = useState<PipelineStageCfg[]>(stageConfigs);
@@ -184,24 +183,11 @@ export default function Pipeline() {
   const validate = () => {
     const w: StageWarning[] = [];
     for (const st of stages) {
-      //? The "no skills enabled — it'll work blind" rule used to fire here unconditionally. Nothing in
-      //? the app can create a capability skill (they come from the demo seed and a legacy migration
-      //? only), so it reported one finding per AI stage, every time, for a condition no control in the
-      //? product can clear. A check whose findings cannot be acted on trains people to ignore the
-      //? check. It fires only where the picker actually has something to pick.
-      if (st.aiEnabled && skills.length > 0 && st.skillKeys.length === 0 && st.order !== 0 && st.order !== stages.length - 1)
-        w.push({ stageId: st.id, severity: 'info', text: translate({ key: 'workspaces.pipeline.warnBlind', params: [{ key: 'name', value: st.name }] }) });
       if (st.aiEnabled && !st.customInstructions.trim())
         w.push({ stageId: st.id, severity: 'info', text: translate({ key: 'workspaces.pipeline.warnNoInstructions', params: [{ key: 'name', value: st.name }] }) });
       if (st.tools.some((t) => t.tier === 'rw') && st.kind !== 'code')
         w.push({ stageId: st.id, severity: 'warn', text: translate({ key: 'workspaces.pipeline.warnWriteAccess', params: [{ key: 'name', value: st.name }] }) });
-      if (st.aiEnabled && !st.network.enabled && st.skillKeys.length > 0)
-        w.push({ stageId: st.id, severity: 'info', text: translate({ key: 'workspaces.pipeline.warnNetworkOff', params: [{ key: 'name', value: st.name }] }) });
     }
-    const refined = stages.find((x) => x.id === 'refined');
-    const plan = stages.find((x) => x.id === 'plan');
-    if (refined?.skillKeys.includes('rag') && plan && !plan.skillKeys.includes('rag'))
-      w.push({ stageId: 'plan', severity: 'warn', text: translate({ key: 'workspaces.pipeline.warnRagMismatch' }) });
     setWarnings(w);
   };
 
@@ -211,8 +197,8 @@ export default function Pipeline() {
     return m;
   }, [warnings]);
 
-  //? KISS — the day-to-day stage knobs are General / Context / Model, always visible. The seven dev/ops
-  //? tabs (commands, integrations, visibility, process, carryover, network egress, lifecycle hooks) sit
+  //? KISS — the day-to-day stage knobs are General / Context / Model, always visible. The six dev/ops
+  //? tabs (commands, integrations, visibility, process, carryover, lifecycle hooks) sit
   //? behind ONE "Advanced" menu, role-gated to admin/owner (fail-open: unresolved role ≠ 'member'). When
   //? an advanced tab is active it appears as a fourth tab so you can see where you are.
   const basicTabs: TabDef[] = [
@@ -226,7 +212,6 @@ export default function Pipeline() {
     { id: 'visibility', label: translate({ key: 'workspaces.pipeline.tabVisibility' }), icon: 'eye' },
     { id: 'process', label: translate({ key: 'workspaces.pipeline.tabProcess' }), icon: 'play' },
     { id: 'carryover', label: translate({ key: 'workspaces.pipeline.tabCarryover' }), icon: 'code-merge' },
-    { id: 'network', label: translate({ key: 'workspaces.pipeline.tabNetwork' }), icon: 'shield-halved' },
     { id: 'hooks', label: translate({ key: 'workspaces.pipeline.tabHooks' }), icon: 'link' },
   ];
   const activeAdvanced = showAdvanced ? advancedTabs.find((t) => t.id === tab) : undefined;
@@ -380,7 +365,6 @@ export default function Pipeline() {
                 {tab === 'process' && <ProcessTab s={s} update={update} />}
                 {tab === 'carryover' && <CarryoverTab s={s} update={update} bp={blueprintFor(presetData, s)} />}
                 {tab === 'model' && <ModelTab s={s} update={update} />}
-                {tab === 'network' && <NetworkTab s={s} update={update} />}
                 {tab === 'hooks' && <HooksTab s={s} update={update} />}
               </div>
             </div>

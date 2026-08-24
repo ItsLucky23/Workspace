@@ -171,7 +171,7 @@ export async function importFullBundle(
           roleKey: str(st, 'roleKey', 'code'), systemPrompt: str(st, 'systemPrompt'),
           customInstructions: str(st, 'customInstructions'), handoverPrompt: str(st, 'handoverPrompt'),
           definitionOfDone: str(st, 'definitionOfDone'),
-          skillKeys: [], sourceIds: [], visibleStageIds: [],
+          sourceIds: [], visibleStageIds: [],
           commands: [], tools: [], processes: [],
           statuses: [
             { key: 'needs-input', label: 'Needs input', kind: 'base' },
@@ -180,7 +180,6 @@ export async function importFullBundle(
             { key: 'done', label: 'Done', kind: 'base' },
           ],
           modelCfg: { autoEscalate: false, base: { model: 'sonnet', effort: 'medium', maxTurns: 20 }, rules: [] },
-          network: { enabled: true, mode: 'whitelist', categories: ['package-registries'], domains: [] },
           hooks: {},
         },
       }));

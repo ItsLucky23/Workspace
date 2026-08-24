@@ -36,7 +36,7 @@ import type { ControlOp } from '../_functions/controlApi';
 export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
-const OPS = new Set<string>(['project-create', 'project-from-template', 'apply-design-tokens', 'service-create', 'service-delete', 'forge-connect', 'env-deploy', 'env-teardown', 'env-rollback', 'env-promote', 'build-export', 'ci-run', 'ci-allow-red', 'root-cause', 'plan-critique', 'index-memory', 'db-connect', 'db-migrate-create', 'db-migrate-apply', 'db-introspect', 'edit-budget', 'raise-cap', 'resume-spend', 'gitlab-resync']);
+const OPS = new Set<string>(['project-create', 'project-from-template', 'apply-design-tokens', 'service-create', 'service-delete', 'forge-connect', 'env-deploy', 'env-teardown', 'env-rollback', 'env-promote', 'build-export', 'ci-run', 'ci-allow-red', 'root-cause', 'plan-critique', 'index-memory', 'db-connect', 'db-migrate-create', 'db-migrate-apply', 'db-introspect', 'edit-budget', 'resume-spend', 'gitlab-resync']);
 
 function isProjectAdminOp(op: string): op is ControlOp {
   return OPS.has(op);

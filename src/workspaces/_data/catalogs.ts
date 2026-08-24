@@ -50,14 +50,3 @@ export const COMMAND_CATALOG: CommandCatalogGroup[] = [
     command('Bash(curl:*)', 'curl'), command('Bash(npm publish)', 'npmPublish'), command('Bash(sudo:*)', 'sudo'), command('Bash(rm -rf:*)', 'rmRf'),
   ] },
 ];
-
-interface NetworkCatalogEntry { key: string; labelKey: string; descKey: string }
-export const NETWORK_CATEGORIES: NetworkCatalogEntry[] = [
-  { key: 'package-registries', labelKey: 'workspaces.pipeline.catalog.network.packageRegistries.label', descKey: 'workspaces.pipeline.catalog.network.packageRegistries.desc' },
-  { key: 'source-hosts', labelKey: 'workspaces.pipeline.catalog.network.sourceHosts.label', descKey: 'workspaces.pipeline.catalog.network.sourceHosts.desc' },
-  { key: 'ai-apis', labelKey: 'workspaces.pipeline.catalog.network.aiApis.label', descKey: 'workspaces.pipeline.catalog.network.aiApis.desc' },
-  { key: 'cdns', labelKey: 'workspaces.pipeline.catalog.network.cdns.label', descKey: 'workspaces.pipeline.catalog.network.cdns.desc' },
-  { key: 'cloud', labelKey: 'workspaces.pipeline.catalog.network.cloud.label', descKey: 'workspaces.pipeline.catalog.network.cloud.desc' },
-  { key: 'social', labelKey: 'workspaces.pipeline.catalog.network.social.label', descKey: 'workspaces.pipeline.catalog.network.social.desc' },
-  { key: 'trackers', labelKey: 'workspaces.pipeline.catalog.network.trackers.label', descKey: 'workspaces.pipeline.catalog.network.trackers.desc' },
-];

@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (66)
+## API routes (67)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -40,6 +40,7 @@
 | `api/workspaces/designerInspiration/v1` | POST | login | 10 | ItsLucky23 | yes | — | @docs owner ItsLucky23 |
 | `api/workspaces/designerLibrary/v1` | POST | login | 40 | — | yes | — | Workspaces Designer — persist the design library + set the workspace's ACTIVE theme/style (ADR |
 | `api/workspaces/devLaunchEditor/v1` | POST | public | 6 | — | yes | — | Workspaces — [dev-launch-editor] DEV-ONLY: launch a container editor for a throwaway demo |
+| `api/workspaces/egressStatus/v1` | POST | login | 12 | ItsLucky23 | yes | — | Workspaces — [egress-status] the read-only egress posture: which mode the HOST runs |
 | `api/workspaces/generateDockerfile/v1` | POST | login | 6 | — | yes | — | Workspaces — [generate-dockerfile] register-flow C: AI-author a project's |
 | `api/workspaces/generateDocs/v1` | POST | login | 6 | — | yes | — | Workspaces — [generate-docs] register-flow D: AI-author a project-summary doc from the |
 | `api/workspaces/getDockerfile/v1` | POST | login | 30 | — | yes | — | Workspaces — [get-dockerfile] register-flow C: read the persisted draft |
@@ -140,7 +141,7 @@
 | `sync/workspaces/serviceProvision/v1` | yes | — | login | — | yes | — | Workspaces — [service-provision] (K1) attach a third-party SERVICE STACK (docker-compose) to the workspace. |
 | `sync/workspaces/serviceTeardown/v1` | yes | — | login | — | yes | — | Workspaces — [service-teardown] (K1) tear down a workspace's service stack (docker compose down -v + drop the |
 | `sync/workspaces/skillsControl/v1` | yes | — | login | ItsLucky23 | yes | — | @docs owner ItsLucky23 |
-| `sync/workspaces/skillToggle/v1` | yes | — | login | — | yes | — | Workspaces — [skill-toggle] REALTIME write via `_sync`. Enables/disables a workflow capability |
+| `sync/workspaces/skillToggle/v1` | yes | — | login | — | yes | — | Workspaces — [skill-toggle] REALTIME write via `_sync`. Enables/disables a Sources context |
 | `sync/workspaces/sprintCreate/v1` | yes | — | login | — | yes | — | Workspaces — [sprint-create] REALTIME write via `_sync`. Creates a sprint, then |
 | `sync/workspaces/sprintEdit/v1` | yes | — | login | — | yes | — | Workspaces — [sprint-edit] REALTIME write via `_sync`. Activates / renames / (re)dates a sprint, |
 | `sync/workspaces/stageCreate/v1` | yes | — | login | — | yes | — | Workspaces — [stage-create] (R1) durably ADD a pipeline stage (the editor previously mutated React state only; |
@@ -161,10 +162,10 @@
 
 | Owner | Routes |
 | --- | --- |
-| `ItsLucky23` | 30 |
+| `ItsLucky23` | 31 |
 | _(unowned)_ | 108 |
 
-**Test coverage**: 136/138 routes have a per-route `.tests.ts`.
+**Test coverage**: 137/139 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 

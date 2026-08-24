@@ -96,7 +96,7 @@ export interface Ctx {
   references: { id: string; kind: string; title: string }[];
   commentInbox: { unread: number; total: number };
   //? Parity wave — RBAC roles (invite/change-role/role-update name a roleKey), the Sources-page
-  //? workflow-snippet skills (skill-toggle) and the project's monorepo services (service-delete).
+  //? context documents (skill-toggle targets) and the project's monorepo services (service-delete).
   roles: { key: string; label: string }[];
   infoSources: { id: string; name: string; enabled: boolean }[];
   projectServices: { id: string; name: string }[];
@@ -180,10 +180,10 @@ export async function loadCtx(prisma: PrismaClient, workspaceId: string, project
     //? KEY NAMES ONLY — the value column (plaintext or encrypted) is never selected.
     prisma.envVar.findMany({ where: { workspaceId }, select: { key: true }, take: 40, orderBy: { key: 'asc' } }),
     prisma.pipeline.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { stages: true, enabled: true }, take: 5 }),
-    //? Parity wave — roles (roleKey refs), canonical workflow capabilities (skill-toggle) and the
+    //? Parity wave — roles (roleKey refs), the Sources context documents (skill-toggle targets) and the
     //? project's monorepo Service rows (service-delete) — same tenant-scoped/capped pattern.
     prisma.workspaceRole.findMany({ where: { workspaceId }, select: { key: true, label: true, perms: true }, take: 12 }),
-    prisma.skill.findMany({ where: { workspaceId, skillType: 'capability', OR: [{ projectId: activeProjectId }, { projectId: null }] }, select: { id: true, name: true, enabled: true }, take: 20 }),
+    prisma.infoSource.findMany({ where: { workspaceId, mode: 'context-doc', OR: [{ projectId: activeProjectId }, { projectId: null }] }, select: { id: true, name: true, enabled: true }, take: 20 }),
     prisma.service.findMany({ where: { workspaceId, projectId: activeProjectId }, select: { id: true, name: true }, take: 12 }),
     prisma.migration.findMany({ where: { workspaceId, projectId: activeProjectId, status: 'pending' }, select: { id: true, name: true, envKind: true }, take: 12, orderBy: { createdAt: 'desc' } }),
   ]);
@@ -288,7 +288,7 @@ function workspaceStateText(ctx: Ctx): string {
     `Sprints (sprintId — name): ${ctx.sprints.map((s) => `${s.id} — ${s.name}`).join('; ') || '(none)'}`,
     `Pending invites (inviteId — email — role): ${ctx.invites.map((i) => `${i.id} — ${i.email} — ${i.role}`).join('; ') || '(none)'}`,
     `Roles (roleKey — label): ${ctx.roles.map((r) => `${r.key} — ${r.label}`).join('; ') || '(none)'}`,
-    `Workflow-snippet skills (sourceId — name [on|off]): ${ctx.infoSources.map((s) => `${s.id} — ${s.name} [${s.enabled ? 'on' : 'off'}]`).join('; ') || '(none)'}`,
+    `Context documents (sourceId — name [on|off]): ${ctx.infoSources.map((s) => `${s.id} — ${s.name} [${s.enabled ? 'on' : 'off'}]`).join('; ') || '(none)'}`,
     `Project services / deploy-units (serviceId — name): ${ctx.projectServices.map((s) => `${s.id} — ${s.name}`).join('; ') || '(none)'}`,
     `Pending DB migrations (migrationId — name [env]): ${ctx.migrations.map((m) => `${m.id} — ${m.name} [${m.envKind}]`).join('; ') || '(none)'}`,
     `Open interview findings (findingId — title): ${ctx.findings.map((fi) => `${fi.id} — ${fi.title}`).join('; ') || '(none)'}`,

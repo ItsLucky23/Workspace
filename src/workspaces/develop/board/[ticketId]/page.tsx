@@ -491,9 +491,8 @@ function OverviewTab({ ticket, stage }: { ticket: Ticket; stage?: string }) {
     ...ticketServices.map((svc) => ({ id: svc.id, value: svc.id, item: svc.name })),
   ];
   //? The REAL stage config for this ticket's stage (was a static "AI-driven · RAG…"
-  //? string that contradicted a No-AI stage). Drives the aiEnabled label + skills.
+  //? string that contradicted a No-AI stage). Drives the aiEnabled label.
   const stageCfg = ctx.stageConfigs.find((s) => s.id === ticket.stageId);
-  const stageSkills = stageCfg ? [...stageCfg.skillKeys, ...(stageCfg.sourceIds.length > 0 ? [translate({ key: 'workspaces.ticket.sourcesCount', params: [{ key: 'count', value: stageCfg.sourceIds.length }] })] : [])] : [];
   return (
     <div className="flex flex-col gap-4">
       <Card title={translate({ key: 'workspaces.ticket.description' })}>
@@ -579,13 +578,11 @@ function OverviewTab({ ticket, stage }: { ticket: Ticket; stage?: string }) {
             <div className="flex items-center gap-2 text-sm text-common">
               <Icon name="diagram-project" className="text-muted" />
               <span className="text-title font-medium">{stage ?? '—'}</span>
-              <span className="text-muted">· {stageCfg?.aiEnabled === true ? translate({ key: 'workspaces.board.aiDrivenStage' }) : translate({ key: 'workspaces.board.noAi' })}{stageSkills.length > 0 ? ` · ${stageSkills.join(', ')}` : ''}</span>
+              <span className="text-muted">· {stageCfg?.aiEnabled === true ? translate({ key: 'workspaces.board.aiDrivenStage' }) : translate({ key: 'workspaces.board.noAi' })}</span>
               {/* ADR 0312 — read-only projection of the stage's own config, edited on the stage editor.
-                  'No AI' is the one part with a hard runtime meaning (no turn ever runs). The skill chips are
-                  runtime-dead (renderStage emits `.mcp.json` entries for a `ws-skill` command that does not
-                  exist; the workspace-level skill layer is what actually reaches the agent), and the source
-                  count includes the default 'summary' placeholder that loadStageContextDocs drops — both
-                  said plainly in the tip rather than promised as working. */}
+                  'No AI' is the one part with a hard runtime meaning (no turn ever runs). The old skill
+                  chips + source count are gone: the chips were runtime-dead (capability-skill layer
+                  removed) and the count included the default 'summary' placeholder. */}
               <InfoTip
                 align="start"
                 label={translate({ key: 'workspaces.tips.ticket.stageLabel' })}
@@ -593,7 +590,6 @@ function OverviewTab({ ticket, stage }: { ticket: Ticket; stage?: string }) {
                 body={translate({ key: 'workspaces.tips.ticket.stageBody' })}
                 points={[
                   { id: 'ai', label: translate({ key: 'workspaces.tips.ticket.stageAiLabel' }), desc: translate({ key: 'workspaces.tips.ticket.stageAiDesc' }), onGo: () => { ctx.navigate('pipeline', [ticket.stageId, 'general']); } },
-                  { id: 'skills', label: translate({ key: 'workspaces.tips.ticket.stageSkillsLabel' }), desc: translate({ key: 'workspaces.tips.ticket.stageSkillsDesc' }), onGo: () => { ctx.navigate('pipeline', [ticket.stageId, 'context']); } },
                   { id: 'sources', label: translate({ key: 'workspaces.tips.ticket.stageSourcesLabel' }), desc: translate({ key: 'workspaces.tips.ticket.stageSourcesDesc' }), onGo: () => { ctx.navigate('pipeline', [ticket.stageId, 'context']); } },
                 ]}
               />

@@ -54,6 +54,9 @@ export interface WorkspaceReadinessInput {
   //? An AiConnection row (Workspace → AI → Backends, ADR 0007) for a metered text backend that HAS a key.
   //? That table — not `__provider_key_*` — is what the text dispatch (resolveProviderConfig) reads.
   hasTextConnection: boolean;
+  //? Fase 5.2 — provider ids (any surface) with a KEYED AiConnection row: the one key store the media
+  //? registry + embedder now read first (`providerKeys` above is the legacy EnvVar fallback).
+  keyedConnectionIds: Set<string>;
 }
 
 //? The host-wide env fallback the text transports honour: `WS_<PROVIDER_ID>_KEY` (openai-compatible /
@@ -61,7 +64,7 @@ export interface WorkspaceReadinessInput {
 //? RAG-embed key (server/rag/embed.ts) — so it deliberately does not count here.
 export function textEnvKeyPresent(env: NodeJS.ProcessEnv = process.env): boolean {
   return Object.values(AI_PROVIDER_CATALOG)
-    .filter((meta) => meta.kind === 'api-key')
+    .filter((meta) => meta.surface === 'text' && meta.kind === 'api-key')
     .some((meta) => (env[`WS_${meta.id.toUpperCase().replaceAll('-', '_')}_KEY`] ?? '').trim().length > 0);
 }
 
@@ -73,7 +76,7 @@ export function textEnvKeyPresent(env: NodeJS.ProcessEnv = process.env): boolean
 export async function buildReadiness(now: number, input: WorkspaceReadinessInput): Promise<WorkspaceReadiness> {
   const host = await hostReadiness(now);
   const has = (id: string, ...envVars: string[]): boolean =>
-    input.providerKeys.has(`__provider_key_${id}`) || envVars.some((v) => (process.env[v] ?? '').trim().length > 0);
+    input.keyedConnectionIds.has(id) || input.providerKeys.has(`__provider_key_${id}`) || envVars.some((v) => (process.env[v] ?? '').trim().length > 0);
   return {
     repoLinked: input.repoLinked,
     aiText: host.claudeCli || input.hasTextConnection || textEnvKeyPresent(),

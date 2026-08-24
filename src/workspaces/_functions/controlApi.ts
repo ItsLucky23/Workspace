@@ -34,12 +34,12 @@ export type ControlOp =
   // workspace settings (15/19/22)
   | 'save-env' | 'remove-env' | 'save-integration' | 'remove-integration' | 'integration-test'
   | 'service-provision' | 'service-teardown' | 'ui-review-create' | 'ui-review-to-ticket' | 'ui-review-dismiss'
-  | 'gitlab-settings' | 'gitlab-verify' | 'gitlab-resync'
+  | 'gitlab-settings' | 'gitlab-resync'
   | 'forge-connect'
   | 'save-git-config' | 'project-runtime-save' | 'save-sections' | 'save-ai-instruction' | 'save-ai-provider' | 'save-coding-agent' | 'ai-connection-add' | 'ai-connection-test' | 'ai-connection-remove' | 'save-autonomy'
   | 'link-repo' | 'scan-docs' | 'create-info-source' | 'info-source-archive' | 'info-source-delete' | 'scan-index'
   | 'mr-create' | 'mr-comment' | 'mr-approve' | 'mr-merge' | 'mr-rollback' | 'mr-resolve' | 'mr-review'
-  | 'raise-cap' | 'edit-budget' | 'resume-spend'
+  | 'edit-budget' | 'resume-spend'
   | 'skill-toggle' | 'save-stage-config' | 'stage-create' | 'stage-delete' | 'stage-reorder' | 'pipeline-apply-preset'
   | 'trigger-save' | 'trigger-toggle' | 'trigger-delete' | 'trigger-run'
   | 'finding-to-ticket' | 'finding-dismiss'
@@ -64,9 +64,9 @@ export type ControlOp =
   | 'content-gen-script' | 'content-gen-voice' | 'content-gen-images' | 'content-assemble'
   | 'content-gen-reference-image' | 'content-gen-shortform' | 'content-analyze-reference-video'
   | 'content-gen-avatar' | 'content-gen-music' | 'content-gen-sfx' | 'content-gen-3d'
-  | 'content-request-publish' | 'content-from-brief' | 'content-import-asset' | 'content-regenerate' | 'content-inpaint' | 'content-reorder-beats' | 'content-save-scenes' | 'content-decompose-video' | 'content-refine-range' | 'content-run-pipeline' | 'content-save-audio-mix' | 'content-trim-audio' | 'content-critique-image' | 'content-gen-thumbnail' | 'content-reply-comment' | 'studio-publish-site' | 'studio-unpublish-site' | 'asset-star' | 'prompt-experiment-save' | 'prompt-experiment-stop' | 'content-video-restyle' | 'content-edit-image' | 'content-transcode' | 'shortlink-create' | 'capture-run' | 'media-trash-restore' | 'media-trash-purge'
+  | 'content-request-publish' | 'content-from-brief' | 'content-import-asset' | 'content-regenerate' | 'content-inpaint' | 'content-save-scenes' | 'content-decompose-video' | 'content-refine-range' | 'content-run-pipeline' | 'content-save-audio-mix' | 'content-trim-audio' | 'content-critique-image' | 'content-gen-thumbnail' | 'content-reply-comment' | 'studio-publish-site' | 'studio-unpublish-site' | 'asset-star' | 'prompt-experiment-save' | 'prompt-experiment-stop' | 'content-video-restyle' | 'content-edit-image' | 'content-transcode' | 'shortlink-create' | 'capture-run' | 'media-trash-restore' | 'media-trash-purge'
   | 'channel-create' | 'channel-edit' | 'channel-delete' | 'account-disconnect'
-  | 'reference-add' | 'reference-delete' | 'content-unarchive' | 'content-unpublish' | 'save-custom-task' | 'delete-custom-task' | 'run-custom-task' | 'save-output-template' | 'delete-output-template' | 'copy-workspace-assets' | 'copilot-propose' | 'run-agent-role' | 'studio-send-to-content'
+  | 'reference-add' | 'reference-delete' | 'content-unarchive' | 'content-unpublish' | 'save-custom-task' | 'delete-custom-task' | 'run-custom-task' | 'save-output-template' | 'delete-output-template' | 'copy-workspace-assets' | 'run-agent-role' | 'studio-send-to-content'
   //? SK1 (DOCUMENTS_AND_SKILLS) — the universal AI-skills layer (workspace-scoped instruction blocks
   //? injected into AI runs). Distinct from the older 'skill-toggle' (workflow capabilities/context docs).
   | 'ai-skill-save' | 'ai-skill-delete' | 'ai-skill-reset'

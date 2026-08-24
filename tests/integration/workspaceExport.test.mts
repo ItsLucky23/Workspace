@@ -17,7 +17,7 @@ try {
   const wsId = created.workspaceId;
   const dev = await prisma.project.findFirst({ where: { workspaceId: wsId } });
   await prisma.ticket.create({ data: { workspaceId: wsId, projectId: dev?.id ?? '', key: 'DEV-5', number: 5, title: 'Exportable ticket', stageId: 'unrefined', status: 'idle', labels: [] } });
-  await prisma.infoSource.create({ data: { workspaceId: wsId, projectId: dev?.id ?? '', mode: 'context-doc', source: 'uploaded', name: 'Spec doc', content: 'x', enabled: true, usedByStages: [] } });
+  await prisma.infoSource.create({ data: { workspaceId: wsId, projectId: dev?.id ?? '', mode: 'context-doc', source: 'uploaded', name: 'Spec doc', content: 'x', enabled: true } });
   await prisma.contentProject.create({ data: { workspaceId: wsId, projectId: dev?.id ?? '', title: 'Exportable content' } });
   await prisma.envVar.create({ data: { workspaceId: wsId, key: 'STRIPE_KEY', value: 'sk_live_TOPSECRET', secret: true } });
 

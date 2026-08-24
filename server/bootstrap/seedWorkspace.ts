@@ -11,7 +11,7 @@ import type { PrismaClient } from '@prisma/client';
 
 import {
   AI_SUGGESTIONS, BUDGET, DOCS, ENV_VARS, EVENTS, INTEGRATION_TOOLS, INVITES,
-  MEMBERS, NOTIFICATIONS, PROJECTS, SKILLS, SPRINTS, STAGE_CONFIGS, TICKETS,
+  MEMBERS, NOTIFICATIONS, PROJECTS, SPRINTS, STAGE_CONFIGS, TICKETS,
   ticketAssignee, ticketCreator,
 } from '../../src/workspaces/_data/seed';
 import { isModuleEnabled } from '../../src/workspaces/_data/modules';
@@ -192,9 +192,9 @@ export async function seedDemoWorkspace(prisma: PrismaClient, ownerId: string): 
         aiEnabled: s.aiEnabled, wipLimit: s.wipLimit ?? null,
         roleKey: s.kind === 'code' ? 'code' : s.kind, systemPrompt: '',
         customInstructions: s.customInstructions, handoverPrompt: s.handoverPrompt,
-        skillKeys: s.skillKeys, sourceIds: s.sourceIds,
+        sourceIds: s.sourceIds,
         commands: s.commands, tools, statuses: s.statuses, processes: s.processes,
-        visibleStageIds: s.visibleStageIds, modelCfg: s.modelCfg, network: s.network, hooks: s.hooks,
+        visibleStageIds: s.visibleStageIds, modelCfg: s.modelCfg, hooks: s.hooks,
       },
     });
   }
@@ -252,30 +252,11 @@ export async function seedDemoWorkspace(prisma: PrismaClient, ownerId: string): 
     data: { workspaceId, label: 'Monthly', cap: BUDGET.cap, alertPct: BUDGET.alertPct, enforcement: 'pauseNew', periodWindow: 'calendar-month', spent: BUDGET.spent, enabled: true },
   });
 
-  //? Context documents remain InfoSource rows; workflow capabilities use the canonical Skill model.
+  //? Context documents are InfoSource rows. (The old demo "capability skills" — fake RAG/graph
+  //? telemetry no real workspace could ever have — are gone with the capability-skill layer.)
   for (const d of DOCS) {
     await prisma.infoSource.create({
-      data: { workspaceId, projectId: project.id, mode: 'context-doc', name: d.name, source: d.source, summary: d.summary, note: d.note, content: d.content, usedByStages: d.usedByStages ?? [], enabled: true },
-    });
-  }
-  for (const sk of SKILLS) {
-    await prisma.skill.create({
-      data: {
-        workspaceId,
-        projectId: project.id,
-        slug: `capability-${sk.id}`,
-        name: sk.name,
-        description: sk.description ?? null,
-        status: sk.status,
-        instruction: '',
-        examples: '',
-        applyPoints: [],
-        skillType: 'capability',
-        kind: sk.kind,
-        model: sk.model ?? null,
-        usedByStages: sk.usedByStages ?? [],
-        enabled: sk.on,
-      },
+      data: { workspaceId, projectId: project.id, mode: 'context-doc', name: d.name, source: d.source, summary: d.summary, note: d.note, content: d.content, enabled: true },
     });
   }
 

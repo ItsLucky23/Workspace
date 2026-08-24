@@ -190,9 +190,6 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   'ui-review-to-ticket': EXCLUDED, // U2 gap-fix — direct inbox button on the designer page
   'ui-review-dismiss': EXCLUDED,   // U2 gap-fix — direct inbox button
   'gitlab-settings': EXCLUDED, // carries the forge token
-  //? Connectivity is already proven by the credential-free snapshot fetch in gitlab-resync. Keeping a
-  //? second no-op writer would let chat report success without evidence, so the legacy alias is excluded.
-  'gitlab-verify': EXCLUDED,
   'gitlab-resync': { mode: 'enabled', hint: 'resync issues/state from the connected forge (GitLab/GitHub) on demand. no params', params: {} },
   'forge-connect': EXCLUDED, // carries the forge token
   'forge-webhook-rotate': EXCLUDED, // #27 — mints a secret; direct settings-UI button, never a chat proposal
@@ -225,10 +222,11 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   },
   'save-ai-provider': {
     mode: 'enabled',
-    hint: `switch which AI provider runs ONE non-coding feature ('use Gemini for MR reviews'), or the workspace DEFAULT backend for every feature without its own choice (feature '_default'). params: feature (_default|script|docs-generate|studio-designer|studio-marketer|designer-theme|interviewer|mr-review|root-cause|plan-critique), providerId (default clears the override | ${knownAiProviderIds().join(' | ')}), model (optional: pin a specific model on that provider, e.g. 'gpt-4.1-mini'; omit to use the connection's model). The CODING agent is not switchable.`,
+    hint: `switch which AI provider runs ONE non-coding feature ('use Gemini for MR reviews'), the workspace DEFAULT backend for every feature without its own choice (feature '_default'), or the workspace's RAG EMBEDDER (feature 'embedding' → gemini-embedding | local-embedding; switching embedders needs a code re-index). params: feature (_default|embedding|script|docs-generate|studio-designer|studio-marketer|designer-theme|interviewer|mr-review|root-cause|plan-critique), providerId (default clears the override | ${knownAiProviderIds().join(' | ')} — the surface must match the feature: text features take text backends, 'embedding' takes an embedding backend), model (optional: pin a specific model on that provider, e.g. 'gpt-4.1-mini'; omit to use the connection's model). The CODING agent is not switchable.`,
     params: {
-      //? P4-1 — '_default' = the workspace-wide default backend (AI_DEFAULT_FEATURE), same store + validation.
-      feature: { kind: 'enum', required: true, values: ['_default', 'script', 'docs-generate', 'studio-designer', 'studio-marketer', 'designer-theme', 'interviewer', 'mr-review', 'root-cause', 'plan-critique'] },
+      //? P4-1 — '_default' = the workspace-wide default backend (AI_DEFAULT_FEATURE); Fase 5.2 —
+      //? 'embedding' = the workspace's RAG embedder. Same store + validation for all of them.
+      feature: { kind: 'enum', required: true, values: ['_default', 'embedding', 'script', 'docs-generate', 'studio-designer', 'studio-marketer', 'designer-theme', 'interviewer', 'mr-review', 'root-cause', 'plan-critique'] },
       //? F-017 — every catalog backend, not a stale pair (the picker + dispatch allow the same set).
       providerId: { kind: 'enum', required: true, values: ['default', ...knownAiProviderIds()] },
       //? P4-2 — optional per-feature model pin (stored as `providerId:model`).
@@ -308,9 +306,6 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'roll back (revert) a merged merge request. params: mrId, ticketKey (the pair from the MR list below)',
     params: { mrId: { kind: 'mrId', required: true }, ticketKey: { kind: 'ticketKey', required: true } },
   },
-  //? Exact legacy alias of edit-budget. Showing both wastes scarce tool context and creates two names for
-  //? one effect, so chat exposes only the canonical operation.
-  'raise-cap': EXCLUDED,
   'edit-budget': {
     mode: 'enabled', destructive: true,
     hint: "create or edit the AI €-spend cap ('raise the budget to 50', 'alert me at 80%'). params: cap (the new amount), alertPct? (0-100), label?, enforcement? (pauseNew = pause new work | pauseAll = pause everything), create? (true = add a SEPARATE additional cap), enabled? (false retires the cap but keeps it listed), remove? (true DELETES the cap identified by budgetId — irreversible, prefer enabled:false unless the user asks to remove it for good). Only pass the fields to change.",
@@ -323,7 +318,7 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   },
   'skill-toggle': {
     mode: 'enabled',
-    hint: 'enable or disable a workflow capability or context document from the Sources page (NOT an instruction AI skill; those are scoped with ai-skill-save). params: sourceId, on (true/false)',
+    hint: 'enable or disable a context document from the Sources page (NOT an instruction AI skill; those are scoped with ai-skill-save). params: sourceId, on (true/false)',
     params: { sourceId: { kind: 'sourceId', required: true }, on: { kind: 'boolean', required: true } },
   },
   //? SK1 — the universal AI-skills layer. GAP_SCAN C3: scoping/saving a skill is exactly the kind of
@@ -774,9 +769,9 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'region-edit (inpaint) an image asset with an ALREADY-UPLOADED painted mask (costs money) — params: pieceId, referenceUrl (the source image url), maskUrl (a painted mask image url), prompt, parentAssetId (the source assetId). Without an existing mask url, point the user to the image editor instead',
     params: { pieceId: { kind: 'pieceId', required: true }, referenceUrl: { kind: 'string', required: true }, maskUrl: { kind: 'string', required: true }, prompt: { kind: 'string', required: true }, parentAssetId: { kind: 'string', required: true } },
   },
-  //? Timeline replacement requires the complete current scene/beat graph; omitted ids are destructive.
+  //? Timeline replacement requires the complete current scene graph; omitted ids are destructive.
   //? That graph intentionally stays in the visual editor rather than entering a compact chat context.
-  'content-reorder-beats': EXCLUDED, 'content-save-scenes': EXCLUDED,
+  'content-save-scenes': EXCLUDED,
   'content-transcode': {
     mode: 'enabled',
     hint: 'transcode a video/render asset into an extra delivery format (webm or gif) — free ffmpeg job, produces a new variant. params: pieceId, assetId, format',
@@ -874,7 +869,6 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   //? Workspace-AI is deliberately confined to one workspace. Cross-workspace copy remains an explicit UI
   //? flow where both memberships can be shown and confirmed; it must not widen chat's tenant boundary.
   'copy-workspace-assets': EXCLUDED,
-  'copilot-propose': EXCLUDED, // meta (the propose channel itself)
   'run-agent-role': EXCLUDED, // #167 — direct UI button (interviewer "generate now"), not a chat proposal
   //? #17/#113 — the Assistant may PROPOSE launching/stopping a ticket's live preview ("open a preview of
   //? DEV-3"). Accept dispatches through the openPreview/closePreview `_api` (ephemeral container, no

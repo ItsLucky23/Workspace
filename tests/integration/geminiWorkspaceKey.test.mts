@@ -26,9 +26,10 @@ try {
   assert((await gemini.available()) === false, 'no env key + no workspace → gemini unavailable');
   assert((await gemini.available(wsId)) === false, 'no connection yet → still unavailable for the workspace');
 
-  //? The legacy media-provider store does NOT feed the text backend any more (single owner = AiConnection).
+  //? The legacy media-provider path does NOT feed the text backend any more (single owner = AiConnection).
+  //? Fase 5.2: 'gemini' is not a catalog id, so this save is rejected outright — nothing is stored.
   await enqueueControlAction({ workspaceId: wsId, op: 'save-media-provider', target: {}, payload: { providerId: 'gemini', apiKey: 'gemini-secret-123' }, userId: owner.id, clientRequestId: `gwk-k-${String(stamp)}` });
-  assert((await gemini.available(wsId)) === false, 'a legacy __provider_key_gemini EnvVar alone does not make the text backend available');
+  assert((await gemini.available(wsId)) === false, 'a save-media-provider key for a non-catalog id does not make the text backend available');
 
   // connect the backend the supported way
   await enqueueControlAction({ workspaceId: wsId, op: 'ai-connection-add', target: {}, payload: { providerId: 'gemini-api', model: 'gemini-2.5-flash', apiKey: 'gemini-secret-123' }, userId: owner.id, clientRequestId: `gwk-c-${String(stamp)}` });

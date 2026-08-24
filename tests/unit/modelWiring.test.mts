@@ -22,9 +22,8 @@ const stageCfg = (cfg: StageModelCfg): PipelineStageCfg => ({
   projectId: 'project-test', id: 'code', kind: 'code', name: 'Code', order: 2, aiEnabled: true,
   customInstructions: 'Implement the ticket.', handoverPrompt: '', definitionOfDone: '',
   systemPrompt: '', roleKey: 'coder', userEditable: true, gateForApproval: false,
-  skillKeys: [], aiSkillIds: [], sourceIds: [], commands: [], tools: [], statuses: [], processes: [], visibleStageIds: [],
+  aiSkillIds: [], sourceIds: [], commands: [], tools: [], statuses: [], processes: [], visibleStageIds: [],
   modelCfg: cfg,
-  network: { enabled: false, mode: 'whitelist', categories: [], domains: [] },
   hooks: {},
 });
 

@@ -24,7 +24,7 @@ const asDocSource = (s: string | null): InfoDoc['source'] => (s === 'generated' 
 export function toInfoDoc(s: DbInfoSource): InfoDoc {
   return {
     id: s.id, name: s.name, source: asDocSource(s.source), updated: '', note: s.note ?? '',
-    summary: s.summary ?? '', usedByStages: s.usedByStages, content: s.content ?? '', aiEditable: s.enabled,
+    summary: s.summary ?? '', content: s.content ?? '', aiEditable: s.enabled,
     //? ADR 0310 — archived docs still ship to the client (the Sources page has an Archived view and a
     //? restore action); it is the SERVER that stops feeding them to the AI, not this flag.
     ...(s.archivedAt === null ? {} : { archived: true }),
@@ -101,7 +101,7 @@ export function toTicket(t: DbTicket): Ticket {
   return {
     id: t.key, workspaceId: t.workspaceId, projectId: t.projectId, title: t.title, description: t.description ?? undefined,
     stageId: t.stageId, status: asStatus(t.status), labels: t.labels, creatorId: t.creatorId ?? undefined, assigneeId: t.assigneeId ?? undefined,
-    viewers: [], hasTerminal: asStatus(t.status) === 'busy', branch: t.branch ?? undefined, mr: t.mrUrl ?? undefined, issue: t.issueUrl ?? undefined,
+    hasTerminal: asStatus(t.status) === 'busy', branch: t.branch ?? undefined, mr: t.mrUrl ?? undefined, issue: t.issueUrl ?? undefined,
     sprintId: t.sprintId ?? undefined, serviceId: t.serviceId, carryOver: t.carryOver ?? undefined, needsInput: t.needsInput ?? undefined, archived: t.archived,
     ...(advisory.length > 0 ? { advisoryQuestions: advisory } : {}),
     ...(openQuestionCount > 1 ? { openQuestionCount } : {}),

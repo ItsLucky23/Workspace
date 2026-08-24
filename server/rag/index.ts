@@ -11,7 +11,7 @@ import type { PrismaClient } from '@prisma/client';
 
 import { listRepoFiles, repoHead } from '../git/repoStore';
 import { resolveProjectId } from '../orchestrator/projectResolve';
-import { embedTexts, embedOne, cosine, embedTag } from './embed';
+import { embedTextsTagged, embedOne, cosine, embedTagFor, embedTagMatches } from './embed';
 
 const CHUNK_MAX = 1200;
 
@@ -37,13 +37,15 @@ export async function indexWorkspace(
   prisma: PrismaClient, workspaceId: string, opts: { projectId?: string; commitHash?: string } = {},
 ): Promise<IndexResult> {
   //? R3-b — index the named project's repo (defaults to the active/first project).
+  //? Fase 5.2 — the workspace's own embedder (stored choice → AiConnection key → host fallback).
+  const currentTag = await embedTagFor(workspaceId);
   const projectId = await resolveProjectId(prisma, workspaceId, opts.projectId);
-  if (!projectId) return { ok: false, files: 0, chunks: 0, commitHash: '', embedder: embedTag(), error: 'rag.noRepo' };
+  if (!projectId) return { ok: false, files: 0, chunks: 0, commitHash: '', embedder: currentTag, error: 'rag.noRepo' };
   const commitHash = opts.commitHash ?? (await repoHead(workspaceId, projectId));
-  if (commitHash.length === 0) return { ok: false, files: 0, chunks: 0, commitHash: '', embedder: embedTag(), error: 'rag.noRepo' };
+  if (commitHash.length === 0) return { ok: false, files: 0, chunks: 0, commitHash: '', embedder: currentTag, error: 'rag.noRepo' };
 
   const files = await listRepoFiles(workspaceId, projectId, commitHash);
-  if (files.length === 0) return { ok: false, files: 0, chunks: 0, commitHash, embedder: embedTag(), error: 'rag.noFiles' };
+  if (files.length === 0) return { ok: false, files: 0, chunks: 0, commitHash, embedder: currentTag, error: 'rag.noFiles' };
 
   //? Build chunks + the text we embed (path-prefixed so path/identifier queries match).
   const rows: { filePath: string; chunkId: string; content: string; text: string }[] = [];
@@ -52,9 +54,10 @@ export async function indexWorkspace(
     for (const [i, content] of parts.entries()) rows.push({ filePath: f.path, chunkId: String(i), content, text: `${f.path}\n${content}` });
   }
 
-  const vectors = await embedTexts(rows.map((r) => r.text), { workspaceId, feature: 'rag-index' });
+  const { vectors, tag } = await embedTextsTagged(rows.map((r) => r.text), { workspaceId, feature: 'rag-index' });
 
-  //? Frozen-per-commit replace: drop this commit's old rows, insert the fresh set.
+  //? Frozen-per-commit replace: drop this commit's old rows, insert the fresh set — each row stamped
+  //? with the embedder that ACTUALLY produced its vector (Fase 5.2; retrieval gates on this).
   await prisma.ragEntry.deleteMany({ where: { workspaceId, commitHash } });
   await prisma.ragEntry.createMany({
     data: rows.map((r, i) => ({
@@ -65,10 +68,11 @@ export async function indexWorkspace(
       chunkId: r.chunkId,
       content: r.content,
       embedding: vectors[i] ?? [],
+      embedTag: tag,
     })),
   });
 
-  return { ok: true, files: files.length, chunks: rows.length, commitHash, embedder: embedTag() };
+  return { ok: true, files: files.length, chunks: rows.length, commitHash, embedder: tag };
 }
 
 //? Retrieve the top-K chunks most relevant to `query`. Scoped to `commitHash` when given, else the
@@ -96,11 +100,19 @@ export async function retrieve(
     if (!latest) return [];
     ref = latest.commitHash;
   }
-  const entries = await prisma.ragEntry.findMany({ where: { workspaceId, commitHash: ref }, select: { filePath: true, content: true, embedding: true } });
+  const entries = await prisma.ragEntry.findMany({ where: { workspaceId, commitHash: ref }, select: { filePath: true, content: true, embedding: true, embedTag: true } });
   if (entries.length === 0) return [];
 
+  //? Fase 5.2 — embedTag gating: only compare vectors produced by the CURRENT embedder ('' = legacy
+  //? host rows, accepted only while the host embedder is still the active one). An index made with a
+  //? different embedder yields zero comparable rows — an honest empty result that the sources page's
+  //? re-index flow fixes, instead of silently cosine-ing across two vector spaces.
+  const currentTag = await embedTagFor(workspaceId);
+  const comparable = entries.filter((e) => embedTagMatches(e.embedTag, currentTag));
+  if (comparable.length === 0) return [];
+
   const qvec = await embedOne(query, { workspaceId, feature: 'rag-query' });
-  const scored = entries.map((e) => ({
+  const scored = comparable.map((e) => ({
     filePath: e.filePath,
     content: e.content,
     score: cosine(qvec, Array.isArray(e.embedding) ? (e.embedding as number[]) : []),

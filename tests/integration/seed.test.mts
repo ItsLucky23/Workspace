@@ -4,7 +4,7 @@
 //? `npx tsx tests/integration/seed.test.mts`.
 
 import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
-import { DOCS, ENV_VARS, INTEGRATION_TOOLS, SKILLS, STAGE_CONFIGS } from '../../src/workspaces/_data/seed';
+import { DOCS, ENV_VARS, INTEGRATION_TOOLS, STAGE_CONFIGS } from '../../src/workspaces/_data/seed';
 
 const isObjectId = (value: string): boolean => /^[a-f\d]{24}$/i.test(value);
 
@@ -34,7 +34,8 @@ try {
   eq(await prisma.sprint.count({ where: { workspaceId } }), 2, 'Sprint count (backlog is virtual)');
   eq(await prisma.workspaceSuggestion.count({ where: { workspaceId } }), 2, 'WorkspaceSuggestion count');
   eq(await prisma.infoSource.count({ where: { workspaceId } }), DOCS.length, 'InfoSource count (context documents only)');
-  eq(await prisma.skill.count({ where: { workspaceId, skillType: 'capability' } }), SKILLS.length, 'canonical capability Skill count');
+  //? The demo "capability skills" died with the capability-skill layer (ADR 0326) — none may be seeded.
+  eq(await prisma.skill.count({ where: { workspaceId, skillType: 'capability' } }), 0, 'no capability Skill rows are seeded any more');
   eq(await prisma.envVar.count({ where: { workspaceId } }), 4, 'EnvVar count');
   eq(await prisma.integrationTool.count({ where: { workspaceId } }), 2, 'IntegrationTool count');
   eq(await prisma.invite.count({ where: { workspaceId } }), 1, 'Invite count');

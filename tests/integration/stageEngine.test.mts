@@ -8,17 +8,16 @@ import { renderStage, parseMcpCommand } from '../../server/orchestrator/renderSt
 import { UNTRUSTED_CONTEXT_POLICY } from '../../server/ai/untrustedContext';
 import type { PipelineStageCfg } from '../../src/workspaces/_data/types';
 
-//? A minimal-but-complete stage cfg (renderStage only reads name/instructions/commands/skills).
+//? A minimal-but-complete stage cfg (renderStage only reads name/instructions/commands).
 function stageCfg(over: Partial<PipelineStageCfg>): PipelineStageCfg {
   return {
     projectId: 'project-test', id: 'plan', kind: 'ai', name: 'Plan', order: 2, aiEnabled: true,
     customInstructions: 'Break the ticket into a plan.', handoverPrompt: 'Give the ordered plan and where the risk sits.',
     systemPrompt: 'You are a senior planner.', roleKey: 'planner', userEditable: true, gateForApproval: false,
-    skillKeys: ['rag'], sourceIds: [],
+    sourceIds: [],
     commands: [{ id: 'c1', pattern: 'Bash(npm test:*)', mode: 'allow' }, { id: 'c2', pattern: 'Bash(rm:*)', mode: 'deny' }],
     tools: [], statuses: [], processes: [], visibleStageIds: [],
     modelCfg: { autoEscalate: false, base: { model: 'sonnet', effort: 'medium', maxTurns: 20 }, rules: [] },
-    network: { enabled: false, mode: 'allowlist', categories: [], domains: [] },
     hooks: {},
     ...over,
   };
@@ -88,8 +87,6 @@ async function run(): Promise<void> {
   assert(settings.permissions.deny.includes('Read(/auth/**)'), 'auth-path denyRead rendered (07b §2.4)');
   assert('Stop' in settings.hooks, 'Stop hook rendered');
 
-  const mcp = JSON.parse(art.mcpJson) as { mcpServers: Record<string, unknown> };
-  assert('rag' in mcp.mcpServers, 'skillKeys → mcp server entry');
 
   //? X1 — an enabled MCP integration tool is mounted with its command parsed + credentials injected as env.
   const artInt = renderStage(stageCfg({}), { ticketId: 'DEV-3', carryOver: null, integrations: [{ name: 'My Slack Tool', command: 'npx -y slack-mcp --team acme', env: { SLACK_TOKEN: 'xoxb-1' } }] });
@@ -99,7 +96,6 @@ async function run(): Promise<void> {
   eq(entry.command, 'npx', 'the command is parsed (first token)');
   assert(entry.args.includes('slack-mcp') && entry.args.includes('--team'), 'the args are parsed from the command string');
   eq(entry.env?.SLACK_TOKEN, 'xoxb-1', 'the credentials are injected as env');
-  assert('rag' in mcpInt.mcpServers, 'skills + integrations coexist in .mcp.json');
 
   eq(parseMcpCommand('npx -y pkg').command, 'npx', 'parseMcpCommand: first token is the binary');
   eq(parseMcpCommand('  solo  ').args.length, 0, 'parseMcpCommand: no args when only a binary');

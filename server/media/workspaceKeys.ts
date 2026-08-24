@@ -4,6 +4,7 @@
 //? in-app key/override actually drives generation (previously only `process.env` keys worked). Decryption
 //? uses the same `secretBox` fail-closed path as the rest of the app; a bad/missing blob → no key (stub).
 
+import { tryCatch } from '@luckystack/core';
 import type { PrismaClient } from '@prisma/client';
 import { decryptSecret } from '../crypto/secretBox';
 import type { MediaFeature, MediaProviderId } from './types';
@@ -62,6 +63,16 @@ export async function loadWorkspaceMediaConfig(prisma: PrismaClient, workspaceId
     if (!isProviderId(providerId)) continue;
     const plain = decryptSecret(row.value);
     if (plain !== null && plain.trim().length > 0) keys[providerId] = plain.trim();
+  }
+  //? Fase 5.2 — the AiConnection table is now THE key store for every backend (text, media, embedding);
+  //? the `__provider_key_*` EnvVars above remain only as a legacy fallback (boot migrates them, but a
+  //? partially-migrated workspace must not lose generation mid-flight). A keyed connection wins.
+  const keysFromConnections = new Set<MediaProviderId>();
+  const [, connectionRows] = await tryCatch(() => prisma.aiConnection.findMany({ where: { workspaceId, providerId: { in: PROVIDER_IDS } }, select: { providerId: true, apiKey: true }, orderBy: { createdAt: 'asc' } }));
+  for (const row of connectionRows ?? []) {
+    if (!isProviderId(row.providerId) || row.apiKey === null || keysFromConnections.has(row.providerId)) continue;
+    const plain = decryptSecret(row.apiKey);
+    if (plain !== null && plain.trim().length > 0) { keys[row.providerId] = plain.trim(); keysFromConnections.add(row.providerId); }
   }
   return { overrides, keys, models, cheap, sceneContinuity, ...(voiceId ? { voiceId } : {}) };
 }

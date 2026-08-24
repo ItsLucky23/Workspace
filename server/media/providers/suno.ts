@@ -69,6 +69,16 @@ export function createSunoProvider(transport: MusicTransport = realMusicTranspor
     label: 'Suno',
     supports: SUPPORTED,
     available: (apiKey?: string) => Promise.resolve(Boolean((apiKey ?? process.env.SUNO_KEY ?? '').trim())),
+    //? Fase 5.2 — credential probe: the credit-balance read is authenticated and free.
+    ping: async (apiKey?: string) => {
+      const key = (apiKey ?? process.env.SUNO_KEY ?? '').trim();
+      if (key.length === 0) return { ok: false, error: 'media.noKey' };
+      const [err, res] = await tryCatch(() =>
+        // eslint-disable-next-line luckystack/no-raw-fetch-in-src
+        fetch(`${SUNO_BASE}/generate/credit`, { headers: { Authorization: `Bearer ${key}` } }));
+      if (err || !res) return { ok: false, error: 'media.pingFailed' };
+      return res.ok ? { ok: true } : { ok: false, error: 'media.badKey' };
+    },
     generate: async (req: MediaGenerationRequest): Promise<MediaGenerationResult> => {
       if (req.feature !== 'music') return { ok: false, providerId: 'suno', costCents: 0, stub: false, error: 'media.featureUnsupported' };
       const prompt = composeMediaPrompt(req) || (req.prompt ?? '');

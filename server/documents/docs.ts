@@ -12,7 +12,7 @@ import { createHash } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
 import { tryCatch } from '@luckystack/core';
 
-import { embedTexts } from '../rag/embed';
+import { embedTextsTagged } from '../rag/embed';
 import { retrieve } from '../rag';
 import { retrieveProductKnowledge } from '../rag/productKnowledge';
 import { runAiCompletion } from '../ai/registry';
@@ -71,8 +71,8 @@ export async function indexDocument(prisma: PrismaClient, workspaceId: string, d
   await prisma.ragEntry.deleteMany({ where: { workspaceId, commitHash: DOCUMENTS_CORPUS, filePath: { startsWith: `doc/${documentId}/` } } });
   const chunks = chunkDocument(content).map((c, i) => ({ filePath: `doc/${documentId}/${String(i)}`, content: `# ${title}\n${c}` }));
   if (chunks.length === 0) return 0;
-  const vectors = await embedTexts(chunks.map((c) => c.content), { workspaceId, feature: 'rag-index' });
-  await prisma.ragEntry.createMany({ data: chunks.map((c, i) => ({ workspaceId, commitHash: DOCUMENTS_CORPUS, filePath: c.filePath, chunkId: '0', content: c.content, embedding: vectors[i] ?? [] })) });
+  const { vectors, tag } = await embedTextsTagged(chunks.map((c) => c.content), { workspaceId, feature: 'rag-index' });
+  await prisma.ragEntry.createMany({ data: chunks.map((c, i) => ({ workspaceId, commitHash: DOCUMENTS_CORPUS, filePath: c.filePath, chunkId: '0', content: c.content, embedding: vectors[i] ?? [], embedTag: tag })) });
   return chunks.length;
 }
 
@@ -84,8 +84,8 @@ export async function indexDocumentAsset(prisma: PrismaClient, workspaceId: stri
   await prisma.ragEntry.deleteMany({ where: { workspaceId, commitHash: DOC_ASSETS_CORPUS, filePath: { startsWith: `docasset/${documentId}/${key}/` } } });
   const chunks = chunkDocument(text).map((c, i) => ({ filePath: `docasset/${documentId}/${key}/${String(i)}`, content: c }));
   if (chunks.length === 0) return 0;
-  const vectors = await embedTexts(chunks.map((c) => c.content), { workspaceId, feature: 'rag-index' });
-  await prisma.ragEntry.createMany({ data: chunks.map((c, i) => ({ workspaceId, commitHash: DOC_ASSETS_CORPUS, filePath: c.filePath, chunkId: '0', content: c.content, embedding: vectors[i] ?? [] })) });
+  const { vectors, tag } = await embedTextsTagged(chunks.map((c) => c.content), { workspaceId, feature: 'rag-index' });
+  await prisma.ragEntry.createMany({ data: chunks.map((c, i) => ({ workspaceId, commitHash: DOC_ASSETS_CORPUS, filePath: c.filePath, chunkId: '0', content: c.content, embedding: vectors[i] ?? [], embedTag: tag })) });
   return chunks.length;
 }
 

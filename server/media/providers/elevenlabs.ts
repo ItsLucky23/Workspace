@@ -67,6 +67,16 @@ export function createElevenlabsProvider(transport: AudioTransport = realAudioTr
     label: 'ElevenLabs',
     supports: SUPPORTED,
     available: (apiKey?: string) => Promise.resolve(Boolean((apiKey ?? process.env.ELEVENLABS_KEY ?? '').trim())),
+    //? Fase 5.2 — credential probe: `/user` is the cheapest authenticated read this API offers.
+    ping: async (apiKey?: string) => {
+      const key = (apiKey ?? process.env.ELEVENLABS_KEY ?? '').trim();
+      if (key.length === 0) return { ok: false, error: 'media.noKey' };
+      const [err, res] = await tryCatch(() =>
+        // eslint-disable-next-line luckystack/no-raw-fetch-in-src
+        fetch(`${ELEVEN_BASE}/user`, { headers: { 'xi-api-key': key } }));
+      if (err || !res) return { ok: false, error: 'media.pingFailed' };
+      return res.ok ? { ok: true } : { ok: false, error: 'media.badKey' };
+    },
     generate: async (req: MediaGenerationRequest): Promise<MediaGenerationResult> => {
       if (!SUPPORTED.includes(req.feature)) return { ok: false, providerId: 'elevenlabs', costCents: 0, stub: false, error: 'media.featureUnsupported' };
       const input = composeElevenInput(req);

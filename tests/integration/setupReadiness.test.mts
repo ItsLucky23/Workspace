@@ -21,7 +21,7 @@ const read = (p: string): string => readFileSync(new URL(`../../${p}`, import.me
 
 //? The test harness blanks the provider ENV keys to force the stub world, so env-based signals are false by
 //? default and the workspace-stored `__provider_key_<id>` set is the deterministic driver.
-const base = { repoLinked: true, publishingConnected: false, providerKeys: new Set<string>() };
+const base = { repoLinked: true, publishingConnected: false, providerKeys: new Set<string>(), hasTextConnection: false, keyedConnectionIds: new Set<string>() };
 
 const none = await buildReadiness(1000, base);
 assert(!none.media.fal && !none.media.elevenlabs && !none.media.suno, 'no stored key + blanked env ⇒ every media provider is unconfigured');
@@ -29,8 +29,14 @@ assert(none.repoLinked, 'repoLinked passes through');
 assert(!none.publishing, 'publishing passes through (no connected account)');
 
 const withEleven = await buildReadiness(1000, { ...base, providerKeys: new Set(['__provider_key_elevenlabs']) });
-assert(withEleven.media.elevenlabs, 'a stored __provider_key_elevenlabs flips elevenlabs on');
+assert(withEleven.media.elevenlabs, 'a stored __provider_key_elevenlabs (legacy EnvVar fallback) flips elevenlabs on');
 assert(!withEleven.media.fal, 'and does NOT flip an unrelated provider on');
+
+//? Fase 5.2 — the unified AiConnection store is the primary source: a keyed fal connection counts,
+//? with no legacy EnvVar and no env fallback in sight.
+const withConn = await buildReadiness(1000, { ...base, keyedConnectionIds: new Set(['fal']) });
+assert(withConn.media.fal, 'a keyed fal AiConnection flips fal on');
+assert(!withConn.media.suno, 'and does NOT flip an unrelated provider on');
 
 //? The env fallback each registry also honours must count as configured (else a host that configured keys via
 //? env would get a false "key missing" notice).

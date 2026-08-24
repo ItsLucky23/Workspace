@@ -57,6 +57,10 @@ export function AiProvidersSection() {
   const translate = useTranslator();
   const { aiConnections } = useWorkspaces();
 
+  //? Fase 5.2 — ONE page for every backend, grouped by the plane it serves. Within text, the
+  //? subscription/api-key split stays (they answer different questions: "signed in on the server?"
+  //? vs "is this key + model valid?"); media and embedding are key-only lists.
+  const textRows = aiConnections.filter((c) => c.surface === 'text');
   return (
     <>
       <FormSection title={translate({ key: 'workspaces.aiProviders.title' })} desc={translate({ key: 'workspaces.aiProviders.desc' })}>
@@ -65,11 +69,8 @@ export function AiProvidersSection() {
             <EmptyPicker icon="robot" label={translate({ key: 'workspaces.aiProviders.noneConnected' })} />
           </div>
         )}
-        {/* Grouped, because the two kinds are answerable by different questions: a subscription is
-            "is it signed in on the server", an API key is "is this key valid and does this model
-            exist". Mixing them in one flat list is what made the page read as key-only. */}
         {(['subscription', 'api-key'] as const).map((kind) => {
-          const rows = aiConnections.filter((c) => c.kind === kind);
+          const rows = textRows.filter((c) => c.kind === kind);
           if (rows.length === 0) return null;
           return (
             <div key={kind}>
@@ -80,13 +81,55 @@ export function AiProvidersSection() {
             </div>
           );
         })}
-        {/* Where the OTHER kind of provider lives — a pointer, not a redirect, so nobody hunts for
-            ElevenLabs on this page and nobody is sent away to configure what belongs here. */}
+        {(['media', 'embedding'] as const).map((surface) => {
+          const rows = aiConnections.filter((c) => c.surface === surface);
+          if (rows.length === 0) return null;
+          return (
+            <div key={surface}>
+              <div className={`px-5 pt-4 -mb-2 text-xs font-semibold uppercase tracking-wide text-meta`}>
+                {translate({ key: `workspaces.aiProviders.surface_${surface}` })}
+              </div>
+              {rows.map((c) => <ConnectionRow key={c.id} connection={c} />)}
+            </div>
+          );
+        })}
+        {/* The per-feature MEDIA knobs (model overrides, cheap preview, default voice) stayed with the
+            content admin — only the KEYS moved here, so say so. */}
         <div className={`px-5 pb-5 text-xs text-meta leading-relaxed`}>{translate({ key: 'workspaces.aiProviders.mediaElsewhere' })}</div>
       </FormSection>
 
+      <EmbedderSection />
       <AddConnection />
     </>
+  );
+}
+
+//? Fase 5.2 — the workspace's RAG embedder, fixed here per workspace (`__ai_provider_embedding`).
+//? Vectors only compare within one embedder, so switching gates existing retrieval until the code
+//? index is rebuilt — the hint says so instead of letting search silently go empty.
+function EmbedderSection() {
+  const translate = useTranslator();
+  const { aiOverrides, saveAiProvider, aiConnections } = useWorkspaces();
+  const current = aiOverrides.find((o) => o.feature === 'embedding')?.providerId ?? 'default';
+  const options = [
+    { id: 'default', value: 'default', item: translate({ key: 'workspaces.aiProviders.embedderDefault' }) },
+    { id: 'gemini-embedding', value: 'gemini-embedding', item: translate({ key: 'workspaces.aiProviders.embedderGemini' }) },
+    { id: 'local-embedding', value: 'local-embedding', item: translate({ key: 'workspaces.aiProviders.embedderLocal' }) },
+  ];
+  const geminiKeyed = aiConnections.some((c) => c.providerId === 'gemini-embedding' && c.hasKey);
+  return (
+    <FormSection title={translate({ key: 'workspaces.aiProviders.embedderTitle' })} desc={translate({ key: 'workspaces.aiProviders.embedderDesc' })}>
+      <SettingRow
+        label={translate({ key: 'workspaces.aiProviders.embedderLabel' })}
+        help={translate({ key: 'workspaces.aiProviders.embedderReindexHint' })}
+        control={<Dropdown width="full" items={options} value={options.find((o) => o.id === current)} onChange={(it) => { saveAiProvider('embedding', String(it.value)); }} />}
+      />
+      {current === 'gemini-embedding' && !geminiKeyed && (
+        <div className={`mx-5 mb-3 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning leading-relaxed`}>
+          {translate({ key: 'workspaces.aiProviders.embedderNoKey' })}
+        </div>
+      )}
+    </FormSection>
   );
 }
 
@@ -176,12 +219,15 @@ function AddConnection() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const provider: AiProviderOption | undefined = aiProviderCatalog.find((p) => p.id === providerId) ?? aiProviderCatalog[0];
-  //? Labelled by kind in the picker itself, so the choice between "sign in on the server" and "paste
-  //? a key" is visible BEFORE you pick, not after the form changes shape underneath you.
-  const providerItems = aiProviderCatalog.map((p) => ({
+  //? Fase 5.2 — every connectable backend (text + media + embedding) in one picker. `local-embedding`
+  //? is not connectable: it has no credential and no row — it is picked in the embedder section above.
+  const connectable = aiProviderCatalog.filter((p) => p.id !== 'local-embedding');
+  const provider: AiProviderOption | undefined = connectable.find((p) => p.id === providerId) ?? connectable[0];
+  //? Labelled by kind/plane in the picker itself, so what the form will ask for is visible BEFORE you
+  //? pick, not after it changes shape underneath you.
+  const providerItems = connectable.map((p) => ({
     id: p.id, value: p.id,
-    item: `${p.label} · ${translate({ key: `workspaces.aiProviders.kind_${p.kind}` })}`,
+    item: `${p.label} · ${translate({ key: p.surface === 'text' ? `workspaces.aiProviders.kind_${p.kind}` : `workspaces.aiProviders.surface_${p.surface}` })}`,
   }));
   //? P4-4 — borrow the key of an existing connection of this backend to list its models live; the static
   //? catalog list is the fallback, and the "other" hatch stays either way.
@@ -197,6 +243,10 @@ function AddConnection() {
     //? A SUBSCRIPTION backend is signed in on the host: no key to paste, no model to pick. Rendering
   //? either would be two boxes that cannot do anything — the dead end this page was full of.
   const needsKey = provider?.kind === 'api-key';
+  //? A media backend has no per-connection model (its model choice is per-feature, in the content
+  //? admin) — only text/embedding backends render the model picker.
+  //? `needsKey` already narrows `provider` to non-nullish (aliased-condition narrowing).
+  const showModel = needsKey && provider.surface !== 'media';
 
   const add = async (): Promise<void> => {
     if (!provider) return;
@@ -204,7 +254,7 @@ function AddConnection() {
     setBusy(true);
     const res = await aiConnectionAction({
       op: 'ai-connection-add', providerId: provider.id,
-      model: needsKey ? model : '',
+      model: showModel ? model : '',
       apiKey: needsKey ? apiKey.trim() : '',
     });
     setBusy(false);
@@ -224,8 +274,7 @@ function AddConnection() {
       />
       {/* A host-CLI backend has no model and no key — showing either would be two boxes that cannot
           do anything, which is the dead end this page was full of. */}
-      {needsKey && (
-        <>
+      {showModel && (
           <SettingRow
             label={translate({ key: 'workspaces.aiProviders.model' })}
             help={translate({ key: live === null ? 'workspaces.aiProviders.modelHelp' : 'workspaces.aiProviders.modelHelpLive' })}
@@ -245,6 +294,8 @@ function AddConnection() {
               </div>
             )}
           />
+      )}
+      {needsKey && (
           <SettingRow
             stacked
             label={translate({ key: 'workspaces.aiProviders.apiKey' })}
@@ -260,7 +311,6 @@ function AddConnection() {
               </div>
             )}
           />
-        </>
       )}
       {!needsKey && (
         <div className={`px-5 pt-1 text-xs text-meta leading-relaxed`}>{translate({ key: `workspaces.aiProviders.how_${provider.id}` })}</div>

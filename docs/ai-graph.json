@@ -2,10 +2,10 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 463,
-    "edges": 725,
-    "symbols": 892,
-    "callEdges": 303
+    "nodes": 465,
+    "edges": 724,
+    "symbols": 895,
+    "callEdges": 301
   },
   "nodes": [
     {
@@ -557,6 +557,16 @@
       "id": "workspaces/_api/devLaunchEditor_v1.ts",
       "kind": "api",
       "route": "api/workspaces/devLaunchEditor/v1"
+    },
+    {
+      "id": "workspaces/_api/egressStatus_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_api/egressStatus_v1.ts",
+      "kind": "api",
+      "route": "api/workspaces/egressStatus/v1"
     },
     {
       "id": "workspaces/_api/generateDockerfile_v1.tests.ts",
@@ -3559,6 +3569,10 @@
     },
     {
       "from": "workspaces/content/settings/AdminTab.tsx",
+      "to": "workspaces/_components/SetupNotice.tsx"
+    },
+    {
+      "from": "workspaces/content/settings/AdminTab.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
@@ -4851,10 +4865,6 @@
     },
     {
       "from": "workspaces/develop/sources/page.tsx",
-      "to": "workspaces/_components/SetupNotice.tsx"
-    },
-    {
-      "from": "workspaces/develop/sources/page.tsx",
       "to": "workspaces/_data/types.ts"
     },
     {
@@ -4948,10 +4958,6 @@
     {
       "from": "workspaces/insights/knowledge/page.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
-    },
-    {
-      "from": "workspaces/insights/usage/page.tsx",
-      "to": "_components/dropdown/Dropdown.tsx"
     },
     {
       "from": "workspaces/insights/usage/page.tsx",
@@ -5418,7 +5424,6 @@
       "workspaces/develop/pipeline/page.tsx",
       "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
-      "workspaces/insights/usage/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/aiProviders.tsx",
       "workspaces/workspace/page.tsx"
@@ -5466,7 +5471,6 @@
       "workspaces/develop/pipeline/page.tsx",
       "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
-      "workspaces/insights/usage/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/aiProviders.tsx",
       "workspaces/workspace/page.tsx"
@@ -6405,6 +6409,7 @@
       "workspaces/content/insights/page.tsx",
       "workspaces/content/marketing/page.tsx",
       "workspaces/content/page.tsx",
+      "workspaces/content/settings/AdminTab.tsx",
       "workspaces/content/settings/ChannelsTab.tsx",
       "workspaces/content/settings/page.tsx",
       "workspaces/content/studio/page.tsx",
@@ -6422,7 +6427,6 @@
       "workspaces/develop/pipeline/page.tsx",
       "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
-      "workspaces/develop/sources/page.tsx",
       "workspaces/develop/terminals/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/aiProviders.tsx",
@@ -6471,6 +6475,7 @@
       "workspaces/content/insights/page.tsx",
       "workspaces/content/marketing/page.tsx",
       "workspaces/content/page.tsx",
+      "workspaces/content/settings/AdminTab.tsx",
       "workspaces/content/settings/ChannelsTab.tsx",
       "workspaces/content/settings/page.tsx",
       "workspaces/content/studio/page.tsx",
@@ -6488,7 +6493,6 @@
       "workspaces/develop/pipeline/page.tsx",
       "workspaces/develop/pipeline/stageTabs.tsx",
       "workspaces/develop/scheduled/page.tsx",
-      "workspaces/develop/sources/page.tsx",
       "workspaces/develop/terminals/page.tsx",
       "workspaces/settings/page.tsx",
       "workspaces/workspace/aiProviders.tsx",
@@ -7332,14 +7336,14 @@
     {
       "id": "_components/dropdown/dropdownInternals.tsx",
       "kind": "component",
-      "dependents": 46,
+      "dependents": 45,
       "directDependents": 2
     },
     {
       "id": "_components/dropdown/Dropdown.tsx",
       "kind": "component",
-      "dependents": 44,
-      "directDependents": 30
+      "dependents": 43,
+      "directDependents": 29
     },
     {
       "id": "workspaces/_components/settings.tsx",
@@ -8394,6 +8398,30 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_api/egressStatus_v1.tests.ts::<module>",
+      "file": "workspaces/_api/egressStatus_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/egressStatus_v1.tests.ts::run",
+      "file": "workspaces/_api/egressStatus_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "workspaces/_api/egressStatus_v1.ts::<module>",
+      "file": "workspaces/_api/egressStatus_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_api/egressStatus_v1.ts::main",
+      "file": "workspaces/_api/egressStatus_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_api/generateDockerfile_v1.tests.ts::<module>",
       "file": "workspaces/_api/generateDockerfile_v1.tests.ts",
       "name": "<module>",
@@ -9441,12 +9469,6 @@
       "id": "workspaces/_data/seed.ts::modelCfg",
       "file": "workspaces/_data/seed.ts",
       "name": "modelCfg",
-      "kind": "function"
-    },
-    {
-      "id": "workspaces/_data/seed.ts::network",
-      "file": "workspaces/_data/seed.ts",
-      "name": "network",
       "kind": "function"
     },
     {
@@ -12932,16 +12954,8 @@
       "to": "workspaces/_data/seed.ts::modelCfg"
     },
     {
-      "from": "workspaces/_data/seed.ts::cfg",
-      "to": "workspaces/_data/seed.ts::network"
-    },
-    {
       "from": "workspaces/_data/seed.ts::modelCfg",
       "to": "workspaces/_data/seed.ts::escalationRules"
-    },
-    {
-      "from": "workspaces/_data/seed.ts::ticketAssignee",
-      "to": "workspaces/_data/seed.ts::ticketCreator"
     },
     {
       "from": "workspaces/_data/seed.ts::ticketLinkedMembers",
@@ -14103,15 +14117,10 @@
       "workspaces/_data/seed.ts::<module>",
       "workspaces/_data/seed.ts::cfg"
     ],
-    "workspaces/_data/seed.ts::network": [
-      "workspaces/_data/seed.ts::<module>",
-      "workspaces/_data/seed.ts::cfg"
-    ],
     "workspaces/_data/seed.ts::ticketAssignee": [
       "workspaces/_data/seed.ts::ticketLinkedMembers"
     ],
     "workspaces/_data/seed.ts::ticketCreator": [
-      "workspaces/_data/seed.ts::ticketAssignee",
       "workspaces/_data/seed.ts::ticketLinkedMembers"
     ],
     "workspaces/_functions/aiLayers.ts::applicableSkills": [

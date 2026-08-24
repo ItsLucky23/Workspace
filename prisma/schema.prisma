@@ -834,15 +834,6 @@ type StageModelCfg {
   contextBudgetTokens Int?
 }
 
-//? Network egress: allow-list (only these) or block-list (all except these),
-//? built from category presets + explicit hosts. Maps to permissions.sandbox.network.
-type StageNetworkCfg {
-  enabled    Boolean
-  mode       String        // 'whitelist' | 'blacklist'
-  categories String[]
-  domains    String[]
-}
-
 //? A whitelisted command pattern → a `.claude` permission rule (allow/ask/deny).
 type StageCommandCfg {
   id       String
@@ -923,7 +914,6 @@ model PipelineStage {
   gateForApproval    Boolean           @default(false)        // proceed-or-gate: gate for human approval before promoting
 
   // --- child config (embedded) ---
-  skillKeys          String[]                                 // enabled CAPABILITY skill ids (index-discovered)
   //? Which INSTRUCTION skills (Skill.skillType === 'instruction') this stage runs with. Owner
   //? decision 2026-08-20: a skill is no longer switched on globally — the stage that wants it picks
   //? it. Empty = this stage runs no instruction skills.
@@ -935,8 +925,7 @@ model PipelineStage {
   processes          StageProcessCfg[]
   visibleStageIds    String[]
   modelCfg           StageModelCfg
-  network            StageNetworkCfg
-  hooks              Json                                     // Record<hookKey, boolean> — which lifecycle hooks fire
+  hooks              Json                                    // Record<hookKey, boolean> — which lifecycle hooks fire
   avgTokensPerTurn   Int?                                     // doc 05 (D4/D28) — rolling per-stage average feeding the estimate blend
 
   createdAt          DateTime          @default(now())
@@ -1538,7 +1527,6 @@ model InfoSource {
   summary       String?
   note          String?                            // "frozen @ abc123" | "spec"
   content       String?                            // context-doc body (read-only preview)
-  usedByStages  String[]                           // stage ids/names that load this source
   commitHash    String?                            // frozen-per-commit store stamp (B-25)
   // --- skill-specific ---
   kind          String?                            // skill: 'frozen' | 'live'
@@ -1566,6 +1554,7 @@ model RagEntry {
   chunkId     String
   content     String
   embedding   Json?                               // the vector (Atlas $vectorSearch) or Float[] fallback
+  embedTag    String   @default("")               // Fase 5.2 — the embedder that produced this vector ('' = legacy host embedder)
   createdAt   DateTime @default(now())
 
   @@index([workspaceId, commitHash, filePath])
@@ -1990,14 +1979,10 @@ model Skill {
   slug               String                                  // stable key, e.g. 'humanizer' (unique per workspace)
   name               String
   description        String?
-  status             String?
   instruction        String                                  // the prompt block injected at matching apply-points
   examples           String   @default("")                   // optional few-shot examples appended under the instruction
   applyPoints         String[] @default([])                   // apply-point group ids; [] or ['all'] = every AI run
   skillType           String   @default("instruction")         // instruction | capability (legacy workflow tool)
-  usedByStages        String[] @default([])                   // exact stage assignments migrated from InfoSource
-  kind                String?
-  model               String?
   legacyInfoSourceId  String?  @db.ObjectId
   enabled             Boolean  @default(false)                // OFF until the user turns it on (consent-first)
   builtin             Boolean  @default(false)                // seeded default (not deletable, instruction resettable)

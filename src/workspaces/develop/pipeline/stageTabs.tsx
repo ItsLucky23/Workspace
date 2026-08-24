@@ -1,6 +1,6 @@
 //? Pipeline — the per-stage config tabs (extracted from page.tsx for the KISS redesign).
 //? General / Context / Model are the everyone-tabs; Commands, Integrations, Visibility, Process,
-//? Carry-over, Network and Hooks are the admin/owner "Advanced" set the page reveals via its
+//? Carry-over and Hooks are the admin/owner "Advanced" set the page reveals via its
 //? Advanced menu. Every input mutates the page's LOCAL stage copy via `update`; nothing here
 //? persists — "Save stage" on the page is the only persist path (saveStageConfig).
 
@@ -17,17 +17,17 @@ import { Disclosure, IconButton, InfoDot, InfoTip, Segmented, Toggle, WsButton }
 import { INPUT_CLS as inputCls } from '../../_components/settings';
 import { EmptyPicker } from '../../_components/SetupNotice';
 import { resolveAiLayers } from '../../_functions/aiLayers';
-import { COMMAND_CATALOG, HOOK_CATALOG, NETWORK_CATEGORIES } from '../../_data/catalogs';
+import { COMMAND_CATALOG, HOOK_CATALOG } from '../../_data/catalogs';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { StageBlueprint } from './presets';
-import type { CommandMode, NetworkMode, PipelineStageCfg, StageEffort, StageModelChoice, StageModelTier, ToolTier } from '../../_data/types';
+import type { CommandMode, PipelineStageCfg, StageEffort, StageModelChoice, StageModelTier } from '../../_data/types';
 
 //? `bp` is the canonical starting content for this stage (its seeded key, else its kind) as served by
 //? `workspaces/pipelinePresets/v1`. It is what the "use the default" affordance writes into an empty
 //? field — undefined while the read is in flight, or for a kind with no default (a `final` stage).
 export interface TabProps { s: PipelineStageCfg; update: (patch: Partial<PipelineStageCfg>) => void; bp?: StageBlueprint }
 
-const MODE_TINT: Record<CommandMode, string> = { allow: 'bg-correct/15 text-correct', ask: 'bg-warning/15 text-warning', deny: 'bg-wrong/15 text-wrong' };
+const MODE_TINT: Record<CommandMode, string> = { allow: 'bg-correct/15 text-correct', deny: 'bg-wrong/15 text-wrong' };
 
 const areaCls = 'w-full px-3 py-2 rounded-lg border border-container1-border bg-container2/50 text-sm text-title font-mono leading-relaxed focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30';
 
@@ -144,7 +144,7 @@ export function GeneralTab({ s, update, bp }: TabProps) {
 /* ----------------------------------------------------------------- Context & Skills */
 export function ContextTab({ s, update }: TabProps) {
   const translate = useTranslator();
-  const { docs, skills, aiSkills, focusSetup } = useWorkspaces();
+  const { docs, aiSkills } = useWorkspaces();
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       <div>
@@ -211,55 +211,6 @@ export function ContextTab({ s, update }: TabProps) {
         </div>
       </div>
 
-      <div>
-        <FieldLabel title={translate({ key: 'workspaces.pipeline.skillsMcp' })} hint={translate({ key: 'workspaces.pipeline.skillsMcpHint' })} />
-        <div className="flex flex-col gap-1.5">
-          {/* Verified before touching this copy, because the obvious "rewrite" was wrong: a capability
-              skill (`Skill.skillType === 'capability'`) is created in exactly two places in the whole
-              repo — the DEMO seed and a legacy-data migration. `ai-skill-save` only ever writes
-              `'instruction'`, and `scan-index` writes RagEntry rows, not skills. So "nothing in the app
-              creates one, and reindexing will not fill this list" is TRUE and stays.
-              What was missing is the other half: the OTHER thing called Skills — written instruction
-              blocks — has a full create/edit surface in workspace settings, and a user reading the word
-              "skills" here has no way to know that. The name collision is the actual confusion, so both
-              are named. Deliberately NO index-scan button: it would not add a single row. */}
-          {skills.length === 0 && (
-            <EmptyPicker
-              icon="robot"
-              label={(
-                <span className={`flex flex-col gap-1`}>
-                  <span>{translate({ key: 'workspaces.tips.pipeline.noSkills' })}</span>
-                  <span className={`text-xs text-meta`}>
-                    {translate({ key: 'workspaces.tips.pipeline.noSkillsAlt' })}{' '}
-                    <button
-                      type="button" onClick={() => { focusSetup({ view: 'workspace', tab: 'aibehavior' }); }}
-                      className={`text-primary hover:underline cursor-pointer`}
-                    >
-                      {translate({ key: 'workspaces.tips.pipeline.noSkillsAltCta' })}
-                    </button>
-                  </span>
-                </span>
-              )}
-            />
-          )}
-          {skills.map((sk) => {
-            const on = s.skillKeys.includes(sk.id);
-            return (
-              <div key={sk.id} className={`flex items-start gap-3 rounded-xl border px-3 py-2 ${on ? 'border-primary/40 bg-primary/5' : 'border-container1-border'}`}>
-                <Icon name={sk.kind === 'frozen' ? 'database' : 'bolt'} className={`mt-0.5 ${on ? 'text-primary' : 'text-muted'}`} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-title truncate">{sk.name}</span>
-                    <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${sk.kind === 'frozen' ? 'bg-secondary/12 text-secondary' : 'bg-correct/15 text-correct'}`}>{sk.kind}</span>
-                  </div>
-                  <div className="text-xs text-muted line-clamp-2 mt-0.5">{sk.description ?? sk.status}</div>
-                </div>
-                <Toggle on={on} onChange={() => { update({ skillKeys: toggleKey(s.skillKeys, sk.id) }); }} />
-              </div>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 }
@@ -267,7 +218,7 @@ export function ContextTab({ s, update }: TabProps) {
 /* ----------------------------------------------------------------- Commands */
 function ModeSwitch({ value, onChange }: { value: CommandMode | null; onChange: (m: CommandMode | null) => void }) {
   const translate = useTranslator();
-  const opts: [string, CommandMode | null][] = [[translate({ key: 'workspaces.pipeline.modeOff' }), null], [translate({ key: 'workspaces.pipeline.modeAllow' }), 'allow'], [translate({ key: 'workspaces.pipeline.modeAsk' }), 'ask'], [translate({ key: 'workspaces.pipeline.modeDeny' }), 'deny']];
+  const opts: [string, CommandMode | null][] = [[translate({ key: 'workspaces.pipeline.modeOff' }), null], [translate({ key: 'workspaces.pipeline.modeAllow' }), 'allow'], [translate({ key: 'workspaces.pipeline.modeDeny' }), 'deny']];
   return (
     <div className="inline-flex rounded-lg bg-container2 p-0.5 shrink-0">
       {opts.map(([label, val]) => (
@@ -389,9 +340,14 @@ export function CommandsTab({ s, update }: TabProps) {
 export function IntegrationsTab({ s, update }: TabProps) {
   const translate = useTranslator();
   const { integrationTools } = useWorkspaces();
-  const selected = (toolId: string) => s.tools.find((t) => t.toolId === toolId);
-  const toggle = (toolId: string) => { update({ tools: selected(toolId) ? s.tools.filter((t) => t.toolId !== toolId) : [...s.tools, { toolId, tier: 'ro' }] }); };
-  const setTier = (toolId: string, tier: ToolTier) => { update({ tools: s.tools.map((t) => (t.toolId === toolId ? { ...t, tier } : t)) }); };
+  //? A tool is only actually mounted in the container at tier 'rw' (loadMcpIntegrations filters on it);
+  //? read-only can't be enforced on an arbitrary MCP server, so the old Read/Write switch was dishonest
+  //? and is gone. The toggle IS the mount: on = { tier: 'rw' }, off = no row (legacy 'ro' rows read as off).
+  const mounted = (toolId: string) => s.tools.some((t) => t.toolId === toolId && t.tier === 'rw');
+  const toggle = (toolId: string) => {
+    const rest = s.tools.filter((t) => t.toolId !== toolId);
+    update({ tools: mounted(toolId) ? rest : [...rest, { toolId, tier: 'rw' }] });
+  };
   return (
     <div className="flex flex-col gap-4 max-w-2xl">
       <FieldLabel
@@ -408,23 +364,15 @@ export function IntegrationsTab({ s, update }: TabProps) {
       )}
       <div className="flex flex-col gap-1.5">
         {integrationTools.map((tool) => {
-          const sel = selected(tool.id);
+          const on = mounted(tool.id);
           return (
-            <div key={tool.id} className={`flex items-center gap-3 rounded-xl border px-3 py-2 ${sel ? 'border-primary/40 bg-primary/5' : 'border-container1-border'}`}>
-              <Icon name="database" className={sel ? 'text-primary' : 'text-muted'} />
+            <div key={tool.id} className={`flex items-center gap-3 rounded-xl border px-3 py-2 ${on ? 'border-primary/40 bg-primary/5' : 'border-container1-border'}`}>
+              <Icon name="database" className={on ? 'text-primary' : 'text-muted'} />
               <div className="min-w-0 flex-1">
                 <div className="text-sm text-title truncate">{tool.name}</div>
                 <div className="text-xs text-muted truncate">{tool.type}{tool.mcp.enabled ? ' · MCP' : ''}</div>
               </div>
-              {sel && (
-                <div className="inline-flex rounded-lg bg-container2 p-0.5 shrink-0">
-                  {(['Read', 'Write'] as const).map((label) => {
-                    const tier: ToolTier = label === 'Read' ? 'ro' : 'rw';
-                    return <button key={label} type="button" onClick={() => { setTier(tool.id, tier); }} className={`rounded-md px-2.5 h-7 text-xs font-medium cursor-pointer ${sel.tier === tier ? (tier === 'rw' ? 'bg-wrong/15 text-wrong' : 'bg-primary/15 text-primary') : 'text-muted hover:text-common'}`}>{translate({ key: label === 'Read' ? 'workspaces.pipeline.tierRead' : 'workspaces.pipeline.tierWrite' })}</button>;
-                  })}
-                </div>
-              )}
-              <Toggle on={Boolean(sel)} onChange={() => { toggle(tool.id); }} />
+              <Toggle on={on} onChange={() => { toggle(tool.id); }} />
             </div>
           );
         })}
@@ -638,67 +586,6 @@ export function ModelTab({ s, update }: TabProps) {
           className={`w-44 ${inputCls}`}
         />
       </div>
-    </div>
-  );
-}
-
-/* ----------------------------------------------------------------- Network */
-export function NetworkTab({ s, update }: TabProps) {
-  const translate = useTranslator();
-  const n = s.network;
-  const [newDomain, setNewDomain] = useState('');
-  const toggleCat = (key: string) => { update({ network: { ...n, categories: n.categories.includes(key) ? n.categories.filter((c) => c !== key) : [...n.categories, key] } }); };
-  return (
-    <div className="flex flex-col gap-4 max-w-2xl">
-      {/* F-007 — honesty notice, not a hidden tab: nothing server-side reads cfg.network yet (egress is the
-          single host-wide squid allowlist in server/container/egress.ts — WS_EGRESS / WS_EGRESS_ALLOW).
-          A security-looking control that is silently inert is worse than one that says so. Remove this
-          block the day launchTicketContainer honours the per-stage config. */}
-      <div className="flex items-start gap-3 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2.5">
-        <Icon name="triangle-exclamation" className="mt-0.5 shrink-0 text-warning" />
-        <div className="min-w-0">
-          <div className="text-sm font-medium text-title">{translate({ key: 'workspaces.pipeline.networkNotEnforcedTitle' })}</div>
-          <div className="text-xs text-muted mt-0.5">{translate({ key: 'workspaces.pipeline.networkNotEnforcedBody' })}</div>
-        </div>
-      </div>
-      <div className="flex items-center gap-3 rounded-xl border border-container1-border px-3 py-2.5">
-        <div className="flex-1"><div className="text-sm font-medium text-title">{translate({ key: 'workspaces.pipeline.networkEgress' })}</div><div className="text-xs text-muted mt-0.5">{translate({ key: 'workspaces.pipeline.networkEgressDesc' })}</div></div>
-        <Toggle on={n.enabled} onChange={(v) => { update({ network: { ...n, enabled: v } }); }} />
-      </div>
-      <Collapse open={n.enabled}>
-        <div className="flex flex-col gap-4">
-          <div>
-            <FieldLabel title={translate({ key: 'workspaces.pipeline.mode' })} />
-            <Segmented<NetworkMode> value={n.mode} onChange={(v) => { update({ network: { ...n, mode: v } }); }} options={[{ id: 'whitelist', label: translate({ key: 'workspaces.pipeline.modeAllowOnly' }) }, { id: 'blacklist', label: translate({ key: 'workspaces.pipeline.modeBlock' }) }]} />
-            <div className="text-xs text-muted mt-1.5">{n.mode === 'whitelist' ? translate({ key: 'workspaces.pipeline.whitelistDesc' }) : translate({ key: 'workspaces.pipeline.blacklistDesc' })}</div>
-          </div>
-          <div>
-            <FieldLabel title={translate({ key: 'workspaces.pipeline.categories' })} />
-            <div className="flex flex-col gap-1.5">
-              {NETWORK_CATEGORIES.map((c) => (
-                <button key={c.key} type="button" onClick={() => { toggleCat(c.key); }} className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-left cursor-pointer transition-colors ${n.categories.includes(c.key) ? 'border-primary/40 bg-primary/5' : 'border-container1-border hover:bg-container2/40'}`}>
-                  <Icon name={n.categories.includes(c.key) ? 'circle-check' : 'plus'} className={`text-xs shrink-0 ${n.categories.includes(c.key) ? 'text-primary' : 'text-muted'}`} />
-                  <div className="min-w-0 flex-1"><div className="text-sm text-title">{translate({ key: c.labelKey })}</div><div className="text-xs text-muted truncate">{translate({ key: c.descKey })}</div></div>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <FieldLabel title={translate({ key: 'workspaces.pipeline.hostsPrefixes' })} hint={translate({ key: 'workspaces.pipeline.hostsPrefixesHint' })} />
-            <div className="flex flex-wrap items-center gap-2">
-              {n.domains.map((d) => (
-                <span key={d} className="inline-flex items-center gap-1.5 rounded-full bg-container2 px-2.5 py-1 text-xs font-mono text-common">
-                  {d}<button type="button" onClick={() => { update({ network: { ...n, domains: n.domains.filter((x) => x !== d) } }); }} aria-label={translate({ key: 'workspaces.pipeline.removeDomain', params: [{ key: 'name', value: d }] })} className="cursor-pointer hover:text-wrong"><Icon name="xmark" className="text-[10px]" /></button>
-                </span>
-              ))}
-            </div>
-            <div className="flex items-center gap-2 mt-2">
-              <input value={newDomain} onChange={(e) => { setNewDomain(e.target.value); }} placeholder="*.github.com" className={`font-mono ${inputCls}`} />
-              <WsButton variant="secondary" icon="plus" onClick={() => { const d = newDomain.trim(); if (!d) return; update({ network: { ...n, domains: [...new Set([...n.domains, d])] } }); setNewDomain(''); }}>{translate({ key: 'workspaces.pipeline.add' })}</WsButton>
-            </div>
-          </div>
-        </div>
-      </Collapse>
     </div>
   );
 }

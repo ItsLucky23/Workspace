@@ -8,7 +8,7 @@
 //?
 //? Scope note: `stages` carries the board META (id/kind/name/order/aiEnabled/wipLimit)
 //? for the board columns; `stageConfigs` carries the FULL per-stage editor config
-//? (prompting, commands, tools, statuses, processes, model/network/hooks) — both are
+//? (prompting, commands, tools, statuses, processes, model/hooks) — both are
 //? derived from the same `PipelineStage` rows.
 
 import type { PrismaClient, PipelineStage as DbPipelineStage } from '@prisma/client';
@@ -39,8 +39,8 @@ import { listWorkspaceTemplates } from '../documents/templates';
 import { isIntegrationTestStatus } from '../../src/workspaces/_data/types';
 import type {
   ActivityEvent, AiSuggestion, CommandMode, EnvVar, InfoDoc, IntegrationTool, InviteEntry, Member,
-  ModelRule, MyInvite, NetworkMode, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, Role,
-  AiSkillEntry, DocumentEntry, DocumentTemplateEntry, SkillEntry, Sprint, SshKeyEntry, StageCommandCfg, StageEffort, StageEnvVar, StageKind, StageModelTier,
+  ModelRule, MyInvite, NotificationItem, PermRole, PipelineStage, PipelineStageCfg, Role,
+  AiSkillEntry, DocumentEntry, DocumentTemplateEntry, Sprint, SshKeyEntry, StageCommandCfg, StageEffort, StageEnvVar, StageKind, StageModelTier,
   RepoInfo, StageProcessCfg, StageStatusCfg, StageToolCfg, Ticket, TicketNote, ToolTier, Workspace, WorkspaceBudget, WorkspaceReadiness,
   WorkspaceTrigger, TriggerEventKind, TriggerActionKind,
   StudioBrief, StudioArtifact, StudioArtifactKind, StudioBrandLibrary,
@@ -71,13 +71,12 @@ const asTriggerAction = (s: string): TriggerActionKind => ((TRIGGER_ACTIONS as r
 //? branch of the `===` chain TS narrows the string to the compared literals.
 const asRole = (key: string): Role => (key === 'owner' || key === 'admin' ? key : 'member');
 const asKind = (s: string): StageKind => (s === 'refine' || s === 'plan' || s === 'test' || s === 'review' || s === 'final' ? s : 'code');
-const asSugType = (s: string): AiSuggestion['type'] => (s === 'link-tickets' || s === 'create-epic' || s === 'config-review' || s === 'automation' || s === 'copilot' ? s : 'maintenance');
-const asSkillKind = (s: string | null): SkillEntry['kind'] => (s === 'frozen' ? 'frozen' : 'live');
+const asSugType = (s: string): AiSuggestion['type'] => (s === 'link-tickets' || s === 'create-epic' || s === 'config-review' || s === 'automation' ? s : 'maintenance');
 const asNotifType = (s: string): NotificationItem['type'] => (s === 'needs-input' || s === 'merge' || s === 'ai-suggestion' || s === 'assignment' || s === 'publish-failure' ? s : 'container-failure');
-const asCommandMode = (s: string): CommandMode => (s === 'allow' || s === 'deny' ? s : 'ask');
+//? Legacy 'ask' rows map to 'deny': nobody sits at the container PTY to answer a permission prompt.
+const asCommandMode = (s: string): CommandMode => (s === 'allow' ? s : 'deny');
 const asToolTier = (s: string): ToolTier => (s === 'rw' ? s : 'ro');
 const asStatusKind = (s: string): StageStatusCfg['kind'] => (s === 'base' ? s : 'custom');
-const asNetworkMode = (s: string): NetworkMode => (s === 'blacklist' ? s : 'whitelist');
 const asModelTier = (s: string): StageModelTier => (s === 'haiku' || s === 'opus' ? s : 'sonnet');
 const asEffort = (s: string): StageEffort => (s === 'low' || s === 'high' || s === 'xhigh' || s === 'max' ? s : 'medium');
 
@@ -110,7 +109,7 @@ export function toStageConfig(s: DbPipelineStage): PipelineStageCfg {
     id: s.key, kind: asKind(s.kind), name: s.name, order: s.order, aiEnabled: s.aiEnabled,
     customInstructions: s.customInstructions, handoverPrompt: s.handoverPrompt, definitionOfDone: s.definitionOfDone,
     systemPrompt: s.systemPrompt, roleKey: s.roleKey, userEditable: s.userEditable, gateForApproval: s.gateForApproval,
-    skillKeys: s.skillKeys, aiSkillIds: s.aiSkillIds, sourceIds: s.sourceIds,
+    aiSkillIds: s.aiSkillIds, sourceIds: s.sourceIds,
     commands: s.commands.map((c): StageCommandCfg => ({
       id: c.id, pattern: c.pattern, mode: asCommandMode(c.mode), title: c.title ?? undefined, desc: c.desc ?? undefined, category: c.category ?? undefined,
     })),
@@ -128,7 +127,6 @@ export function toStageConfig(s: DbPipelineStage): PipelineStageCfg {
       rules: s.modelCfg.rules.map((r): ModelRule => ({ id: r.id, minScore: r.minScore, model: asModelTier(r.model), effort: asEffort(r.effort), maxTurns: r.maxTurns })),
       contextBudgetTokens: s.modelCfg.contextBudgetTokens ?? undefined,
     },
-    network: { enabled: s.network.enabled, mode: asNetworkMode(s.network.mode), categories: s.network.categories, domains: s.network.domains },
     hooks: asHooks(s.hooks),
     wipLimit: s.wipLimit ?? undefined,
   };
@@ -175,8 +173,8 @@ export interface WorkspaceSnapshot {
   //? ADR 0007 — the CONNECTED AIs, and what can be connected. `hasKey` is presence ONLY; the
   //? credential is encrypted at rest and never leaves the server. No endpoint in either shape: which
   //? host answers is infrastructure, resolved server-side.
-  aiConnections: { id: string; providerId: string; label: string; model: string; kind: 'subscription' | 'api-key'; hasKey: boolean; verifiedAt: string | null; lastError: string | null }[];
-  aiProviderCatalog: { id: string; label: string; kind: 'subscription' | 'api-key'; models: { id: string; label: string }[]; defaultModel: string; keyUrl: string }[];
+  aiConnections: { id: string; providerId: string; label: string; model: string; kind: 'subscription' | 'api-key'; surface: 'text' | 'media' | 'embedding'; hasKey: boolean; verifiedAt: string | null; lastError: string | null }[];
+  aiProviderCatalog: { id: string; label: string; surface: 'text' | 'media' | 'embedding'; kind: 'subscription' | 'api-key'; models: { id: string; label: string }[]; defaultModel: string; keyUrl: string }[];
   //? P4-7 — the built-in feature → backend defaults (assignments.ts), so the routing picker can say WHICH
   //? backend "Default" resolves to instead of the word alone.
   aiFeatureDefaults: Record<string, string>;
@@ -186,7 +184,7 @@ export interface WorkspaceSnapshot {
   customTasks: { id: string; name: string; promptTemplate: string; lastOutput: string | null; lastRunAt: number | null }[];
   //? O5 — reusable output specs (name + render format + watermark position).
   outputTemplates: { id: string; name: string; format: string; watermarkPosition: string }[];
-  //? SK1 — canonical Skill rows: instruction skills surface here; capability skills surface in `skills`.
+  //? SK1 — canonical Skill rows (instruction skills).
   aiSkills: AiSkillEntry[];
   //? DOC1 — the Documents module.
   documents: DocumentEntry[];
@@ -200,7 +198,6 @@ export interface WorkspaceSnapshot {
   //? the empty/loading snapshot can omit it).
   capacity?: { active: number; queued: number; limit: number };
   docs: InfoDoc[];
-  skills: SkillEntry[];
   roles: PermRole[];
   envVars: EnvVar[];
   integrations: IntegrationTool[];
@@ -268,7 +265,7 @@ export interface WorkspaceSnapshot {
 const EMPTY: Omit<WorkspaceSnapshot, 'workspaces' | 'activeWorkspaceId' | 'activeProjectId' | 'myInvites'> = {
   projects: [], services: [], serviceStacks: [], dbConnections: [], migrations: [], environments: [], buildArtifacts: [], templates: listTemplates(),
   members: [], tickets: [], stages: [], stageConfigs: [], aiOverrides: [], aiConnections: [], aiProviderCatalog: [], aiFeatureDefaults: {}, customTasks: [], outputTemplates: [], aiSkills: [], documents: [], documentTemplates: [], sprints: [], suggestions: [], budget: null, budgets: [],
-  docs: [], skills: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [],
+  docs: [], roles: [], envVars: [], integrations: [], invites: [], events: [], notifications: [], notes: [],
   readiness: { repoLinked: false, aiText: false, media: { fal: false, elevenlabs: false, suno: false }, publishing: false, docker: false, push: false, secretManager: false, codingAgent: { claudeCode: false, claudeAuth: false, piAgent: false, codexAuth: false } },
   codingAgent: DEFAULT_CODING_AGENT,
   myPerms: [], myRoleKey: 'member',
@@ -611,17 +608,12 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     //? design-system remain workspace-wide; sibling project docs/capabilities never enter this snapshot.
     const visibleSourceRows = sourceRows.filter((source) => source.source === 'design-system' || source.projectId === null || source.projectId === activeProjectId);
     const docs: InfoDoc[] = visibleSourceRows.filter((source) => source.mode === 'context-doc').map((source) => toInfoDoc(source));
-    const skills: SkillEntry[] = aiSkillRows
-      .filter((skill) => skill.skillType === 'capability' && (skill.projectId === null || skill.projectId === activeProjectId))
-      .map((skill) => ({
-        id: skill.id, name: skill.name, kind: asSkillKind(skill.kind), status: skill.status ?? '', model: skill.model ?? undefined, on: skill.enabled, description: skill.description ?? undefined, usedByStages: skill.usedByStages,
-      }));
 
     //? ADR 0007 — the connected AIs (rows, never keys) plus the catalog the add-form renders from.
     //? Deliberately no endpoint in either: which host answers is infrastructure, not a user setting.
     const aiConnections = await listConnections(activeWorkspaceId);
     const aiProviderCatalog = AI_PROVIDER_LIST.map((meta) => ({
-      id: meta.id, label: meta.label, kind: meta.kind, models: meta.models,
+      id: meta.id, label: meta.label, surface: meta.surface, kind: meta.kind, models: meta.models,
       defaultModel: meta.defaultModel, keyUrl: meta.keyUrl,
     }));
     const aiFeatureDefaults: Record<string, string> = defaultAssignments();
@@ -643,9 +635,11 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       repoLinked: repo.linked,
       publishingConnected: publishTargets.some((t) => t.connected),
       providerKeys,
-      //? Text readiness mirrors the dispatch source: a keyed api-key connection (claude-cli's subscription row
-      //? has no key — the host probe inside buildReadiness covers it).
-      hasTextConnection: aiConnections.some((c) => c.kind === 'api-key' && c.hasKey),
+      //? Text readiness mirrors the dispatch source: a keyed api-key TEXT connection (claude-cli's subscription
+      //? row has no key — the host probe inside buildReadiness covers it). Fase 5.2 — a fal/embedding key must
+      //? not light the text dot, hence the surface filter; media readiness reads keyedConnectionIds instead.
+      hasTextConnection: aiConnections.some((c) => c.surface === 'text' && c.kind === 'api-key' && c.hasKey),
+      keyedConnectionIds: new Set(aiConnections.filter((c) => c.hasKey).map((c) => c.providerId)),
     });
     //? The caller's RESOLVED capabilities in this workspace — the raw role key (not `asRole`-flattened, so a
     //? custom role resolves to its own perms) mapped to its `WorkspaceRole.perms`. Mirrors the server's
@@ -702,7 +696,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
         ...(b.deployHookStatus === null ? {} : { deployHookStatus: b.deployHookStatus }),
       })),
       templates: listTemplates(),
-      members, budget, budgets, capacity, docs, skills, aiConnections, aiProviderCatalog, aiFeatureDefaults,
+      members, budget, budgets, capacity, docs, aiConnections, aiProviderCatalog, aiFeatureDefaults,
       //? `locked` must mirror what the Conductor will actually accept. It only marked `owner`, while
       //? `role-update` rejects EVERY built-in role (`if (existingRole.builtIn) return { ok: false,
       //? error: 'role.builtInImmutable' }`) — so the Admin and Member cells rendered clickable, with
@@ -713,7 +707,10 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       //? P1 — per-workspace AI provider overrides (from the __ai_provider_<feature> EnvVars).
       //? P4-1/P4-2 — includes the `_default` pseudo-feature row; a `providerId:model` value is split so the
       //? client sees the provider + optional model as separate fields (never the raw stored string).
-      aiOverrides: envRows.filter((e) => e.key.startsWith(AI_OVERRIDE_PREFIX)).map((e) => ({ feature: e.key.slice(AI_OVERRIDE_PREFIX.length), ...(parseAiOverride(e.value) ?? { providerId: e.value }) })),
+      aiOverrides: envRows.filter((e) => e.key.startsWith(AI_OVERRIDE_PREFIX)).map((e) => {
+        const feature = e.key.slice(AI_OVERRIDE_PREFIX.length);
+        return { feature, ...(parseAiOverride(e.value, feature === 'embedding' ? 'embedding' : 'text') ?? { providerId: e.value }) };
+      }),
       //? ADR 0322 — the coding agent (seat + harness + tier map), normalised so the client never sees a
       //? partial or Codex/claude-code combination.
       codingAgent: parseStoredCodingAgent(envRows.find((e) => e.key === CODING_AGENT_KEY)?.value ?? null),
@@ -721,7 +718,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
       customTasks: customTaskRows.map((t) => ({ id: t.id, name: t.name, promptTemplate: t.promptTemplate, lastOutput: t.lastOutput, lastRunAt: t.lastRunAt ? t.lastRunAt.getTime() : null })),
       //? O5 — reusable output specs.
       outputTemplates: outputTemplateRows.map((t) => ({ id: t.id, name: t.name, format: t.format, watermarkPosition: t.watermarkPosition })),
-      //? SK1 — instruction skills only; workflow capabilities use the sibling `skills` projection.
+      //? SK1 — instruction skills (the only Skill semantic since the capability layer was removed).
       aiSkills: aiSkillRows.filter((s) => s.skillType === 'instruction').map((s) => ({ id: s.id, slug: s.slug, name: s.name, instruction: s.instruction, examples: s.examples, applyPoints: s.applyPoints, builtin: s.builtin })),
       //? DOC1 — the Documents module (assets JSON → typed list; unknown shapes dropped).
       documentTemplates,

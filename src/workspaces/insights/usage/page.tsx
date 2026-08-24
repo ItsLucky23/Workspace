@@ -14,7 +14,6 @@ import { useTranslator } from '@luckystack/core/client';
 
 import { menuHandler } from 'src/_functions/menuHandler';
 
-import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../../_components/Icon';
 import { AvatarBubble, Disclosure, EmptyState, IconButton, InfoTip, SectionCard, Tabs, WsButton } from '../../_components/primitives';
@@ -320,7 +319,7 @@ export default function Usage() {
             </Disclosure>
 
             {/* AI/token €-budget (D81 + #103 multi-cap): summary visible while collapsed; the full
-                editor (label/cap/alert, Save, Add cap, per-cap enforcement + enable, Resume) inside. */}
+                editor (label/cap/alert, Save, Add cap, per-cap enable, Resume) inside. */}
             <div ref={budgetsRef}>
               <Disclosure key={String(budgetsSeed)} defaultOpen={budgetsSeed > 0} summary={
                 <span className={`flex items-center gap-2 flex-wrap`}>
@@ -366,13 +365,12 @@ export default function Usage() {
                     </div>
                   </div>
                 )}
-                {/* #103 — the multi-cap list: every configured cap with its enforcement + an enable/disable toggle. */}
+                {/* #103 — the multi-cap list: every configured cap with an enable/disable toggle.
+                    The old per-cap enforcement dropdown (pauseNew/pauseAll) is gone: both values sat
+                    in the same server-side `in` filter, so the choice changed nothing — a full cap
+                    always gates provisionContainers only (pipeline stage runs + manual re-runs). */}
                 {budgets.length > 0 && (
                   <div className={`flex flex-col gap-1.5 mb-3`}>
-                    {/* Both enforcement values sit in the SAME `in` filter server-side, so the choice
-                        between them changes nothing today — say so on the list, not per row. The single
-                        gate is provisionContainers, i.e. pipeline stage runs + manual re-runs; metered
-                        one-shot AI calls and media generation (own MediaBudget) run on past a full cap. */}
                     <div className={`text-xs font-semibold text-muted uppercase tracking-wide flex items-center gap-1.5`}>
                       {translate({ key: 'workspaces.usage.budgetCaps' })}
                       <InfoTip
@@ -384,12 +382,10 @@ export default function Usage() {
                     </div>
                     {budgets.map((b) => {
                       const capLabel = `€${b.spent.toFixed(0)} / €${b.cap.toFixed(0)}`;
-                      const enfItems: DropdownItem[] = [{ id: 'pauseNew', value: translate({ key: 'workspaces.usage.enfPauseNew' }) }, { id: 'pauseAll', value: translate({ key: 'workspaces.usage.enfPauseAll' }) }];
                       return (
                         <div key={b.id} className={`flex items-center gap-2 flex-wrap rounded-lg border border-container1-border bg-container1 px-3 py-2 ${b.enabled === false ? 'opacity-50' : ''}`}>
                           <span className={`text-sm font-medium text-title flex-1 min-w-0 truncate`}>{b.label ?? '—'}</span>
                           <span className={`font-mono tabular-nums text-xs text-muted`}>{capLabel}</span>
-                          <Dropdown size="sm" value={enfItems.find((i) => i.id === (b.enforcement ?? 'pauseNew'))} items={enfItems} onChange={(it) => { editBudget({ budgetId: b.id, enforcement: it.id === 'pauseAll' ? 'pauseAll' : 'pauseNew' }); }} />
                           <button type="button" onClick={() => { editBudget({ budgetId: b.id, enabled: b.enabled === false }); }} className={`h-8 rounded-lg border border-container1-border bg-container1 px-2.5 text-xs text-common hover:bg-container2 cursor-pointer`}>{translate({ key: b.enabled === false ? 'workspaces.usage.budgetEnable' : 'workspaces.usage.budgetDisable' })}</button>
                           {/* ADR 0310 — retire vs remove are different intents: disable keeps the cap in
                               the list (and its history legible), delete is for caps you never want to see

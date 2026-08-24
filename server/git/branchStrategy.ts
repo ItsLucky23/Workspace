@@ -24,7 +24,6 @@ export const DEFAULT_GIT_CONFIG: GitConfig = {
   pushPolicy: 'local-only',
   targetBranch: 'main',
   protectedBranches: ['main', 'master'],
-  commitSigning: false,
 };
 
 //? A stored git config may be partial (older workspace, or a UI that only sets some fields).
@@ -43,7 +42,6 @@ export function normalizeGitConfig(raw: unknown): GitConfig {
     pushPolicy: policy,
     targetBranch: typeof r.targetBranch === 'string' && r.targetBranch ? r.targetBranch : DEFAULT_GIT_CONFIG.targetBranch,
     protectedBranches: Array.isArray(r.protectedBranches) ? r.protectedBranches.filter((b): b is string => typeof b === 'string') : [...DEFAULT_GIT_CONFIG.protectedBranches],
-    commitSigning: r.commitSigning === true,
   };
 }
 

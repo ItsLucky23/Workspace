@@ -1,6 +1,6 @@
 {
-  "hash": "1a40e5508c14306d",
-  "chunkCount": 259,
+  "hash": "f06f0a0371f4d531",
+  "chunkCount": 261,
   "chunks": [
     {
       "id": "cap-001",
@@ -1555,6 +1555,18 @@
       "kind": "decision",
       "title": "Seat login is a purpose-bound host PTY over the terminal relay, not a control-op",
       "text": "ADR 0324: Seat login is a purpose-bound host PTY over the terminal relay, not a control-op. The coding seats (ADR 0322: Claude Code on a Claude subscription, pi on a Codex/ChatGPT subscription) authenticate through interactive OAuth flows in their CLIs. Until now that meant SSH-ing into the host, exporting the right config-dir env and running the CLI by hand (docs/HOSTING.md §Claude auth) — exactly the \"extra server step\" the owner ruled out for the install story on 2026-08-24: *\"het project moet gewoon installen en runnen zijn … géén extra stap dat iemand ook nog op de server moet inloggen; liever een web-UI met een beetje hulp via de terminal.\"* The terminal relay (`server/hooks/workspacesTerminal.ts`) already streams PTYs to the browser, but its header states a hard invariant: NO host-shell mode, for anyone. The design sketch (`src/workspaces/_docs/SEAT_LOGIN_WEB_UI.md` §5) assumed the flow would be a control-op with an effectMatrix row. Decision: A **seat-login PTY**: the `ws-term:start` payload may carry `seat: 'claude' | 'codex'` instead of a workspace/ticket container target. The server then: - authorizes via `authorizeSeatLogin` — **host-superadmin only** (`User.admin` or `WS_SUPERADMIN_EMAILS`, ADR 0287), because the flow writes the HOST CLI's OAuth store that every workspace's pipeline borrows; - spawns a **fixed, server-side argv** (`seatLoginCommand`): `claude /login`, or the pi TUI pinned to `--provider openai-codex` (pi 0.84.2 has no `auth login` subcommand — `p"
+    },
+    {
+      "id": "adr-0325",
+      "kind": "decision",
+      "title": "One provider catalog for text, media and embedding, with a per-workspace embedder",
+      "text": "ADR 0325: One provider catalog for text, media and embedding, with a per-workspace embedder. AI providers were configured on ~5 unrelated levels: the text catalog (`AI_PROVIDER_CATALOG` + AiConnection rows), the media keys (`__provider_key_<fal|elevenlabs|suno>` EnvVars behind a content-settings KeysCard), the per-feature media overrides, the RAG embedder (host-global `GEMINI_API_KEY` with a silent local fallback), and assorted host env fallbacks. The owner's ask (2026-08-23): *\"embedder per workspace vast stellen en alle providers op 1 niveau vast stellen en niet op 5 plekken.\"* The scatter also produced the F-001 class of defect — a key that \"saves\" into a store nothing reads. Decision: - **One catalog.** `AI_PROVIDER_CATALOG` carries every backend with a `surface: 'text' | 'media' | 'embedding'` discriminator. Media (`fal`, `elevenlabs`, `suno`) and embedding (`gemini-embedding`, `local-embedding`) entries use marker transports (`media-adapter`, `embedding`) that the text dispatch filters out everywhere (registry, candidates, readiness, model listing, override parsing via `parseAiOverride(value, surface)`). - **One key store.** AiConnection holds text + media + embedding keys. `save-media-provider`'s key shape writes an AiConnection; `loadWorkspaceMediaConfig` reads connections first, legacy EnvVars as fallback; boot runs the idempotent `migrateLegacyMediaKeys` (legacy rows left in place — deleting secrets is not a migration's call). Content-settings' KeysCard is replaced "
+    },
+    {
+      "id": "adr-0326",
+      "kind": "decision",
+      "title": "Non-functional UI is removed, not kept as a promise",
+      "text": "ADR 0326: Non-functional UI is removed, not kept as a promise. A 2026-08-23 audit found UI that promised behavior nothing implemented: the per-stage Network (egress) panel, the capability-skills layer (Sources › Skills, stage skill pickers, used-by-stages chips), the command-mode 'Ask' tier, the integrations Read/Write tier switch (read-only was simply not mounted), a budget model-dropdown, commit-signing toggle, ticket viewers, a coming-soon search banner, and four dead control-ops (content-reorder-beats, gitlab-verify, raise-cap, copilot-propose). The owner ruled: *\"alle UI die niet functioneel is en die … niet nuttig zou zijn als die functioneel is eruit halen\"* — and for egress explicitly \"alleen weghalen\" (keep only a read-only host-posture panel). Decision: Delete non-functional UI rather than keeping it as an aspirational control. A control that renders but does nothing teaches users the app lies; honesty beats surface area. Concretely: the frozen op surface shrank by the four dead ops; CommandMode is `'allow' | 'deny'` (legacy 'ask' rows read back as deny — nobody sits at the container PTY to answer); a mounted tool IS full access (the toggle is the mount; legacy 'ro' rows read as off); egress posture is a read-only host panel fed by the `egressStatus` API. Non-functional-but-useful candidates (maxTurns wiring, pauseAll enforcement, prompt-experiments, …) are REPORTED to the owner for a conscious build/delete decision, not silently rebuilt."
     }
   ]
 }

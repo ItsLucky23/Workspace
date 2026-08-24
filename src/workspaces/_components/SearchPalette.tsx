@@ -183,10 +183,6 @@ export default function SearchPalette({ open, onClose }: { open: boolean; onClos
                   </>
                 )}
               </div>
-
-              <div className="flex items-center gap-2 px-4 h-9 border-t border-divider text-xs text-muted">
-                <Icon name="wand-magic-sparkles" className="text-primary" /> {translate({ key: 'workspaces.search.comingSoon' })}
-              </div>
             </motion.div>
           </div>
         </>

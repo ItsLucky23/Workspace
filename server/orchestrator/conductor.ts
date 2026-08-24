@@ -23,9 +23,12 @@ import { sendInviteEmail } from '../email/sendInviteEmail';
 import { createBlankWorkspace } from '../bootstrap/seedWorkspace';
 import { ensureWorkspaceBuiltins, scheduleWorkspaceBuiltinIndexing } from '../bootstrap/workspaceBuiltins';
 import { addConnection, recordTest, removeConnection } from '../ai/connections';
-import { AI_OVERRIDE_PREFIX, formatAiOverride, isAiProviderId, parseAiOverride } from '../ai/workspaceAssignments';
+import { AI_EMBEDDING_FEATURE, AI_OVERRIDE_PREFIX, formatAiOverride, isAiProviderId, parseAiOverride } from '../ai/workspaceAssignments';
+import { providerSurface } from '../ai/providers/catalog';
 import { CODING_AGENT_KEY, CODING_HARNESSES, CODING_SUBSCRIPTIONS, formatCodingAgent, normalizeCodingAgent } from './codingAgents/config';
 import { aiProviderById } from '../ai/registry';
+import { mediaProviderById } from '../media/registry';
+import { pingEmbedding } from '../rag/embed';
 import { isPipelinePreset, createDefaultPipeline, stageBlueprint, baseStageStatuses, stagesForPreset, stageCreateData, blueprintForStage, fallbackStageKey, defaultStageKeys, isStageKind } from '../bootstrap/defaultPipeline';
 import { cloneWorkspace } from '../bootstrap/cloneWorkspace';
 import { publishArtifactSite, unpublishArtifactSite, publicBaseUrl } from '../deploy/staticSite';
@@ -207,12 +210,12 @@ function readMcp(v: unknown): { enabled: boolean; command: string } {
   return { enabled: o.enabled === true, command: str(o, 'command') ?? '' };
 }
 //? Coerce the client's stage-config `commands`/`tools`/`statuses`/`processes`/
-//? `modelCfg`/`network`/`hooks` payload into the Prisma composite shapes
+//? `modelCfg`/`hooks` payload into the Prisma composite shapes
 //? (mirrors PipelineStageCfg, src/workspaces/_data/types.ts).
 function readCommandCfg(raw: unknown): { id: string; pattern: string; mode: string; title?: string; desc?: string; category?: string } {
   const f = asRec(raw);
   const out: { id: string; pattern: string; mode: string; title?: string; desc?: string; category?: string } = {
-    id: str(f, 'id') ?? '', pattern: str(f, 'pattern') ?? '', mode: str(f, 'mode') ?? 'ask',
+    id: str(f, 'id') ?? '', pattern: str(f, 'pattern') ?? '', mode: str(f, 'mode') ?? 'deny',
   };
   const title = str(f, 'title'); if (title !== undefined) out.title = title;
   const desc = str(f, 'desc'); if (desc !== undefined) out.desc = desc;
@@ -266,10 +269,6 @@ function readModelCfg(v: unknown): { autoEscalate: boolean; base: ReturnType<typ
   const contextBudgetTokens = num(f, 'contextBudgetTokens');
   if (contextBudgetTokens !== undefined) out.contextBudgetTokens = contextBudgetTokens;
   return out;
-}
-function readNetworkCfg(v: unknown): { enabled: boolean; mode: string; categories: string[]; domains: string[] } {
-  const f = asRec(v);
-  return { enabled: bool(f, 'enabled'), mode: str(f, 'mode') ?? 'blacklist', categories: strArr(f, 'categories'), domains: strArr(f, 'domains') };
 }
 function readHooks(v: unknown): Record<string, boolean> {
   const f = asRec(v);
@@ -2131,10 +2130,6 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       await prisma.workspace.update({ where: { id: action.workspaceId }, data: { ...(gitlabUrl ? { gitlabUrl } : {}), ...(token ? { gitlabTokenEnc: encryptSecret(token) } : {}), ...(forgeType ? { forgeType } : {}) } });
       return;
     }
-    case 'gitlab-verify': {
-      //? Read-only connectivity check (Fase 2 engine wires a real verify). No-op write.
-      return;
-    }
     case 'gitlab-resync': {
       //? RBAC + external fetch happened in projectAdmin before dispatch. The public
       //? Conductor case accepts only that bounded snapshot and applies it deterministically.
@@ -2201,7 +2196,7 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       await prisma.workspace.update({ where: { id: action.workspaceId }, data: { gitConfig: {
         branchStrategy: cfg.branchStrategy, defaultBranchType: cfg.defaultBranchType,
         branchTemplate: cfg.branchTemplate, pushPolicy: cfg.pushPolicy, targetBranch: cfg.targetBranch,
-        protectedBranches: cfg.protectedBranches, commitSigning: cfg.commitSigning,
+        protectedBranches: cfg.protectedBranches,
       } } });
       return cfg;
     }
@@ -2457,7 +2452,7 @@ async function executeAction(action: WriterAction): Promise<unknown> {
         const existing = await prisma.infoSource.findFirst({ where: { workspaceId: action.workspaceId, mode: 'context-doc', name: doc.path } });
         await (existing
           ? prisma.infoSource.update({ where: { id: existing.id }, data: { content: doc.content, summary, note: 'scanned' } })
-          : prisma.infoSource.create({ data: { workspaceId: action.workspaceId, mode: 'context-doc', source: 'git', name: doc.path, content: doc.content, summary, note: 'scanned', enabled: false, usedByStages: [] } }));
+          : prisma.infoSource.create({ data: { workspaceId: action.workspaceId, mode: 'context-doc', source: 'git', name: doc.path, content: doc.content, summary, note: 'scanned', enabled: false } }));
       }
       //? Return the workspace's full context-doc set as the delta (client replaces list).
       return prisma.infoSource.findMany({ where: { workspaceId: action.workspaceId, mode: 'context-doc' }, orderBy: { name: 'asc' } });
@@ -2472,7 +2467,7 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const existing = await prisma.infoSource.findFirst({ where: { workspaceId: action.workspaceId, mode: 'context-doc', name } });
       await (existing
         ? prisma.infoSource.update({ where: { id: existing.id }, data: { content, summary, source: 'uploaded', note: 'uploaded' } })
-        : prisma.infoSource.create({ data: { workspaceId: action.workspaceId, mode: 'context-doc', source: 'uploaded', name, content, summary, note: 'uploaded', enabled: false, usedByStages: [] } }));
+        : prisma.infoSource.create({ data: { workspaceId: action.workspaceId, mode: 'context-doc', source: 'uploaded', name, content, summary, note: 'uploaded', enabled: false } }));
       return prisma.infoSource.findMany({ where: { workspaceId: action.workspaceId, mode: 'context-doc' }, orderBy: { name: 'asc' } });
     }
     case 'info-source-archive': {
@@ -2573,7 +2568,6 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       await resolveThread(prisma, action.workspaceId, threadId, bool(payload, 'resolved'));
       return mrForTicket(prisma, action.workspaceId, ticketKey);
     }
-    case 'raise-cap':
     case 'edit-budget': {
       const cap = num(payload, 'cap') ?? num(payload, 'newCap');
       const alertPct = num(payload, 'alertPct');
@@ -2700,18 +2694,19 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       }
       return;
     }
-    //? Save per-workspace media settings (U3): an ENCRYPTED provider API key and/or a per-feature
-    //? provider override, both in the EnvVar store (secretBox). Keys are namespaced so they never clash
-    //? with the user's app env vars. The providers CONSUME these at dispatch time —
-    //? server/media/registry.ts:80-88 reads __provider_key_ / __media_provider_ (env as fallback).
+    //? Save per-workspace media settings (U3): a provider API key (Fase 5.2 — stored as an
+    //? AiConnection, the one key store) and/or per-feature overrides/prefs in the EnvVar store.
+    //? The providers CONSUME these at dispatch time — server/media/registry.ts reads the workspace
+    //? media config (connection keys first, legacy __provider_key_* EnvVars as fallback).
     case 'save-media-provider': {
       const providerId = str(payload, 'providerId');
       const apiKey = str(payload, 'apiKey');
       const feature = str(payload, 'feature');
       if (providerId && apiKey) {
-        const key = `__provider_key_${providerId}`;
-        const value = encryptSecret(apiKey);
-        await prisma.envVar.upsert({ where: { workspaceId_key: { workspaceId: action.workspaceId, key } }, create: { workspaceId: action.workspaceId, key, value, secret: true }, update: { value } });
+        //? Fase 5.2 — the media key lands in the ONE key store (AiConnection), no longer in a
+        //? `__provider_key_*` EnvVar. The op shape is frozen; only its write target moved.
+        const res = await addConnection({ workspaceId: action.workspaceId, providerId, model: '', apiKey });
+        if (!res.ok) return { ok: false, error: res.error ?? 'ai.invalidConnection' };
       }
       if (feature && providerId) {
         const key = `__media_provider_${feature}`;
@@ -2756,10 +2751,20 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const connectionId = str(payload, 'connectionId') ?? '';
       const row = await prisma.aiConnection.findFirst({ where: { workspaceId: action.workspaceId, id: connectionId } });
       if (!row) return { ok: false, error: 'ai.connectionNotFound' };
-      const provider = aiProviderById(row.providerId);
-      if (!provider?.ping) return { ok: false, error: 'ai.testUnsupported' };
-      const apiKey = row.apiKey === null ? '' : (decryptSecret(row.apiKey) ?? '');
-      const result = await provider.ping({ apiKey: apiKey.trim(), model: row.model });
+      const apiKey = (row.apiKey === null ? '' : (decryptSecret(row.apiKey) ?? '')).trim();
+      //? Fase 5.2 — one Test button, three planes: text probes through its transport, media through the
+      //? adapter's `ping`, embedding through one real (1-text) embed call.
+      const surface = providerSurface(row.providerId);
+      const result = await (async (): Promise<{ ok: boolean; error?: string }> => {
+        if (surface === 'media') {
+          const media = mediaProviderById(row.providerId);
+          return media ? media.ping(apiKey.length > 0 ? apiKey : undefined) : { ok: false, error: 'ai.testUnsupported' };
+        }
+        if (surface === 'embedding') return pingEmbedding(row.providerId, apiKey, row.model);
+        const provider = aiProviderById(row.providerId);
+        if (!provider?.ping) return { ok: false, error: 'ai.testUnsupported' };
+        return provider.ping({ apiKey, model: row.model });
+      })();
       await recordTest(action.workspaceId, connectionId, result.ok, result.error ?? null);
       return { ok: result.ok, ...(result.error === undefined ? {} : { error: result.error }) };
     }
@@ -2796,6 +2801,11 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       //? F-017 — reject an unknown id instead of storing it: a stored-but-ignored override is exactly the
       //? "looks saved, silently falls back" failure this op used to produce.
       if (providerId && providerId !== 'default' && !isAiProviderId(providerId)) return { ok: false, error: 'ai.unknownProvider' };
+      //? Fase 5.2 — the surface must match the feature: the pseudo-feature 'embedding' routes an
+      //? embedding provider; every other feature routes a text one. Storing a fal/elevenlabs id under a
+      //? text feature (or vice versa) would be exactly the silently-ignored override F-017 removed.
+      const expectedSurface = feature === AI_EMBEDDING_FEATURE ? 'embedding' : 'text';
+      if (providerId && providerId !== 'default' && providerSurface(providerId) !== expectedSurface) return { ok: false, error: 'ai.wrongSurface' };
       const rawModel = str(payload, 'model');
       const model = rawModel?.trim() ?? '';
       if (rawModel !== undefined && model.length === 0) return { ok: false, error: 'ai.modelRequired' };
@@ -2805,7 +2815,10 @@ async function executeAction(action: WriterAction): Promise<unknown> {
         ? prisma.envVar.deleteMany({ where: { workspaceId: action.workspaceId, key } })
         : prisma.envVar.upsert({ where: { workspaceId_key: { workspaceId: action.workspaceId, key } }, create: { workspaceId: action.workspaceId, key, value, secret: false }, update: { value } }));
       const rows = await prisma.envVar.findMany({ where: { workspaceId: action.workspaceId, key: { startsWith: AI_OVERRIDE_PREFIX } }, select: { key: true, value: true } });
-      return rows.map((r) => ({ feature: r.key.slice(AI_OVERRIDE_PREFIX.length), ...(parseAiOverride(r.value) ?? { providerId: r.value }) }));
+      return rows.map((r) => {
+        const rowFeature = r.key.slice(AI_OVERRIDE_PREFIX.length);
+        return { feature: rowFeature, ...(parseAiOverride(r.value, rowFeature === AI_EMBEDDING_FEATURE ? 'embedding' : 'text') ?? { providerId: r.value }) };
+      });
     }
     //? Edit a channel's brand voice (U4) — update the field + re-index the brand snippet into brand-RAG
     //? (F5.1) so every generation for the channel can ground on it. The Conductor is the only writer (B-23).
@@ -2916,24 +2929,6 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const asset = await prisma.contentAsset.create({ data: { workspaceId: action.workspaceId, contentProjectId, kind: 'video', url: newUrl, status: 'ready', metadata: jsonInput({ transcodedFrom: assetId, container: targetFmt }) } });
       await broadcastContentAssetDelta(prisma, action.workspaceId, contentProjectId, asset.id);
       return { url: newUrl };
-    }
-    case 'content-reorder-beats': {
-      //? E3 — the video timeline: persist a new beat order + per-beat duration (trim). The render reads beats
-      //? `orderBy: order`, so this drives the ffmpeg plan (sequence + each clip's on-screen time).
-      const contentProjectId = str(payload, 'contentProjectId');
-      const beats = Array.isArray(payload.beats) ? payload.beats : [];
-      if (!contentProjectId || beats.length === 0) return;
-      for (const raw of beats) {
-        const b = asRec(raw);
-        const beatId = str(b, 'beatId');
-        if (!beatId) continue;
-        const order = typeof b.order === 'number' ? b.order : undefined;
-        const durationMs = typeof b.durationMs === 'number' ? Math.max(500, Math.min(30_000, Math.round(b.durationMs))) : undefined;
-        if (order === undefined && durationMs === undefined) continue;
-        await prisma.beat.updateMany({ where: { workspaceId: action.workspaceId, id: beatId, contentProjectId }, data: { ...(order === undefined ? {} : { order }), ...(durationMs === undefined ? {} : { durationMs }) } });
-      }
-      broadcastContentDirty(action.workspaceId);
-      return;
     }
     case 'content-decompose-video': {
       //? V3 — long-video decomposition: split the piece's script beats into generated, continuity-linked video
@@ -3642,21 +3637,6 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const body = scheduledAt ? `Schedule this content for ${platform} at ${scheduledAt}?` : `Ready to publish this content to ${platform}? This is public and hard to undo.`;
       return prisma.workspaceSuggestion.create({ data: { workspaceId: action.workspaceId, type: 'publish', title, body, patch: { contentProjectId, assetId, platform, ...(effectiveAccountId ? { accountId: effectiveAccountId } : {}), ...(scheduledAt ? { scheduledAt } : {}) } } });
     }
-    //? AI-drives-UI copilot (F4.3, ADR 0070) — the Assistant PROPOSES a UI directive (navigate + pre-fill a
-    //? form + the op the user would run) as a suggestion. It never writes authoritative state (B-23): the
-    //? client applies the navigate/pre-fill guidance, and the user confirms the underlying control-op.
-    case 'copilot-propose': {
-      const navigate = str(payload, 'navigate');
-      const op = str(payload, 'op');
-      return prisma.workspaceSuggestion.create({
-        data: {
-          workspaceId: action.workspaceId, type: 'copilot',
-          title: str(payload, 'title') ?? 'Copilot suggestion',
-          body: str(payload, 'note') ?? 'The assistant suggests an action — review and confirm.',
-          patch: jsonInput({ navigate: navigate ?? null, prefill: asRec(payload.prefill), op: op ?? null }),
-        },
-      });
-    }
     //? Conversational quick-start (F3.3, ADR 0067) — the Assistant spins up a content project + a first
     //? piece from a chat brief in one op (on the user's accept).
     case 'content-from-brief': {
@@ -3709,12 +3689,11 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       return;
     }
     case 'skill-toggle': {
+      //? The frozen op name predates the removal of the capability-skill layer; what it toggles
+      //? today is a Sources context document's enabled flag (the "AI editable" switch).
       const sourceId = str(target, 'sourceId') ?? str(payload, 'skillId') ?? str(payload, 'stageCfgId');
       if (!sourceId) return;
-      const skill = await prisma.skill.updateMany({ where: { workspaceId: action.workspaceId, id: sourceId, skillType: 'capability' }, data: { enabled: bool(payload, 'on') } });
-      //? The frozen op also toggles context documents on the Sources page. Capabilities moved to Skill;
-      //? context docs intentionally remain InfoSource, so fall back only when no canonical skill matched.
-      if (skill.count === 0) await prisma.infoSource.updateMany({ where: { workspaceId: action.workspaceId, id: sourceId, mode: 'context-doc' }, data: { enabled: bool(payload, 'on') } });
+      await prisma.infoSource.updateMany({ where: { workspaceId: action.workspaceId, id: sourceId, mode: 'context-doc' }, data: { enabled: bool(payload, 'on') } });
       return;
     }
     //? SK1 (DOCUMENTS_AND_SKILLS) — prompt-instruction skills share the canonical Skill store with
@@ -3998,7 +3977,6 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const roleKey = str(payload, 'roleKey'); if (roleKey !== undefined) data.roleKey = roleKey;
       if ('userEditable' in payload) data.userEditable = bool(payload, 'userEditable');
       if ('gateForApproval' in payload) data.gateForApproval = bool(payload, 'gateForApproval');
-      if (Array.isArray(payload.skillKeys)) data.skillKeys = { set: strArr(payload, 'skillKeys') };
       //? Owner decision 2026-08-20 — the INSTRUCTION skills this stage runs with, picked per stage
       //? rather than switched on globally.
       if (Array.isArray(payload.aiSkillIds)) data.aiSkillIds = { set: strArr(payload, 'aiSkillIds') };
@@ -4009,7 +3987,6 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       if (Array.isArray(payload.statuses)) data.statuses = { set: readStatuses(payload.statuses) };
       if (Array.isArray(payload.processes)) data.processes = { set: readProcesses(payload.processes) };
       if (payload.modelCfg !== undefined) data.modelCfg = { set: readModelCfg(payload.modelCfg) };
-      if (payload.network !== undefined) data.network = { set: readNetworkCfg(payload.network) };
       if (payload.hooks !== undefined) data.hooks = readHooks(payload.hooks);
       const wipLimit = num(payload, 'wipLimit'); if (wipLimit !== undefined) data.wipLimit = wipLimit;
       if (Object.keys(data).length > 0) await prisma.pipelineStage.updateMany({ where: { workspaceId: action.workspaceId, projectId, key: stageId }, data });
@@ -4041,9 +4018,8 @@ async function executeAction(action: WriterAction): Promise<unknown> {
         //? your own words". The old `'{{summary}}'` fallback existed because an empty TEMPLATE meant the
         //? next stage received nothing at all — the incoming handover is composed automatically now.
         handoverPrompt: bp.handoverPrompt, definitionOfDone: bp.definitionOfDone,
-        skillKeys: [], aiSkillIds: [], sourceIds: ['summary'], commands: [], tools: [], statuses: baseStageStatuses(), processes: [], visibleStageIds: [],
+        aiSkillIds: [], sourceIds: ['summary'], commands: [], tools: [], statuses: baseStageStatuses(), processes: [], visibleStageIds: [],
         modelCfg: { autoEscalate: false, base: { model: bp.model, effort: bp.effort, maxTurns: bp.maxTurns }, rules: [] },
-        network: { enabled: true, mode: 'whitelist', categories: ['package-registries', 'source-hosts', 'ai-apis'], domains: [] },
         hooks: {},
       } });
     }
@@ -4307,7 +4283,7 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       //? Seed the template's starter convention docs as context-doc InfoSources (visible in Sources,
       //? injectable into the coding agent — the 'starter' source pattern).
       for (const doc of template.starterDocs) {
-        await prisma.infoSource.create({ data: { workspaceId: action.workspaceId, projectId: created.id, mode: 'context-doc', source: 'starter', name: doc.name, content: doc.content, summary: `Starter (${template.label})`, note: 'template', enabled: true, usedByStages: [] } });
+        await prisma.infoSource.create({ data: { workspaceId: action.workspaceId, projectId: created.id, mode: 'context-doc', source: 'starter', name: doc.name, content: doc.content, summary: `Starter (${template.label})`, note: 'template', enabled: true } });
       }
       //? Same per-project tier choice as `project-create` (owner decision 2026-08-18).
       const templPreset = str(payload, 'preset') ?? '';
@@ -4323,7 +4299,7 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       //? the real starting UI from the brief (single writer, B-23). No-op without a linked repo (nothing to build).
       const brief = (str(payload, 'brief') ?? '').trim();
       if (brief.length > 0 && !gitErr && status?.linked) {
-        await prisma.infoSource.create({ data: { workspaceId: action.workspaceId, projectId: created.id, mode: 'context-doc', source: 'starter', name: 'APP_BRIEF.md', content: `# App brief\n\n${brief}`, summary: 'App brief', note: 'brief', enabled: true, usedByStages: [] } });
+        await prisma.infoSource.create({ data: { workspaceId: action.workspaceId, projectId: created.id, mode: 'context-doc', source: 'starter', name: 'APP_BRIEF.md', content: `# App brief\n\n${brief}`, summary: 'App brief', note: 'brief', enabled: true } });
         const last = await prisma.ticket.findFirst({ where: { workspaceId: action.workspaceId }, orderBy: { number: 'desc' }, select: { number: true } });
         const number = (last?.number ?? 0) + 1;
         const ticket = await prisma.ticket.create({ data: { workspaceId: action.workspaceId, projectId: created.id, key: `DEV-${String(number)}`, number, title: 'Build the initial UI from the brief', description: brief, stageId: 'unrefined', status: 'idle', labels: ['scaffold'], creatorId: userId, priority: 'high' } });

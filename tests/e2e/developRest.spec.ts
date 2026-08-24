@@ -106,7 +106,7 @@ test.describe('terminals / answers / sources / scheduled — teaching empty stat
     await expect(page.getByRole('button', { name: 'View the board' })).toBeVisible();
   });
 
-  test('sources renders (starter docs seeded, skills tab teaches its empty state)', async ({ authedPage }) => {
+  test('sources renders (starter docs seeded, single docs list)', async ({ authedPage }) => {
     const page = authedPage;
     await createWorkspace(page, `E2E PW Sources ${String(Date.now())}`);
     await expect(page.getByText('Welcome to Workspaces')).toBeHidden();
@@ -115,16 +115,12 @@ test.describe('terminals / answers / sources / scheduled — teaching empty stat
     await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
 
     // Actual default: a fresh Agency workspace ships with starter context docs (conventions +
-    // design system), so the Docs tab is NOT the empty state — verify what it really renders.
+    // design system), so the list is NOT the empty state — verify what it really renders.
+    // The old Capabilities/MCP tab is gone with the capability-skill layer (ADR 0326): the page
+    // is a single docs list now, no tabs.
     await expect(page.getByRole('button', { name: 'Upload spec' })).toBeVisible();
     await expect(page.getByText('Conventional commits')).toBeVisible();
-
-    // Skills / MCP starts genuinely empty — that tab IS the teaching empty state. The copy now names
-    // the real dead end rather than just the absence: nothing in the app can create a skill yet, so a
-    // reindex will not fill this list either (ADR 0312's empty-picker pass).
-    //? Renamed in the fix-round: the tab is "Capabilities / MCP" (the other "Skills" are the instruction blocks).
-    await page.getByRole('tab', { name: /Capabilities \/ MCP/ }).click();
-    await expect(page.getByText(/No skills or MCP tools/)).toBeVisible();
+    await expect(page.getByRole('tab')).toHaveCount(0);
   });
 
   test('scheduled renders its empty tasks teaching state', async ({ authedPage }) => {

@@ -66,11 +66,11 @@ export async function cloneWorkspace(
           key: st.key, kind: st.kind, name: st.name, order: st.order, aiEnabled: st.aiEnabled,
           wipLimit: st.wipLimit, roleKey: st.roleKey, systemPrompt: st.systemPrompt,
           customInstructions: st.customInstructions, handoverPrompt: st.handoverPrompt, definitionOfDone: st.definitionOfDone,
-          skillKeys: st.skillKeys, sourceIds: st.sourceIds, visibleStageIds: st.visibleStageIds,
+          sourceIds: st.sourceIds, visibleStageIds: st.visibleStageIds,
           //? These are typed COMPOSITE columns (not free-form Json), so the read-back values are already
           //? the right shape — copying them verbatim is what keeps a cloned stage byte-identical.
           commands: st.commands, tools: st.tools, statuses: st.statuses,
-          processes: st.processes, modelCfg: st.modelCfg, network: st.network,
+          processes: st.processes, modelCfg: st.modelCfg,
           //? `hooks` IS a free-form Json column — round-trip it so a null degrades to an empty object.
           hooks: jsonInput(st.hooks ?? {}),
         },

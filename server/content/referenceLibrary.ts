@@ -6,7 +6,7 @@
 
 import type { PrismaClient } from '@prisma/client';
 
-import { embedTexts } from '../rag/embed';
+import { embedTextsTagged } from '../rag/embed';
 import { retrieve, type RetrievedChunk } from '../rag/index';
 import { tryCatch } from '@luckystack/core';
 
@@ -27,9 +27,9 @@ export async function addReference(prisma: PrismaClient, workspaceId: string, in
     data: { workspaceId, kind: input.kind, title: input.title, description: input.description, ...(input.assetUrl ? { assetUrl: input.assetUrl } : {}), tags },
   });
   const text = referenceText(input.kind, input.title, input.description, tags);
-  const [err, vectors] = await tryCatch(() => embedTexts([text]));
-  if (!err && Array.isArray(vectors)) {
-    await prisma.ragEntry.create({ data: { workspaceId, commitHash: REFERENCE_COMMIT, filePath: ref.id, chunkId: '0', content: text, embedding: vectors[0] ?? [] } });
+  const [err, embedded] = await tryCatch(() => embedTextsTagged([text], { workspaceId, feature: 'rag-index' }));
+  if (!err && embedded) {
+    await prisma.ragEntry.create({ data: { workspaceId, commitHash: REFERENCE_COMMIT, filePath: ref.id, chunkId: '0', content: text, embedding: embedded.vectors[0] ?? [], embedTag: embedded.tag } });
   }
   return ref.id;
 }

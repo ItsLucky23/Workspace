@@ -201,10 +201,13 @@ import { serveFavicon, serveFile } from './prod/serveFile';
   //? F-001 — one-time migration of the dead `__provider_key_gemini` store into an AiConnection (the only
   //? store the text dispatch reads). Idempotent; best-effort — never blocks boot.
   void (async () => {
-    const { migrateLegacyGeminiKeys } = await import('./ai/connections');
+    const { migrateLegacyGeminiKeys, migrateLegacyMediaKeys } = await import('./ai/connections');
     const created = await migrateLegacyGeminiKeys();
     if (created > 0) console.log(`[ai-connections] migrated ${String(created)} legacy Gemini key(s) into gemini-api connections`);
-  })().catch((e: unknown) => { console.error('[ai-connections] legacy Gemini key migration error:', e); });
+    //? Fase 5.2 — same treatment for the media key store (`__provider_key_<fal|elevenlabs|suno>`).
+    const media = await migrateLegacyMediaKeys();
+    if (media > 0) console.log(`[ai-connections] migrated ${String(media)} legacy media key(s) into connections`);
+  })().catch((e: unknown) => { console.error('[ai-connections] legacy key migration error:', e); });
   //? (scheduled-publish, metrics-ingest, automation-cron, demo-watch now run via the @luckystack/cron overlay
   //? — see `luckystack/cron/jobs.ts`, ADR 0022.)
   //? Q2: index the product self-knowledge corpus (global, idempotent on the corpus hash) once at boot,

@@ -68,6 +68,7 @@ Every typed API route in this project. Sourced from `_ProjectApiTypeMap` in `src
 | `workspaces/designerInspiration/v1` | POST | 10 | — | ✓ |
 | `workspaces/designerLibrary/v1` | POST | 40 | — | ✓ |
 | `workspaces/devLaunchEditor/v1` | POST | 6 | — | ✓ |
+| `workspaces/egressStatus/v1` | POST | 12 | — | ✓ |
 | `workspaces/generateDockerfile/v1` | POST | 6 | — | ✓ |
 | `workspaces/generateDocs/v1` | POST | 6 | — | ✓ |
 | `workspaces/getDockerfile/v1` | POST | 30 | — | ✓ |

@@ -702,7 +702,7 @@ const [runError] = await tryCatch(async () => {
     data: {
       gitConfig: {
         branchStrategy: 'ticket-prefix', defaultBranchType: 'feature', branchTemplate: '{{key}}',
-        pushPolicy: 'merge-request', targetBranch: 'main', protectedBranches: ['main'], commitSigning: false,
+        pushPolicy: 'merge-request', targetBranch: 'main', protectedBranches: ['main'],
       },
     },
   });

@@ -15,7 +15,7 @@ import path from 'node:path';
 import { getPrismaClient, tryCatch } from '@luckystack/core';
 import type { PrismaClient } from '@prisma/client';
 
-import { embedTexts, embedTag } from './embed';
+import { embedTextsTagged, embedTag } from './embed';
 import { retrieve, type RetrievedChunk } from './index';
 
 //? Bind the corpus hash to the EMBEDDER identity so an embedder switch (dim change) forces a re-embed rather
@@ -75,11 +75,12 @@ export async function indexContentPlaybook(prisma: PrismaClient): Promise<Playbo
   const corpus = await loadPlaybook();
   if (!corpus) return { ok: false, entries: 0, error: 'playbook.corpusMissing' };
   const texts = [...corpus.chunks.map((c) => c.text), corpus.hash];
-  const [embErr, vectors] = await tryCatch(() => embedTexts(texts, { workspaceId: PLAYBOOK_WS, feature: 'rag-playbook' }));
-  if (embErr || !Array.isArray(vectors)) return { ok: false, entries: 0, error: 'playbook.embedFailed' };
+  const [embErr, embedded] = await tryCatch(() => embedTextsTagged(texts, { workspaceId: PLAYBOOK_WS, feature: 'rag-playbook' }));
+  if (embErr || !embedded) return { ok: false, entries: 0, error: 'playbook.embedFailed' };
+  const { vectors, tag } = embedded;
   await prisma.ragEntry.deleteMany({ where: { workspaceId: PLAYBOOK_WS, commitHash: PLAYBOOK_COMMIT } });
-  const rows = corpus.chunks.map((c, i) => ({ workspaceId: PLAYBOOK_WS, commitHash: PLAYBOOK_COMMIT, filePath: c.id, chunkId: '0', content: c.text, embedding: vectors[i] ?? [] }));
-  rows.push({ workspaceId: PLAYBOOK_WS, commitHash: PLAYBOOK_COMMIT, filePath: META_PATH, chunkId: '0', content: markerValue(corpus.hash), embedding: vectors[corpus.chunks.length] ?? [] });
+  const rows = corpus.chunks.map((c, i) => ({ workspaceId: PLAYBOOK_WS, commitHash: PLAYBOOK_COMMIT, filePath: c.id, chunkId: '0', content: c.text, embedding: vectors[i] ?? [], embedTag: tag }));
+  rows.push({ workspaceId: PLAYBOOK_WS, commitHash: PLAYBOOK_COMMIT, filePath: META_PATH, chunkId: '0', content: markerValue(corpus.hash), embedding: vectors[corpus.chunks.length] ?? [], embedTag: tag });
   await prisma.ragEntry.createMany({ data: rows });
   return { ok: true, entries: corpus.chunks.length, hash: corpus.hash };
 }

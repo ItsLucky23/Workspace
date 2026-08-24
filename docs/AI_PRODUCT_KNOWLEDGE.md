@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `1a40e5508c14306d` · 17 capabilities · 242 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `f06f0a0371f4d531` · 17 capabilities · 244 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -268,3 +268,5 @@
 - `adr-0322` Coding-agent seats are Claude and Codex; pi is the Codex harness (forced), optional for Claude (warned)
 - `adr-0323` Prompt composition order is one spec the server maps over, not a mirror the UI maintains
 - `adr-0324` Seat login is a purpose-bound host PTY over the terminal relay, not a control-op
+- `adr-0325` One provider catalog for text, media and embedding, with a per-workspace embedder
+- `adr-0326` Non-functional UI is removed, not kept as a promise

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (242)
+## Decisions (244)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -255,6 +255,8 @@
 | 0322 | Coding-agent seats are Claude and Codex; pi is the Codex harness (forced), optional for Claude (warned) | 🟢 accepted | ai-providers, pipeline, billing, invariant-6, pi-agent, codex | — | `docs/decisions/0322-coding-agent-seats-claude-and-codex-with-pi-as-the-codex-harness.md` |
 | 0323 | Prompt composition order is one spec the server maps over, not a mirror the UI maintains | 🟢 accepted | ai, prompt, ux, correctness, orchestrator, testing | — | `docs/decisions/0323-prompt-composition-order-is-one-spec-the-server-maps-over.md` |
 | 0324 | Seat login is a purpose-bound host PTY over the terminal relay, not a control-op | 🟢 accepted | security, coding-agent, terminal, hosting, ux | — | `docs/decisions/0324-seat-login-is-a-purpose-bound-host-pty-not-a-control-op.md` |
+| 0325 | One provider catalog for text, media and embedding, with a per-workspace embedder | 🟢 accepted | ai, providers, rag, settings, migration | — | `docs/decisions/0325-one-provider-catalog-for-text-media-and-embedding-with-a-per-workspace-embedder.md` |
+| 0326 | Non-functional UI is removed, not kept as a promise | 🟢 accepted | ux, honesty, pipeline, cleanup | — | `docs/decisions/0326-non-functional-ui-is-removed-not-kept-as-promise.md` |
 
 ## Summaries
 
@@ -2226,6 +2228,24 @@ A **seat-login PTY**: the `ws-term:start` payload may carry `seat: 'claude' | 'c
 
 → `docs/decisions/0324-seat-login-is-a-purpose-bound-host-pty-not-a-control-op.md`
 
+### 0325 — One provider catalog for text, media and embedding, with a per-workspace embedder
+
+**0325** · accepted · tags: ai, providers, rag, settings, migration · 2026-08-24
+
+**One catalog.** `AI_PROVIDER_CATALOG` carries every backend with a `surface: 'text' | 'media' | 'embedding'` discriminator. Media (`fal`, `elevenlabs`, `suno`) and embedding (`gemini-embedding`, `local-embedding`) entries use marker transports (`media-adapter`, `embedding`) that the text dispatch filters out everywhere (registry, candidates, readiness, model listing, override parsing via `parseAiOverride(value, surface)`). **One key store.** AiConnection holds text + media + embedding keys. `save-media-provider`'s key shape writes an AiConnection; `loadWorkspaceMediaConfig` reads connections first, legacy EnvVars as fallback; boot runs the idempotent `migrateLegacyMediaKeys` (legacy rows left in place — deleting secrets is not a migration's call). Content-settings' KeysCard is replaced by a pointer card deep-linking to Workspace → AI → Backends. `ai-connection-test` dispatches per surface (text ping / media adapter ping / a real 1-text embed probe). **Per-workspace embedder.** EnvVar `__ai_provider_embedding` (via the existing save-ai-provider op, surface-validated) picks `gemini-embedding[:model]` or `local-embedding`. Every RagEntry is stamped with the ACTUAL producing embedder (`embedTag`, '' = legacy host rows); `retrieve()` only compares rows whose tag matches the current embedder, so a switch honestly yields "re-index needed" instead of garbage cosine scores across incompatible vector spaces. No stored choice ⇒ exact legacy host behavior.
+
+**Governs** (`//? @adr 0325`): `server/ai/connections.ts`, `server/ai/providers/catalog.ts`, `server/rag/embed.ts`
+
+→ `docs/decisions/0325-one-provider-catalog-for-text-media-and-embedding-with-a-per-workspace-embedder.md`
+
+### 0326 — Non-functional UI is removed, not kept as a promise
+
+**0326** · accepted · tags: ux, honesty, pipeline, cleanup · 2026-08-24
+
+Delete non-functional UI rather than keeping it as an aspirational control. A control that renders but does nothing teaches users the app lies; honesty beats surface area. Concretely: the frozen op surface shrank by the four dead ops; CommandMode is `'allow' | 'deny'` (legacy 'ask' rows read back as deny — nobody sits at the container PTY to answer); a mounted tool IS full access (the toggle is the mount; legacy 'ro' rows read as off); egress posture is a read-only host panel fed by the `egressStatus` API. Non-functional-but-useful candidates (maxTurns wiring, pauseAll enforcement, prompt-experiments, …) are REPORTED to the owner for a conscious build/delete decision, not silently rebuilt.
+
+→ `docs/decisions/0326-non-functional-ui-is-removed-not-kept-as-promise.md`
+
 ## Code governed by decisions
 
 > Reverse links from a `//? @adr NNNN` tag in source back to the ADR that explains it.
@@ -2234,9 +2254,11 @@ A **seat-login PTY**: the `ws-term:start` payload may carry `seat: 'claude' | 'c
 | File | ADR | Decision |
 | --- | --- | --- |
 | `scripts/prismaWithSecrets.ts` | 0017 | RAG codebase intelligence — pluggable embeddings + a cosine-scan retrieval injected into the agent context |
+| `server/ai/connections.ts` | 0325 | One provider catalog for text, media and embedding, with a per-workspace embedder |
 | `server/ai/providerConfig.ts` | 0007 | Pluggable AI-provider layer — features resolve a backend at dispatch, never hardcode one |
 | `server/ai/providers/anthropicApi.ts` | 0007 | Pluggable AI-provider layer — features resolve a backend at dispatch, never hardcode one |
 | `server/ai/providers/catalog.ts` | 0007 | Pluggable AI-provider layer — features resolve a backend at dispatch, never hardcode one |
+| `server/ai/providers/catalog.ts` | 0325 | One provider catalog for text, media and embedding, with a per-workspace embedder |
 | `server/ai/providers/openaiCompatible.ts` | 0007 | Pluggable AI-provider layer — features resolve a backend at dispatch, never hardcode one |
 | `server/ai/providers/piCli.ts` | 0322 | Coding-agent seats are Claude and Codex; pi is the Codex harness (forced), optional for Claude (warned) |
 | `server/ai/skills.ts` | 0270 | universeel skill model met apply points |
@@ -2252,6 +2274,7 @@ A **seat-login PTY**: the `ws-term:start` payload may carry `seat: 'claude' | 'c
 | `server/orchestrator/codingAgents/index.ts` | 0322 | Coding-agent seats are Claude and Codex; pi is the Codex harness (forced), optional for Claude (warned) |
 | `server/orchestrator/codingAgents/piAgent.ts` | 0322 | Coding-agent seats are Claude and Codex; pi is the Codex harness (forced), optional for Claude (warned) |
 | `server/orchestrator/codingAgents/types.ts` | 0322 | Coding-agent seats are Claude and Codex; pi is the Codex harness (forced), optional for Claude (warned) |
+| `server/rag/embed.ts` | 0325 | One provider catalog for text, media and embedding, with a per-workspace embedder |
 | `server/voice/voice.ts` | 0275 | voice interface provider abstracted stt plus tts |
 | `src/workspaces/_components/EffectivePromptPreview.tsx` | 0311 | AI prompt layers are two channels, not one stack |
 | `src/workspaces/_components/SetupChecklist.tsx` | 0314 | Onboarding is a standing checklist, not a tour |

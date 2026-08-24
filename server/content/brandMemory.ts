@@ -4,7 +4,7 @@
 //? the institutional-memory pattern, ADR 0045). Best-effort. Tenant-scoped by explicit `workspaceId`.
 
 import type { PrismaClient } from '@prisma/client';
-import { embedTexts } from '../rag/embed';
+import { embedTextsTagged } from '../rag/embed';
 import { retrieve, type RetrievedChunk } from '../rag/index';
 
 //? A reserved per-channel "commit" scoping the brand rows (distinct from any real code commit).
@@ -17,9 +17,9 @@ export async function indexChannelBrand(prisma: PrismaClient, workspaceId: strin
   const commit = brandCommit(channelId);
   const rows = snippets.map((s, i) => ({ filePath: `brand/${channelId}/${String(i)}`, content: s.trim() })).filter((r) => r.content.length > 0);
   if (rows.length === 0) { await prisma.ragEntry.deleteMany({ where: { workspaceId, commitHash: commit } }); return { ok: true, entries: 0 }; }
-  const vectors = await embedTexts(rows.map((r) => r.content));
+  const { vectors, tag } = await embedTextsTagged(rows.map((r) => r.content), { workspaceId, feature: 'rag-index' });
   await prisma.ragEntry.deleteMany({ where: { workspaceId, commitHash: commit } });
-  await prisma.ragEntry.createMany({ data: rows.map((r, i) => ({ workspaceId, commitHash: commit, filePath: r.filePath, chunkId: '0', content: r.content, embedding: vectors[i] ?? [] })) });
+  await prisma.ragEntry.createMany({ data: rows.map((r, i) => ({ workspaceId, commitHash: commit, filePath: r.filePath, chunkId: '0', content: r.content, embedding: vectors[i] ?? [], embedTag: tag })) });
   return { ok: true, entries: rows.length };
 }
 

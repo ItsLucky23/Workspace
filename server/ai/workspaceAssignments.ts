@@ -16,12 +16,18 @@
 
 import { getPrismaClient, tryCatch } from '@luckystack/core';
 
-import { isKnownAiProviderId } from './providers/catalog';
+import { isKnownAiProviderId, providerSurface } from './providers/catalog';
+import type { AiSurface } from './providers/catalog';
 import type { AiFeature, AiProviderId, AiRoute } from './types';
 
 export const AI_OVERRIDE_PREFIX = '__ai_provider_';
 /** The pseudo-feature whose override is the workspace-wide default backend (P4-1). */
 export const AI_DEFAULT_FEATURE = '_default';
+//? Fase 5.2 — the pseudo-feature whose override is the workspace's RAG EMBEDDER
+//? (`__ai_provider_embedding` = 'gemini-embedding[:model]' | 'local-embedding'). Same store, same op,
+//? same validation path as every other per-feature choice — but it routes an 'embedding'-surface
+//? provider, so the TEXT-overrides loader below skips it (server/rag/embed.ts reads it itself).
+export const AI_EMBEDDING_FEATURE = 'embedding';
 //? F-017 — derived from the provider CATALOG (ADR 0007), not a hardcoded pair. The settings picker offers every
 //? connected backend, and the stored override echoed back as applied — but a stale ['claude-cli','gemini-api']
 //? set here silently dropped openai-api/anthropic-api/openrouter/… at dispatch, so the choice looked saved and
@@ -29,12 +35,13 @@ export const AI_DEFAULT_FEATURE = '_default';
 //? either: this is a type-guard alias over the catalog's own `isKnownAiProviderId`.
 export const isAiProviderId = (v: string): v is AiProviderId => isKnownAiProviderId(v);
 
-/** Parse a stored `providerId[:model]` override. `null` when the provider part is not a catalog id. */
-export function parseAiOverride(value: string): AiRoute | null {
+/** Parse a stored `providerId[:model]` override. `null` when the provider part is not a catalog id
+ *  of the expected surface — a media/embedding id must never become a text route (Fase 5.2). */
+export function parseAiOverride(value: string, surface: AiSurface = 'text'): AiRoute | null {
   const colon = value.indexOf(':');
   const providerId = colon === -1 ? value : value.slice(0, colon);
   const model = colon === -1 ? '' : value.slice(colon + 1).trim();
-  if (!isAiProviderId(providerId)) return null;
+  if (!isAiProviderId(providerId) || providerSurface(providerId) !== surface) return null;
   return model.length > 0 ? { providerId, model } : { providerId };
 }
 
@@ -56,6 +63,7 @@ export async function loadWorkspaceAiOverrides(workspaceId?: string): Promise<Wo
   const out: WorkspaceAiOverrides = { features: {} };
   for (const row of rows) {
     const feature = row.key.slice(AI_OVERRIDE_PREFIX.length);
+    if (feature === AI_EMBEDDING_FEATURE) continue; //? embedder choice — not a text route (embed.ts reads it)
     const route = parseAiOverride(row.value);
     if (route === null) continue;
     if (feature === AI_DEFAULT_FEATURE) out.defaultRoute = route;

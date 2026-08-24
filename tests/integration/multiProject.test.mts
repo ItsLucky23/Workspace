@@ -98,9 +98,9 @@ try {
   await prisma.pipelineStage.updateMany({ where: { workspaceId: wsId, projectId: projectBId, key: 'review' }, data: { order: 6 } });
   await prisma.pipelineStage.updateMany({ where: { workspaceId: wsId, projectId: projectBId, key: 'final' }, data: { order: 7 } });
   await prisma.ticket.update({ where: { id: ticketB?.id ?? '' }, data: { stageId: 'impl', branch: ticketB?.key ?? 'DEV-B' } });
-  await prisma.infoSource.create({ data: { workspaceId: wsId, projectId: projectAId, mode: 'context-doc', source: 'starter', name: 'APP_BRIEF.md', content: 'APP_BRIEF_PROJECT_A', enabled: true, usedByStages: [] } });
-  await prisma.infoSource.create({ data: { workspaceId: wsId, projectId: projectBId, mode: 'context-doc', source: 'starter', name: 'APP_BRIEF.md', content: 'APP_BRIEF_PROJECT_B', enabled: true, usedByStages: [] } });
-  await prisma.infoSource.create({ data: { workspaceId: wsId, mode: 'context-doc', source: 'design-system', name: 'Design system', content: 'WORKSPACE_DESIGN_SYSTEM', enabled: true, usedByStages: [] } });
+  await prisma.infoSource.create({ data: { workspaceId: wsId, projectId: projectAId, mode: 'context-doc', source: 'starter', name: 'APP_BRIEF.md', content: 'APP_BRIEF_PROJECT_A', enabled: true } });
+  await prisma.infoSource.create({ data: { workspaceId: wsId, projectId: projectBId, mode: 'context-doc', source: 'starter', name: 'APP_BRIEF.md', content: 'APP_BRIEF_PROJECT_B', enabled: true } });
+  await prisma.infoSource.create({ data: { workspaceId: wsId, mode: 'context-doc', source: 'design-system', name: 'Design system', content: 'WORKSPACE_DESIGN_SYSTEM', enabled: true } });
   const contentA = await prisma.contentProject.create({ data: { workspaceId: wsId, projectId: projectAId, title: 'A Content' } });
   const contentB = await prisma.contentProject.create({ data: { workspaceId: wsId, projectId: projectBId, title: 'B Content' } });
 

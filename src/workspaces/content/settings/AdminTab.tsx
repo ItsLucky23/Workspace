@@ -1,7 +1,7 @@
-//? content/settings — Tab 3 "Admin" (role-gated, fail-open): provider keys FIRST (the admin's main job),
-//? the media €-budget second, then the rare knobs behind disclosures — per-feature model overrides (P3),
-//? platform app credentials (A7) and copy-from-another-workspace (R2). Keys are write-only: stored
-//? encrypted, never echoed back.
+//? content/settings — Tab 3 "Admin" (role-gated, fail-open): a pointer to the unified key store FIRST
+//? (keys moved to Workspace → AI → Backends, Fase 5.2), the media €-budget second, then the rare knobs
+//? behind disclosures — per-feature model overrides (P3), platform app credentials (A7) and
+//? copy-from-another-workspace (R2). Credentials stay write-only: stored encrypted, never echoed back.
 
 import { useState } from 'react';
 
@@ -11,60 +11,25 @@ import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
 
 import Icon from '../../_components/Icon';
 import { Disclosure, SectionCard, Toggle, WsButton } from '../../_components/primitives';
+import { SetupNotice } from '../../_components/SetupNotice';
 import { FormSection, SavePill, SettingRow, useAutosave } from '../../_components/settings';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { SavedNote } from './SavedNote';
 import { fieldCls, PUBLISH_PLATFORMS } from './shared';
 
-//? Q5 — media providers (image/video/3d + voice/sfx + music) only. The AI TEXT backend (Gemini, Claude,
-//? …) is NOT a key row here: its single owner is Workspace → AI → Backends (AiConnection, ADR 0007).
-//? A Gemini row used to live here too, writing `__provider_key_gemini` — a store the text dispatch never
-//? read, so the key "saved" while generation kept failing (F-001/F-004).
-const MEDIA_PROVIDERS: { id: string; nameKey: string; descKey: string }[] = [
-  { id: 'fal', nameKey: 'workspaces.content.providerFal', descKey: 'workspaces.content.providerFalDesc' },
-  { id: 'elevenlabs', nameKey: 'workspaces.content.providerEleven', descKey: 'workspaces.content.providerElevenDesc' },
-  { id: 'suno', nameKey: 'workspaces.content.providerSuno', descKey: 'workspaces.content.providerSunoDesc' },
-];
-
-//? One write-only key row via the shared SettingRow grammar (was its own bespoke label/desc/input
-//? stack — the audit found three different row shapes in this one tab, this is one of them). The
-//? input clears after save and the row's SavePill confirms it, same as every other setting row.
-function KeyRow({ name, desc, onSave }: { name: string; desc: string; onSave: (key: string) => void }) {
+//? Fase 5.2 — the media KEY rows moved to Workspace → AI → Backends: every backend (text, media,
+//? embedding) is one AiConnection there, one store, one Test button. This card is the pointer, so
+//? nobody hunts here for the fal/ElevenLabs/Suno key that used to live on this tab.
+function KeysMovedCard() {
   const translate = useTranslator();
-  const [value, setValue] = useState('');
-  const [saved, setSaved] = useState(false);
   return (
-    <SettingRow
-      label={name}
-      help={desc}
-      status={saved ? 'saved' : 'idle'}
-      stacked
-      control={(
-        <div className={`flex items-center gap-2`}>
-          <input
-            type="password" value={value} onChange={(e) => { setValue(e.target.value); setSaved(false); }}
-            placeholder={translate({ key: 'workspaces.content.keyPlaceholder' })}
-            className={`flex-1 min-w-0 ${fieldCls}`}
-          />
-          <WsButton className={`min-h-11 shrink-0`} disabled={value.trim().length === 0} onClick={() => { onSave(value.trim()); setValue(''); setSaved(true); }}>{translate({ key: 'workspaces.content.saveKey' })}</WsButton>
-        </div>
-      )}
+    <SetupNotice
+      variant="card"
+      icon="lock"
+      title={translate({ key: 'workspaces.content.keysMovedTitle' })}
+      body={translate({ key: 'workspaces.content.keysMovedBody' })}
+      fix={{ cap: 'workspaceSettings', view: 'workspace', tab: 'aibehavior', section: 'backends', cta: translate({ key: 'workspaces.content.keysMovedCta' }) }}
     />
-  );
-}
-
-//? Provider keys — stored ENCRYPTED, never shown back. Media providers only; the text backend lives on
-//? Workspace → AI → Backends (see the note on MEDIA_PROVIDERS). Saves via the dual-shape
-//? saveMediaProvider ({providerId, apiKey} for keys; {feature, model} is the model-override shape below).
-function KeysCard() {
-  const translate = useTranslator();
-  const { saveMediaProvider } = useWorkspaces();
-  return (
-    <FormSection title={translate({ key: 'workspaces.content.keysTitle' })} desc={translate({ key: 'workspaces.content.keysTeach' })}>
-      {MEDIA_PROVIDERS.map((p) => (
-        <KeyRow key={p.id} name={translate({ key: p.nameKey })} desc={translate({ key: p.descKey })} onSave={(key) => { saveMediaProvider({ providerId: p.id, apiKey: key }); }} />
-      ))}
-    </FormSection>
   );
 }
 
@@ -244,7 +209,7 @@ export function AdminTab() {
   const translate = useTranslator();
   return (
     <div className={`flex flex-col gap-4`}>
-      <KeysCard />
+      <KeysMovedCard />
       <BudgetCard />
       <GenerationDefaultsCard />
       <Disclosure summary={translate({ key: 'workspaces.content.modelsTitle' })}>

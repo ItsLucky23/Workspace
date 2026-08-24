@@ -50,11 +50,13 @@ const catalog = ['claude-cli', 'gemini-api', 'openai-api', 'groq-api'];
   eq(out[0]?.model, undefined, 'the first occurrence wins (feature override had no model)');
 }
 {
-  //? Every feature resolves to the FULL catalog — a feature can never be left with nothing to try.
-  const all = AI_PROVIDER_LIST.map((m) => m.id);
+  //? Every feature resolves to the full TEXT catalog — a feature can never be left with nothing to
+  //? try. Fase 5.2: media/embedding entries share the catalog but are NEVER text-dispatch candidates.
+  const all = AI_PROVIDER_LIST.filter((m) => m.surface === 'text').map((m) => m.id);
   for (const feature of Object.keys(defaultAssignments()) as (keyof ReturnType<typeof defaultAssignments>)[]) {
     const out = aiRouteCandidates({ feature });
-    eq(new Set(ids(out)).size, all.length, `${feature}: every catalog backend is a candidate exactly once`);
+    eq(new Set(ids(out)).size, all.length, `${feature}: every text-surface backend is a candidate exactly once`);
+    assert(!ids(out).includes('fal') && !ids(out).includes('gemini-embedding'), `${feature}: media/embedding backends are never text candidates`);
     eq(out[0]?.providerId, defaultAssignments()[feature], `${feature}: feature default leads when nothing is stored`);
   }
 }

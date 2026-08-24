@@ -19,7 +19,7 @@ try {
   const project = await prisma.project.findFirst({ where: { workspaceId: wsId } });
   const projectId = project?.id ?? '';
 
-  await prisma.infoSource.create({ data: { workspaceId: wsId, projectId, mode: 'context-doc', source: 'uploaded', name: 'Auth spec', content: 'The login flow uses OAuth and sessions.', enabled: true, usedByStages: [] } });
+  await prisma.infoSource.create({ data: { workspaceId: wsId, projectId, mode: 'context-doc', source: 'uploaded', name: 'Auth spec', content: 'The login flow uses OAuth and sessions.', enabled: true } });
   await prisma.ticket.create({ data: { workspaceId: wsId, projectId, key: 'DEV-101', number: 101, title: 'Add OAuth login flow', description: 'implement oauth login and sessions', stageId: 'unrefined', status: 'idle', labels: [] } });
   await prisma.ticket.create({ data: { workspaceId: wsId, projectId, key: 'DEV-102', number: 102, title: 'Add OAuth login flow', description: 'implement oauth login and sessions', stageId: 'unrefined', status: 'idle', labels: [] } });
   await prisma.contentProject.create({ data: { workspaceId: wsId, projectId, title: 'Launch teaser video' } });

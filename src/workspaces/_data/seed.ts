@@ -21,13 +21,11 @@ import type {
   Project,
   Role,
   SessionEntry,
-  SkillEntry,
   Sprint,
   SshKeyEntry,
   StageKind,
   StageModelCfg,
   StageModelChoice,
-  StageNetworkCfg,
   StageStatusCfg,
   Terminal,
   Ticket,
@@ -78,7 +76,7 @@ export const TICKETS: Ticket[] = [
   {
     id: 'DEV-1240', workspaceId: WS, projectId: PRJ, stageId: 'impl', status: 'busy', hasTerminal: true,
     title: 'Fix avatar fallback flicker on slow networks',
-    labels: ['bug', 'frontend'], viewers: ['sanne', 'tom'], costLabel: '€1.18 · 12m',
+    labels: ['bug', 'frontend'], creatorId: 'sanne', assigneeId: 'tom', costLabel: '€1.18 · 12m',
     branch: 'DEV-1240', mr: '!91 · draft', issue: '#1240', sprintId: 's24',
     description:
       'On slow (3G) connections the Avatar component briefly renders the colour-initials fallback before the image loads, then swaps to the image — a visible flicker. Cache the load/fail state per avatar identity so the first resolution fans out to every instance, and hold the previous frame during refetch.',
@@ -87,19 +85,19 @@ export const TICKETS: Ticket[] = [
   {
     id: 'DEV-1245', workspaceId: WS, projectId: PRJ, stageId: 'impl', status: 'busy', hasTerminal: true,
     title: 'Board drag-and-drop with dnd-kit',
-    labels: ['feature', 'frontend'], viewers: ['mathijs'], costLabel: '€4.10 · 38m', sprintId: 's24',
+    labels: ['feature', 'frontend'], creatorId: 'mathijs', costLabel: '€4.10 · 38m', sprintId: 's24',
     branch: 'DEV-1245', mr: '—', issue: '#1245',
   },
   {
     id: 'DEV-1242', workspaceId: WS, projectId: PRJ, stageId: 'review', status: 'stuck', hasTerminal: true,
     title: 'Refactor rate limiter to token bucket',
-    labels: ['backend', 'perf'], viewers: ['daan'], costLabel: '€2.74 · 26m', sprintId: 's24',
+    labels: ['backend', 'perf'], creatorId: 'daan', costLabel: '€2.74 · 26m', sprintId: 's24',
     branch: 'DEV-1242', mr: '!89', issue: '#1242',
   },
   {
     id: 'DEV-1241', workspaceId: WS, projectId: PRJ, stageId: 'plan', status: 'needs-input', hasTerminal: false,
     title: 'Add SSO via Microsoft',
-    labels: ['feature', 'auth'], viewers: ['sanne'], sprintId: 's24',
+    labels: ['feature', 'auth'], creatorId: 'sanne', sprintId: 's24',
     branch: 'DEV-1241', mr: '—', issue: '#1241',
     description: 'Add Microsoft (Entra ID) as an OAuth provider alongside GitLab/GitHub. Needs a decision on where the client secret lives per-workspace.',
     carryOver: 'From Refined: SSO must reuse the existing provider-button flow in LoginForm; no new auth surface.',
@@ -108,54 +106,51 @@ export const TICKETS: Ticket[] = [
   {
     id: 'DEV-1247', workspaceId: WS, projectId: PRJ, stageId: 'plan', status: 'busy', hasTerminal: false,
     title: 'graphify MCP: impact_of endpoint',
-    labels: ['mcp', 'backend'], viewers: [], sprintId: 's24',
+    labels: ['mcp', 'backend'], sprintId: 's24',
   },
   {
     id: 'DEV-1249', workspaceId: WS, projectId: PRJ, stageId: 'plan', status: 'busy', hasTerminal: false,
     title: 'Per-workspace GitLab token vault',
-    labels: ['security', 'backend'], viewers: ['tom'], sprintId: 's24',
+    labels: ['security', 'backend'], creatorId: 'tom', sprintId: 's24',
   },
   {
     id: 'DEV-1244', workspaceId: WS, projectId: PRJ, stageId: 'test', status: 'busy', hasTerminal: false,
     title: 'Dark mode FOUC on unauth reload',
-    labels: ['bug', 'frontend'], viewers: [], sprintId: 's24',
+    labels: ['bug', 'frontend'], sprintId: 's24',
   },
   {
     id: 'DEV-1243', workspaceId: WS, projectId: PRJ, stageId: 'refined', status: 'done', hasTerminal: false,
     title: 'Voice note → ticket pipeline',
-    labels: ['feature', 'mobile'], viewers: ['lina'], sprintId: 's24',
+    labels: ['feature', 'mobile'], creatorId: 'lina', sprintId: 's24',
   },
   {
     id: 'DEV-1250', workspaceId: WS, projectId: PRJ, stageId: 'refined', status: 'busy', hasTerminal: false,
     title: 'Mobile bottom-sheet for quick actions',
-    labels: ['feature', 'mobile'], viewers: ['lina'], sprintId: 's24',
+    labels: ['feature', 'mobile'], creatorId: 'lina', sprintId: 's24',
   },
   {
     id: 'DEV-1246', workspaceId: WS, projectId: PRJ, stageId: 'final', status: 'done', hasTerminal: false,
     title: 'Email-change confirmation flow copy',
-    labels: ['copy'], viewers: ['sanne'], sprintId: 's24',
+    labels: ['copy'], creatorId: 'sanne', sprintId: 's24',
   },
   {
     id: 'DEV-1248', workspaceId: WS, projectId: PRJ, stageId: 'unrefined', status: 'idle', hasTerminal: false,
     title: 'Investigate flaky sync test',
-    labels: ['test', 'flaky'], viewers: [],
+    labels: ['test', 'flaky'],
   },
   {
     id: 'DEV-1251', workspaceId: WS, projectId: PRJ, stageId: 'unrefined', status: 'idle', hasTerminal: false,
     title: 'Cleanup: remove SESSION_STATE.md from root',
-    labels: ['chore'], viewers: [],
+    labels: ['chore'],
   },
 ];
 
-//? Linked members: the FIRST is always the creator, the SECOND the assignee
-//? (who picked it up). Falls back to `viewers` order when not set explicitly.
+//? Linked members: the creator is shown first, the assignee (who picked it up) second.
 export function ticketCreator(t: Ticket): string {
-  return t.creatorId ?? t.viewers[0] ?? 'mathijs';
+  return t.creatorId ?? 'mathijs';
 }
 export function ticketAssignee(t: Ticket): string | undefined {
-  if (t.assigneeId) return t.assigneeId;
-  const creator = ticketCreator(t);
-  return t.viewers.find((v) => v !== creator);
+  return t.assigneeId;
 }
 export function ticketLinkedMembers(t: Ticket): Member[] {
   const ids = [ticketCreator(t), ticketAssignee(t)].filter((x): x is string => x !== undefined);
@@ -277,44 +272,30 @@ export const DOCS: InfoDoc[] = [
   {
     id: 'summary', name: 'project-summary', source: 'generated', updated: '2h ago', note: 'frozen @ abc123', aiEditable: true,
     summary: 'High-level orientation: what the project is, its architecture (web-app + orchestrator), and the house conventions. Always loaded first.',
-    pendingBranches: ['DEV-1245', 'DEV-1249'], usedByStages: ['Refined', 'Plan', 'Implementatie'],
+    pendingBranches: ['DEV-1245', 'DEV-1249'],
     content: '# Project summary\n\nLuckyStack is a socket-first fullstack framework (React 19 + raw Node + Socket.io). Workspaces orchestrates AI-driven development: tickets flow through a configurable pipeline, each running in its own container with a live terminal.\n\n## Architecture\n- web-app (this UI) — board, terminals, sources, presence\n- orchestrator — containers, worktrees, ~20 Claude-CLI processes, RAG indexer\n\n## Conventions\nSee `conventions` doc. DB schema in `db-schema`.',
   },
   {
     id: 'conventions', name: 'conventions', source: 'git', updated: '1d ago', note: 'frozen @ abc123', aiEditable: false,
     summary: 'Coding house-style: token-only colors, mandatory i18n, custom tryCatch, surgical changes. The rules the agent must follow when writing code.',
-    usedByStages: ['Implementatie', 'Test', 'Review'],
     content: '# Conventions\n\n- Tailwind colors come ONLY from the theme tokens.\n- i18n via useTranslator for user-facing text.\n- Custom tryCatch everywhere — never raw try/catch.\n- Surgical changes; every changed line traces to the request.',
   },
   {
     id: 'glossary', name: 'glossary', source: 'git', updated: '3d ago', note: 'frozen @ abc123', aiEditable: false,
     summary: 'Domain terms: stage vs status, worktree, RAG snapshot, commit-hash freezing. Disambiguates the project vocabulary.',
-    usedByStages: ['Refined', 'Review'],
     content: '# Glossary\n\n- **Stage** — a pipeline step (board column).\n- **Status** — ticket state within a stage (pill).\n- **Worktree** — per-ticket git checkout on a DEV-#### branch.\n- **RAG snapshot** — embeddings frozen on a commit hash.',
   },
   {
     id: 'dbschema', name: 'db-schema', source: 'generated', updated: '2h ago', note: 'frozen @ abc123', aiEditable: true,
     summary: 'Generated Prisma model excerpt (Ticket, TicketEvent, …). Lets the agent reason about the data shape without reading the whole schema.',
-    pendingBranches: ['DEV-1249'], usedByStages: ['Plan', 'Implementatie'],
+    pendingBranches: ['DEV-1249'],
     content: '# DB schema (excerpt)\n\nmodel Ticket {\n  id String @id\n  stageId String\n  statusKey String\n  branch String?\n  commitHash String?\n}\n\nmodel TicketEvent { id; ticketId; seq Int; type; payload Json }',
   },
   {
     id: 'authspec', name: 'Auth redesign.md', source: 'uploaded', updated: '5d ago', note: 'spec', aiEditable: false,
     summary: 'Auth contract: LuckyStack session = login; workspace RBAC plus exact container labels authorize terminal access. SSH keys are not a terminal gate.',
-    usedByStages: ['Plan'],
     content: '# Auth redesign\n\nOAuth = primary login/identity. A linked SSH public key is required to open terminals (capability-gate on the /pty namespace). Private key stays client-side; server verifies against the public half.',
   },
-];
-
-export const SKILLS: SkillEntry[] = [
-  { id: 'rag', name: 'RAG · semantic_search', kind: 'frozen', status: '12.4k chunks @ abc123 · healthy', model: 'self-hosted nomic', on: true, description: 'Semantic slice-search over the per-commit-frozen embedding store. Filters by the ticket commit hash so results are frozen-per-ticket.', usedByStages: ['Refined', 'Plan', 'Implementatie'], lastIndexed: 'abc123 · 2h ago' },
-  { id: 'graphify', name: 'graphify · impact_of', kind: 'live', status: '1.8k nodes', on: true, description: 'Call-graph queries (impact_of / graph_query) via the graphify MCP server. Shows what a change ripples into.', usedByStages: ['Plan', 'Implementatie'], lastIndexed: 'live' },
-  { id: 'symbol', name: 'symbol-index', kind: 'frozen', status: 'lookup · @ abc123', on: true, description: 'lookup_symbol / get_signature over the indexed symbol table.', usedByStages: ['Plan', 'Implementatie'], lastIndexed: 'abc123 · 2h ago' },
-  { id: 'route', name: 'route-index', kind: 'frozen', status: '142 routes', on: false, description: 'find_route over the API/sync route map — useful in large projects.', usedByStages: [], lastIndexed: 'abc123 · 2h ago' },
-  { id: 'git', name: 'git-history', kind: 'live', status: 'blame + log', on: true, description: 'history_of(file) / blame — live, no frozen store.', usedByStages: ['Implementatie', 'Test', 'Review'], lastIndexed: 'live' },
-  { id: 'test', name: 'test-runner', kind: 'live', status: 'vitest', on: true, description: 'run_tests / coverage_for — runs the project test suite.', usedByStages: ['Implementatie', 'Test'], lastIndexed: 'live' },
-  { id: 'deps', name: 'deps-audit', kind: 'live', status: 'osv scanner', on: false, description: 'audit_deps — dependency + security scan (OSV).', usedByStages: ['Review'], lastIndexed: 'live' },
-  { id: 'cross', name: 'cross-ticket', kind: 'live', status: 'links + dedupe', on: true, description: 'find_related_tickets — links and dedupes against other tickets.', usedByStages: ['Refined', 'Review'], lastIndexed: 'live' },
 ];
 
 export const SSH_KEYS: SshKeyEntry[] = [
@@ -374,8 +355,8 @@ export const DEFAULT_PERM_ROLES: PermRole[] = [
 ];
 
 //? ---------------------------------------------------------------- pipeline config
-//? Catalogs for the pipeline editor. Skills reference SKILLS, context docs
-//? reference DOCS. Everything is stack-agnostic (works on Node / .NET / Go / …),
+//? Catalogs for the pipeline editor. Context docs reference DOCS.
+//? Everything is stack-agnostic (works on Node / .NET / Go / …),
 //? grounded in handoff/DATAMODEL.md §2 + CLAUDE_SETTINGS_MAP.md.
 
 //? F29 — the lifecycle hooks a stage container can emit.
@@ -438,20 +419,18 @@ const escalationRules = () => [
   { id: 'r-low', minScore: 1, model: 'haiku' as const, effort: 'low' as const, maxTurns: 10 },
 ];
 const modelCfg = (base: StageModelChoice, autoEscalate: boolean): StageModelCfg => ({ autoEscalate, base, rules: autoEscalate ? escalationRules() : [] });
-const network = (over?: Partial<StageNetworkCfg>): StageNetworkCfg => ({ enabled: true, mode: 'whitelist', categories: ['package-registries', 'source-hosts', 'ai-apis'], domains: ['gitlab.youcomm.nl'], ...over });
 
 function cfg(id: string, kind: StageKind, name: string, order: number, over: Partial<PipelineStageCfg>): PipelineStageCfg {
   return {
     projectId: PRJ,
     id, kind, name, order, aiEnabled: true,
     customInstructions: '', handoverPrompt: '',
-    skillKeys: [], aiSkillIds: [], sourceIds: ['summary'], commands: [],
+    aiSkillIds: [], sourceIds: ['summary'], commands: [],
     tools: [{ toolId: 'tool-mongodb', tier: 'ro' }],
     statuses: baseStatuses(),
     processes: [{ id: `${id}-claude`, name: 'claude', cwd: '/app', env: [], commands: ['npm run claude'] }],
     visibleStageIds: [],
     modelCfg: modelCfg({ model: 'sonnet', effort: 'medium', maxTurns: 12 }, false),
-    network: network(),
     hooks: Object.fromEntries(HOOK_KEYS.map((k) => [k, true] as const)),
     ...over,
   };
@@ -459,26 +438,26 @@ function cfg(id: string, kind: StageKind, name: string, order: number, over: Par
 
 export const STAGE_CONFIGS: PipelineStageCfg[] = [
   cfg('unrefined', 'refine', 'Unrefined', 0, {
-    aiEnabled: false, skillKeys: [], sourceIds: ['summary'], processes: [], tools: [],
+    aiEnabled: false, sourceIds: ['summary'], processes: [], tools: [],
     modelCfg: modelCfg({ model: 'haiku', effort: 'low', maxTurns: 8 }, false),
     statuses: [...baseStatuses(), { key: 'triage', label: 'Triage', kind: 'custom' }],
     customInstructions: 'Human triage stage — no AI. Tickets land here from GitLab and wait for a person to refine them.',
   }),
   cfg('refined', 'refine', 'Refined', 1, {
     modelCfg: modelCfg({ model: 'haiku', effort: 'low', maxTurns: 12 }, false),
-    skillKeys: ['rag', 'cross'], sourceIds: ['summary', 'glossary'],
+    sourceIds: ['summary', 'glossary'],
     handoverPrompt: 'Name the agreed scope, the acceptance criteria, and anything you could NOT resolve.',
     customInstructions: 'Clarify scope only. Do NOT write code. Produce acceptance criteria + edge cases.',
   }),
   cfg('plan', 'plan', 'Plan', 2, {
     modelCfg: modelCfg({ model: 'opus', effort: 'high', maxTurns: 20 }, true),
-    skillKeys: ['rag', 'graphify', 'symbol'], sourceIds: ['summary', 'dbschema', 'authspec'], visibleStageIds: ['refined'],
+    sourceIds: ['summary', 'dbschema', 'authspec'], visibleStageIds: ['refined'],
     handoverPrompt: 'Give the ordered plan: which files change, in what order, and where the risk sits.',
     customInstructions: 'Output a numbered plan + risks + a rollback note. No edits. Reference the db-schema where relevant.',
   }),
   cfg('impl', 'code', 'Implementatie', 3, {
     modelCfg: modelCfg({ model: 'sonnet', effort: 'high', maxTurns: 30 }, true),
-    skillKeys: ['rag', 'graphify', 'symbol', 'git', 'test'], sourceIds: ['summary', 'conventions', 'dbschema'],
+    sourceIds: ['summary', 'conventions', 'dbschema'],
     tools: [{ toolId: 'tool-mongodb', tier: 'rw' }, { toolId: 'tool-redis', tier: 'rw' }], visibleStageIds: ['plan', 'refined'],
     processes: [
       { id: 'impl-claude', name: 'claude', cwd: '/app', env: [], commands: ['npm run claude'] },
@@ -496,7 +475,7 @@ export const STAGE_CONFIGS: PipelineStageCfg[] = [
   }),
   cfg('test', 'test', 'Test', 4, {
     modelCfg: modelCfg({ model: 'sonnet', effort: 'medium', maxTurns: 20 }, true),
-    skillKeys: ['test', 'git'], sourceIds: ['summary', 'conventions'], visibleStageIds: ['plan', 'impl'],
+    sourceIds: ['summary', 'conventions'], visibleStageIds: ['plan', 'impl'],
     processes: [
       { id: 'test-claude', name: 'claude', cwd: '/app', env: [], commands: ['npm run claude'] },
       { id: 'test-server', name: 'server', cwd: '/app', env: [], commands: ['npm run server'] },
@@ -510,15 +489,15 @@ export const STAGE_CONFIGS: PipelineStageCfg[] = [
   }),
   cfg('review', 'review', 'Review', 5, {
     modelCfg: modelCfg({ model: 'opus', effort: 'high', maxTurns: 18 }, true),
-    skillKeys: ['cross', 'deps', 'git'], sourceIds: ['summary', 'conventions'], visibleStageIds: ['plan', 'impl', 'test'],
-    commands: [{ id: 'r1', pattern: 'Bash(git push:*)', mode: 'ask' }],
+    sourceIds: ['summary', 'conventions'], visibleStageIds: ['plan', 'impl', 'test'],
+    commands: [{ id: 'r1', pattern: 'Bash(git push:*)', mode: 'deny' }],
     handoverPrompt: 'List your findings concretely enough to act on without re-reading the diff.',
     customInstructions: 'Be a skeptical reviewer. Flag security + correctness first. Default to requesting changes.',
     statuses: [...baseStatuses(), { key: 'approved', label: 'Approved', kind: 'custom' }],
   }),
   cfg('final', 'final', 'Final', 6, {
     modelCfg: modelCfg({ model: 'haiku', effort: 'low', maxTurns: 10 }, false),
-    skillKeys: [], sourceIds: ['summary'], processes: [], tools: [{ toolId: 'tool-mongodb', tier: 'ro' }],
+    sourceIds: ['summary'], processes: [], tools: [{ toolId: 'tool-mongodb', tier: 'ro' }],
     handoverPrompt: 'Summarise the merged change the way it should read in the changelog.',
     customInstructions: 'Produce the MR description + changelog entry. No code.',
   }),

@@ -760,10 +760,6 @@ function WorkflowTab() {
           label={translate({ key: 'workspaces.workspaceSettings.protectedBranches' })}
           control={<input value={cfg.protectedBranches.join(', ')} onChange={(e) => { patch({ protectedBranches: e.target.value.split(',').map((s) => s.trim()).filter((s) => s.length > 0) }); }} className={fieldCls} />}
         />
-        <SettingRow
-          label={translate({ key: 'workspaces.workspaceSettings.commitSigning' })}
-          control={<Toggle on={cfg.commitSigning} onChange={() => { patch({ commitSigning: !cfg.commitSigning }); }} ariaLabel={translate({ key: 'workspaces.workspaceSettings.commitSigning' })} />}
-        />
         <div className="px-5 py-4 flex items-center gap-2">
           <WsButton icon="check" onClick={() => { saveGitConfig(cfg); setGitStatus('saved'); }}>{translate({ key: 'workspaces.workspaceSettings.save' })}</WsButton>
           <SavePill status={gitStatus} />
@@ -967,6 +963,71 @@ function RuntimeSection({ workspaceId }: { workspaceId: string }) {
         {translate({ key: 'workspaces.repoScan.browseCode' })}
       </button>
     </div>
+  );
+}
+
+//? [egress-status] — the HOST's egress posture, read-only. The mode is env-driven
+//? (WS_EGRESS / WS_EGRESS_ALLOW, one allowlist for every workspace); this card only makes
+//? that visible — there is deliberately no toggle here, a per-workspace switch would lie.
+function EgressPostureCard({ workspaceId }: { workspaceId: string }) {
+  const translate = useTranslator();
+  const [report, setReport] = useState<{ mode: string; unconfinedLaunches: number; lastAt: number; allowlist: string[] } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void tryCatch(() => apiRequest({ name: 'workspaces/egressStatus', version: 'v1', data: { workspaceId } })).then(([err, res]) => {
+      if (cancelled || err || res?.status !== 'success') return;
+      setReport(res.result.egress);
+    });
+    return () => { cancelled = true; };
+  }, [workspaceId]);
+  //? Forbidden (member) or still loading → no card at all; an empty security panel says nothing useful.
+  if (!report) return null;
+  const modeTint = report.mode === 'enforce' ? 'bg-correct/15 text-correct' : (report.mode === 'report' ? 'bg-warning/15 text-warning' : 'bg-container2 text-muted');
+  const modeLabel = report.mode === 'enforce'
+    ? translate({ key: 'workspaces.workspaceSettings.egressModeEnforce' })
+    : (report.mode === 'report'
+      ? translate({ key: 'workspaces.workspaceSettings.egressModeReport' })
+      : translate({ key: 'workspaces.workspaceSettings.egressModeOff' }));
+  return (
+    <FormSection
+      title={translate({ key: 'workspaces.workspaceSettings.egressTitle' })}
+      desc={translate({ key: 'workspaces.workspaceSettings.egressDesc' })}
+    >
+      <SettingRow
+        label={translate({ key: 'workspaces.workspaceSettings.egressMode' })}
+        help={translate({ key: 'workspaces.workspaceSettings.egressModeHelp' })}
+        control={(
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${modeTint}`}>
+            <Icon name={report.mode === 'enforce' ? 'shield-halved' : (report.mode === 'report' ? 'triangle-exclamation' : 'circle-minus')} className={`text-[10px]`} />
+            {modeLabel}
+          </span>
+        )}
+      />
+      {report.mode === 'report' && (
+        <SettingRow
+          label={translate({ key: 'workspaces.workspaceSettings.egressUnconfined' })}
+          help={translate({ key: 'workspaces.workspaceSettings.egressUnconfinedHelp' })}
+          control={(
+            <span className={`text-sm text-title`}>
+              {String(report.unconfinedLaunches)}
+              {report.lastAt > 0 && <span className={`text-xs text-muted ml-2`}>{translate({ key: 'workspaces.workspaceSettings.egressLastLaunch', params: [{ key: 'when', value: new Date(report.lastAt).toLocaleString() }] })}</span>}
+            </span>
+          )}
+        />
+      )}
+      <SettingRow
+        stacked
+        label={translate({ key: 'workspaces.workspaceSettings.egressAllowlist' })}
+        help={translate({ key: 'workspaces.workspaceSettings.egressAllowlistHelp' })}
+        control={(
+          <div className={`flex flex-wrap gap-1.5`}>
+            {report.allowlist.map((d) => (
+              <span key={d} className={`rounded-full bg-container2 px-2.5 py-1 text-xs font-mono text-common`}>{d}</span>
+            ))}
+          </div>
+        )}
+      />
+    </FormSection>
   );
 }
 
@@ -1177,7 +1238,7 @@ function RepositoryTab() {
       ariaLabel={translate({ key: 'workspaces.workspaceSettings.tabRepository' })}
       sections={[
         { id: 'link', label: translate({ key: 'workspaces.repoScan.sectionLink' }), icon: 'link', body: linkSection },
-        { id: 'runtime', label: translate({ key: 'workspaces.repoScan.sectionRuntime' }), icon: 'play', body: <div className="max-w-2xl w-full"><RuntimeSection key={`rt-${activeWorkspace.id}`} workspaceId={activeWorkspace.id} /></div> },
+        { id: 'runtime', label: translate({ key: 'workspaces.repoScan.sectionRuntime' }), icon: 'play', body: <div className="max-w-2xl w-full flex flex-col gap-4"><RuntimeSection key={`rt-${activeWorkspace.id}`} workspaceId={activeWorkspace.id} /><EgressPostureCard workspaceId={activeWorkspace.id} /></div> },
         { id: 'image', label: translate({ key: 'workspaces.repoScan.sectionImage' }), icon: 'cube', body: <div className="max-w-2xl w-full"><DockerfileReview key={activeWorkspace.id} workspaceId={activeWorkspace.id} /></div> },
       ]}
     />

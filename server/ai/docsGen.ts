@@ -19,7 +19,7 @@ export async function persistProjectDoc(prisma: PrismaClient, input: { workspace
   const existing = await prisma.infoSource.findFirst({ where: { workspaceId: input.workspaceId, mode: 'context-doc', name: DOC_NAME } });
   await (existing
     ? prisma.infoSource.updateMany({ where: { workspaceId: input.workspaceId, id: existing.id }, data: { content: input.content, summary: input.summary, note: 'generated', source: 'generated' } })
-    : prisma.infoSource.create({ data: { workspaceId: input.workspaceId, mode: 'context-doc', source: 'generated', name: DOC_NAME, content: input.content, summary: input.summary, note: 'generated', enabled: true, usedByStages: [] } }));
+    : prisma.infoSource.create({ data: { workspaceId: input.workspaceId, mode: 'context-doc', source: 'generated', name: DOC_NAME, content: input.content, summary: input.summary, note: 'generated', enabled: true } }));
 }
 
 export async function generateProjectDoc(prisma: PrismaClient, workspaceId: string, projectId?: string, dependencies: DocsGenDependencies = {}): Promise<DocsGenResult> {

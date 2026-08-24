@@ -82,7 +82,7 @@ export async function createStarterLibrary(prisma: PrismaClient, workspaceId: st
     await prisma.infoSource.create({
       data: {
         workspaceId, projectId, mode: 'context-doc', source: 'starter', name: d.name,
-        summary: d.summary, content: d.content, note: 'starter', enabled: false, usedByStages: [],
+        summary: d.summary, content: d.content, note: 'starter', enabled: false,
       },
     });
   }
