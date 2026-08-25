@@ -24,8 +24,17 @@ try {
   eq(ho.budgetForStage(null), ho.DEFAULT_WORKER_BUDGET, 'no per-stage budget → worker default');
   eq(ho.budgetForStage(50000), 50000, 'a positive per-stage budget wins');
   eq(ho.budgetForStage(0), ho.DEFAULT_WORKER_BUDGET, 'a zero budget falls back to the default');
+  //? Wired 2026-08-25 — Workspace.assistantTokenBudget sits between the stage budget and the env default.
+  eq(ho.budgetForStage(null, 70000), 70000, 'the workspace budget fills in when the stage has none');
+  eq(ho.budgetForStage(50000, 70000), 50000, 'but a per-stage budget still wins over the workspace one');
+  eq(ho.budgetForStage(null, 0), ho.DEFAULT_WORKER_BUDGET, 'a zero workspace budget falls through to the env default');
   eq(ho.shouldHandoff(10, 100), false, 'under budget → no handoff');
   eq(ho.shouldHandoff(100, 100), true, 'at/over budget → handoff');
+
+  // ---- handoffInstructionFor (pure) ----
+  eq(ho.handoffInstructionFor(''), ho.DEFAULT_HANDOFF_INSTRUCTION, 'no workspace override → the built-in instruction');
+  assert(ho.handoffInstructionFor('Wees kort.').startsWith('Wees kort.'), 'a workspace override replaces the prose');
+  assert(ho.handoffInstructionFor('Wees kort.').includes('```ws-handoff'), 'but the parseable ws-handoff block spec is always appended');
 
   // ---- parseHandoff (pure) ----
   const msg = 'Sure, here is my handoff.\n```ws-handoff\n{ "summary": "Building auth", "decisions": ["JWT over sessions"], "state": "login done", "next": ["add refresh"], "gotchas": ["cookie domain"], "carried": "DB schema notes" }\n```\ndone';

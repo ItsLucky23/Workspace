@@ -14,7 +14,7 @@ import type { ControlOp } from '../_functions/controlApi';
 export const validation = 'relaxed' as const;
 export const auth: AuthProps = { login: true, additional: [] };
 
-const SETTINGS_OPS = new Set<string>(['edit-media-budget', 'save-media-provider', 'save-style', 'delete-style', 'content-edit-brand', 'content-edit-product', 'save-platform-credentials', 'prompt-experiment-save', 'prompt-experiment-stop']);
+const SETTINGS_OPS = new Set<string>(['edit-media-budget', 'save-media-provider', 'save-style', 'delete-style', 'content-edit-brand', 'content-edit-product', 'save-platform-credentials']);
 const isSettingsOp = (op: string): op is ControlOp => SETTINGS_OPS.has(op);
 
 export interface SyncParams {

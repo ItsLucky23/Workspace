@@ -36,7 +36,31 @@ function priceMap(): Record<string, number> {
   }
   return merged;
 }
-export const priceFor = (model: string): number => priceMap()[model] ?? 0;
+
+//? D31 wired 2026-08-25 — `Workspace.pricing` (a Json {model: €/1k} map, previously stored-but-never-read)
+//? merges OVER defaults + env, per workspace. A 0 entry deliberately zeroes a model out (tokens-only chips).
+export function priceFor(model: string, workspacePricing?: unknown): number {
+  const merged = priceMap();
+  if (workspacePricing !== null && workspacePricing !== undefined && typeof workspacePricing === 'object' && !Array.isArray(workspacePricing)) {
+    for (const [k, v] of Object.entries(workspacePricing as Record<string, unknown>)) {
+      if (typeof v === 'number' && Number.isFinite(v) && v >= 0) merged[k] = v;
+    }
+  }
+  return merged[model] ?? 0;
+}
+
+//? D82 wired 2026-08-25 — lazy calendar-month window roll (previously periodWindow was stored-but-never-
+//? read and `spent` accrued forever). No cron: whenever spend is recorded or a cap is checked, any
+//? enabled 'calendar-month' cap whose window started before the current month is reset. Month boundaries
+//? are UTC (the workspace-timezone anchor of D55 is a possible refinement, not wired here). A { rolling }
+//? window still has no consumer. Best-effort — callers wrap in tryCatch.
+export async function rollBudgetWindows(prisma: PrismaClient, workspaceId: string, now = new Date()): Promise<void> {
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  await prisma.workspaceBudget.updateMany({
+    where: { workspaceId, enabled: true, periodWindow: { equals: 'calendar-month' }, windowStartAt: { lt: monthStart } },
+    data: { spent: 0, windowStartAt: monthStart },
+  });
+}
 
 export interface TurnSpendInput {
   workspaceId: string; userId?: string | null; ticketId?: string | null; stageId?: string | null;
@@ -53,7 +77,9 @@ export interface TurnSpendInput {
 export async function recordTurnSpend(prisma: PrismaClient, input: TurnSpendInput): Promise<{ tokensIn: number; tokensOut: number; costEstimate: number }> {
   const tokensIn = input.tokensIn ?? estTokens(input.inputChars);
   const tokensOut = input.tokensOut ?? estTokens(input.outputChars);
-  const costEstimate = ((tokensIn + tokensOut) / 1000) * priceFor(input.model);
+  //? D31 — the workspace's own price map (if any) overrides defaults + env for THIS workspace's turns.
+  const wsRow = await prisma.workspace.findUnique({ where: { id: input.workspaceId }, select: { pricing: true } });
+  const costEstimate = ((tokensIn + tokensOut) / 1000) * priceFor(input.model, wsRow?.pricing);
   await prisma.spendRecord.create({
     data: {
       workspaceId: input.workspaceId, userId: input.userId ?? null, ticketId: input.ticketId ?? null, stageId: input.stageId ?? null,
@@ -62,20 +88,27 @@ export async function recordTurnSpend(prisma: PrismaClient, input: TurnSpendInpu
     },
   });
   await prisma.agentSession.updateMany({ where: { workspaceId: input.workspaceId, sessionKey: input.sessionKey }, data: { tokenEstimate: { increment: tokensIn + tokensOut } } });
-  //? Rolling spend for the caps display (never enforced here — #16 is visibility only).
-  if (costEstimate > 0) await prisma.workspaceBudget.updateMany({ where: { workspaceId: input.workspaceId, enabled: true }, data: { spent: { increment: costEstimate } } });
+  //? Rolling spend for the caps display (never enforced here — #16 is visibility only). D82: roll any
+  //? stale calendar-month window first so the new spend accrues into the CURRENT month.
+  if (costEstimate > 0) {
+    await rollBudgetWindows(prisma, input.workspaceId);
+    await prisma.workspaceBudget.updateMany({ where: { workspaceId: input.workspaceId, enabled: true }, data: { spent: { increment: costEstimate } } });
+  }
   return { tokensIn, tokensOut, costEstimate };
 }
 
-//? #99 — is the workspace at/over an ENFORCED metered budget cap? Reads the enforcement field (#103) that
-//? was previously stored-but-never-read. Only METERED spend accrues `spent` (costEstimate>0 → Gemini/media;
+//? #99 — is the workspace at/over an ENFORCED metered budget cap? Every ENABLED cap enforces (the old
+//? pauseNew/pauseAll `enforcement` field is gone — owner 2026-08-25: both values sat in the same filter, so
+//? the choice changed nothing). Only METERED spend accrues `spent` (costEstimate>0 → Gemini/media;
 //? the Claude subscription is 0), so a Claude-only workspace never trips this — exactly decision B (€-metered
 //? enforcement, token/Claude stays visibility-only). Best-effort (a read failure = not enforced, never blocks).
 export async function isSpendEnforcementActive(prisma: PrismaClient, workspaceId: string): Promise<boolean> {
   //? luckystack-allow tenant-scope: called from the background provision loop (no runInTenant context, like
   //? the reaper/watchdog reads); explicitly filtered by the passed workspaceId, so it is tenant-safe.
+  //? D82 — a cap check first rolls stale calendar-month windows, so a NEW month unfreezes a capped workspace.
+  await rollBudgetWindows(prisma, workspaceId);
   const caps = await prisma.workspaceBudget.findMany({
-    where: { workspaceId, enabled: true, enforcement: { in: ['pauseNew', 'pauseAll'] } },
+    where: { workspaceId, enabled: true },
     select: { cap: true, spent: true },
   });
   if (caps.some((c) => c.cap > 0 && c.spent >= c.cap)) return true;

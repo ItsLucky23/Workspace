@@ -1,14 +1,12 @@
-//? Integration test for the surfacing round: the write paths the new UI actually fires — the prompt-A/B
-//? experiment ops (G7), the caption-style persistence behind the piece UI (F2), and the asset-star op the
-//? shared picker uses (G4). Real Mongo, real Conductor.
+//? Integration test for the surfacing round: the write paths the new UI actually fires — the caption-style
+//? persistence behind the piece UI (F2) and the asset-star op the shared picker uses (G4). Real Mongo,
+//? real Conductor. (The G7 prompt-A/B ops were removed 2026-08-25.)
 
-import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
+import { db, cleanupWorkspace, eq, report } from '../_helpers.mts';
 
 const prisma = await db();
 const { enqueueControlAction } = await import('../../server/orchestrator/conductor');
-const { dispatchControlSync } = await import('../../server/control/dispatchSync');
 const { createBlankWorkspace } = await import('../../server/bootstrap/seedWorkspace');
-const { resolvePromptVariant } = await import('../../server/ai/promptExperiment');
 const { listLibrary } = await import('../../server/content/assetLibrary');
 
 const stamp = Date.now();
@@ -24,54 +22,7 @@ try {
   const project = await prisma.project.findFirst({ where: { workspaceId: wsId }, select: { id: true } });
   const projectId = project?.id ?? wsId;
 
-  /* ---------------------------------------------- G7: start / replace / stop an experiment */
-  await enqueueControlAction({
-    workspaceId: wsId, op: 'prompt-experiment-save', target: {}, userId: owner.id, clientRequestId: reqId('exp1'),
-    payload: { feature: 'script', name: 'Hook style', variantA: 'Open with a question.', variantB: 'Open with a number.' },
-  });
-  const running = await prisma.promptExperiment.findFirst({ where: { workspaceId: wsId, feature: 'script', status: 'running' } });
-  assert(running !== null, 'the settings panel can start an experiment');
-  eq(running?.name, 'Hook style', 'with its name');
-
-  //? The invariant that keeps results readable: starting a SECOND experiment on the same feature retires
-  //? the first, instead of running two overlapping tests nobody can interpret.
-  await enqueueControlAction({
-    workspaceId: wsId, op: 'prompt-experiment-save', target: {}, userId: owner.id, clientRequestId: reqId('exp2'),
-    payload: { feature: 'script', name: 'Length', variantA: 'Be terse.', variantB: 'Be vivid.' },
-  });
-  eq(await prisma.promptExperiment.count({ where: { workspaceId: wsId, feature: 'script', status: 'running' } }), 1, 'only ONE experiment per feature runs at a time');
-  eq((await prisma.promptExperiment.findFirst({ where: { workspaceId: wsId, id: running?.id ?? '' }, select: { status: true } }))?.status, 'stopped', 'the previous one was retired, not deleted');
-
-  //? A different feature is independent.
-  await enqueueControlAction({
-    workspaceId: wsId, op: 'prompt-experiment-save', target: {}, userId: owner.id, clientRequestId: reqId('exp3'),
-    payload: { feature: 'interviewer', name: 'Tone', variantA: 'Blunt.', variantB: 'Coaching.' },
-  });
-  eq(await prisma.promptExperiment.count({ where: { workspaceId: wsId, status: 'running' } }), 2, 'experiments on other features keep running');
-
   const piece = await prisma.contentProject.create({ data: { workspaceId: wsId, projectId, title: 'Surfaced piece' } });
-  const resolved = await resolvePromptVariant(prisma, wsId, 'script', piece.id);
-  assert(resolved !== null, 'the running experiment now assigns a variant to real work');
-  assert(resolved?.prompt === 'Be terse.' || resolved?.prompt === 'Be vivid.', 'and hands back one of the two variants');
-
-  //? Stopping keeps the trials (the record of what each variant achieved is the whole point).
-  await prisma.promptTrial.create({ data: { workspaceId: wsId, experimentId: resolved?.experimentId ?? '', subjectId: piece.id, variant: resolved?.variant ?? 'a', score: 42 } });
-  await enqueueControlAction({
-    workspaceId: wsId, op: 'prompt-experiment-stop', target: {}, userId: owner.id, clientRequestId: reqId('stop'),
-    payload: { experimentId: resolved?.experimentId ?? '' },
-  });
-  eq(await prisma.promptExperiment.count({ where: { workspaceId: wsId, status: 'running' } }), 1, 'stopping ends only that experiment');
-  eq(await prisma.promptTrial.count({ where: { workspaceId: wsId } }), 1, 'and its measured trials are KEPT');
-  eq(await resolvePromptVariant(prisma, wsId, 'script', piece.id), null, 'a stopped experiment stops assigning variants');
-
-  //? RBAC: prompts steer every AI run, so a non-member cannot touch them.
-  const outsider = await prisma.user.create({ data: { email: `srf-out-${String(stamp)}@youcomm.nl`, name: 'OUT' } });
-  const denied = await dispatchControlSync({
-    op: 'prompt-experiment-save', roomCode: wsId, userId: outsider.id, prisma,
-    payload: { feature: 'script', name: 'evil', variantA: 'a', variantB: 'b' }, clientRequestId: reqId('deny'),
-  });
-  assert(!denied.ok, 'a non-member cannot start an experiment');
-  await prisma.user.delete({ where: { id: outsider.id } }).catch(() => null);
 
   /* ---------------------------------------------- F2: the caption style the piece UI sends is persisted */
   await enqueueControlAction({

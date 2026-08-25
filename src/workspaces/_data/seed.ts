@@ -414,9 +414,9 @@ const baseStatuses = (): StageStatusCfg[] => [
 ];
 
 const escalationRules = () => [
-  { id: 'r-high', minScore: 7, model: 'opus' as const, effort: 'high' as const, maxTurns: 30 },
-  { id: 'r-mid', minScore: 4, model: 'sonnet' as const, effort: 'medium' as const, maxTurns: 20 },
-  { id: 'r-low', minScore: 1, model: 'haiku' as const, effort: 'low' as const, maxTurns: 10 },
+  { id: 'r-high', minScore: 7, model: 'opus' as const, effort: 'high' as const },
+  { id: 'r-mid', minScore: 4, model: 'sonnet' as const, effort: 'medium' as const },
+  { id: 'r-low', minScore: 1, model: 'haiku' as const, effort: 'low' as const },
 ];
 const modelCfg = (base: StageModelChoice, autoEscalate: boolean): StageModelCfg => ({ autoEscalate, base, rules: autoEscalate ? escalationRules() : [] });
 
@@ -430,7 +430,7 @@ function cfg(id: string, kind: StageKind, name: string, order: number, over: Par
     statuses: baseStatuses(),
     processes: [{ id: `${id}-claude`, name: 'claude', cwd: '/app', env: [], commands: ['npm run claude'] }],
     visibleStageIds: [],
-    modelCfg: modelCfg({ model: 'sonnet', effort: 'medium', maxTurns: 12 }, false),
+    modelCfg: modelCfg({ model: 'sonnet', effort: 'medium' }, false),
     hooks: Object.fromEntries(HOOK_KEYS.map((k) => [k, true] as const)),
     ...over,
   };
@@ -439,24 +439,26 @@ function cfg(id: string, kind: StageKind, name: string, order: number, over: Par
 export const STAGE_CONFIGS: PipelineStageCfg[] = [
   cfg('unrefined', 'refine', 'Unrefined', 0, {
     aiEnabled: false, sourceIds: ['summary'], processes: [], tools: [],
-    modelCfg: modelCfg({ model: 'haiku', effort: 'low', maxTurns: 8 }, false),
-    statuses: [...baseStatuses(), { key: 'triage', label: 'Triage', kind: 'custom' }],
+    modelCfg: modelCfg({ model: 'haiku', effort: 'low' }, false),
+    //? Custom statuses are a deferred feature (B-O5, 00_SPEC_RECONCILIATION.md) — the UI renders base
+    //? statuses only, so seeding fake `kind:'custom'` entries only created invisible rows (removed 2026-08-25).
+    statuses: baseStatuses(),
     customInstructions: 'Human triage stage — no AI. Tickets land here from GitLab and wait for a person to refine them.',
   }),
   cfg('refined', 'refine', 'Refined', 1, {
-    modelCfg: modelCfg({ model: 'haiku', effort: 'low', maxTurns: 12 }, false),
+    modelCfg: modelCfg({ model: 'haiku', effort: 'low' }, false),
     sourceIds: ['summary', 'glossary'],
     handoverPrompt: 'Name the agreed scope, the acceptance criteria, and anything you could NOT resolve.',
     customInstructions: 'Clarify scope only. Do NOT write code. Produce acceptance criteria + edge cases.',
   }),
   cfg('plan', 'plan', 'Plan', 2, {
-    modelCfg: modelCfg({ model: 'opus', effort: 'high', maxTurns: 20 }, true),
+    modelCfg: modelCfg({ model: 'opus', effort: 'high' }, true),
     sourceIds: ['summary', 'dbschema', 'authspec'], visibleStageIds: ['refined'],
     handoverPrompt: 'Give the ordered plan: which files change, in what order, and where the risk sits.',
     customInstructions: 'Output a numbered plan + risks + a rollback note. No edits. Reference the db-schema where relevant.',
   }),
   cfg('impl', 'code', 'Implementatie', 3, {
-    modelCfg: modelCfg({ model: 'sonnet', effort: 'high', maxTurns: 30 }, true),
+    modelCfg: modelCfg({ model: 'sonnet', effort: 'high' }, true),
     sourceIds: ['summary', 'conventions', 'dbschema'],
     tools: [{ toolId: 'tool-mongodb', tier: 'rw' }, { toolId: 'tool-redis', tier: 'rw' }], visibleStageIds: ['plan', 'refined'],
     processes: [
@@ -471,10 +473,10 @@ export const STAGE_CONFIGS: PipelineStageCfg[] = [
     ],
     handoverPrompt: 'Say what you changed and why, which files, and anything you assumed or left half-done.',
     customInstructions: 'Follow the Plan stage exactly. Keep changes surgical. Run the test suite before finishing.',
-    statuses: [...baseStatuses(), { key: 'review-ready', label: 'Review-ready', kind: 'custom' }],
+    statuses: baseStatuses(),
   }),
   cfg('test', 'test', 'Test', 4, {
-    modelCfg: modelCfg({ model: 'sonnet', effort: 'medium', maxTurns: 20 }, true),
+    modelCfg: modelCfg({ model: 'sonnet', effort: 'medium' }, true),
     sourceIds: ['summary', 'conventions'], visibleStageIds: ['plan', 'impl'],
     processes: [
       { id: 'test-claude', name: 'claude', cwd: '/app', env: [], commands: ['npm run claude'] },
@@ -488,15 +490,15 @@ export const STAGE_CONFIGS: PipelineStageCfg[] = [
     customInstructions: 'Add a regression test for every changed file. Fail loudly on uncovered branches.',
   }),
   cfg('review', 'review', 'Review', 5, {
-    modelCfg: modelCfg({ model: 'opus', effort: 'high', maxTurns: 18 }, true),
+    modelCfg: modelCfg({ model: 'opus', effort: 'high' }, true),
     sourceIds: ['summary', 'conventions'], visibleStageIds: ['plan', 'impl', 'test'],
     commands: [{ id: 'r1', pattern: 'Bash(git push:*)', mode: 'deny' }],
     handoverPrompt: 'List your findings concretely enough to act on without re-reading the diff.',
     customInstructions: 'Be a skeptical reviewer. Flag security + correctness first. Default to requesting changes.',
-    statuses: [...baseStatuses(), { key: 'approved', label: 'Approved', kind: 'custom' }],
+    statuses: baseStatuses(),
   }),
   cfg('final', 'final', 'Final', 6, {
-    modelCfg: modelCfg({ model: 'haiku', effort: 'low', maxTurns: 10 }, false),
+    modelCfg: modelCfg({ model: 'haiku', effort: 'low' }, false),
     sourceIds: ['summary'], processes: [], tools: [{ toolId: 'tool-mongodb', tier: 'ro' }],
     handoverPrompt: 'Summarise the merged change the way it should read in the changelog.',
     customInstructions: 'Produce the MR description + changelog entry. No code.',

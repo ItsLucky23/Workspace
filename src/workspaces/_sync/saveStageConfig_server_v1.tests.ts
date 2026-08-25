@@ -58,7 +58,7 @@ function baseCfg(projectId: string, stageId: string): PipelineStageCfg {
     statuses: [],
     processes: [],
     visibleStageIds: [],
-    modelCfg: { autoEscalate: false, base: { model: 'sonnet', effort: 'medium', maxTurns: 20 }, rules: [] },
+    modelCfg: { autoEscalate: false, base: { model: 'sonnet', effort: 'medium' }, rules: [] },
     hooks: {},
   };
 }

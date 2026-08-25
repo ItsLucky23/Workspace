@@ -11,10 +11,10 @@ import type { PipelineStageCfg, StageModelCfg } from '../../src/workspaces/_data
 
 const modelCfg: StageModelCfg = {
   autoEscalate: true,
-  base: { model: 'haiku', effort: 'low', maxTurns: 10 },
+  base: { model: 'haiku', effort: 'low' },
   rules: [
-    { id: 'r1', minScore: 4, model: 'sonnet', effort: 'medium', maxTurns: 20 },
-    { id: 'r2', minScore: 8, model: 'opus', effort: 'high', maxTurns: 30 },
+    { id: 'r1', minScore: 4, model: 'sonnet', effort: 'medium' },
+    { id: 'r2', minScore: 8, model: 'opus', effort: 'high' },
   ],
 };
 
@@ -49,7 +49,7 @@ try {
   assert(!buildTurnArgs({}).join(' ').includes('--model'), 'no model choice → no --model flag (CLI default)');
 
   // ---- renderStage settings.json backstop ---------------------------------------
-  const arts = renderStage(stageCfg(modelCfg), { ticketId: 'T-1', carryOver: null, modelChoice: { model: 'sonnet', effort: 'xhigh', maxTurns: 20 } });
+  const arts = renderStage(stageCfg(modelCfg), { ticketId: 'T-1', carryOver: null, modelChoice: { model: 'sonnet', effort: 'xhigh' } });
   const settings = JSON.parse(arts.settingsJson) as { model?: string; env?: Record<string, string> };
   eq(settings.model, 'sonnet', 'settings.json carries the resolved model as backstop');
   eq(settings.env?.MAX_THINKING_TOKENS, String(effortThinkingTokens('xhigh')), 'effort becomes MAX_THINKING_TOKENS');

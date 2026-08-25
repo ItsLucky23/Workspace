@@ -23,7 +23,6 @@ interface Blueprint {
   definitionOfDone: string;
   model: string;
   effort: string;
-  maxTurns: number;
 }
 interface PresetsOk {
   status: 'success';

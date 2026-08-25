@@ -87,19 +87,6 @@ assert(!docUi.includes('contentSnapshot.pieces'), 'the old ad-hoc derivation is 
 assert(docUi.includes('setAssetStarred'), 'and the library can be curated from where it is used');
 eq(OP_CAPABILITY['asset-star'] === undefined, false, 'the star op is RBAC-mapped');
 
-/* ------------------------------------------------------------ G7: experiments in settings */
-
-assert(existsSync(new URL('../../src/workspaces/_api/promptExperiments_v1.ts', import.meta.url)), 'the experiments route exists');
-const settings = read('src/workspaces/settings/page.tsx');
-assert(settings.includes('ExperimentsPanel'), 'settings render the experiments panel');
-assert(settings.includes('savePromptExperiment'), 'a user can start an experiment');
-assert(settings.includes('stopPromptExperiment'), 'and stop one');
-assert(settings.includes('row.verdict'), 'the panel shows the VERDICT (including "not enough data")');
-for (const op of ['prompt-experiment-save', 'prompt-experiment-stop'] as const) {
-  eq(OP_CAPABILITY[op] === undefined, false, `${op} is RBAC-mapped`);
-}
-assert(hasKey(['workspaces', 'experiments', 'title']), 'the experiments panel is translated everywhere');
-
 /* ------------------------------------------------------------ F1 + G3: the two ops that had no button */
 
 assert(pieceUi.includes("'content-gen-thumbnail'"), 'the piece UI can compose a thumbnail');
@@ -119,7 +106,7 @@ assert(hasKey(['workspaces', 'studio', 'publishLive']), 'the publish button is t
 const CHAT_REACHABLE = [
   'env-rollback', 'document-archive', 'document-unarchive', 'content-gen-thumbnail',
   'content-reply-comment', 'studio-publish-site', 'studio-unpublish-site', 'asset-star',
-  'prompt-experiment-save', 'prompt-experiment-stop', 'ai-skill-save', 'ai-skill-reset',
+  'ai-skill-save', 'ai-skill-reset',
 ] as const;
 
 const dispatchable = new Set(Object.keys(CHAT_DISPATCH));

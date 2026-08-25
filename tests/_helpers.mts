@@ -90,7 +90,7 @@ const WORKSPACE_DELEGATES = [
   'ticketEvent', 'ticket', 'ticketLink', 'ticketReference', 'sprint', 'agentSession', 'carryOver', 'handoff', 'questionSet',
   'workspaceTrigger', 'workspaceSignal', 'workspaceEntityVersion', 'workspaceSuggestion', 'workspaceNote', 'workspaceChatMessage', 'workspaceBudget',
   'spendRecord', 'notification', 'infoSource', 'ragEntry', 'envVar', 'integrationTool', 'invite', 'workspaceRole', 'workspaceMember',
-  'project', 'service', 'serviceStack', 'uiReviewRequest', 'promptExperiment', 'promptTrial', 'publishedSite', 'siteSnapshot',
+  'project', 'service', 'serviceStack', 'uiReviewRequest', 'publishedSite', 'siteSnapshot',
   'publishMetricSnapshot', 'auditLog', 'forgeConnection', 'environment', 'buildArtifact', 'pipeline', 'pipelineRun',
   'pipelineJob', 'dbConnection', 'migration', 'pipelineStage', 'studioBrief', 'studioBrandLibrary',
   'personalAccessToken', 'outputTemplate', 'customAiTask', 'studioArtifact', 'designArtifact', 'interviewFinding', 'ticketArtifactLink',

@@ -688,8 +688,8 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
     name: 'workspaces/saveAiInstruction', version: 'v1',
     callback: ({ serverOutput }) => {
       if (serverOutput.status !== 'success') return;
-      const { aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl } = serverOutput;
-      setSnap((s) => (s.activeWorkspaceId ? { ...s, workspaces: s.workspaces.map((w) => (w.id === s.activeWorkspaceId ? { ...w, aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl } : w)) } : s));
+      const { aiInstruction, outputLanguage, assistantTokenBudget, handoffInstruction } = serverOutput;
+      setSnap((s) => (s.activeWorkspaceId ? { ...s, workspaces: s.workspaces.map((w) => (w.id === s.activeWorkspaceId ? { ...w, aiInstruction, outputLanguage, assistantTokenBudget, handoffInstruction } : w)) } : s));
     },
   }), [upsertSyncEventCallback]);
 
@@ -1199,9 +1199,16 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       refetch();
     })();
   }, [snap.activeWorkspaceId, refetch]);
-  const dbIntrospectApi = useCallback((connectionId: string) => {
+  //? Fix 2026-08-25 — the introspect result (the table list) only exists in the sync reply, so this
+  //? AWAITS it and hands it back for the settings card to render (previously fire-and-forget: the
+  //? conductor introspected, the reply was dropped, and the button did nothing visible).
+  const dbIntrospectApi = useCallback(async (connectionId: string): Promise<{ ok: boolean; tables: string[]; error?: string }> => {
     const room = snap.activeWorkspaceId;
-    if (room) void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'db-introspect', connectionId, clientRequestId: nextReqId() }, receiver: room });
+    if (!room) return { ok: false, tables: [] };
+    const [error, res] = await tryCatch(() => syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'db-introspect', connectionId, clientRequestId: nextReqId() }, receiver: room }));
+    if (error || res?.status !== 'success') return { ok: false, tables: [] };
+    const result = res.result as { ok?: boolean; tables?: string[]; error?: string } | undefined;
+    return { ok: result?.ok === true, tables: Array.isArray(result?.tables) ? result.tables : [], ...(typeof result?.error === 'string' ? { error: result.error } : {}) };
   }, [snap.activeWorkspaceId]);
   const sprintCreateApi = useCallback((sprintName: string) => {
     const room = snap.activeWorkspaceId;
@@ -1410,7 +1417,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         room, activeProjectId: scope.projectId, gitConfig: scope.gitConfig,
         aiSettings: {
           aiInstruction: ws?.aiInstruction ?? '', outputLanguage: ws?.outputLanguage ?? '',
-          geminiModel: ws?.geminiModel ?? '', geminiTemperature: ws?.geminiTemperature ?? '', geminiBaseUrl: ws?.geminiBaseUrl ?? '',
+          assistantTokenBudget: ws?.assistantTokenBudget ?? 0, handoffInstruction: ws?.handoffInstruction ?? '',
         },
         stageConfigs: latestSnap.current.stageConfigs,
         deleteWorkspace: async () => {
@@ -1989,12 +1996,12 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === room ? { ...w, autonomyLevel } : w)) }));
         observeSync(syncRequest({ name: 'workspaces/saveAutonomy', version: 'v1', data: { autonomyLevel, clientRequestId: nextReqId() }, receiver: room }));
       },
-      //? Q4 + K4 + P2 — the workspace-wide AI-behaviour settings (optimistic flip + persist).
-      saveAiInstruction: (aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl) => {
+      //? Q4 + K4 — the workspace-wide AI-behaviour settings (optimistic flip + persist).
+      saveAiInstruction: (aiInstruction, outputLanguage, assistantTokenBudget, handoffInstruction) => {
         const room = snap.activeWorkspaceId;
         if (!room) return;
-        setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === room ? { ...w, aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl } : w)) }));
-        observeSync(syncRequest({ name: 'workspaces/saveAiInstruction', version: 'v1', data: { aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl, clientRequestId: nextReqId() }, receiver: room }));
+        setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === room ? { ...w, aiInstruction, outputLanguage, assistantTokenBudget, handoffInstruction } : w)) }));
+        observeSync(syncRequest({ name: 'workspaces/saveAiInstruction', version: 'v1', data: { aiInstruction, outputLanguage, assistantTokenBudget, handoffInstruction, clientRequestId: nextReqId() }, receiver: room }));
       },
       //? P1 — set which provider runs a feature ('default' clears the override).
       aiOverrides: snap.aiOverrides,
@@ -2093,9 +2100,6 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       },
       //? Save an ENCRYPTED media provider API key / per-feature override (U3) via save-media-provider (B-23).
       saveMediaProvider: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'save-media-provider', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
-      //? GAP_SCAN G7 — start/update a prompt A/B experiment, or stop measuring one.
-      savePromptExperiment: (input) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'prompt-experiment-save', ...input, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
-      stopPromptExperiment: (experimentId) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'prompt-experiment-stop', experimentId, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? A7 — store this workspace's platform APP credentials (write-only; server-encrypted) via B-23.
       savePlatformCredentials: (platform, clientId, clientSecret) => { const room = snap.activeWorkspaceId; if (room) void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'save-platform-credentials', platform, clientId, clientSecret, clientRequestId: nextReqId() }, receiver: room }).then(() => { refetch(); }); },
       //? Edit a channel's brand voice (U4) → updates the channel + re-indexes brand-RAG (B-23).

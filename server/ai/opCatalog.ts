@@ -217,8 +217,8 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   },
   'save-ai-instruction': {
     mode: 'enabled',
-    hint: 'set the workspace-wide AI behaviour: the always-on instruction prepended to every AI run and/or the preferred output language. Only pass the fields to change; the rest keep their current value. Provider connections and per-feature routing are managed through AI provider settings.',
-    params: { aiInstruction: { kind: 'string' }, outputLanguage: { kind: 'string' } },
+    hint: 'set the workspace-wide AI behaviour: the always-on instruction prepended to every AI run, the preferred output language, the per-stage-turn token budget before a self-handoff (assistantTokenBudget, 0 = default), and/or the custom self-handoff instruction (handoffInstruction, empty = built-in). Only pass the fields to change; the rest keep their current value. Provider connections and per-feature routing are managed through AI provider settings.',
+    params: { aiInstruction: { kind: 'string' }, outputLanguage: { kind: 'string' }, assistantTokenBudget: { kind: 'number' }, handoffInstruction: { kind: 'string' } },
   },
   'save-ai-provider': {
     mode: 'enabled',
@@ -308,8 +308,8 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
   },
   'edit-budget': {
     mode: 'enabled', destructive: true,
-    hint: "create or edit the AI €-spend cap ('raise the budget to 50', 'alert me at 80%'). params: cap (the new amount), alertPct? (0-100), label?, enforcement? (pauseNew = pause new work | pauseAll = pause everything), create? (true = add a SEPARATE additional cap), enabled? (false retires the cap but keeps it listed), remove? (true DELETES the cap identified by budgetId — irreversible, prefer enabled:false unless the user asks to remove it for good). Only pass the fields to change.",
-    params: { cap: { kind: 'number' }, alertPct: { kind: 'number' }, label: { kind: 'string' }, enforcement: { kind: 'enum', values: ['pauseNew', 'pauseAll'] }, create: { kind: 'boolean' }, enabled: { kind: 'boolean' }, budgetId: { kind: 'string' }, remove: { kind: 'boolean' } },
+    hint: "create or edit the AI €-spend cap ('raise the budget to 50', 'alert me at 80%'). params: cap (the new amount), alertPct? (0-100), label?, create? (true = add a SEPARATE additional cap), enabled? (false retires the cap but keeps it listed), remove? (true DELETES the cap identified by budgetId — irreversible, prefer enabled:false unless the user asks to remove it for good). A full enabled cap pauses NEW AI runs; running ones finish. Only pass the fields to change.",
+    params: { cap: { kind: 'number' }, alertPct: { kind: 'number' }, label: { kind: 'string' }, create: { kind: 'boolean' }, enabled: { kind: 'boolean' }, budgetId: { kind: 'string' }, remove: { kind: 'boolean' } },
   },
   'resume-spend': {
     mode: 'enabled', destructive: true,
@@ -724,18 +724,6 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     mode: 'enabled',
     hint: 'keep an asset in the reusable library, or take it out. params: assetId, starred (true/false)',
     params: { assetId: { kind: 'string', required: true }, starred: { kind: 'boolean', required: true } },
-  },
-  //? G7 — "test these two prompts against each other" is a natural thing to ask the Assistant. Starting
-  //? one retires the previous experiment on that feature (the Conductor enforces one-per-feature).
-  'prompt-experiment-save': {
-    mode: 'enabled',
-    hint: 'start an A/B test between two prompt variants for one AI feature. params: feature (script|interviewer|mr-review|workspace-chat), name, variantA, variantB',
-    params: { feature: { kind: 'enum', values: ['script', 'interviewer', 'mr-review', 'workspace-chat'], required: true }, name: { kind: 'string', required: true }, variantA: { kind: 'string', required: true }, variantB: { kind: 'string', required: true } },
-  },
-  'prompt-experiment-stop': {
-    mode: 'enabled',
-    hint: 'stop measuring a prompt experiment (its results are kept). params: experimentId',
-    params: { experimentId: { kind: 'string', required: true } },
   },
   'content-critique-image': {
     mode: 'enabled',

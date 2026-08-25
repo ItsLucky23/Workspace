@@ -73,7 +73,7 @@ export async function createBlankWorkspace(prisma: PrismaClient, ownerId: string
   await createStarterLibrary(prisma, workspaceId, project.id);
 
   await prisma.workspaceBudget.create({
-    data: { workspaceId, label: 'Monthly', cap: 0, alertPct: 80, enforcement: 'pauseNew', periodWindow: 'calendar-month', spent: 0, enabled: false },
+    data: { workspaceId, label: 'Monthly', cap: 0, alertPct: 80, periodWindow: 'calendar-month', spent: 0, enabled: false },
   });
 
   //? Light starter seed (item 11): ONE active sprint + TWO example tickets owned by
@@ -190,7 +190,7 @@ export async function seedDemoWorkspace(prisma: PrismaClient, ownerId: string): 
       data: {
         workspaceId, projectId: project.id, key: s.id, kind: s.kind, name: s.name, order: s.order,
         aiEnabled: s.aiEnabled, wipLimit: s.wipLimit ?? null,
-        roleKey: s.kind === 'code' ? 'code' : s.kind, systemPrompt: '',
+        systemPrompt: '',
         customInstructions: s.customInstructions, handoverPrompt: s.handoverPrompt,
         sourceIds: s.sourceIds,
         commands: s.commands, tools, statuses: s.statuses, processes: s.processes,
@@ -249,7 +249,7 @@ export async function seedDemoWorkspace(prisma: PrismaClient, ownerId: string): 
   }
 
   await prisma.workspaceBudget.create({
-    data: { workspaceId, label: 'Monthly', cap: BUDGET.cap, alertPct: BUDGET.alertPct, enforcement: 'pauseNew', periodWindow: 'calendar-month', spent: BUDGET.spent, enabled: true },
+    data: { workspaceId, label: 'Monthly', cap: BUDGET.cap, alertPct: BUDGET.alertPct, periodWindow: 'calendar-month', spent: BUDGET.spent, enabled: true },
   });
 
   //? Context documents are InfoSource rows. (The old demo "capability skills" — fake RAG/graph

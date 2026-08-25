@@ -64,7 +64,7 @@ export async function cloneWorkspace(
         data: {
           workspaceId, projectId: project.id,
           key: st.key, kind: st.kind, name: st.name, order: st.order, aiEnabled: st.aiEnabled,
-          wipLimit: st.wipLimit, roleKey: st.roleKey, systemPrompt: st.systemPrompt,
+          wipLimit: st.wipLimit, systemPrompt: st.systemPrompt,
           customInstructions: st.customInstructions, handoverPrompt: st.handoverPrompt, definitionOfDone: st.definitionOfDone,
           sourceIds: st.sourceIds, visibleStageIds: st.visibleStageIds,
           //? These are typed COMPOSITE columns (not free-form Json), so the read-back values are already

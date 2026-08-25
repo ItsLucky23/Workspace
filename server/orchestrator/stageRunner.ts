@@ -32,7 +32,7 @@ import { retrieve } from '../rag';
 import { retrieveProductKnowledge } from '../rag/productKnowledge';
 import { stageSkillBlock } from '../ai/skills';
 import { workspaceAiPrefix } from '../ai/registry';
-import { budgetForStage, shouldHandoff, parseHandoff, latestHandoff, renderHandoffReload, DEFAULT_HANDOFF_INSTRUCTION } from './handoff';
+import { budgetForStage, shouldHandoff, parseHandoff, latestHandoff, renderHandoffReload, handoffInstructionFor } from './handoff';
 import { killClaudeByContainer } from './agentControl';
 import { waitForOutput } from './ptyReady';
 import { parseTurnResult, type CarryOverEnvelope, type TurnResult } from './turnResult';
@@ -850,12 +850,16 @@ async function runStageInTenant(workspaceId: string, ticketKey: string, stageKey
   const handoffSessionId = completed.claudeSessionId;
   if (handoffSessionId) {
     await tryCatch(async () => {
-      const budget = budgetForStage(stageRow.modelCfg.contextBudgetTokens);
+      //? Wired 2026-08-25 — the workspace's own budget + handoff instruction (previously stored-but-
+      //? never-read columns): stage contextBudgetTokens → workspace assistantTokenBudget → env default,
+      //? and a custom handoffInstruction replaces the default prose (block spec always appended).
+      const wsRow = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { assistantTokenBudget: true, handoffInstruction: true } });
+      const budget = budgetForStage(stageRow.modelCfg.contextBudgetTokens, wsRow?.assistantTokenBudget);
       const pcProbe = await docker(['exec', container.name, 'sh', '-c', 'test -f /work/.claude/precompact-signal && echo yes || echo no']);
       const preCompact = pcProbe.out.trim() === 'yes';
       if (!preCompact && !shouldHandoff(completed.tokenEstimate, budget)) return;
       await opts.reservationGuard.assertOwned();
-      const drivenHandoff = await driveContainerTurn(container.name, DEFAULT_HANDOFF_INSTRUCTION, { resumeSessionId: handoffSessionId, workspaceId, ticketKey, model: turnModel, effort: choice.effort, runOwner, adapter });
+      const drivenHandoff = await driveContainerTurn(container.name, handoffInstructionFor(wsRow?.handoffInstruction), { resumeSessionId: handoffSessionId, workspaceId, ticketKey, model: turnModel, effort: choice.effort, runOwner, adapter });
       const body = drivenHandoff.ok ? parseHandoff(drivenHandoff.message) : null;
       if (!body) return;
       const reason = preCompact ? 'precompact' : 'budget';

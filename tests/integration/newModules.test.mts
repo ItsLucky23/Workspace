@@ -1,6 +1,6 @@
 //? Integration test for GAP_SCAN Phase G against real Mongo: workspace cloning (G2), publishing a Studio
-//? artifact as a live page (G3), the workspace asset library (G4), pipeline presets (G5), the prompt A/B
-//? trial store (G7) and site-watch snapshots (G8).
+//? artifact as a live page (G3), the workspace asset library (G4), pipeline presets (G5) and site-watch
+//? snapshots (G8). (G7 prompt A/B was removed 2026-08-25.)
 
 import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 
@@ -9,7 +9,6 @@ const { createBlankWorkspace } = await import('../../server/bootstrap/seedWorksp
 const { cloneWorkspace } = await import('../../server/bootstrap/cloneWorkspace');
 const { publishArtifactSite, unpublishArtifactSite, siteSlug } = await import('../../server/deploy/staticSite');
 const { listLibrary, setAssetStarred } = await import('../../server/content/assetLibrary');
-const { resolvePromptVariant, recordTrial, experimentReport, assignVariant } = await import('../../server/ai/promptExperiment');
 const { recordWatchSnapshot, pruneWatchSnapshots } = await import('../../server/scraper/watch');
 const { runInWriterContext } = await import('../../server/orchestrator/writerContext');
 const { runInTenant } = await import('../../server/tenant/tenantContext');
@@ -112,22 +111,6 @@ try {
   eq((await listLibrary(prisma, sourceId, { starredOnly: true })).length, 1, 'and can be listed on its own');
   eq((await listLibrary(prisma, sourceId, { kind: 'music' })).length, 1, 'the library filters by kind');
   eq((await listLibrary(prisma, cloneId)).length, 0, "another workspace sees none of this workspace's assets");
-
-  /* ---------------------------------------------- G7: prompt A/B */
-  const experiment = await prisma.promptExperiment.create({ data: { workspaceId: sourceId, feature: 'script', name: 'Hook style', variantA: 'Open with a question.', variantB: 'Open with a number.' } });
-  const resolved = await resolvePromptVariant(prisma, sourceId, 'script', pieceA.id);
-  assert(resolved !== null, 'an active experiment resolves a variant');
-  eq(resolved?.variant, assignVariant(experiment.id, pieceA.id), 'the assignment matches the deterministic split');
-  eq(resolved?.prompt, resolved?.variant === 'a' ? 'Open with a question.' : 'Open with a number.', 'and hands back that variant\'s prompt');
-  eq(await resolvePromptVariant(prisma, sourceId, 'mr-review', pieceA.id), null, 'a feature with no experiment is untouched');
-
-  await recordTrial(prisma, sourceId, { experimentId: experiment.id, subjectId: pieceA.id, variant: 'a', score: 100 });
-  await recordTrial(prisma, sourceId, { experimentId: experiment.id, subjectId: pieceA.id, variant: 'a', score: 250 });
-  eq(await prisma.promptTrial.count({ where: { workspaceId: sourceId, experimentId: experiment.id } }), 1, 'a repeated ingest UPDATES the trial instead of inflating the sample');
-  eq((await prisma.promptTrial.findFirst({ where: { workspaceId: sourceId }, select: { score: true } }))?.score, 250, 'with the newest score');
-
-  const report1 = await experimentReport(prisma, sourceId, experiment.id);
-  eq(report1.winner, null, 'one trial names no winner');
 
   /* ---------------------------------------------- G8: watch snapshots */
   const url = 'https://competitor.test/pricing';

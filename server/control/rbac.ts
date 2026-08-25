@@ -151,9 +151,6 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'media-trash-purge': CAP.workspaceSettings,
   //? G4 — starring marks an asset as part of the workspace's reusable library.
   'asset-star': CAP.workTickets,
-  //? G7 — a prompt experiment steers every AI run for that feature; workspace-settings bar.
-  'prompt-experiment-save': CAP.workspaceSettings,
-  'prompt-experiment-stop': CAP.workspaceSettings,
   'content-critique-image': CAP.workTickets,
   'content-video-restyle': CAP.workTickets,
   'content-edit-image': CAP.workTickets,

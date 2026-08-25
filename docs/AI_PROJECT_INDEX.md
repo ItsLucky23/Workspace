@@ -7,7 +7,7 @@
 >
 > Cross-reference detection uses static `import` statements. Dynamic imports (`await import(...)`) and string-key access are NOT counted — so the "unused" list may include exports that are actually used dynamically.
 
-## API routes (67)
+## API routes (66)
 
 | Path | Method | Auth | Rate limit | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -51,7 +51,6 @@
 | `api/workspaces/openPreview/v1` | POST | login | 12 | — | yes | — | Workspaces — [open-preview] start the ticket's app dev-server in its container + expose it at |
 | `api/workspaces/openRefPreview/v1` | POST | login | 12 | — | yes | — | Workspaces — [open-ref-preview] (T1) start the ticket's app at an ARBITRARY git ref (SHA/tag/branch) in an |
 | `api/workspaces/pipelinePresets/v1` | POST | login | 30 | ItsLucky23 | yes | — | Workspaces — [pipeline-presets] the pipeline presets and the canonical stage blueprints behind them. |
-| `api/workspaces/promptExperiments/v1` | POST | login | 60 | ItsLucky23 | yes | — | @docs owner ItsLucky23 |
 | `api/workspaces/pushConfig/v1` | POST | login | 60 | — | yes | — | Deliver the Web Push VAPID PUBLIC key to the browser (FREEDOM_PROGRAM A1) so it can subscribe. The public |
 | `api/workspaces/readWorktreeFile/v1` | POST | login | 30 | ItsLucky23 | yes | — | Workspaces — [read-worktree-file] read the REAL content of one file from a ticket's container worktree |
 | `api/workspaces/repoFile/v1` | POST | login | 60 | ItsLucky23 | yes | — | Workspaces — [repo-file] read ONE file's content from the active project's linked repo at its baseline |
@@ -162,10 +161,10 @@
 
 | Owner | Routes |
 | --- | --- |
-| `ItsLucky23` | 31 |
+| `ItsLucky23` | 30 |
 | _(unowned)_ | 108 |
 
-**Test coverage**: 137/139 routes have a per-route `.tests.ts`.
+**Test coverage**: 136/138 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 

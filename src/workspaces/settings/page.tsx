@@ -16,21 +16,19 @@ import { Collapse } from '../_components/motion';
 import { AvatarBubble, Disclosure, IconButton, InfoTip, PopMenu, Tabs, Toggle, WsButton } from '../_components/primitives';
 import { useTrailSegment } from '../_components/sections';
 import { EmptyPicker } from '../_components/SetupNotice';
-import { FormSection, INPUT_CLS as dbInputCls, INPUT_CLS as fieldCls, INPUT_CLS as inputCls, SettingRow } from '../_components/settings';
+import { FormSection, INPUT_CLS as dbInputCls, INPUT_CLS as inputCls, SettingRow } from '../_components/settings';
 import { isModuleEnabled } from '../_data/modules';
-import type { EnvironmentSummary, PatSummary, PromptExperimentSummary } from '../_data/types';
+import type { EnvironmentSummary, PatSummary } from '../_data/types';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import { enablePush, disablePush, hasPushSubscription } from '../_functions/pushSubscribe';
 import { canInstall, isIosSafari, isStandalone, promptInstall, subscribeInstall } from '../_functions/installPrompt';
 import type { SessionLayout } from '../../../config';
 
 //? Technical code-values rendered verbatim in JSX — deliberately NOT translated (PAT scope ids,
-//? the A/B stat labels, a token-prefix ellipsis, the demo-account row label). Const references
+//? a token-prefix ellipsis, the demo-account row label). Const references
 //? keep them out of jsx-no-literals territory without pretending they are prose.
 const PAT_SCOPE_TICKETS = ' tickets:write';
 const PAT_SCOPE_CONTENT = ' content:write';
-const STAT_LABEL_A = 'A ';
-const STAT_LABEL_B = '   B ';
 const ELLIPSIS = '…';
 const DEMO_ACCOUNT_LABEL = 'demo';
 
@@ -110,17 +108,6 @@ function ForgeConnectForm({ projectId, onConnect }: { projectId: string; onConne
 //? Issue/revoke talk to the issuePat/revokePat `_api` routes directly (not a [control-API] op — it's
 //? account state); the list itself now PRELOADS from the workspace snapshot (`pats`, PatSummary) instead
 //? of a mount-time GET, so a write just calls the shared `refetch()` to pull the fresh list back in.
-//?
-//? GAP_SCAN G7 — prompt A/B. A workspace's prompts are its most-edited surface and were the least-measured
-//? one: a rewrite either "felt better" or nobody knew. This starts a two-variant experiment per AI feature
-//? and shows the verdict — including, most of the time, "not enough data yet", which is the honest answer
-//? and the reason the panel is worth having at all. This stays an ON-DEMAND read (not preloaded into the
-//? snapshot): scoring runs a count query per experiment, so folding it into every snapshot build / realtime
-//? refetch would re-score all experiments on every workspace write — the tradeoff `promptExperiments_v1`'s
-//? own header deliberately avoided. It re-reads after a save/stop instead.
-
-//? The features whose prompt is worth A/B-ing (the ones whose output has a measurable outcome).
-const EXPERIMENT_FEATURES = ['script', 'interviewer', 'mr-review', 'workspace-chat'];
 
 //? F27 — the per-environment deploy log. Read-only on purpose: rolling back is already an explicit,
 //? confirmed action elsewhere. What was missing was simply the ANSWER to "which commit is live, and what
@@ -244,71 +231,6 @@ function StoragePanel() {
   );
 }
 
-function ExperimentsPanel({ workspaceId }: { workspaceId: string }) {
-  const translate = useTranslator();
-  const { savePromptExperiment, stopPromptExperiment } = useWorkspaces();
-  const [promptExperiments, setPromptExperiments] = useState<PromptExperimentSummary[]>([]);
-  const [feature, setFeature] = useState(EXPERIMENT_FEATURES[0] ?? 'script');
-  const [name, setName] = useState('');
-  const [variantA, setVariantA] = useState('');
-  const [variantB, setVariantB] = useState('');
-
-  //? On-demand read (see the header note): fetch on mount + after a write. Scoring is a count-per-experiment,
-  //? so this deliberately stays out of the preloaded snapshot.
-  const refresh = useCallback((): void => {
-    void apiRequest({ name: 'workspaces/promptExperiments', version: 'v1', data: { workspaceId } }).then((res) => {
-      if (res.status === 'success') setPromptExperiments(res.result.experiments);
-    });
-  }, [workspaceId]);
-  useEffect(() => { refresh(); }, [refresh]);
-
-  const start = (): void => {
-    if (variantA.trim().length === 0 || variantB.trim().length === 0) return;
-    savePromptExperiment({ feature, name: name.trim() || feature, variantA: variantA.trim(), variantB: variantB.trim() });
-    setName(''); setVariantA(''); setVariantB('');
-    refreshAfterWrite();
-  };
-  const refreshAfterWrite = (): void => {
-    for (const delay of [600, 2000, 5000]) globalThis.setTimeout(refresh, delay);
-  };
-  const stop = (id: string): void => { stopPromptExperiment(id); refreshAfterWrite(); };
-
-  const featureItems: DropdownItem[] = EXPERIMENT_FEATURES.map((f) => ({ id: f, value: f, item: f }));
-
-  return (
-    <Card title={translate({ key: 'workspaces.experiments.title' })} desc={translate({ key: 'workspaces.experiments.desc' })}>
-      <div className="flex flex-col gap-2 pb-3 border-b border-divider">
-        <Dropdown size="md" width="full" value={featureItems.find((i) => i.id === feature)} items={featureItems} onChange={(it) => { setFeature(String(it.id)); }} />
-        <input value={name} onChange={(e) => { setName(e.target.value); }} placeholder={translate({ key: 'workspaces.experiments.namePlaceholder' })} className={fieldCls} />
-        <textarea value={variantA} onChange={(e) => { setVariantA(e.target.value); }} rows={2} placeholder={translate({ key: 'workspaces.experiments.variantA' })} className={`${fieldCls} resize-none`} />
-        <textarea value={variantB} onChange={(e) => { setVariantB(e.target.value); }} rows={2} placeholder={translate({ key: 'workspaces.experiments.variantB' })} className={`${fieldCls} resize-none`} />
-        <WsButton icon="flask" disabled={variantA.trim().length === 0 || variantB.trim().length === 0} onClick={start}>{translate({ key: 'workspaces.experiments.start' })}</WsButton>
-      </div>
-      <div className="flex flex-col">
-        {promptExperiments.map((row) => (
-          <Row key={row.id}>
-            <div className="min-w-0">
-              <div className="text-sm font-medium text-title truncate">{row.name}</div>
-              <div className="text-xs text-muted">{row.feature}{' · '}{translate({ key: `workspaces.experiments.status_${row.status}` })}</div>
-              {/* The verdict is the product here — "not enough data" is a real answer, not a placeholder. */}
-              <div className={`text-xs mt-0.5 ${row.winner ? 'text-correct' : 'text-muted'}`}>{row.verdict}</div>
-              <div className="text-[11px] text-disabled tabular-nums mt-0.5">
-                {STAT_LABEL_A}{String(row.trialsA)}{' · '}{String(row.meanA)}{STAT_LABEL_B}{String(row.trialsB)}{' · '}{String(row.meanB)}
-              </div>
-            </div>
-            {row.status === 'running' && (
-              <WsButton variant="ghost" icon="circle-stop" className="shrink-0" onClick={() => { stop(row.id); }}>
-                {translate({ key: 'workspaces.experiments.stop' })}
-              </WsButton>
-            )}
-          </Row>
-        ))}
-        {promptExperiments.length === 0 && <div className="text-sm text-muted py-3">{translate({ key: 'workspaces.experiments.empty' })}</div>}
-      </div>
-    </Card>
-  );
-}
-
 function PatPanel({ workspaceId }: { workspaceId: string }) {
   const translate = useTranslator();
   const { pats, refetch } = useWorkspaces();
@@ -399,6 +321,10 @@ export default function AccountSettings() {
   const [dbEnvKind, setDbEnvKind] = useState('dev');
   const [migName, setMigName] = useState('');
   const [migSql, setMigSql] = useState('');
+  //? Fix 2026-08-25 — the introspect reply (the table list) renders inline in the card; it used to be
+  //? dropped, so the button did nothing visible.
+  const [dbTables, setDbTables] = useState<{ connectionId: string; tables: string[] } | null>(null);
+  const [dbIntrospectBusy, setDbIntrospectBusy] = useState<string | null>(null);
   const { session } = useSession<SessionLayout>();
   //? A1 — real web-push subscribe/unsubscribe (the toggle drives the browser subscription + the server store).
   const [push, setPush] = useState(false);
@@ -583,8 +509,6 @@ export default function AccountSettings() {
           {tab === 'workspace' && (<>
 {/* X3 — API tokens (issue/list/revoke) for the public API. */}
           <PatPanel workspaceId={activeWorkspace.id} />
-          {/* G7 — measure a prompt change instead of guessing at it. */}
-          <ExperimentsPanel workspaceId={activeWorkspace.id} />
 
           {/* F48/F06 — the media BIN + what this workspace occupies on disk. Deleting media no longer
               destroys bytes immediately: it lands here with a visible countdown, so a misclick is
@@ -882,9 +806,20 @@ export default function AccountSettings() {
                   <span className="text-sm font-medium text-title">{c.name}</span>
                   <span className="text-xs text-muted">{c.kind} · {c.envKind}</span>
                 </span>
-                <WsButton variant="ghost" icon="magnifying-glass" className="shrink-0" onClick={() => { dbIntrospect(c.id); }}>{translate({ key: 'workspaces.db.introspect' })}</WsButton>
+                <WsButton variant="ghost" icon="magnifying-glass" className="shrink-0" disabled={dbIntrospectBusy === c.id} onClick={() => { setDbIntrospectBusy(c.id); void dbIntrospect(c.id).then((r) => { setDbIntrospectBusy(null); if (r.ok) { setDbTables({ connectionId: c.id, tables: r.tables }); } else { notify.error({ key: 'workspaces.db.introspectFailed' }); } }); }}>{translate({ key: 'workspaces.db.introspect' })}</WsButton>
               </Row>
             ))}
+            {dbTables && (
+              <div className="rounded-lg border border-container1-border bg-container1 px-3 py-2 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-muted uppercase tracking-wide truncate">{translate({ key: 'workspaces.db.tablesTitle', params: [{ key: 'name', value: dbConnections.find((c) => c.id === dbTables.connectionId)?.name ?? '' }, { key: 'count', value: String(dbTables.tables.length) }] })}</span>
+                  <IconButton icon="xmark" title={translate({ key: 'workspaces.db.tablesClose' })} onClick={() => { setDbTables(null); }} className="shrink-0" />
+                </div>
+                {dbTables.tables.length === 0
+                  ? <span className="text-xs text-muted">{translate({ key: 'workspaces.db.noTables' })}</span>
+                  : <div className="flex flex-wrap gap-1">{dbTables.tables.map((t) => <span key={t} className="font-mono text-xs text-common rounded bg-container2 px-1.5 py-0.5">{t}</span>)}</div>}
+              </div>
+            )}
             <div className="flex flex-col gap-2 mt-2 border-t border-divider pt-3">
               <div className="flex flex-wrap items-center gap-2">
                 <input value={migName} onChange={(e) => { setMigName(e.target.value); }} placeholder={translate({ key: 'workspaces.db.migNamePh' })} className={`${dbInputCls} flex-1 min-w-32`} />

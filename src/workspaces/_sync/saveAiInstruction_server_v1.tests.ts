@@ -4,21 +4,20 @@ import { loginSeededUser, createRealUser, cleanupWorkspace, joinRoom } from '../
 
 //? Per-route tests for `workspaces/saveAiInstruction/v1` — the realtime write that persists
 //? the workspace-wide "how the AI should work here" instruction + output language + the
-//? per-workspace Gemini overrides. The auto-sweep does not walk `_sync` routes, so these cases
-//? stand in for basic contract/auth coverage too:
+//? self-handoff pair (assistantTokenBudget/handoffInstruction, wired 2026-08-25). The auto-sweep
+//? does not walk `_sync` routes, so these cases stand in for basic contract/auth coverage too:
 //?  [1] happy path — a workspaceSettings-capable member saves the instruction fields; asserted
 //?      via the REAL Prisma post-condition on `Workspace` (the Conductor's single-writer
-//?      persistence), not just the ack — including the geminiTemperature CLAMP the Conductor
-//?      applies (source: `save-ai-instruction` case, clamps to Gemini's valid 0.0–2.0 range).
+//?      persistence), not just the ack — including the budget FLOOR the Conductor applies
+//?      (source: `save-ai-instruction` case; 0/negative clears to null = env default).
 //?  [2] tenant/RBAC boundary — a room member who is NOT a `WorkspaceMember` is rejected with
 //?      `auth.forbidden`, and the workspace row is left untouched.
 
 interface SaveAiInstructionInput {
   aiInstruction: string;
   outputLanguage: string;
-  geminiModel: string;
-  geminiTemperature: string;
-  geminiBaseUrl: string;
+  assistantTokenBudget: number;
+  handoffInstruction: string;
   clientRequestId: string;
 }
 //? The HTTP sync harness wraps a route's own `SyncServerResponse` inside an outer
@@ -33,9 +32,8 @@ interface SaveAiInstructionOk {
     status: 'success';
     aiInstruction: string;
     outputLanguage: string;
-    geminiModel: string;
-    geminiTemperature: string;
-    geminiBaseUrl: string;
+    assistantTokenBudget: number;
+    handoffInstruction: string;
   };
 }
 interface SaveAiInstructionErr {
@@ -57,7 +55,7 @@ async function poll<T>(fn: () => Promise<T | null>, timeoutMs = 4000, stepMs = 5
 
 export const customTests: CustomTestCase[] = [
   {
-    name: 'happy path persists the instruction fields, clamping an out-of-range temperature (Prisma post-condition)',
+    name: 'happy path persists the instruction fields, flooring the token budget (Prisma post-condition)',
     run: async (ctx: TestContext) => {
       const { userId, workspaceId } = await loginSeededUser(ctx, 'saveaiinstruction_c1');
       try {
@@ -65,16 +63,15 @@ export const customTests: CustomTestCase[] = [
         const aiInstruction = `Always be concise ${String(Date.now())}`;
         const res = await ctx.callSync<SaveAiInstructionInput, SaveAiInstructionResponse>(
           {
-            aiInstruction, outputLanguage: 'Dutch', geminiModel: 'gemini-2.0-flash',
-            geminiTemperature: '9.9', geminiBaseUrl: 'https://gemini.example.com',
+            aiInstruction, outputLanguage: 'Dutch', assistantTokenBudget: 70_000.9,
+            handoffInstruction: 'Focus on open decisions.',
             clientRequestId: `sai-c1-${String(Date.now())}`,
           },
           { receiver: workspaceId },
         );
         ctx.expect.eq(res.status, 'success', 'saveAiInstruction returns status "success"');
-        //? The route's own ack (`saveAiInstruction_server_v1.ts`) echoes the CLIENT's raw
-        //? `clientInput` fields, not the Conductor's clamped result — only the Prisma
-        //? post-condition below reflects the clamp (`save-ai-instruction` case, conductor.ts).
+        //? The route's own ack (`saveAiInstruction_server_v1.ts`) echoes the CLIENT's fields; only
+        //? the Prisma post-condition below reflects the Conductor's floor (`save-ai-instruction` case).
         if (res.status === 'success') {
           ctx.expect.eq(res.result.aiInstruction, aiInstruction, 'the ack echoes the saved instruction');
         }
@@ -82,9 +79,8 @@ export const customTests: CustomTestCase[] = [
         const workspace = await poll(() => ctx.prisma.workspace.findFirst({ where: { id: workspaceId, aiInstruction } }));
         ctx.expect.ok(workspace !== null, 'the Conductor persisted the instruction (post-condition, not just the ack)');
         ctx.expect.eq(workspace?.outputLanguage, 'Dutch', 'persisted outputLanguage matches');
-        ctx.expect.eq(workspace?.geminiModel, 'gemini-2.0-flash', 'persisted geminiModel matches');
-        ctx.expect.eq(workspace?.geminiTemperature, '2', 'persisted geminiTemperature is CLAMPED to the max (2)');
-        ctx.expect.eq(workspace?.geminiBaseUrl, 'https://gemini.example.com', 'persisted geminiBaseUrl matches');
+        ctx.expect.eq(workspace?.assistantTokenBudget, 70_000, 'persisted assistantTokenBudget is FLOORED to an int');
+        ctx.expect.eq(workspace?.handoffInstruction, 'Focus on open decisions.', 'persisted handoffInstruction matches');
       } finally {
         await cleanupWorkspace(ctx.prisma, workspaceId, [userId]);
       }
@@ -102,8 +98,8 @@ export const customTests: CustomTestCase[] = [
         await joinRoom(ctx, workspaceId);
         const res = await ctx.callSync<SaveAiInstructionInput, SaveAiInstructionResponse>(
           {
-            aiInstruction: 'Should not be saved', outputLanguage: 'English', geminiModel: '',
-            geminiTemperature: '', geminiBaseUrl: '', clientRequestId: `sai-c2-${String(Date.now())}`,
+            aiInstruction: 'Should not be saved', outputLanguage: 'English', assistantTokenBudget: 0,
+            handoffInstruction: '', clientRequestId: `sai-c2-${String(Date.now())}`,
           },
           { receiver: workspaceId },
         );

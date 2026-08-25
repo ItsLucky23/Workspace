@@ -509,7 +509,6 @@ function ChoiceControls({ choice, onChange }: { choice: StageModelChoice; onChan
     <div className="flex flex-wrap items-center gap-3">
       <Segmented<StageModelTier> value={choice.model} onChange={(v) => { onChange({ model: v }); }} options={modelOpts} />
       <Segmented<StageEffort> value={choice.effort} onChange={(v) => { onChange({ effort: v }); }} options={effortOpts} />
-      <div className="flex items-center gap-1.5"><span className="text-xs text-muted">{translate({ key: 'workspaces.pipeline.turns' })}</span><input type="number" min={1} value={choice.maxTurns} onChange={(e) => { onChange({ maxTurns: Number(e.target.value) }); }} className={`w-16 ${inputCls}`} /></div>
       <span className="text-xs text-meta font-mono" title={translate({ key: 'workspaces.pipeline.tierResolves' })}>{resolvedModel}</span>
     </div>
   );
@@ -520,7 +519,7 @@ export function ModelTab({ s, update }: TabProps) {
   const m = s.modelCfg;
   const setBase = (patch: Partial<StageModelChoice>) => { update({ modelCfg: { ...m, base: { ...m.base, ...patch } } }); };
   const setRule = (id: string, patch: Partial<StageModelChoice & { minScore: number }>) => { update({ modelCfg: { ...m, rules: m.rules.map((r) => (r.id === id ? { ...r, ...patch } : r)) } }); };
-  const addRule = () => { update({ modelCfg: { ...m, rules: [...m.rules, { id: `rule-${String(Date.now())}`, minScore: 5, model: 'sonnet', effort: 'medium', maxTurns: 20 }] } }); };
+  const addRule = () => { update({ modelCfg: { ...m, rules: [...m.rules, { id: `rule-${String(Date.now())}`, minScore: 5, model: 'sonnet', effort: 'medium' }] } }); };
   const sortedRules = m.rules.toSorted((a, b) => b.minScore - a.minScore);
   return (
     <div className="flex flex-col gap-5 max-w-2xl">
@@ -585,6 +584,11 @@ export function ModelTab({ s, update }: TabProps) {
           placeholder={translate({ key: 'workspaces.pipeline.contextBudgetPlaceholder' })}
           className={`w-44 ${inputCls}`}
         />
+        {/* D4/D28 wired 2026-08-25 — what this stage ACTUALLY burns per turn (rolling mean, last 20
+            turns), so the budget above can be set against a measured number instead of a guess. */}
+        {s.avgTokensPerTurn !== undefined && s.avgTokensPerTurn > 0 && (
+          <div className="text-xs text-muted mt-1.5">{translate({ key: 'workspaces.pipeline.avgTokensPerTurn', params: [{ key: 'tokens', value: s.avgTokensPerTurn.toLocaleString() }] })}</div>
+        )}
       </div>
     </div>
   );

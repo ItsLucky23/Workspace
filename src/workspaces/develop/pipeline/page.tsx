@@ -40,7 +40,7 @@ function blankStage(projectId: string, id: string, name: string, order: number, 
       { key: 'stopped', label: 'Stopped', kind: 'base' }, { key: 'done', label: 'Done', kind: 'base' },
     ],
     processes: [], visibleStageIds: [],
-    modelCfg: { autoEscalate: false, base: { model: bp?.model ?? 'sonnet', effort: bp?.effort ?? 'medium', maxTurns: bp?.maxTurns ?? 12 }, rules: [] },
+    modelCfg: { autoEscalate: false, base: { model: bp?.model ?? 'sonnet', effort: bp?.effort ?? 'medium' }, rules: [] },
     //? F-008 — `{}` like the conductor writes it: the engine enables a hook unless it is explicitly false,
     //? and the Hooks tab renders `?? true`, so the optimistic copy no longer flips after the refetch.
     hooks: {},

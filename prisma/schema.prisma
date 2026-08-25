@@ -165,18 +165,16 @@ model Workspace {
   presetKey             String   @default("professional")// D1/D18 — 'simple'|'advanced'|'professional' (provenance only; tiers editable after)
   pricing               Json?                            // D31 — per-model price map (editable; zero-out → tokens-only cost chips)
 
-  // --- workspace-AI budget + self-handoff (06, 04 §3) ---
-  assistantTokenBudget  Int?                             // per-user-Assistant context budget → self-handoff
-  reasonerTokenBudget   Int?                             // optional future one-shot reasoner budget
-  handoffInstruction    String   @default("")            // the editable self-handoff instruction template
+  // --- workspace-AI budget + self-handoff (06, 04 §3; wired 2026-08-25, reasonerTokenBudget removed) ---
+  assistantTokenBudget  Int?                             // per-stage-turn token budget before self-handoff (null = env default; per-stage contextBudgetTokens overrides)
+  handoffInstruction    String   @default("")            // the editable self-handoff instruction template (empty = built-in; the ws-handoff block spec is always appended)
   productContext        String   @default("")            // Q2 — brand/product context (what we do / audience / always-mention), folded into every creative generation
   brandLogoUrl          String?                          // gap-fix — the brand logo (/media/… upload) the render watermark overlays (watermark fires only when a position is chosen)
   aiInstruction         String   @default("")            // Q4 — workspace-wide "how the AI should work here" instruction, prepended to EVERY AI completion's system prompt
   outputLanguage        String   @default("")            // K4 — preferred AI OUTPUT language (e.g. 'Dutch'); empty = the model's default. Prepended as a directive to every completion
   autonomyLevel         String   @default("gate-key-stages") // A4 — 'gate-every' | 'gate-key-stages' (default: per-stage gateForApproval) | 'full-auto' (skip non-destructive gates)
-  geminiModel           String   @default("")            // P2 — per-workspace Gemini model override (empty = env/default). Claude-CLI has no model concept (PTY-billed)
-  geminiTemperature     String   @default("")            // P2 — per-workspace Gemini temperature (empty = model default); string so empty is distinguishable from 0
-  geminiBaseUrl         String   @default("")            // X4 — per-workspace custom Gemini base URL (empty = env/Google default); bring-your-own endpoint
+  //? The gemini* columns are gone (owner 2026-08-25): the generic per-provider store (AiConnection +
+  //? AiProviderOverride, ADR 0007) owns model/temperature/base-url now; nothing read these any more.
 
   // --- git workflow config (hosting-proxy plan) ---
   gitConfig             Json?                            // per-workspace GitConfig (branchStrategy.ts): branch strategy + push/MR policy. null ⇒ DEFAULT_GIT_CONFIG (branch == ticket key)
@@ -257,8 +255,10 @@ type LinkedFile {
 }
 
 //? The linked repo + its build/image config. Field sweep (04b §13): gitUrl,
-//? linkedFiles[], generatedDocsPath, baseImageRef(+dockerfilePath). Prototype
-//? mirror: `Project` (types.ts:34).
+//? linkedFiles[], generatedDocsPath, baseImageRef. Prototype mirror: `Project`
+//? (types.ts:34). dockerfilePath is gone (owner 2026-08-25): the on-disk reviewed
+//? draft (dockerfileDraft.ts) owns the Dockerfile flow; the column only ever stored
+//? a constant nothing read.
 model Project {
   id                String       @id @default(auto()) @map("_id") @db.ObjectId
   workspaceId       String       @db.ObjectId
@@ -270,7 +270,6 @@ model Project {
   generatedDocsPath String       @default("docs/luckystack/") // D21 — where GENERATE'd docs are committed
   baseImageRef      String?                                    // Q-CT-IMAGESEL — L2 per-project image selector (default = framework base, P2)
   stack             String?                                    // S1/E1 — 'node'|'python'|'go'|'rust'|'java'|'php'|'dotnet'|'ruby'|'generic' → the L1 base image when no baseImageRef (any-stack); null = node
-  dockerfilePath    String?                                    // optional per-project Dockerfile
   devCommand        String?                                    // LEGACY single dev command (still the fallback when runProcesses is empty); default = package.json scripts.dev
   //? ADR 0317 — running an app is rarely ONE command (a frontend AND a backend, plus an ssh tunnel or a
   //? worker). Each entry starts in the ticket's container and gets its own terminal tab. Reuses the
@@ -367,37 +366,6 @@ model UiReviewRequest {
 //? GAP_SCAN G3 — a Studio/Designer artifact served as a live page at `/s/<slug>`. The HTML is
 //? AI-generated (untrusted) and is served with a strict CSP from a cookie-less path — see
 //? `server/deploy/staticSite.ts`. Re-publishing the same artifact overwrites the same row/URL.
-//? GAP_SCAN G7 — a prompt A/B experiment: two variants of ONE feature's prompt, with the outcome that
-//? matters recorded per subject. At most one `running` experiment per feature (two overlapping tests on the
-//? same prompt make both unreadable). See `server/ai/promptExperiment.ts`.
-model PromptExperiment {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  workspaceId String   @db.ObjectId
-  feature     String                              // the AI feature whose prompt is under test
-  name        String
-  variantA    String
-  variantB    String
-  status      String   @default("running")        // 'running' | 'stopped'
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([workspaceId, feature, status])
-}
-
-//? One measured outcome for one subject (a piece, a ticket, a turn) under its assigned variant. Unique per
-//? (experiment, subject) so a repeating metrics ingest cannot inflate the sample.
-model PromptTrial {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  workspaceId  String   @db.ObjectId
-  experimentId String   @db.ObjectId
-  subjectId    String
-  variant      String                             // 'a' | 'b'
-  score        Float
-  createdAt    DateTime @default(now())
-
-  @@index([workspaceId, experimentId, subjectId])
-}
-
 model PublishedSite {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   workspaceId String   @db.ObjectId
@@ -808,20 +776,20 @@ model Migration {
 
 // ---- embedded per-stage config (composite types; mirrors PipelineStageCfg) ----
 
-//? A base model choice (model/effort/max-turns) → maps to --model/--max-turns (B-38).
+//? A base model choice (model/effort) → maps to --model (B-38). maxTurns is gone
+//? (owner 2026-08-25): it never reached the agent argv; legacy docs still carrying
+//? it are simply not read (Mongo ignores fields absent from the composite type).
 type StageModelChoice {
-  model    String        // 'haiku' | 'sonnet' | 'opus' (provider-specific; Q-MP-CAPREG forward-pointer)
-  effort   String        // 'low' | 'medium' | 'high' | 'xhigh' | 'max'
-  maxTurns Int
+  model  String        // 'haiku' | 'sonnet' | 'opus' (provider-specific; Q-MP-CAPREG forward-pointer)
+  effort String        // 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 }
 
-//? One auto-escalation rule: "score >= minScore → this model/effort/max-turns".
+//? One auto-escalation rule: "score >= minScore → this model/effort".
 type ModelRule {
   id       String
   minScore Int
   model    String
   effort   String
-  maxTurns Int
 }
 
 //? Model selection: a base choice + optional auto-escalation by the self-assigned
@@ -879,9 +847,10 @@ type StageProcessCfg {
 //? (mirrors the prototype `PipelineStageCfg`). Belongs to a Project directly (no
 //? separate `Pipeline` wrapper — decision #2). `id` is a FREE string (custom
 //? stages allowed); `kind` is the typed StageKind role (04b §12). Field sweep
-//? (04b §13): systemPrompt, roleKey, avgTokensPerTurn, contextBudgetTokens
-//? (on modelCfg). V1_SCOPE §3.2: `userEditable` (edit-lock) + `gateForApproval`
-//? (proceed-or-gate).
+//? (04b §13): systemPrompt, avgTokensPerTurn, contextBudgetTokens (on modelCfg).
+//? V1_SCOPE §3.2: `userEditable` (edit-lock) + `gateForApproval` (proceed-or-gate).
+//? roleKey is gone (owner 2026-08-25): it was literally derived from `kind` at every
+//? write site and never read — `kind` IS the role binding.
 model PipelineStage {
   id                 String            @id @default(auto()) @map("_id") @db.ObjectId
   workspaceId        String            @db.ObjectId
@@ -894,7 +863,6 @@ model PipelineStage {
   wipLimit           Int?                                     // column WIP warning threshold
 
   // --- prompt layering (D2/D17) ---
-  roleKey            String            @default("code")       // 04 §3 (03 §3) — the AgentRole plugin binding
   systemPrompt       String            @default("")           // D2/D17 — layered base prompt
   customInstructions String            @default("")
   //? DEPRECATED (owner decision 2026-08-20) — the old INCOMING carry-over template with {{chips}}.
@@ -1467,8 +1435,9 @@ model SpendRecord {
 }
 
 //? Multi-row / multi-cap budget (04b §9, D81/D82). MULTIPLE rows per workspace.
-//? `enforcement` = 'pauseNew' (block new sessions) | 'pauseAll' (pause all now) —
-//? a Conductor action, advisory-then-pause. `periodWindow` = 'calendar-month'
+//? Every ENABLED cap enforces pause-new-runs at 100% (the old pauseNew/pauseAll
+//? `enforcement` column is gone — owner 2026-08-25: both values sat in the same
+//? filter, the choice changed nothing). `periodWindow` = 'calendar-month'
 //? (default, workspace tz) or a rolling window { rolling: '5h' }. Prototype mirror:
 //? `WorkspaceBudget` (types.ts:129, single-row → multi-cap here).
 model WorkspaceBudget {
@@ -1477,7 +1446,6 @@ model WorkspaceBudget {
   label         String                              // the cap's display name in the caps-list editor
   cap           Float                               // the spend/quota ceiling, in the periodWindow's unit
   alertPct      Int      @default(80)               // notify threshold (% of cap)
-  enforcement   String                              // 'pauseNew' | 'pauseAll'
   periodWindow  Json     @default("\"calendar-month\"") // 'calendar-month' (default) | { rolling: '5h' | '30d' | ... } (D82)
   spent         Float    @default(0)                // running spend in the current window (recomputed on reset)
   windowStartAt DateTime @default(now())            // start of the current period window (rolls forward on reset)

@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (244)
+## Decisions (245)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -257,6 +257,7 @@
 | 0324 | Seat login is a purpose-bound host PTY over the terminal relay, not a control-op | 🟢 accepted | security, coding-agent, terminal, hosting, ux | — | `docs/decisions/0324-seat-login-is-a-purpose-bound-host-pty-not-a-control-op.md` |
 | 0325 | One provider catalog for text, media and embedding, with a per-workspace embedder | 🟢 accepted | ai, providers, rag, settings, migration | — | `docs/decisions/0325-one-provider-catalog-for-text-media-and-embedding-with-a-per-workspace-embedder.md` |
 | 0326 | Non-functional UI is removed, not kept as a promise | 🟢 accepted | ux, honesty, pipeline, cleanup | — | `docs/decisions/0326-non-functional-ui-is-removed-not-kept-as-promise.md` |
+| 0327 | Stored-but-inert settings are wired or deleted — never left dormant | 🟢 accepted | cleanup, honesty, schema, budget, self-handoff, spend | — | `docs/decisions/0327-stored-but-inert-settings-are-wired-or-deleted.md` |
 
 ## Summaries
 
@@ -2245,6 +2246,14 @@ A **seat-login PTY**: the `ws-term:start` payload may carry `seat: 'claude' | 'c
 Delete non-functional UI rather than keeping it as an aspirational control. A control that renders but does nothing teaches users the app lies; honesty beats surface area. Concretely: the frozen op surface shrank by the four dead ops; CommandMode is `'allow' | 'deny'` (legacy 'ask' rows read back as deny — nobody sits at the container PTY to answer); a mounted tool IS full access (the toggle is the mount; legacy 'ro' rows read as off); egress posture is a read-only host panel fed by the `egressStatus` API. Non-functional-but-useful candidates (maxTurns wiring, pauseAll enforcement, prompt-experiments, …) are REPORTED to the owner for a conscious build/delete decision, not silently rebuilt.
 
 → `docs/decisions/0326-non-functional-ui-is-removed-not-kept-as-promise.md`
+
+### 0327 — Stored-but-inert settings are wired or deleted — never left dormant
+
+**0327** · accepted · tags: cleanup, honesty, schema, budget, self-handoff, spend · 2026-08-25
+
+Split the list into DELETE (no plausible consumer) and WIRE (the stored info is useful — give it its missing consumer):
+
+→ `docs/decisions/0327-stored-but-inert-settings-are-wired-or-deleted.md`
 
 ## Code governed by decisions
 

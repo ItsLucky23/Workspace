@@ -36,7 +36,6 @@ export interface StageBlueprint {
   definitionOfDone: string;
   model: 'haiku' | 'sonnet' | 'opus';
   effort: 'low' | 'medium' | 'high';
-  maxTurns: number;
 }
 export interface PresetSummary { preset: PresetKey; stages: { key: string; name: string; kind: string; aiEnabled: boolean }[] }
 export interface PipelinePresetData {

@@ -31,7 +31,7 @@ const cfg: PipelineStageCfg = {
   customInstructions: '@@TASK@@', handoverPrompt: '@@HANDOVER@@', definitionOfDone: '@@DOD@@', systemPrompt: '@@SYS@@',
   roleKey: 'coder', userEditable: true, gateForApproval: false,
   aiSkillIds: ['sk1'], sourceIds: [], commands: [], tools: [], statuses: [], processes: [], visibleStageIds: [],
-  modelCfg: { autoEscalate: true, base: { model: 'sonnet', effort: 'medium', maxTurns: 20 }, rules: [] },
+  modelCfg: { autoEscalate: true, base: { model: 'sonnet', effort: 'medium' }, rules: [] },
   hooks: {},
 };
 

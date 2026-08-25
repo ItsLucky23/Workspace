@@ -35,8 +35,6 @@ export const CHAT_ENABLED_OPS = [
   'document-archive', 'document-unarchive', 'asset-star', 'media-trash-restore', 'media-trash-purge',
   //? F5 — reply to an inbox comment (destructive: it posts publicly, so accept carries an extra confirm).
   'content-reply-comment',
-  //? G7 — run a prompt A/B and stop it again.
-  'prompt-experiment-save', 'prompt-experiment-stop',
   // F7 — video-to-video restyle (paid gen)
   'content-video-restyle',
   'content-edit-image',

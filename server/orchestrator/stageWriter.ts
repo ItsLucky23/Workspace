@@ -9,7 +9,7 @@ import { persistCiReport, type StageCiReport } from '../ci/runner';
 import { reservationOwnsSlot } from './capacity';
 import { deterministicObjectId, stageForgeIntentId } from './actionIds';
 import { jsonInput } from '../util/json';
-import { estTokens, priceFor } from '../spend/record';
+import { estTokens, priceFor, rollBudgetWindows } from '../spend/record';
 import { parseAdvisories } from './questionSet';
 import { recordHandoff } from './handoff';
 import { assertWorkspaceWriterContext } from './writerContext';
@@ -636,7 +636,9 @@ async function applyTurnSpend(
 ): Promise<void> {
   const tokensIn = estTokens(action.payload.spend.inputChars);
   const tokensOut = estTokens(action.payload.spend.outputChars);
-  const costEstimate = ((tokensIn + tokensOut) / 1000) * priceFor(action.payload.spend.model);
+  //? D31 — the workspace's own price map (if any) overrides defaults + env.
+  const wsRow = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { pricing: true } });
+  const costEstimate = ((tokensIn + tokensOut) / 1000) * priceFor(action.payload.spend.model, wsRow?.pricing);
   const spendId = deterministicObjectId(workspaceId, action.clientRequestId, 'stage-spend');
   await prisma.spendRecord.upsert({
     where: { id: spendId },
@@ -679,6 +681,9 @@ async function applyTurnSpend(
   });
   if (sessionUpdate.count !== 1) throw new Error('[stage-writer] current session disappeared while applying spend');
 
+  //? D82 — roll stale calendar-month windows first; the ledger recompute below then reads
+  //? `createdAt >= windowStartAt`, so a rolled window automatically scopes spent to the new month.
+  await rollBudgetWindows(prisma, workspaceId);
   const budgets = await prisma.workspaceBudget.findMany({ where: { workspaceId, enabled: true }, select: { id: true, windowStartAt: true } });
   for (const budget of budgets) {
     const total = await prisma.spendRecord.aggregate({
@@ -686,6 +691,18 @@ async function applyTurnSpend(
       _sum: { costEstimate: true },
     });
     await prisma.workspaceBudget.update({ where: { id: budget.id }, data: { spent: total._sum.costEstimate ?? 0 } });
+  }
+
+  //? D4/D28 wired 2026-08-25 — the rolling per-stage average (previously a stored-but-never-written
+  //? column). Recomputed from the deterministic SpendRecord ledger like the counters above, so it is
+  //? idempotent under retries: the mean tokens/turn over this stage's most recent 20 turns.
+  const stageTurns = await prisma.spendRecord.findMany({
+    where: { workspaceId, stageId: action.target.stageId },
+    orderBy: { createdAt: 'desc' }, take: 20, select: { tokensIn: true, tokensOut: true },
+  });
+  if (stageTurns.length > 0) {
+    const avg = Math.round(stageTurns.reduce((sum, r) => sum + r.tokensIn + r.tokensOut, 0) / stageTurns.length);
+    await prisma.pipelineStage.updateMany({ where: { workspaceId, projectId: action.target.projectId, key: action.target.stageId }, data: { avgTokensPerTurn: avg } });
   }
 }
 

@@ -96,7 +96,7 @@ try {
 
   //? #99 — metered-budget enforcement read: a workspace under an enforced cap is NOT enforced; at/over it IS.
   eq(await spend.isSpendEnforcementActive(prisma, wsId), false, 'no enforced cap → provisioning not blocked');
-  const cap = await prisma.workspaceBudget.create({ data: { workspaceId: wsId, label: 'Metered', cap: 10, spent: 3, enforcement: 'pauseNew', enabled: true } });
+  const cap = await prisma.workspaceBudget.create({ data: { workspaceId: wsId, label: 'Metered', cap: 10, spent: 3, enabled: true } });
   eq(await spend.isSpendEnforcementActive(prisma, wsId), false, 'under the cap → still not enforced');
   await prisma.workspaceBudget.update({ where: { id: cap.id }, data: { spent: 12 } });
   eq(await spend.isSpendEnforcementActive(prisma, wsId), true, 'over the enforced cap → provisioning blocked');

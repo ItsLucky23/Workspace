@@ -168,7 +168,7 @@ export async function importFullBundle(
           workspaceId, projectId,
           key: str(st, 'key'), kind: str(st, 'kind', 'code'), name: str(st, 'name', str(st, 'key')),
           order: num(st, 'order'), aiEnabled: bool(st, 'aiEnabled'),
-          roleKey: str(st, 'roleKey', 'code'), systemPrompt: str(st, 'systemPrompt'),
+          systemPrompt: str(st, 'systemPrompt'),
           customInstructions: str(st, 'customInstructions'), handoverPrompt: str(st, 'handoverPrompt'),
           definitionOfDone: str(st, 'definitionOfDone'),
           sourceIds: [], visibleStageIds: [],
@@ -179,7 +179,7 @@ export async function importFullBundle(
             { key: 'stopped', label: 'Stopped', kind: 'base' },
             { key: 'done', label: 'Done', kind: 'base' },
           ],
-          modelCfg: { autoEscalate: false, base: { model: 'sonnet', effort: 'medium', maxTurns: 20 }, rules: [] },
+          modelCfg: { autoEscalate: false, base: { model: 'sonnet', effort: 'medium' }, rules: [] },
           hooks: {},
         },
       }));

@@ -108,7 +108,7 @@ export function toStageConfig(s: DbPipelineStage): PipelineStageCfg {
     projectId: s.projectId,
     id: s.key, kind: asKind(s.kind), name: s.name, order: s.order, aiEnabled: s.aiEnabled,
     customInstructions: s.customInstructions, handoverPrompt: s.handoverPrompt, definitionOfDone: s.definitionOfDone,
-    systemPrompt: s.systemPrompt, roleKey: s.roleKey, userEditable: s.userEditable, gateForApproval: s.gateForApproval,
+    systemPrompt: s.systemPrompt, userEditable: s.userEditable, gateForApproval: s.gateForApproval,
     aiSkillIds: s.aiSkillIds, sourceIds: s.sourceIds,
     commands: s.commands.map((c): StageCommandCfg => ({
       id: c.id, pattern: c.pattern, mode: asCommandMode(c.mode), title: c.title ?? undefined, desc: c.desc ?? undefined, category: c.category ?? undefined,
@@ -123,12 +123,14 @@ export function toStageConfig(s: DbPipelineStage): PipelineStageCfg {
     visibleStageIds: s.visibleStageIds,
     modelCfg: {
       autoEscalate: s.modelCfg.autoEscalate,
-      base: { model: asModelTier(s.modelCfg.base.model), effort: asEffort(s.modelCfg.base.effort), maxTurns: s.modelCfg.base.maxTurns },
-      rules: s.modelCfg.rules.map((r): ModelRule => ({ id: r.id, minScore: r.minScore, model: asModelTier(r.model), effort: asEffort(r.effort), maxTurns: r.maxTurns })),
+      base: { model: asModelTier(s.modelCfg.base.model), effort: asEffort(s.modelCfg.base.effort) },
+      rules: s.modelCfg.rules.map((r): ModelRule => ({ id: r.id, minScore: r.minScore, model: asModelTier(r.model), effort: asEffort(r.effort) })),
       contextBudgetTokens: s.modelCfg.contextBudgetTokens ?? undefined,
     },
     hooks: asHooks(s.hooks),
     wipLimit: s.wipLimit ?? undefined,
+    //? D4/D28 wired 2026-08-25 — the rolling tokens/turn average the stage-writer now maintains.
+    avgTokensPerTurn: s.avgTokensPerTurn ?? undefined,
   };
 }
 
@@ -146,7 +148,7 @@ export function stageConfigDelta(result: unknown): PipelineStageCfg | null {
 }
 
 export interface WorkspaceSnapshot {
-  workspaces: (Pick<Workspace, 'id' | 'name' | 'slug' | 'ownerId' | 'role' | 'forgeType' | 'webhookConfigured' | 'webhookLastEventAt' | 'allowMergeOnRedCI' | 'enabledSections' | 'productContext' | 'aiInstruction' | 'outputLanguage' | 'geminiModel' | 'geminiTemperature' | 'geminiBaseUrl' | 'autonomyLevel'>)[];
+  workspaces: (Pick<Workspace, 'id' | 'name' | 'slug' | 'ownerId' | 'role' | 'forgeType' | 'webhookConfigured' | 'webhookLastEventAt' | 'allowMergeOnRedCI' | 'enabledSections' | 'productContext' | 'aiInstruction' | 'outputLanguage' | 'assistantTokenBudget' | 'handoffInstruction' | 'autonomyLevel'>)[];
   activeWorkspaceId: string | null;
   //? Multi-project (ADR 0035): the active workspace's projects + the selected one.
   //? board/pipeline/tickets/sprints below are scoped to `activeProjectId`.
@@ -295,7 +297,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
   const workspaceRows = wsIds.length > 0 ? await prisma.workspace.findMany({ where: { id: { in: wsIds } } }) : [];
   const roleByWs = new Map(memberships.map((m) => [m.workspaceId, m.roleKey]));
   //? Webhook secrets are write-once credentials: the snapshot exposes only configured state.
-  const workspaces = workspaceRows.map((w) => ({ id: w.id, name: w.name, slug: w.slug, ownerId: w.ownerId, role: asRole(roleByWs.get(w.id) ?? 'member'), forgeType: w.forgeType, forgeBaseUrl: w.gitlabUrl ?? '', webhookConfigured: (w.webhookSecret ?? '').length > 0, webhookLastEventAt: w.webhookLastEventAt ? w.webhookLastEventAt.toISOString() : '', allowMergeOnRedCI: w.allowMergeOnRedCI, enabledSections: w.enabledSections, productContext: w.productContext, aiInstruction: w.aiInstruction, outputLanguage: w.outputLanguage, geminiModel: w.geminiModel, geminiTemperature: w.geminiTemperature, geminiBaseUrl: w.geminiBaseUrl, autonomyLevel: w.autonomyLevel }));
+  const workspaces = workspaceRows.map((w) => ({ id: w.id, name: w.name, slug: w.slug, ownerId: w.ownerId, role: asRole(roleByWs.get(w.id) ?? 'member'), forgeType: w.forgeType, forgeBaseUrl: w.gitlabUrl ?? '', webhookConfigured: (w.webhookSecret ?? '').length > 0, webhookLastEventAt: w.webhookLastEventAt ? w.webhookLastEventAt.toISOString() : '', allowMergeOnRedCI: w.allowMergeOnRedCI, enabledSections: w.enabledSections, productContext: w.productContext, aiInstruction: w.aiInstruction, outputLanguage: w.outputLanguage, assistantTokenBudget: w.assistantTokenBudget ?? 0, handoffInstruction: w.handoffInstruction, autonomyLevel: w.autonomyLevel }));
 
   //? Cross-workspace, by-email (NOT tenant-scoped): the pending invitations this user
   //? can accept from the onboarding. Uses the plain client — a user with no workspace
@@ -450,9 +452,9 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     //? #16 — the primary (first enabled) cap for the compact spend display (back-compat single-cap field).
     const primaryBudget = budgetRows.find((b) => b.enabled) ?? budgetRows[0];
     const budget = primaryBudget ? { spent: primaryBudget.spent, cap: primaryBudget.cap, alertPct: primaryBudget.alertPct, currency: '€' } : null;
-    //? #103 — ALL caps (multi-cap editor): id/label/enforcement/enabled per row. Enforcement is ADVISORY
-    //? (visibility-first) — the pause-on-exceeded wiring is the coupled #99 product decision.
-    const budgets = budgetRows.map((b): WorkspaceBudget => ({ spent: b.spent, cap: b.cap, alertPct: b.alertPct, currency: '€', id: b.id, label: b.label, enforcement: b.enforcement === 'pauseAll' ? 'pauseAll' : 'pauseNew', enabled: b.enabled, windowStartAt: b.windowStartAt.toISOString() }));
+    //? #103 — ALL caps (multi-cap editor): id/label/enabled per row. Every enabled cap enforces
+    //? pause-new-runs at 100% (#99); the old pauseNew/pauseAll field is gone (owner 2026-08-25).
+    const budgets = budgetRows.map((b): WorkspaceBudget => ({ spent: b.spent, cap: b.cap, alertPct: b.alertPct, currency: '€', id: b.id, label: b.label, enabled: b.enabled, windowStartAt: b.windowStartAt.toISOString() }));
     //? #105/#19 — engine occupancy (global Redis-backed) for the board busy/queued chip.
     const [activeNow, queuedNow] = await Promise.all([activeCountReadOnly(Date.now()), queueLength()]);
     const capacity = { active: activeNow, queued: queuedNow, limit: capacityLimit() };

@@ -79,7 +79,6 @@ Every typed API route in this project. Sourced from `_ProjectApiTypeMap` in `src
 | `workspaces/openPreview/v1` | POST | 12 | — | ✓ |
 | `workspaces/openRefPreview/v1` | POST | 12 | — | ✓ |
 | `workspaces/pipelinePresets/v1` | POST | 30 | — | ✓ |
-| `workspaces/promptExperiments/v1` | POST | 60 | — | ✓ |
 | `workspaces/pushConfig/v1` | POST | 60 | — | ✓ |
 | `workspaces/readWorktreeFile/v1` | POST | 30 | — | ✓ |
 | `workspaces/repoFile/v1` | POST | 60 | — | ✓ |

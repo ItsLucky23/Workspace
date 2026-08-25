@@ -1,7 +1,7 @@
 //? Integration test for E1 (reasoning first-class — plan-critique gate, ADR 0044). Runs against the REAL
 //? Conductor + Mongo. Asserts the pure plan extractor + prompt builder, and that the plan-critique op is a
 //? graceful no-op when a ticket has no plan yet (the adversarial AI pass itself is a live path). The
-//? per-stage think-budget (effort/maxTurns/autoEscalate) already surfaces in the pipeline UI — no test here.
+//? per-stage think-budget (effort/autoEscalate) already surfaces in the pipeline UI — no test here.
 
 import { db, cleanupWorkspace, assert, eq, report } from '../_helpers.mts';
 

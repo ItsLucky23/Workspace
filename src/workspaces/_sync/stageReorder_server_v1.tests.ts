@@ -43,9 +43,9 @@ async function seedStage(prisma: TestContext['prisma'], workspaceId: string, pro
   return prisma.pipelineStage.create({
     data: {
       workspaceId, projectId, key, kind: 'code', name: `Stage ${key}`, order, aiEnabled: true, wipLimit: null,
-      roleKey: 'code', systemPrompt: '', customInstructions: '', handoverPrompt: '', definitionOfDone: '',
+      systemPrompt: '', customInstructions: '', handoverPrompt: '', definitionOfDone: '',
       sourceIds: ['summary'], commands: [], tools: [], statuses: [], processes: [], visibleStageIds: [],
-      modelCfg: { autoEscalate: false, base: { model: 'sonnet', effort: 'medium', maxTurns: 20 }, rules: [] },
+      modelCfg: { autoEscalate: false, base: { model: 'sonnet', effort: 'medium' }, rules: [] },
       hooks: {},
     },
   });

@@ -86,9 +86,8 @@ export interface Workspace {
   timezone?: string;              // D55 — IANA tz; anchors cron + budget window + sprint dates
   presetKey?: string;             // D1/D18 — 'simple' | 'advanced' | 'professional' (provenance)
   pricing?: unknown;              // D31 — per-model price map (Json in schema)
-  assistantTokenBudget?: number;  // per-user-Assistant context budget → self-handoff
-  reasonerTokenBudget?: number;   // optional future one-shot reasoner budget
-  handoffInstruction?: string;    // editable self-handoff instruction template
+  assistantTokenBudget?: number;  // per-stage-turn token budget before self-handoff (0 = env default; wired 2026-08-25)
+  handoffInstruction?: string;    // editable self-handoff instruction template ('' = built-in)
   gitConfig?: GitConfig;          // per-workspace git strategy + push policy (hosting-proxy plan)
   forgeType?: string;             // #10 'gitlab' | 'github' — which forge provider
   forgeBaseUrl?: string;          // F-025 — stored Workspace.gitlabUrl (not a secret); '' = provider default
@@ -99,9 +98,6 @@ export interface Workspace {
   productContext?: string;        // Q2 — brand/product context folded into every creative generation
   aiInstruction?: string;         // Q4 — workspace-wide "how the AI works here", prepended to every AI completion
   outputLanguage?: string;        // K4 — preferred AI output language (empty = model default)
-  geminiModel?: string;           // P2 — per-workspace Gemini model override (empty = env/default)
-  geminiTemperature?: string;     // P2 — per-workspace Gemini temperature (empty = model default)
-  geminiBaseUrl?: string;         // X4 — per-workspace custom Gemini base URL (empty = env/default)
   autonomyLevel?: string;         // A4 — 'gate-every' | 'gate-key-stages' | 'full-auto'
 }
 
@@ -115,7 +111,6 @@ export interface Project {
   linkedFiles?: { path: string; role: 'generate' | 'link' }[]; // D9/D19 — GENERATE vs LINK
   generatedDocsPath?: string;                              // D21 — where GENERATE'd docs are committed
   baseImageRef?: string;                                   // Q-CT-IMAGESEL — L2 per-project image selector
-  dockerfilePath?: string;                                 // optional per-project Dockerfile
 }
 
 //? A build+deploy unit within a project (monorepo services) — ADR 0035.
@@ -499,13 +494,6 @@ export interface RagIndexStatus { ok: boolean; files: number; chunks: number; co
 //? or its hash — `prefix` is the display-only leading chars set at issue time (PersonalAccessToken.tokenPrefix).
 export interface PatSummary { id: string; name: string; prefix: string; scopes: string[]; createdAt: number; lastUsedAt: number | null }
 
-//? GAP_SCAN G7 — a prompt A/B experiment + its current verdict, as surfaced by the `workspaces/promptExperiments`
-//? read and preloaded into the snapshot for the settings Experiments panel.
-export interface PromptExperimentSummary {
-  id: string; feature: string; name: string; status: string; variantA: string; variantB: string; createdAt: number;
-  trialsA: number; trialsB: number; meanA: number; meanB: number; lift: number; winner: string; verdict: string;
-}
-
 //? The read-projection of `WorkspaceSuggestion` (04b §8). Canonical model shape is
 //? `WorkspaceSuggestion` below; this is what the panel renders. 5-value `type` incl.
 //? 'automation' (proposes a WorkspaceTrigger).
@@ -580,7 +568,7 @@ export interface PushSubscription {
 }
 
 //? Multi-cap budget (04b §9, D81/D82): MULTIPLE rows per workspace — the screen renders
-//? a caps LIST, not one bar. The canonical shape adds `id`/`label`/`enforcement`/
+//? a caps LIST, not one bar. The canonical shape adds `id`/`label`/
 //? `periodWindow`/`windowStartAt`/`enabled`. NOTE (hard-constraint kept-both): the
 //? prototype's single-row fields (`cap`/`alertPct`/`spent`/`currency`) are KEPT so
 //? `seed.ts`'s single `BUDGET` const still type-checks; the multi-cap fields are added
@@ -593,7 +581,8 @@ export interface WorkspaceBudget {
   // --- multi-cap (04b §9) ---
   id?: string;
   label?: string;                              // the cap's display name in the caps-list editor
-  enforcement?: 'pauseNew' | 'pauseAll';       // pauseNew blocks new sessions | pauseAll pauses all now
+  //? enforcement is gone (owner 2026-08-25): pauseNew/pauseAll sat in the same server-side filter, so
+  //? the choice changed nothing — a full enabled cap always blocks NEW runs, running ones finish.
   periodWindow?: 'calendar-month' | { rolling: string }; // D82 — default calendar-month (workspace tz)
   windowStartAt?: string;                      // start of the current period window (ISO)
   enabled?: boolean;
@@ -1041,7 +1030,9 @@ export interface StageProcessCfg { id: string; name: string; cwd: string; env: S
 //? Model selection: a base choice, plus optional auto-escalation by the task
 //? complexity score (1–10) the agent assigns itself. Each rule = a switch case:
 //? "score ≥ minScore → this model / effort / max-turns".
-export interface StageModelChoice { model: StageModelTier; effort: StageEffort; maxTurns: number }
+//? maxTurns is gone (owner 2026-08-25): it was stored + resolved but never reached the agent argv,
+//? and a turn cap was never missed in practice — a session that must stop has the stop button.
+export interface StageModelChoice { model: StageModelTier; effort: StageEffort }
 export interface ModelRule extends StageModelChoice { id: string; minScore: number }
 export interface StageModelCfg { autoEscalate: boolean; base: StageModelChoice; rules: ModelRule[]; contextBudgetTokens?: number /* 04b §13 — per-stage token budget → self-handoff */ }
 
@@ -1064,7 +1055,6 @@ export interface PipelineStageCfg {
   definitionOfDone?: string;         // optional "done when…"; empty ⇒ the AI judges completion itself
   // --- field sweep (04b §13) / V1_SCOPE §3.2 ---
   systemPrompt?: string;             // D2/D17 — layered base prompt, distinct from customInstructions
-  roleKey?: string;                  // 04 §3 — the AgentRole plugin binding
   userEditable?: boolean;            // edit-lock: may the user edit while this stage is active
   gateForApproval?: boolean;         // proceed-or-gate: gate for human approval before promoting
   // child collections
@@ -1080,6 +1070,7 @@ export interface PipelineStageCfg {
   modelCfg: StageModelCfg;
   hooks: Record<string, boolean>;    // which lifecycle hooks fire
   wipLimit?: number;
+  avgTokensPerTurn?: number;         // D4/D28 — rolling mean tokens/turn (last 20 turns), stage-writer-maintained
 }
 
 //? A non-blocking finding from "Validate with AI".
@@ -1142,8 +1133,9 @@ export interface WorkspaceTrigger {
   lastFiredAt?: string;
 }
 
-//? The AgentRole plugin (03 §3) a stage binds to via `roleKey`. Minimal shape — the
-//? docs name it but give no build-grade body. // inferred
+//? The AgentRole plugin (03 §3) — bound by a stage's `kind` (the old per-stage `roleKey`
+//? column was removed 2026-08-25). Minimal shape — the docs name it but give no
+//? build-grade body. // inferred
 export interface AgentRole {
   key: string;
   label: string;

@@ -1,5 +1,5 @@
 //? Model-selection wiring — resolves a stage's `modelCfg` (base choice + auto-escalate rules)
-//? into the concrete { model, effort, maxTurns } for ONE turn, and maps that choice onto the
+//? into the concrete { model, effort } for ONE turn, and maps that choice onto the
 //? claude CLI surface (`--model` spawn flag + MAX_THINKING_TOKENS settings env). The score is
 //? the task-complexity score (1–10) the agent assigned ITSELF in the previous stage's
 //? ws-carryover (`complexityScore`) — no score (first stage / omitted) ⇒ the base choice.
@@ -7,13 +7,13 @@
 
 import type { StageEffort, StageModelCfg, StageModelChoice } from '../../src/workspaces/_data/types';
 
-//? "score ≥ minScore → this model/effort/maxTurns" — the HIGHEST satisfied minScore wins.
+//? "score ≥ minScore → this model/effort" — the HIGHEST satisfied minScore wins.
 export function resolveModelChoice(cfg: StageModelCfg, score: number | null): StageModelChoice {
   if (!cfg.autoEscalate || score === null) return cfg.base;
   const hit = cfg.rules
     .filter((r) => score >= r.minScore)
     .toSorted((a, b) => b.minScore - a.minScore)[0];
-  return hit ? { model: hit.model, effort: hit.effort, maxTurns: hit.maxTurns } : cfg.base;
+  return hit ? { model: hit.model, effort: hit.effort } : cfg.base;
 }
 
 //? StageEffort → the CLI extended-thinking budget (MAX_THINKING_TOKENS). 'low' keeps a minimal

@@ -17,15 +17,29 @@ import { assertWorkspaceWriterContext } from './writerContext';
 //? A JSON value → string[] (drops non-strings). Shared by the parse + reload readers.
 const strArr = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
 
-//? The default worker-turn budget (~80% of a large context window, chars/4 estimated). Per-stage
-//? `contextBudgetTokens` overrides it; the Assistant has its own (WS_ASSISTANT_TOKEN_BUDGET).
+//? The default worker-turn budget (~80% of a large context window, chars/4 estimated). Resolution
+//? order (wired 2026-08-25): per-stage `contextBudgetTokens` → `Workspace.assistantTokenBudget` →
+//? this env default. (The old never-imported DEFAULT_ASSISTANT_BUDGET / WS_ASSISTANT_TOKEN_BUDGET
+//? was removed the same day.)
 export const DEFAULT_WORKER_BUDGET = Number(process.env.WS_TURN_TOKEN_BUDGET ?? '120000');
-export const DEFAULT_ASSISTANT_BUDGET = Number(process.env.WS_ASSISTANT_TOKEN_BUDGET ?? '120000');
+
+//? The machine-readable tail of every handoff prompt. Kept SEPARATE from the prose so a workspace's
+//? custom `handoffInstruction` can replace the prose while the parseable ws-handoff block contract
+//? always survives (a custom instruction without it would silently produce zero handoffs).
+export const HANDOFF_BLOCK_SPEC =
+  'End your message with a fenced code block exactly like:\n```ws-handoff\n{ "summary": "…", "decisions": ["…"], "state": "…", "next": ["…"], "gotchas": ["…"], "carried": "…" }\n```';
 
 //? The editable default handoff instruction (doc 06 §3). Sent as the prompt that makes the AI write
-//? its handoff right before the reset. A workspace/stage may override it (a future settings field).
+//? its handoff right before the reset. `Workspace.handoffInstruction` overrides the prose half.
 export const DEFAULT_HANDOFF_INSTRUCTION =
-  'You are about to be RESET to free up context. Write a thorough handoff so a fresh you can continue seamlessly: the goal; the key decisions and WHY; the current state and what is done; what is left to do next; gotchas/dead-ends to avoid; open questions. If you were given carry-over from a previous stage, fold the still-relevant parts forward so they survive the reset. Be detailed — this is the ONLY thing that survives. End your message with a fenced code block exactly like:\n```ws-handoff\n{ "summary": "…", "decisions": ["…"], "state": "…", "next": ["…"], "gotchas": ["…"], "carried": "…" }\n```';
+  `You are about to be RESET to free up context. Write a thorough handoff so a fresh you can continue seamlessly: the goal; the key decisions and WHY; the current state and what is done; what is left to do next; gotchas/dead-ends to avoid; open questions. If you were given carry-over from a previous stage, fold the still-relevant parts forward so they survive the reset. Be detailed — this is the ONLY thing that survives. ${HANDOFF_BLOCK_SPEC}`;
+
+//? Resolve the handoff prompt for a workspace: its own instruction (with the block spec appended)
+//? when set, the built-in default otherwise. Pure.
+export function handoffInstructionFor(workspaceOverride: string | null | undefined): string {
+  const prose = (workspaceOverride ?? '').trim();
+  return prose.length > 0 ? `${prose}\n\n${HANDOFF_BLOCK_SPEC}` : DEFAULT_HANDOFF_INSTRUCTION;
+}
 
 //? The structured handoff body the AI emits (doc 06 §6). All fields optional-but-present.
 export interface HandoffBody {
@@ -33,9 +47,11 @@ export interface HandoffBody {
 }
 
 //? Resolve the budget for a worker turn: the stage's `contextBudgetTokens` if set (> 0), else the
-//? worker default. Pure.
-export function budgetForStage(stageBudget: number | null | undefined, workerDefault = DEFAULT_WORKER_BUDGET): number {
-  return stageBudget && stageBudget > 0 ? stageBudget : workerDefault;
+//? workspace's `assistantTokenBudget` if set (> 0), else the env worker default. Pure.
+export function budgetForStage(stageBudget: number | null | undefined, workspaceBudget?: number | null, workerDefault = DEFAULT_WORKER_BUDGET): number {
+  if (stageBudget && stageBudget > 0) return stageBudget;
+  if (workspaceBudget && workspaceBudget > 0) return workspaceBudget;
+  return workerDefault;
 }
 
 //? Should the session hand off now? (estimate crossed the budget.) Pure.

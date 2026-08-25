@@ -136,7 +136,8 @@ export interface WorkspacesCtx {
   dbConnect: (input: { name: string; kind: string; url: string; envKind?: string; serviceId?: string }) => void;
   dbMigrateCreate: (input: { name: string; sql: string; rollbackSql?: string; envKind?: string }) => void;
   dbMigrateApply: (input: { migrationId: string; approved?: boolean }) => void;
-  dbIntrospect: (connectionId: string) => void;
+  //? Awaits the conductor's introspect reply — the table list only exists there (fix 2026-08-25).
+  dbIntrospect: (connectionId: string) => Promise<{ ok: boolean; tables: string[]; error?: string }>;
   //? Per-project forge connection (ADR 0036): GitLab OR GitHub for a specific project.
   connectForge: (input: { projectId: string; mode: 'gitlab' | 'github'; baseUrl?: string; token?: string; repoPath?: string }) => void;
   disconnectForge: (projectId: string) => void;
@@ -164,9 +165,9 @@ export interface WorkspacesCtx {
   copyWorkspaceAssets: (sourceWorkspaceId: string) => void;
   indexMemory: () => void;
   planCritique: (ticketKey: string) => void;
-  //? #103 — multi-cap budget editor: edit a specific cap by id (label/cap/alertPct/enforcement, or
+  //? #103 — multi-cap budget editor: edit a specific cap by id (label/cap/alertPct, or
   //? enabled:false to retire), create a new cap, or (no id/create) edit the first/legacy cap.
-  editBudget: (input: { cap?: number; alertPct?: number; budgetId?: string; label?: string; enforcement?: 'pauseNew' | 'pauseAll'; enabled?: boolean; create?: boolean; remove?: boolean }) => void;
+  editBudget: (input: { cap?: number; alertPct?: number; budgetId?: string; label?: string; enabled?: boolean; create?: boolean; remove?: boolean }) => void;
   resumeSpend: () => void;
   resyncForge: () => void;
   allowCiRed: (enabled: boolean) => void;
@@ -323,7 +324,8 @@ export interface WorkspacesCtx {
   refreshComments: () => void;
   markCommentsRead: (commentId?: string) => void;
   //? Q4 + K4 + P2 — the workspace AI-behaviour settings: instruction + output language + Gemini model/temperature.
-  saveAiInstruction: (aiInstruction: string, outputLanguage: string, geminiModel: string, geminiTemperature: string, geminiBaseUrl: string) => void;
+  //? assistantTokenBudget: 0 = env default; handoffInstruction: '' = built-in template (wired 2026-08-25).
+  saveAiInstruction: (aiInstruction: string, outputLanguage: string, assistantTokenBudget: number, handoffInstruction: string) => void;
   //? P1 — per-feature AI provider overrides + a setter ('default' clears). P4-1: feature '_default' = the
   //? workspace default backend. P4-2: optional per-feature model pin.
   aiOverrides: { feature: string; providerId: string; model?: string }[];
@@ -409,9 +411,6 @@ export interface WorkspacesCtx {
   //? Media settings (U3) — €-budget + encrypted provider key/override (B-23).
   editMediaBudget: (input: { capCents?: number; alertPct?: number; enabled: boolean }) => void;
   saveMediaProvider: (input: { providerId?: string; apiKey?: string; feature?: string; model?: string; cheap?: boolean; sceneContinuity?: boolean; voiceId?: string }) => void;
-  //? G7 — create/update a prompt A/B experiment, and stop one (its trials are kept).
-  savePromptExperiment: (input: { experimentId?: string; feature: string; name: string; variantA: string; variantB: string }) => void;
-  stopPromptExperiment: (experimentId: string) => void;
   //? A7 — platform app credentials (write-only; an empty string clears that half → `.env` fallback).
   savePlatformCredentials: (platform: string, clientId: string, clientSecret: string) => void;
   editChannelBrand: (channelId: string, brandVoice: string) => void;

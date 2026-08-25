@@ -43,7 +43,7 @@ function isProjectAdminOp(op: string): op is ControlOp {
 }
 
 export interface SyncParams {
-  clientInput: { op: string; clientRequestId: string; projectId?: string; /*? per-service CI: null is the PROJECT ROOT unit, which is distinct from "not given" (= run every unit) */ serviceId?: string | null; envId?: string; ticketKey?: string; kind?: string; fromKind?: string; approved?: boolean; enabled?: boolean; disconnect?: boolean; clearExternalRefs?: boolean; trigger?: string; symptom?: string; template?: string; name?: string; gitUrl?: string; brief?: string; /*? the pipeline preset a NEW project starts with (simple|advanced|professional) */ preset?: string; path?: string; buildCmd?: string; deployUnit?: string; mode?: string; baseUrl?: string; token?: string; repoPath?: string; url?: string; envKind?: string; sql?: string; rollbackSql?: string; migrationId?: string; connectionId?: string; pinnedCommit?: string; autoRedeploy?: boolean; subdomain?: string; customDomain?: string; cap?: number; alertPct?: number; budgetId?: string; label?: string; enforcement?: string; create?: boolean; /*? ADR 0310 — delete the cap identified by budgetId (vs `enabled:false`, which retires it but keeps it listed) */ remove?: boolean };
+  clientInput: { op: string; clientRequestId: string; projectId?: string; /*? per-service CI: null is the PROJECT ROOT unit, which is distinct from "not given" (= run every unit) */ serviceId?: string | null; envId?: string; ticketKey?: string; kind?: string; fromKind?: string; approved?: boolean; enabled?: boolean; disconnect?: boolean; clearExternalRefs?: boolean; trigger?: string; symptom?: string; template?: string; name?: string; gitUrl?: string; brief?: string; /*? the pipeline preset a NEW project starts with (simple|advanced|professional) */ preset?: string; path?: string; buildCmd?: string; deployUnit?: string; mode?: string; baseUrl?: string; token?: string; repoPath?: string; url?: string; envKind?: string; sql?: string; rollbackSql?: string; migrationId?: string; connectionId?: string; pinnedCommit?: string; autoRedeploy?: boolean; subdomain?: string; customDomain?: string; cap?: number; alertPct?: number; budgetId?: string; label?: string; create?: boolean; /*? ADR 0310 — delete the cap identified by budgetId (vs `enabled:false`, which retires it but keeps it listed) */ remove?: boolean };
   user: SessionLayout;
   functions: Functions;
   roomCode: string;
@@ -494,5 +494,9 @@ export const main = async ({ clientInput, user, functions, roomCode }: SyncParam
     payload,
   });
   if (!result.ok) return { status: 'error', errorCode: result.errorCode };
+  //? db-introspect is the one read-back op in this route: its table list exists only in the conductor's
+  //? reply ({ ok, tables, error? }), so hand it to the caller instead of dropping it (fix 2026-08-25 —
+  //? the result was previously discarded and the button did nothing visible).
+  if (op === 'db-introspect') return { status: 'success', result: result.result };
   return { status: 'success' };
 };

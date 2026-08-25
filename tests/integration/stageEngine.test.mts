@@ -17,7 +17,7 @@ function stageCfg(over: Partial<PipelineStageCfg>): PipelineStageCfg {
     sourceIds: [],
     commands: [{ id: 'c1', pattern: 'Bash(npm test:*)', mode: 'allow' }, { id: 'c2', pattern: 'Bash(rm:*)', mode: 'deny' }],
     tools: [], statuses: [], processes: [], visibleStageIds: [],
-    modelCfg: { autoEscalate: false, base: { model: 'sonnet', effort: 'medium', maxTurns: 20 }, rules: [] },
+    modelCfg: { autoEscalate: false, base: { model: 'sonnet', effort: 'medium' }, rules: [] },
     hooks: {},
     ...over,
   };

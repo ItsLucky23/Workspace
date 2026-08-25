@@ -26,7 +26,6 @@ export interface DefaultStage {
   aiEnabled: boolean;
   model: 'haiku' | 'sonnet' | 'opus';
   effort: 'low' | 'medium' | 'high';
-  maxTurns: number;
   //? The stage-runner renders these into the container: systemPrompt (role) →
   //? --append-system-prompt; customInstructions → CLAUDE.md; definitionOfDone → the "done when…"
   //? guidance (empty ⇒ the AI judges completion itself); handoverPrompt → what this stage tells the
@@ -42,43 +41,43 @@ export interface DefaultStage {
 //? AI off) and `final` wraps up (AI light).
 const BLANK = { systemPrompt: '', customInstructions: '', handoverPrompt: '', definitionOfDone: '' };
 const DEFAULT_STAGES: DefaultStage[] = [
-  { key: 'unrefined', kind: 'refine', name: 'Unrefined', order: 0, aiEnabled: false, model: 'haiku', effort: 'low', maxTurns: 8, ...BLANK },
+  { key: 'unrefined', kind: 'refine', name: 'Unrefined', order: 0, aiEnabled: false, model: 'haiku', effort: 'low', ...BLANK },
   {
-    key: 'refined', kind: 'refine', name: 'Refined', order: 1, aiEnabled: true, model: 'haiku', effort: 'low', maxTurns: 12,
+    key: 'refined', kind: 'refine', name: 'Refined', order: 1, aiEnabled: true, model: 'haiku', effort: 'low',
     systemPrompt: 'You are a senior engineer refining a development ticket before any code is written.',
     customInstructions: 'Read the ticket and skim the repository to understand its context. Clarify the scope: what should change, the acceptance criteria, and any ambiguities. This stage is ANALYSIS ONLY — do not write or run code.',
     handoverPrompt: 'Name the agreed scope, the acceptance criteria, and anything you could NOT resolve. Planning starts from this and nothing else.',
     definitionOfDone: 'The ticket has a clear scope, explicit acceptance criteria, and any blocking questions are listed.',
   },
   {
-    key: 'plan', kind: 'plan', name: 'Plan', order: 2, aiEnabled: true, model: 'opus', effort: 'high', maxTurns: 20,
+    key: 'plan', kind: 'plan', name: 'Plan', order: 2, aiEnabled: true, model: 'opus', effort: 'high',
     systemPrompt: 'You are a staff engineer producing an implementation plan.',
     customInstructions: 'Using the refined scope, write a concrete, ordered implementation plan: the files to change, the approach per step, and the main risks. Do NOT write code yet.',
     handoverPrompt: 'Give the ordered plan: which files change, in what order, and where the risk sits. The implementer will follow it literally.',
     definitionOfDone: 'An ordered implementation plan exists naming the files to touch and the approach, with risks noted.',
   },
   {
-    key: 'impl', kind: 'code', name: 'Implementation', order: 3, aiEnabled: true, model: 'sonnet', effort: 'high', maxTurns: 30,
+    key: 'impl', kind: 'code', name: 'Implementation', order: 3, aiEnabled: true, model: 'sonnet', effort: 'high',
     systemPrompt: 'You are a senior engineer implementing a ticket in this repository.',
     customInstructions: 'Follow the plan. Make the change now with the Write/Edit tools (surgical, well-scoped edits), then run git add + git commit on the current branch with a clear message. Do NOT push. Make reasonable assumptions where small details are missing and act — do NOT ask questions unless you are genuinely blocked.',
     handoverPrompt: 'Say what you actually changed and why, which files, and anything you left half-done or assumed. The tester reads this to know what to cover.',
     definitionOfDone: 'The change is implemented and committed on the ticket branch; the touched files are listed.',
   },
   {
-    key: 'test', kind: 'test', name: 'Test', order: 4, aiEnabled: true, model: 'sonnet', effort: 'medium', maxTurns: 20,
+    key: 'test', kind: 'test', name: 'Test', order: 4, aiEnabled: true, model: 'sonnet', effort: 'medium',
     systemPrompt: 'You are a senior engineer responsible for test coverage.',
     customInstructions: 'Add or update tests for the implemented change and run them. Report the results plainly, then commit the new tests.',
     handoverPrompt: 'Report what you covered, what passes and what fails - name the failing case, not just a count.',
     definitionOfDone: 'Tests covering the change exist and pass, or any failures are clearly reported.',
   },
   {
-    key: 'review', kind: 'review', name: 'Review', order: 5, aiEnabled: true, model: 'opus', effort: 'high', maxTurns: 18,
+    key: 'review', kind: 'review', name: 'Review', order: 5, aiEnabled: true, model: 'opus', effort: 'high',
     systemPrompt: 'You are a principal engineer doing a code review.',
     customInstructions: 'Review the implemented change for correctness, security, and adherence to the repo conventions. Report concrete, actionable findings; do NOT modify code.',
     handoverPrompt: 'List your findings concretely enough to act on without re-reading the diff: file, what is wrong, and what you would do about it.',
     definitionOfDone: 'A review with concrete findings (or an explicit approval) is produced.',
   },
-  { key: 'final', kind: 'final', name: 'Final', order: 6, aiEnabled: false, model: 'haiku', effort: 'low', maxTurns: 10, ...BLANK },
+  { key: 'final', kind: 'final', name: 'Final', order: 6, aiEnabled: false, model: 'haiku', effort: 'low', ...BLANK },
 ];
 
 //? GAP_SCAN G5 — pipeline PRESETS. `Workspace.presetKey` existed as dead data: every workspace, from a
@@ -136,7 +135,6 @@ export interface StageBlueprint {
   definitionOfDone: string;
   model: 'haiku' | 'sonnet' | 'opus';
   effort: 'low' | 'medium' | 'high';
-  maxTurns: number;
 }
 
 const BLUEPRINT_SOURCE_KEY: Record<StageKind, string> = {
@@ -149,7 +147,7 @@ export function stageBlueprint(kind: StageKind): StageBlueprint {
   return {
     systemPrompt: source?.systemPrompt ?? '', customInstructions: source?.customInstructions ?? '',
     handoverPrompt: source?.handoverPrompt ?? '', definitionOfDone: source?.definitionOfDone ?? '',
-    model: source?.model ?? 'sonnet', effort: source?.effort ?? 'medium', maxTurns: source?.maxTurns ?? 20,
+    model: source?.model ?? 'sonnet', effort: source?.effort ?? 'medium',
   };
 }
 
@@ -173,7 +171,7 @@ export function blueprintForStage(key: string, kind: StageKind): StageBlueprint 
   return {
     systemPrompt: seeded.systemPrompt, customInstructions: seeded.customInstructions,
     handoverPrompt: seeded.handoverPrompt, definitionOfDone: seeded.definitionOfDone,
-    model: seeded.model, effort: seeded.effort, maxTurns: seeded.maxTurns,
+    model: seeded.model, effort: seeded.effort,
   };
 }
 
@@ -197,11 +195,11 @@ export function stageCreateData(workspaceId: string, projectId: string, s: Defau
   return {
     workspaceId, projectId, key: s.key, kind: s.kind, name: s.name, order: s.order,
     aiEnabled: s.aiEnabled, wipLimit: null,
-    roleKey: s.kind === 'code' ? 'code' : s.kind, systemPrompt: s.systemPrompt,
+    systemPrompt: s.systemPrompt,
     customInstructions: s.customInstructions, handoverPrompt: s.handoverPrompt, definitionOfDone: s.definitionOfDone,
     aiSkillIds: [], sourceIds: ['summary'], commands: [], tools: [],
     statuses: baseStatuses(), processes: [], visibleStageIds: [],
-    modelCfg: { autoEscalate: false, base: { model: s.model, effort: s.effort, maxTurns: s.maxTurns }, rules: [] },
+    modelCfg: { autoEscalate: false, base: { model: s.model, effort: s.effort }, rules: [] },
     hooks: {},
   };
 }

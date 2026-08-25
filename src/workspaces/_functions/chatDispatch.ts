@@ -20,7 +20,7 @@ export interface ChatDispatchExtras {
   gitConfig: GitConfig;            // #29 — current git strategy, so save-git-config merges (never clobbers)
   //? Parity wave — merge sources for the full-payload routes: saveAiInstruction writes ALL five fields
   //? (absent → ''), saveStageConfig wants a COMPLETE PipelineStageCfg. Same clobber-guard as gitConfig.
-  aiSettings: { aiInstruction: string; outputLanguage: string; geminiModel: string; geminiTemperature: string; geminiBaseUrl: string };
+  aiSettings: { aiInstruction: string; outputLanguage: string; assistantTokenBudget: number; handoffInstruction: string };
   stageConfigs: PipelineStageCfg[];
   //? delete-workspace reuses the provider's OWN delete flow (api call + nav/loading reset) — the one
   //? accept whose aftermath lives in client state the dispatcher cannot reach.
@@ -133,17 +133,6 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     const commentId = str(p, 'commentId'); const replyText = str(p, 'replyText');
     if (!commentId || !replyText) return;
     void syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-reply-comment', commentId, replyText, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
-  },
-  //? G7 — start / stop a prompt A/B from chat (the panel in settings shows the verdict).
-  'prompt-experiment-save': (p, x) => {
-    const feature = str(p, 'feature'); const name = str(p, 'name');
-    const variantA = str(p, 'variantA'); const variantB = str(p, 'variantB');
-    if (!feature || !name || !variantA || !variantB) return;
-    void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'prompt-experiment-save', feature, name, variantA, variantB, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
-  },
-  'prompt-experiment-stop': (p, x) => {
-    const experimentId = str(p, 'experimentId'); if (!experimentId) return;
-    void syncRequest({ name: 'workspaces/contentSettings', version: 'v1', data: { op: 'prompt-experiment-stop', experimentId, clientRequestId: x.nextReqId() }, receiver: x.room }).then(() => { x.refetch(); });
   },
   //? G3 — take a published page down again.
   'studio-unpublish-site': (p, x) => {
@@ -767,18 +756,17 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
   },
   'save-ai-instruction': (p, x) => {
     const aiInstruction = str(p, 'aiInstruction'); const outputLanguage = str(p, 'outputLanguage');
-    const geminiModel = str(p, 'geminiModel'); const geminiTemperature = str(p, 'geminiTemperature'); const geminiBaseUrl = str(p, 'geminiBaseUrl');
-    if (!aiInstruction && !outputLanguage && !geminiModel && !geminiTemperature && !geminiBaseUrl) return;
-    //? MERGE over the workspace's CURRENT values — the Conductor writes ALL five fields (absent → ''),
+    const assistantTokenBudget = num(p, 'assistantTokenBudget'); const handoffInstruction = str(p, 'handoffInstruction');
+    if (!aiInstruction && !outputLanguage && assistantTokenBudget === undefined && !handoffInstruction) return;
+    //? MERGE over the workspace's CURRENT values — the Conductor writes ALL four fields (absent → ''),
     //? so sending only the proposed field would wipe the rest (same clobber-guard as save-git-config).
     void syncRequest({
       name: 'workspaces/saveAiInstruction', version: 'v1',
       data: {
         aiInstruction: aiInstruction ?? x.aiSettings.aiInstruction,
         outputLanguage: outputLanguage ?? x.aiSettings.outputLanguage,
-        geminiModel: geminiModel ?? x.aiSettings.geminiModel,
-        geminiTemperature: geminiTemperature ?? x.aiSettings.geminiTemperature,
-        geminiBaseUrl: geminiBaseUrl ?? x.aiSettings.geminiBaseUrl,
+        assistantTokenBudget: assistantTokenBudget ?? x.aiSettings.assistantTokenBudget,
+        handoffInstruction: handoffInstruction ?? x.aiSettings.handoffInstruction,
         clientRequestId: x.nextReqId(),
       },
       receiver: x.room,
@@ -823,10 +811,10 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
   },
   'edit-budget': (p, x) => {
     const cap = num(p, 'cap'); const alertPct = num(p, 'alertPct'); const label = str(p, 'label');
-    const enforcement = str(p, 'enforcement'); const create = bool(p, 'create'); const enabled = bool(p, 'enabled');
-    if (cap === undefined && alertPct === undefined && label === undefined && enforcement === undefined && enabled === undefined) return;
+    const create = bool(p, 'create'); const enabled = bool(p, 'enabled');
+    if (cap === undefined && alertPct === undefined && label === undefined && enabled === undefined) return;
     //? Only the provided fields travel — mirrors the Budgets UI (first edit CREATES the primary cap).
-    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'edit-budget', ...(cap === undefined ? {} : { cap }), ...(alertPct === undefined ? {} : { alertPct }), ...(label ? { label } : {}), ...(enforcement ? { enforcement } : {}), ...(create === undefined ? {} : { create }), ...(enabled === undefined ? {} : { enabled }), clientRequestId: x.nextReqId() }, receiver: x.room });
+    void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'edit-budget', ...(cap === undefined ? {} : { cap }), ...(alertPct === undefined ? {} : { alertPct }), ...(label ? { label } : {}), ...(create === undefined ? {} : { create }), ...(enabled === undefined ? {} : { enabled }), clientRequestId: x.nextReqId() }, receiver: x.room });
   },
   'resume-spend': (_p, x) => {
     void syncRequest({ name: 'workspaces/projectAdmin', version: 'v1', data: { op: 'resume-spend', clientRequestId: x.nextReqId() }, receiver: x.room });

@@ -1,6 +1,6 @@
 //? GAP_SCAN Phase G — the pure halves of the new-module tranche: pipeline presets (G5), the clone contract
-//? (G2), published-site slugging + CSP (G3), the asset library (G4), prompt A/B statistics (G7) and site
-//? monitoring diffs (G8). DB-backed halves live in tests/integration/newModules.test.mts.
+//? (G2), published-site slugging + CSP (G3), the asset library (G4) and site monitoring diffs (G8).
+//? DB-backed halves live in tests/integration/newModules.test.mts. (G7 prompt A/B was removed 2026-08-25.)
 
 import { readFileSync } from 'node:fs';
 
@@ -8,7 +8,6 @@ import { stagesForPreset, isPipelinePreset } from '../../server/bootstrap/defaul
 import { siteSlug, extractHtml, siteHeaders, SITE_PREFIX } from '../../server/deploy/staticSite.ts';
 import { parseSitePath } from '../../server/deploy/siteRoute.ts';
 import { isStarred, isLibraryKind } from '../../server/content/assetLibrary.ts';
-import { assignVariant, scoreExperiment, MIN_TRIALS_PER_ARM } from '../../server/ai/promptExperiment.ts';
 import { normalizeForDiff, contentHash, diffPages } from '../../server/scraper/watch.ts';
 import { assert, eq, report } from '../_helpers.mts';
 
@@ -72,33 +71,6 @@ assert(!isLibraryKind('render') && !isLibraryKind('script'), 'per-piece outputs 
 assert(isStarred({ starred: true }), 'a starred asset is detected');
 assert(!isStarred({ starred: 'yes' }), 'only a real boolean counts');
 assert(!isStarred(null) && !isStarred([]), 'malformed metadata is simply not starred');
-
-/* ------------------------------------------------------------ G7: prompt A/B */
-
-eq(assignVariant('exp1', 'subject-a'), assignVariant('exp1', 'subject-a'), 'assignment is stable for a subject (it must never flip mid-measurement)');
-const spread = Array.from({ length: 200 }, (_, i) => assignVariant('exp1', `s${String(i)}`));
-const aCount = spread.filter((v) => v === 'a').length;
-assert(aCount > 70 && aCount < 130, 'the split is roughly balanced');
-assert(assignVariant('exp1', 's1') !== undefined && assignVariant('exp2', 's1') !== undefined, 'a different experiment assigns independently');
-
-const thin = scoreExperiment([{ variant: 'a', score: 10 }, { variant: 'b', score: 100 }]);
-eq(thin.winner, null, 'no winner is declared off two samples (the whole point)');
-assert(thin.verdict.includes(String(MIN_TRIALS_PER_ARM)), 'and the verdict says how much data is still needed');
-
-const flat = scoreExperiment([
-  ...Array.from({ length: 12 }, () => ({ variant: 'a', score: 100 })),
-  ...Array.from({ length: 12 }, () => ({ variant: 'b', score: 103 })),
-]);
-eq(flat.winner, null, 'a 3% difference is noise, not a winner');
-assert(flat.verdict.includes('simpler'), 'and the honest advice is to keep the simpler prompt');
-
-const decisive = scoreExperiment([
-  ...Array.from({ length: 12 }, () => ({ variant: 'a', score: 100 })),
-  ...Array.from({ length: 12 }, () => ({ variant: 'b', score: 150 })),
-]);
-eq(decisive.winner, 'b', 'a real difference with enough data names a winner');
-eq(Math.round(decisive.lift * 100), 50, 'and reports the lift');
-eq(scoreExperiment([]).winner, null, 'an empty experiment has no winner');
 
 /* ------------------------------------------------------------ G8: site monitoring */
 

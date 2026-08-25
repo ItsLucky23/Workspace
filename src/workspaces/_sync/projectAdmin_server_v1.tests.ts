@@ -143,7 +143,7 @@ export const customTests: CustomTestCase[] = [
       try {
         await joinRoom(ctx, workspaceId);
         const budget = await ctx.prisma.workspaceBudget.create({
-          data: { workspaceId, label: 'Harness budget', cap: 100, enforcement: 'pauseNew', spent: 42 },
+          data: { workspaceId, label: 'Harness budget', cap: 100, spent: 42 },
         });
 
         const res = await ctx.callSync<ProjectAdminInput, ProjectAdminResponse>(
@@ -174,7 +174,7 @@ export const customTests: CustomTestCase[] = [
         //? is unambiguously the row the op edits.
         await ctx.prisma.workspaceBudget.deleteMany({ where: { workspaceId } });
         const budget = await ctx.prisma.workspaceBudget.create({
-          data: { workspaceId, label: 'Harness budget', cap: 100, alertPct: 80, enforcement: 'pauseNew', spent: 0 },
+          data: { workspaceId, label: 'Harness budget', cap: 100, alertPct: 80, spent: 0 },
         });
 
         const res = await ctx.callSync<ProjectAdminInput, ProjectAdminResponse>(

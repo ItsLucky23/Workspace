@@ -1449,17 +1449,15 @@ function AiBehaviorTab() {
   const autonomyLevel = activeWorkspace.autonomyLevel ?? 'gate-key-stages';
   const [value, setValue] = useState(activeWorkspace.aiInstruction ?? '');
   const [language, setLanguage] = useState(activeWorkspace.outputLanguage ?? '');
-  //? ADR 0007 — the Gemini model/temperature/base-URL columns are LEGACY: the provider section above
-  //? owns those settings now, per backend, in the generic store. They are still passed through here
-  //? unchanged so this op never clears what an older workspace has stored — read, never edited.
-  const geminiModel = activeWorkspace.geminiModel ?? '';
-  const geminiTemp = activeWorkspace.geminiTemperature ?? '';
-  const geminiBaseUrl = activeWorkspace.geminiBaseUrl ?? '';
-  //? ADR 0309 — autosave with a per-row pill instead of a Save button. The five fields persist
+  //? Wired 2026-08-25 — the self-handoff pair (previously stored-but-never-read columns): the
+  //? per-stage-turn token budget (empty = env default) + the custom handoff instruction (empty = built-in).
+  const [tokenBudget, setTokenBudget] = useState(activeWorkspace.assistantTokenBudget && activeWorkspace.assistantTokenBudget > 0 ? String(activeWorkspace.assistantTokenBudget) : '');
+  const [handoff, setHandoff] = useState(activeWorkspace.handoffInstruction ?? '');
+  //? ADR 0309 — autosave with a per-row pill instead of a Save button. The four fields persist
   //? through one op, so they share one status; switching workspace re-seeds without writing.
   const aiStatus = useAutosave(
-    [value, language, geminiModel, geminiTemp, geminiBaseUrl],
-    () => { saveAiInstruction(value.trim(), language, geminiModel.trim(), geminiTemp.trim(), geminiBaseUrl.trim()); },
+    [value, language, tokenBudget, handoff],
+    () => { const n = Number(tokenBudget); saveAiInstruction(value.trim(), language, Number.isFinite(n) && n > 0 ? Math.floor(n) : 0, handoff.trim()); },
     { resetKey: activeWorkspace.id },
   );
   //? F-075 — this page has no stage, and the run it steers most directly is the ONE-SHOT path (chat,
@@ -1583,6 +1581,27 @@ function AiBehaviorTab() {
           label={translate({ key: 'workspaces.workspaceSettings.outputLanguage' })}
           status={aiStatus}
           control={<Dropdown width="full" value={languageOptions.find((o) => o.id === language)} items={languageOptions} onChange={(it) => { setLanguage(String(it.id)); }} />}
+        />
+        {/* Wired 2026-08-25 — self-handoff: when a stage turn crosses this token budget the AI writes a
+            handoff and is reset; the instruction below steers WHAT it writes down. */}
+        <SettingRow
+          label={translate({ key: 'workspaces.workspaceSettings.tokenBudget' })}
+          help={translate({ key: 'workspaces.workspaceSettings.tokenBudgetHelp' })}
+          status={aiStatus}
+          control={<input type="number" min={0} value={tokenBudget} onChange={(e) => { setTokenBudget(e.target.value); }} placeholder={translate({ key: 'workspaces.workspaceSettings.tokenBudgetPlaceholder' })} className={fieldCls} />}
+        />
+        <SettingRow
+          stacked
+          label={translate({ key: 'workspaces.workspaceSettings.handoffInstruction' })}
+          help={translate({ key: 'workspaces.workspaceSettings.handoffInstructionHelp' })}
+          status={aiStatus}
+          control={(
+            <textarea
+              value={handoff} onChange={(e) => { setHandoff(e.target.value); }} rows={4}
+              placeholder={translate({ key: 'workspaces.workspaceSettings.handoffInstructionPlaceholder' })}
+              className={fieldCls.replace('h-9', 'min-h-24') + ' py-2 resize-none'}
+            />
+          )}
         />
       </FormSection>
       {/* A4 — autonomy dial: how often the human is asked to approve a stage. */}

@@ -253,11 +253,12 @@ function readProcessCfg(raw: unknown): { id: string; name: string; cwd: string; 
 function readProcesses(v: unknown): ReturnType<typeof readProcessCfg>[] {
   return Array.isArray(v) ? v.map((r) => readProcessCfg(r)) : [];
 }
-function readModelChoice(v: unknown): { model: string; effort: string; maxTurns: number } {
+//? maxTurns is not read any more (owner 2026-08-25) — legacy rows still carrying it parse fine.
+function readModelChoice(v: unknown): { model: string; effort: string } {
   const f = asRec(v);
-  return { model: str(f, 'model') ?? 'sonnet', effort: str(f, 'effort') ?? 'medium', maxTurns: num(f, 'maxTurns') ?? 0 };
+  return { model: str(f, 'model') ?? 'sonnet', effort: str(f, 'effort') ?? 'medium' };
 }
-function readModelRule(raw: unknown): { id: string; minScore: number; model: string; effort: string; maxTurns: number } {
+function readModelRule(raw: unknown): { id: string; minScore: number; model: string; effort: string } {
   const f = asRec(raw);
   return { id: str(f, 'id') ?? '', minScore: num(f, 'minScore') ?? 0, ...readModelChoice(f) };
 }
@@ -305,8 +306,6 @@ export async function cascadeDeleteWorkspace(workspaceId: string): Promise<void>
   await prisma.envVar.deleteMany({ where: { workspaceId } });
   await prisma.integrationTool.deleteMany({ where: { workspaceId } });
   await prisma.invite.deleteMany({ where: { workspaceId } });
-  await prisma.promptTrial.deleteMany({ where: { workspaceId } });
-  await prisma.promptExperiment.deleteMany({ where: { workspaceId } });
   await prisma.publishMetricSnapshot.deleteMany({ where: { workspaceId } });
   await prisma.siteSnapshot.deleteMany({ where: { workspaceId } });
   await prisma.publishedSite.deleteMany({ where: { workspaceId } });
@@ -1430,11 +1429,7 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       workspaceId: action.workspaceId, entityKey: dockerfileEntityKey(action.target.projectId),
       expectedVersion: action.target.expectedVersion ?? 0, requestId: action.clientRequestId,
       contentHash: createHash('sha256').update(content).digest('hex'),
-    }, async () => {
-      const saved = saveDockerfileDraft(action.workspaceId, action.target.projectId, content);
-      if (saved.ok) await prisma.project.updateMany({ where: { workspaceId: action.workspaceId, id: action.target.projectId }, data: { dockerfilePath: '.workspaces/Dockerfile' } });
-      return saved;
-    });
+    }, () => Promise.resolve(saveDockerfileDraft(action.workspaceId, action.target.projectId, content)));
     return cas.applied ? (cas.result ?? { ok: true }) : { ok: false, error: 'write.superseded' };
   }
   if (action.op === 'worktree-file-save') {
@@ -2237,18 +2232,17 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       return { projectId, keys: [projectId] };
     }
     case 'save-ai-instruction': {
-      //? Q4 + K4 + P2 — the workspace-wide AI-behaviour settings: the instruction + output language (prepended
-      //? to every completion) + the per-workspace Gemini model + temperature (P2 — Gemini-only; Claude is PTY).
+      //? Q4 + K4 — the workspace-wide AI-behaviour settings: the instruction + output language (prepended
+      //? to every completion) + the self-handoff pair (wired 2026-08-25): assistantTokenBudget (0/absent =
+      //? the env default) and handoffInstruction (empty = the built-in template). The old gemini* columns
+      //? are gone — the generic provider store (ADR 0007) owns per-provider model/temperature/base-url.
       const aiInstruction = str(payload, 'aiInstruction') ?? '';
       const outputLanguage = str(payload, 'outputLanguage') ?? '';
-      const geminiModel = str(payload, 'geminiModel') ?? '';
-      //? Clamp the temperature to Gemini's valid 0.0–2.0 range before persist (a bad value would 400 the API).
-      const geminiTempRaw = str(payload, 'geminiTemperature') ?? '';
-      const geminiTempNum = Number(geminiTempRaw);
-      const geminiTemperature = geminiTempRaw.trim() && Number.isFinite(geminiTempNum) ? String(Math.min(2, Math.max(0, geminiTempNum))) : '';
-      const geminiBaseUrl = str(payload, 'geminiBaseUrl') ?? '';
-      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl } });
-      return { aiInstruction, outputLanguage, geminiModel, geminiTemperature, geminiBaseUrl };
+      const budgetRaw = num(payload, 'assistantTokenBudget');
+      const assistantTokenBudget = budgetRaw !== undefined && Number.isFinite(budgetRaw) && budgetRaw > 0 ? Math.floor(budgetRaw) : null;
+      const handoffInstruction = str(payload, 'handoffInstruction') ?? '';
+      await prisma.workspace.update({ where: { id: action.workspaceId }, data: { aiInstruction, outputLanguage, assistantTokenBudget, handoffInstruction } });
+      return { aiInstruction, outputLanguage, assistantTokenBudget: assistantTokenBudget ?? 0, handoffInstruction };
     }
     case 'save-sections': {
       //? Persist the enabled nav-section set (module gating, workspaces/_data/modules.ts).
@@ -2572,14 +2566,12 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const cap = num(payload, 'cap') ?? num(payload, 'newCap');
       const alertPct = num(payload, 'alertPct');
       const label = str(payload, 'label');
-      const enforcementRaw = str(payload, 'enforcement');
-      const enforcement = enforcementRaw === 'pauseAll' ? 'pauseAll' : (enforcementRaw === 'pauseNew' ? 'pauseNew' : undefined);
       const budgetId = str(payload, 'budgetId');
       const enabled = 'enabled' in payload ? bool(payload, 'enabled') : undefined;
-      //? #103 — multi-cap: a `budgetId` edits THAT specific cap (cap/alertPct/label/enforcement, or
-      //? enabled:false to retire it); a `create` flag always adds a NEW cap; otherwise the legacy path
-      //? edits the first cap or creates the first one (single-cap back-compat). Enforcement stays ADVISORY
-      //? here (visibility-first #16) — pausing on it is the coupled #99 product decision, not wired yet.
+      //? #103 — multi-cap: a `budgetId` edits THAT specific cap (cap/alertPct/label, or enabled:false
+      //? to retire it); a `create` flag always adds a NEW cap; otherwise the legacy path edits the
+      //? first cap or creates the first one (single-cap back-compat). Every ENABLED cap enforces
+      //? pause-new-runs at 100% (#99) — the old pauseNew/pauseAll choice is gone (owner 2026-08-25).
       if (budgetId) {
         //? ADR 0310 — deleting a cap. Deliberately a flag on `edit-budget` rather than a new op: it is
         //? the same target, the same capability and the same tenant guard, and a separate verb would
@@ -2589,32 +2581,30 @@ async function executeAction(action: WriterAction): Promise<unknown> {
           await prisma.workspaceBudget.deleteMany({ where: { id: budgetId, workspaceId: action.workspaceId } });
           return;
         }
-        const data: { cap?: number; alertPct?: number; label?: string; enforcement?: string; enabled?: boolean } = {};
+        const data: { cap?: number; alertPct?: number; label?: string; enabled?: boolean } = {};
         if (cap !== undefined) data.cap = cap;
         if (alertPct !== undefined) data.alertPct = alertPct;
         if (label !== undefined && label.length > 0) data.label = label;
-        if (enforcement !== undefined) data.enforcement = enforcement;
         if (enabled !== undefined) data.enabled = enabled;
         await prisma.workspaceBudget.updateMany({ where: { id: budgetId, workspaceId: action.workspaceId }, data });
         return;
       }
       if (bool(payload, 'create')) {
         if (cap === undefined) return;
-        await prisma.workspaceBudget.create({ data: { workspaceId: action.workspaceId, label: label && label.length > 0 ? label : 'Budget', cap, alertPct: alertPct ?? 80, enforcement: enforcement ?? 'pauseNew' } });
+        await prisma.workspaceBudget.create({ data: { workspaceId: action.workspaceId, label: label && label.length > 0 ? label : 'Budget', cap, alertPct: alertPct ?? 80 } });
         return;
       }
       if (cap === undefined) return;
       const budget = await prisma.workspaceBudget.findFirst({ where: { workspaceId: action.workspaceId } });
       if (budget) {
-        const data: { cap: number; alertPct?: number; label?: string; enforcement?: string } = { cap };
+        const data: { cap: number; alertPct?: number; label?: string } = { cap };
         if (alertPct !== undefined) data.alertPct = alertPct;
         if (label !== undefined && label.length > 0) data.label = label;
-        if (enforcement !== undefined) data.enforcement = enforcement;
         await prisma.workspaceBudget.updateMany({ where: { id: budget.id, workspaceId: action.workspaceId }, data });
       } else {
         //? No create-op existed → the first edit creates the budget with sensible defaults (so the editor works
         //? on a fresh workspace without a separate "create budget" flow).
-        await prisma.workspaceBudget.create({ data: { workspaceId: action.workspaceId, label: label && label.length > 0 ? label : 'Budget', cap, alertPct: alertPct ?? 80, enforcement: enforcement ?? 'pauseNew' } });
+        await prisma.workspaceBudget.create({ data: { workspaceId: action.workspaceId, label: label && label.length > 0 ? label : 'Budget', cap, alertPct: alertPct ?? 80 } });
       }
       return;
     }
@@ -3120,31 +3110,6 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       //? A replied-to comment is handled: mark it read so the inbox reflects reality.
       await prisma.socialComment.updateMany({ where: { workspaceId: action.workspaceId, id: commentId }, data: { read: true } });
       broadcastContentDirty(action.workspaceId);
-      return { ok: true };
-    }
-    //? GAP_SCAN G7 — create or update a prompt A/B experiment. At most ONE running experiment per feature:
-    //? two overlapping tests on the same prompt make both unreadable, so starting a new one stops the old.
-    case 'prompt-experiment-save': {
-      const feature = str(payload, 'feature');
-      const variantA = str(payload, 'variantA');
-      const variantB = str(payload, 'variantB');
-      const expName = str(payload, 'name') ?? feature ?? 'Experiment';
-      if (!feature || !variantA || !variantB) return { ok: false, status: 'error', error: 'experiment.invalidRequest' };
-      const experimentId = str(payload, 'experimentId');
-      if (experimentId) {
-        await prisma.promptExperiment.updateMany({ where: { workspaceId: action.workspaceId, id: experimentId }, data: { name: expName, variantA, variantB } });
-        return { id: experimentId };
-      }
-      await prisma.promptExperiment.updateMany({ where: { workspaceId: action.workspaceId, feature, status: 'running' }, data: { status: 'stopped' } });
-      const experiment = await prisma.promptExperiment.create({ data: { workspaceId: action.workspaceId, feature, name: expName, variantA, variantB, status: 'running' } });
-      return { id: experiment.id };
-    }
-    //? G7 — stop measuring. Trials are KEPT: the whole value of the experiment is the record of what the
-    //? two variants actually achieved, and deleting that on stop would make the feature pointless.
-    case 'prompt-experiment-stop': {
-      const experimentId = str(payload, 'experimentId');
-      if (!experimentId) return { ok: false, status: 'error', error: 'experiment.invalidRequest' };
-      await prisma.promptExperiment.updateMany({ where: { workspaceId: action.workspaceId, id: experimentId }, data: { status: 'stopped' } });
       return { ok: true };
     }
     //? F48 — pull a file back out of the trash, or destroy it now. Both are tenant-scoped by id, so a
@@ -3974,7 +3939,6 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const handoverPrompt = str(payload, 'handoverPrompt'); if (handoverPrompt !== undefined) data.handoverPrompt = handoverPrompt;
       const systemPrompt = str(payload, 'systemPrompt'); if (systemPrompt !== undefined) data.systemPrompt = systemPrompt;
       const definitionOfDone = str(payload, 'definitionOfDone'); if (definitionOfDone !== undefined) data.definitionOfDone = definitionOfDone;
-      const roleKey = str(payload, 'roleKey'); if (roleKey !== undefined) data.roleKey = roleKey;
       if ('userEditable' in payload) data.userEditable = bool(payload, 'userEditable');
       if ('gateForApproval' in payload) data.gateForApproval = bool(payload, 'gateForApproval');
       //? Owner decision 2026-08-20 — the INSTRUCTION skills this stage runs with, picked per stage
@@ -4013,13 +3977,13 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const bp = stageBlueprint(isStageKind(kind) ? kind : 'code');
       return prisma.pipelineStage.create({ data: {
         workspaceId: action.workspaceId, projectId, key, kind, name, order, aiEnabled: true, wipLimit: null,
-        roleKey: kind === 'code' ? 'code' : kind, systemPrompt: bp.systemPrompt, customInstructions: bp.customInstructions,
+        systemPrompt: bp.systemPrompt, customInstructions: bp.customInstructions,
         //? No fallback needed any more: an empty handover instruction just means "say what you did in
         //? your own words". The old `'{{summary}}'` fallback existed because an empty TEMPLATE meant the
         //? next stage received nothing at all — the incoming handover is composed automatically now.
         handoverPrompt: bp.handoverPrompt, definitionOfDone: bp.definitionOfDone,
         aiSkillIds: [], sourceIds: ['summary'], commands: [], tools: [], statuses: baseStageStatuses(), processes: [], visibleStageIds: [],
-        modelCfg: { autoEscalate: false, base: { model: bp.model, effort: bp.effort, maxTurns: bp.maxTurns }, rules: [] },
+        modelCfg: { autoEscalate: false, base: { model: bp.model, effort: bp.effort }, rules: [] },
         hooks: {},
       } });
     }
