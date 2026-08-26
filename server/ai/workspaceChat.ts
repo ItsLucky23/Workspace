@@ -431,7 +431,7 @@ export function validatePlan(raw: unknown, ctx: Ctx): ChatPlan | null {
 //? succession can reach here before the first pair has drained. The client still sends what IT saw; any of
 //? those turns the store does not have yet is appended, so a fast follow-up ("and the other one too") is
 //? never answered blind. Matched on text, which is what a duplicate would be.
-function mergePendingTurns(storedTurns: ChatTurn[], clientTurns: ChatTurn[]): ChatTurn[] {
+export function mergePendingTurns(storedTurns: ChatTurn[], clientTurns: ChatTurn[]): ChatTurn[] {
   if (clientTurns.length === 0) return storedTurns;
   const known = new Set(storedTurns.slice(-24).map((turn) => turn.text));
   const pending = clientTurns.filter((turn) => turn.text.length > 0 && !known.has(turn.text));
