@@ -637,7 +637,7 @@ async function applyTurnSpend(
   const tokensIn = estTokens(action.payload.spend.inputChars);
   const tokensOut = estTokens(action.payload.spend.outputChars);
   //? D31 — the workspace's own price map (if any) overrides defaults + env.
-  const wsRow = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { pricing: true } });
+  const wsRow = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { pricing: true, timezone: true } });
   const costEstimate = ((tokensIn + tokensOut) / 1000) * priceFor(action.payload.spend.model, wsRow?.pricing);
   const spendId = deterministicObjectId(workspaceId, action.clientRequestId, 'stage-spend');
   await prisma.spendRecord.upsert({
@@ -683,7 +683,7 @@ async function applyTurnSpend(
 
   //? D82 — roll stale calendar-month windows first; the ledger recompute below then reads
   //? `createdAt >= windowStartAt`, so a rolled window automatically scopes spent to the new month.
-  await rollBudgetWindows(prisma, workspaceId);
+  await rollBudgetWindows(prisma, workspaceId, wsRow?.timezone ?? 'UTC');
   const budgets = await prisma.workspaceBudget.findMany({ where: { workspaceId, enabled: true }, select: { id: true, windowStartAt: true } });
   for (const budget of budgets) {
     const total = await prisma.spendRecord.aggregate({

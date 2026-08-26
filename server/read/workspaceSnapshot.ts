@@ -31,9 +31,10 @@ import { buildChannelHealth, accountKey } from '../content/publishHealth';
 import { listLibrary } from '../content/assetLibrary';
 import { listTrash, workspaceStorage } from '../media/trash';
 import { normalizeGitConfig, DEFAULT_GIT_CONFIG, type GitConfig } from '../git/branchStrategy';
-import { aggregateUsage, type WorkspaceUsage } from '../spend/record';
+import { aggregateUsage, sanitizePriceMap, type WorkspaceUsage } from '../spend/record';
 import { computeInsights, type WorkspaceInsights } from '../obs/insights';
 import { computeAnalytics } from '../obs/analytics';
+import { calendarDaysBetween, dayKeyInTz } from '../util/dateTz';
 import { computeContentAnalytics } from '../content/contentAnalytics';
 import { listWorkspaceTemplates } from '../documents/templates';
 import { isIntegrationTestStatus } from '../../src/workspaces/_data/types';
@@ -148,7 +149,7 @@ export function stageConfigDelta(result: unknown): PipelineStageCfg | null {
 }
 
 export interface WorkspaceSnapshot {
-  workspaces: (Pick<Workspace, 'id' | 'name' | 'slug' | 'ownerId' | 'role' | 'forgeType' | 'webhookConfigured' | 'webhookLastEventAt' | 'allowMergeOnRedCI' | 'enabledSections' | 'productContext' | 'aiInstruction' | 'outputLanguage' | 'assistantTokenBudget' | 'handoffInstruction' | 'autonomyLevel'>)[];
+  workspaces: (Pick<Workspace, 'id' | 'name' | 'slug' | 'ownerId' | 'role' | 'forgeType' | 'webhookConfigured' | 'webhookLastEventAt' | 'allowMergeOnRedCI' | 'enabledSections' | 'productContext' | 'aiInstruction' | 'outputLanguage' | 'assistantTokenBudget' | 'handoffInstruction' | 'autonomyLevel' | 'timezone' | 'pricing'>)[];
   activeWorkspaceId: string | null;
   //? Multi-project (ADR 0035): the active workspace's projects + the selected one.
   //? board/pipeline/tickets/sprints below are scoped to `activeProjectId`.
@@ -297,7 +298,7 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
   const workspaceRows = wsIds.length > 0 ? await prisma.workspace.findMany({ where: { id: { in: wsIds } } }) : [];
   const roleByWs = new Map(memberships.map((m) => [m.workspaceId, m.roleKey]));
   //? Webhook secrets are write-once credentials: the snapshot exposes only configured state.
-  const workspaces = workspaceRows.map((w) => ({ id: w.id, name: w.name, slug: w.slug, ownerId: w.ownerId, role: asRole(roleByWs.get(w.id) ?? 'member'), forgeType: w.forgeType, forgeBaseUrl: w.gitlabUrl ?? '', webhookConfigured: (w.webhookSecret ?? '').length > 0, webhookLastEventAt: w.webhookLastEventAt ? w.webhookLastEventAt.toISOString() : '', allowMergeOnRedCI: w.allowMergeOnRedCI, enabledSections: w.enabledSections, productContext: w.productContext, aiInstruction: w.aiInstruction, outputLanguage: w.outputLanguage, assistantTokenBudget: w.assistantTokenBudget ?? 0, handoffInstruction: w.handoffInstruction, autonomyLevel: w.autonomyLevel }));
+  const workspaces = workspaceRows.map((w) => ({ id: w.id, name: w.name, slug: w.slug, ownerId: w.ownerId, role: asRole(roleByWs.get(w.id) ?? 'member'), forgeType: w.forgeType, forgeBaseUrl: w.gitlabUrl ?? '', webhookConfigured: (w.webhookSecret ?? '').length > 0, webhookLastEventAt: w.webhookLastEventAt ? w.webhookLastEventAt.toISOString() : '', allowMergeOnRedCI: w.allowMergeOnRedCI, enabledSections: w.enabledSections, productContext: w.productContext, aiInstruction: w.aiInstruction, outputLanguage: w.outputLanguage, assistantTokenBudget: w.assistantTokenBudget ?? 0, handoffInstruction: w.handoffInstruction, autonomyLevel: w.autonomyLevel, timezone: w.timezone, pricing: sanitizePriceMap(w.pricing) }));
 
   //? Cross-workspace, by-email (NOT tenant-scoped): the pending invitations this user
   //? can accept from the onboarding. Uses the plain client — a user with no workspace
@@ -440,14 +441,18 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
     //? open-ticket / activity-tab filters resolve; unknown ids pass through.
     const ticketKeyById = new Map(ticketRows.map((t) => [t.id, t.key]));
 
+    //? D55 — every human-facing window below (usage day buckets, analytics weeks, sprint days) is
+    //? anchored to the workspace's own timezone, so "today"/"this week" mean the team's day and week.
+    const tz = workspaceRows.find((w) => w.id === activeWorkspaceId)?.timezone ?? 'UTC';
+
     //? Cost/usage tracking (#16): aggregate the real SpendRecord rows into the Usage read + a
     //? per-ticket token total for the board cost-chip (replaces the seed dummies + `costLabel` mock).
-    const usage = aggregateUsage(spendRows, ticketKeyById, Date.now());
+    const usage = aggregateUsage(spendRows, ticketKeyById, Date.now(), tz);
     const usageByKey = new Map(usage.byTicket.map((u) => [u.ticketKey, u]));
     //? Flow insights (#5): cycle time / throughput / cost-per-ticket from the tickets + usage.
     const insights = computeInsights(ticketRows.map((t) => ({ status: t.status, archived: t.archived, createdAt: t.createdAt, updatedAt: t.updatedAt })), usage, Date.now());
     //? Delivery analytics (ADR 0047): the fuller fold (cycle p50/p85, weekly throughput, stuck, tokens-by-label).
-    const analytics = computeAnalytics(ticketRows.map((t) => ({ key: t.key, status: t.status, archived: t.archived, labels: t.labels, createdAt: t.createdAt, updatedAt: t.updatedAt })), usage, Date.now());
+    const analytics = computeAnalytics(ticketRows.map((t) => ({ key: t.key, status: t.status, archived: t.archived, labels: t.labels, createdAt: t.createdAt, updatedAt: t.updatedAt })), usage, Date.now(), tz);
 
     //? #16 — the primary (first enabled) cap for the compact spend display (back-compat single-cap field).
     const primaryBudget = budgetRows.find((b) => b.enabled) ?? budgetRows[0];
@@ -798,7 +803,10 @@ export async function buildSnapshot(prisma: PrismaClient, userId: string, wantWo
             : 'UI review');
         return [{ id: link.id, ticketId: ticketKey, artifactId: link.artifactId, artifactKind: link.artifactKind, name, label: link.label ?? null }];
       }),
-      sprints: sprintRows.map((sp): Sprint => ({ id: sp.id, name: sp.name, start: sp.startAt ? sp.startAt.toISOString().slice(0, 10) : null, end: sp.endAt ? sp.endAt.toISOString().slice(0, 10) : null, active: sp.active, ticketCount: ticketCountBySprint.get(sp.id) ?? 0, daysLeft: sp.endAt ? Math.max(0, Math.ceil((sp.endAt.getTime() - Date.now()) / 86_400_000)) : null })),
+      //? D55 — a sprint's start/end are WALL-CLOCK days, so both the labels and "days left" are read in
+      //? the workspace timezone. A UTC slice would show the previous day (and an off-by-one countdown)
+      //? for anyone east of UTC.
+      sprints: sprintRows.map((sp): Sprint => ({ id: sp.id, name: sp.name, start: sp.startAt ? dayKeyInTz(sp.startAt, tz) : null, end: sp.endAt ? dayKeyInTz(sp.endAt, tz) : null, active: sp.active, ticketCount: ticketCountBySprint.get(sp.id) ?? 0, daysLeft: sp.endAt ? Math.max(0, calendarDaysBetween(new Date(), sp.endAt, tz)) : null })),
       suggestions: suggestionRows.map((s): AiSuggestion => ({ id: s.id, type: asSugType(s.type), title: s.title, body: s.body, ticketIds: s.ticketIds.map((id) => ticketKeyById.get(id) ?? id), ...(s.patch === null ? {} : { patch: s.patch }) })),
       //? Internal `__` rows stay server-only; secret EnvVars are write-only metadata. The mapper
       //? deliberately emits neither plaintext nor ciphertext, including on legacy rows.

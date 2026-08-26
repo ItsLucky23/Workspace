@@ -15,6 +15,7 @@ import type { StudioArtifact } from '../../_data/types';
 import { asRecord, asStr, downloadHtmlAsPng } from '../studio/content';
 import { KIND_ICONS } from '../studio/kinds';
 import { ArtifactBody } from '../studio/previews';
+import { useWorkspaceTimeZone } from '../../_functions/wsTime';
 
 //? ---- Artifact card ----
 //? Header = icon + title + status + ONE primary action + overflow menu. Priority for the visible
@@ -23,7 +24,9 @@ import { ArtifactBody } from '../studio/previews';
 export function ArtifactCard({ artifact, busy, pendingRefine, onDelete, onRegenerate, onPromote, onSendToContent, onPublishLive }: { artifact: StudioArtifact; busy: boolean; pendingRefine: string; onDelete: () => void; onRegenerate: () => void; onPromote?: () => void; onSendToContent?: () => void; onPublishLive?: () => void }) {
   const translate = useTranslator();
   const c = asRecord(artifact.content);
-  const when = new Date(artifact.createdAt).toLocaleString();
+  //? D55 — workspace time, not the reader's device time.
+  const timeZone = useWorkspaceTimeZone();
+  const when = new Date(artifact.createdAt).toLocaleString(undefined, { timeZone });
   //? Expand state lives here (not in the preview) so the overflow menu can toggle it.
   const [full, setFull] = useState(false);
   const html = asStr(c.html);

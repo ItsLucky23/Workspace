@@ -6,6 +6,8 @@
 //? Params were already server-validated against the workspace context; the local `str/num/…`
 //? readers only re-narrow the JSON types (never invent values, no casts).
 
+import { tryCatchSync } from '@luckystack/core/client';
+
 import { apiRequest as rawApiRequest } from 'src/_sockets/apiRequest';
 import { syncRequest as rawSyncRequest } from 'src/_sockets/syncRequest';
 
@@ -788,6 +790,14 @@ export const CHAT_DISPATCH: Record<ChatEnabledOp, (p: ChatProposal, x: ChatDispa
     const autonomyLevel = str(p, 'autonomyLevel'); if (!autonomyLevel) return;
     void syncRequest({ name: 'workspaces/saveAutonomy', version: 'v1', data: { autonomyLevel, clientRequestId: x.nextReqId() }, receiver: x.room });
   },
+  'save-workspace-prefs': (p, x) => {
+    //? D55 + pricing — the chat sets the timezone and/or ONE model price (the catalog speaks scalars);
+    //? the settings UI sends the whole price map through the same route.
+    const timezone = str(p, 'timezone'); const model = str(p, 'model'); const pricePer1k = num(p, 'pricePer1k');
+    const pricesOne = model && pricePer1k !== undefined ? { model, pricePer1k } : {};
+    if (timezone === undefined && Object.keys(pricesOne).length === 0) return;
+    void syncRequest({ name: 'workspaces/saveWorkspacePrefs', version: 'v1', data: { ...(timezone === undefined ? {} : { timezone }), ...pricesOne, clientRequestId: x.nextReqId() }, receiver: x.room });
+  },
   'save-stage-config': (p, x) => {
     const stageId = str(p, 'stageId'); if (!stageId || !x.activeProjectId) return;
     const current = x.stageConfigs.find((c) => c.id === stageId && c.projectId === x.activeProjectId);
@@ -889,11 +899,35 @@ export function chatExecutionReceiptsSucceeded(receipts: unknown[]): boolean {
   return receipts.length > 0 && receipts.every((receipt) => receipt !== null && typeof receipt === 'object' && 'status' in receipt && receipt.status === 'success');
 }
 
+//? What the executed op RETURNED, small enough to hand straight back to the assistant as context. Read-back
+//? ops (db-introspect's table list, a connection test, an export) answer a question the user actually asked;
+//? dropping that answer on the floor is what made the chat fire-and-forget. Generic on purpose: every op's
+//? own `result` shape is rendered as-is rather than one bespoke formatter per op going stale one by one.
+export function describeChatDispatchResults(receipts: unknown[]): string {
+  const payloads = receipts
+    .map((receipt) => (receipt !== null && typeof receipt === 'object' && 'result' in receipt ? receipt.result : null))
+    .filter((payload) => payload !== null && payload !== undefined && (typeof payload !== 'object' || Object.keys(payload).length > 0));
+  if (payloads.length === 0) return '';
+  //? A cyclic or otherwise unserialisable result is not worth failing an accepted op over — no context
+  //? is a fine outcome here, a thrown accept is not.
+  const [error, text] = tryCatchSync(() => JSON.stringify(payloads.length === 1 ? payloads[0] : payloads));
+  if (error || text === null) return '';
+  //? A result that needs more than this is a screen's worth of data, not conversational context — the
+  //? page that owns it renders it in full; the chat gets the head of it so the thread can refer to it.
+  return text.length > 2000 ? `${text.slice(0, 2000)}…` : text;
+}
+
+export interface ChatDispatchOutcome {
+  ok: boolean;
+  //? '' when the op only wrote (nothing to read back).
+  resultText: string;
+}
+
 export async function executeTrackedChatDispatch(
   op: ChatEnabledOp,
   proposal: ChatProposal,
   extras: ChatDispatchExtras,
-): Promise<boolean> {
+): Promise<ChatDispatchOutcome> {
   const receipts: Promise<unknown>[] = [];
   activeReceiptCollector = (receipt) => { receipts.push(receipt); };
   try {
@@ -901,5 +935,6 @@ export async function executeTrackedChatDispatch(
   } finally {
     activeReceiptCollector = null;
   }
-  return chatExecutionReceiptsSucceeded(await Promise.all(receipts));
+  const settled = await Promise.all(receipts);
+  return { ok: chatExecutionReceiptsSucceeded(settled), resultText: describeChatDispatchResults(settled) };
 }

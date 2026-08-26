@@ -247,6 +247,11 @@ export const PROPOSE_CATALOG: Record<ControlOp, OpSpec> = {
     hint: 'set how often the human must approve pipeline stages: gate-every (approve each stage) | gate-key-stages (default) | full-auto (no human gates — propose with care and say so in the reply). params: autonomyLevel',
     params: { autonomyLevel: { kind: 'enum', required: true, values: ['gate-every', 'gate-key-stages', 'full-auto'] } },
   },
+  'save-workspace-prefs': {
+    mode: 'enabled',
+    hint: "set the workspace timezone (an IANA zone like 'Europe/Amsterdam' — it anchors the budget month, the usage day buckets, the analytics week and sprint days) and/or the price of ONE model in € per 1k tokens. params: timezone?, model? + pricePer1k? (0 = free, e.g. a subscription seat)",
+    params: { timezone: { kind: 'string' }, model: { kind: 'string' }, pricePer1k: { kind: 'number' } },
+  },
   //? Credential boundary: the route also accepts a `token`, but a token must NEVER travel through the
   //? chat/LLM path — the chat surface is gitUrl-only (private repos go via the settings UI).
   'link-repo': {

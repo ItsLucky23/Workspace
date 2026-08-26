@@ -83,9 +83,9 @@ export interface Workspace {
   ownerId: string;
   role: Role; // ui-only: the current user's role in this workspace
   // --- field sweep (04b §13) ---
-  timezone?: string;              // D55 — IANA tz; anchors cron + budget window + sprint dates
+  timezone?: string;              // D55 — IANA tz; anchors cron + budget window + usage/analytics buckets + sprint dates
   presetKey?: string;             // D1/D18 — 'simple' | 'advanced' | 'professional' (provenance)
-  pricing?: unknown;              // D31 — per-model price map (Json in schema)
+  pricing?: Record<string, number>; // D31 — per-model price map (€/1k tokens); merged over defaults + env
   assistantTokenBudget?: number;  // per-stage-turn token budget before self-handoff (0 = env default; wired 2026-08-25)
   handoffInstruction?: string;    // editable self-handoff instruction template ('' = built-in)
   gitConfig?: GitConfig;          // per-workspace git strategy + push policy (hosting-proxy plan)

@@ -16,6 +16,7 @@ import { EmptyState, IconButton, InfoTip, InteractiveRow, useClickAway, WsButton
 import { EmptyPicker } from '../../_components/SetupNotice';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import type { InterviewFinding } from '../../_data/types';
+import { useWorkspaceTimeZone } from '../../_functions/wsTime';
 
 export const template = 'workspaces';
 
@@ -275,6 +276,8 @@ function GenerateIdeasMenu({ onGenerate }: { onGenerate: (focus: string) => void
 function FindingRow({ f, translate, canMakeTicket, onMakeTicket, onOpenTicket, onDismiss }: { f: InterviewFinding; translate: ReturnType<typeof useTranslator>; canMakeTicket: boolean; onMakeTicket: () => void; onOpenTicket: () => void; onDismiss: () => void }) {
   const meta = areaMeta(f.area);
   const accepted = f.status === 'accepted';
+  //? D55 — "when it was found" is a workspace fact, read in the workspace's own zone.
+  const timeZone = useWorkspaceTimeZone();
   //? Expand-to-read-more (gap-fix): the row used to be inert besides its two action buttons, so a
   //? user had to accept/dismiss blind. Click anywhere on the row (not the actions) to reveal the
   //? full severity + when it was found; ClickableCard/InteractiveRow is the shared answer for a
@@ -309,7 +312,7 @@ function FindingRow({ f, translate, canMakeTicket, onMakeTicket, onOpenTicket, o
         <div className={`pl-[2.375rem] pt-2 flex items-center gap-2 text-xs text-meta`}>
           <span>{translate({ key: SEVERITY_KEY[f.severity] ?? 'workspaces.interviewer.severityNormal' })}</span>
           <span aria-hidden="true">·</span>
-          <span>{new Date(f.createdAt).toLocaleString()}</span>
+          <span>{new Date(f.createdAt).toLocaleString(undefined, { timeZone })}</span>
         </div>
       </Collapse>
     </InteractiveRow>

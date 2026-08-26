@@ -14,6 +14,34 @@ export const AI_PROMPT_BUDGET = {
   total: 64_000,
 } as const;
 
+type PromptBudget = { [K in keyof typeof AI_PROMPT_BUDGET]: number };
+
+//? Rough chars→tokens, the same ~4:1 the spend estimator uses. Budgets are counted in CHARACTERS
+//? (provider-independent); the operator-facing knob is in TOKENS, because that is what a context
+//? window is quoted in.
+const CHARS_PER_TOKEN = 4;
+
+//? How many tokens of CONVERSATION the assistant may carry before the compaction layer folds the
+//? oldest turns into a summary (server/ai/chatCompaction.ts). Owner 2026-08-26: "een auto compact
+//? layer voor zijn context window als die boven de e.g. 272k tokens komt". Tunable per host, because
+//? the honest ceiling is the context window of whichever backend actually serves the chat.
+export const CHAT_CONTEXT_TOKENS = Math.max(8000, Number(process.env.WS_CHAT_CONTEXT_TOKENS ?? '272000'));
+
+//? Per-feature budget overrides. The default above is deliberately small — a one-shot generation must
+//? not let a workspace instruction crowd out its own contract. The CHAT is the exception: it is a
+//? CONVERSATION, and clipping its history at 20k chars is exactly the "fire and forget" the owner
+//? asked us to remove. Its prompt is sized to the compaction ceiling, so the layer below decides what
+//? the assistant remembers — not a truncation marker in the middle of an old turn.
+const FEATURE_BUDGET: Record<string, PromptBudget> = {
+  'workspace-chat': {
+    ...AI_PROMPT_BUDGET,
+    prompt: CHAT_CONTEXT_TOKENS * CHARS_PER_TOKEN,
+    total: CHAT_CONTEXT_TOKENS * CHARS_PER_TOKEN + AI_PROMPT_BUDGET.coreSystem + AI_PROMPT_BUDGET.workspaceInstruction + AI_PROMPT_BUDGET.skills + AI_PROMPT_BUDGET.productCapabilities,
+  },
+};
+
+export const budgetForFeature = (feature: string): PromptBudget => FEATURE_BUDGET[feature] ?? AI_PROMPT_BUDGET;
+
 function bounded(text: string, maxChars: number): string {
   const value = text.trim();
   if (value.length <= maxChars) return value;
@@ -28,18 +56,22 @@ export function applyAiPromptBudget(input: {
   workspaceInstruction: string;
   skills: string;
   productCapabilities: string;
+  //? Which feature is running, so a conversational surface can carry a conversation-sized prompt while
+  //? every one-shot generation keeps the tight default. Omitted → the default budget.
+  feature?: string;
 }): AiCompletionRequest {
-  const prompt = bounded(input.request.prompt, AI_PROMPT_BUDGET.prompt);
+  const budget = budgetForFeature(input.feature ?? '');
+  const prompt = bounded(input.request.prompt, budget.prompt);
   const segment: Record<AiOneShotEntryId, string> = {
-    productCapabilities: bounded(input.productCapabilities, AI_PROMPT_BUDGET.productCapabilities),
-    workspace: bounded(input.workspaceInstruction, AI_PROMPT_BUDGET.workspaceInstruction),
-    skills: bounded(input.skills, AI_PROMPT_BUDGET.skills),
-    featureSystem: bounded(input.request.system ?? '', AI_PROMPT_BUDGET.coreSystem),
+    productCapabilities: bounded(input.productCapabilities, budget.productCapabilities),
+    workspace: bounded(input.workspaceInstruction, budget.workspaceInstruction),
+    skills: bounded(input.skills, budget.skills),
+    featureSystem: bounded(input.request.system ?? '', budget.coreSystem),
   };
   //? Ordered by the shared spec (aiLayers.ts) so the preview's one-shot model cannot drift (F-075).
   const parts = AI_ONESHOT_SPEC.map((entry) => segment[entry.id]).filter((part) => part.length > 0);
   let system = parts.join('\n\n');
-  const systemLimit = AI_PROMPT_BUDGET.total - prompt.length;
+  const systemLimit = budget.total - prompt.length;
   if (system.length > systemLimit) system = bounded(system, systemLimit);
   return { ...input.request, prompt, system };
 }

@@ -87,6 +87,7 @@ export const OP_CAPABILITY: Record<ControlOp, number | null> = {
   'save-ai-provider': CAP.workspaceSettings,
   'save-coding-agent': CAP.workspaceSettings,
   'save-autonomy': CAP.workspaceSettings,
+  'save-workspace-prefs': CAP.workspaceSettings,
   'gitlab-resync': CAP.workspaceSettings,
   'forge-connect': CAP.workspaceSettings,
   'link-repo': CAP.workspaceSettings,

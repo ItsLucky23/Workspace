@@ -27,6 +27,7 @@ import { NAV_CATEGORIES, type NavCategory } from '../_data/nav';
 import { WORKSPACE_PACK_CHOICES } from '../_data/packs';
 import { isTicketView, useWorkspaces, type WsView } from './WorkspacesContext';
 import type { AiRun, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, CopilotDirective, NotificationItem } from '../_data/types';
+import { useWorkspaceTimeZone } from '../_functions/wsTime';
 
 //? The CSS color token for a ticket's live status dot.
 function statusColor(status: string | undefined): string {
@@ -1060,7 +1061,9 @@ function AiActivityFeed({ runs }: { runs: AiRun[] }) {
 function AiRunCard({ run }: { run: AiRun }) {
   const translate = useTranslator();
   const [open, setOpen] = useState(false);
-  const meta = `${new Date(run.createdAt).toLocaleTimeString()} · ${(run.ms / 1000).toFixed(1)}s · ${run.providerId}`;
+  //? D55 — workspace time, not the reader's device time.
+  const timeZone = useWorkspaceTimeZone();
+  const meta = `${new Date(run.createdAt).toLocaleTimeString(undefined, { timeZone })} · ${(run.ms / 1000).toFixed(1)}s · ${run.providerId}`;
   return (
     <div className="rounded-xl border border-container1-border bg-container2/40 p-3">
       <div className="flex items-center gap-2">

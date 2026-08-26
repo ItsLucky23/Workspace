@@ -2,7 +2,7 @@
 
 > The in-app Workspace-AI retrieves this corpus at chat-time (product self-knowledge). Source:
 > `docs/product-knowledge/capabilities.md` (hand Q&A) + `docs/decisions/*.md` (ADRs). Regenerate with
-> `npm run ai:product-knowledge`. Corpus hash: `706be714432797e2` · 17 capabilities · 245 decisions.
+> `npm run ai:product-knowledge`. Corpus hash: `a7a5f75e107a6303` · 17 capabilities · 246 decisions.
 
 ## Capabilities (what the product can do)
 
@@ -271,3 +271,4 @@
 - `adr-0325` One provider catalog for text, media and embedding, with a per-workspace embedder
 - `adr-0326` Non-functional UI is removed, not kept as a promise
 - `adr-0327` Stored-but-inert settings are wired or deleted — never left dormant
+- `adr-0328` 0328-workspace-time-is-the-workspace-timezone-and-the-assistant-remembers

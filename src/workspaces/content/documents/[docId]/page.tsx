@@ -22,6 +22,7 @@ import DiffView from '../../../develop/board/[ticketId]/DiffView';
 import { AssetPicker, type PickableAsset } from '../../../_components/AssetPicker';
 import { useWorkspaces } from '../../../_shell/WorkspacesContext';
 import { lineDiff, diffStat } from '../lineDiff';
+import { useWorkspaceTimeZone } from '../../../_functions/wsTime';
 
 export const template = 'workspaces';
 
@@ -37,6 +38,8 @@ function fileAssetIcon(stub: boolean, extractStatus?: string): string {
 
 export default function DocumentDetail({ params }: { params: Record<string, string | undefined> }) {
   const translate = useTranslator();
+  //? D55 — revision timestamps read in workspace time.
+  const timeZone = useWorkspaceTimeZone();
   const id = params.docid ?? '';
   const { documents, content: contentSnapshot, setAssetStarred, editDocument, runDocumentAi, applyDocumentDraft, discardDocumentDraft, genDocumentImage, exportDocument, restoreDocumentRevision, navigate, activeWorkspace, focusSetup, aiOverrides, aiProviderCatalog } = useWorkspaces();
   const doc = documents.find((d) => d.id === id);
@@ -323,7 +326,7 @@ export default function DocumentDetail({ params }: { params: Record<string, stri
           <div className="flex flex-col gap-1">
             {doc.revisions.slice(0, 12).map((r) => (
               <div key={r.id} className="flex items-center justify-between gap-2 text-xs rounded-lg border border-container1-border bg-container1 px-2.5 py-1.5">
-                <span className="text-muted truncate">{translate({ key: 'workspaces.documents.revisionMeta', params: [{ key: 'time', value: new Date(r.createdAt).toLocaleString() }, { key: 'note', value: r.note }] })}</span>
+                <span className="text-muted truncate">{translate({ key: 'workspaces.documents.revisionMeta', params: [{ key: 'time', value: new Date(r.createdAt).toLocaleString(undefined, { timeZone }) }, { key: 'note', value: r.note }] })}</span>
                 <WsButton variant="ghost" icon="clock-rotate-left" onClick={() => { void menuHandler.confirm({ title: translate({ key: 'workspaces.documents.restoreConfirmTitle' }), content: translate({ key: 'workspaces.documents.restoreConfirmBody' }) }).then((ok) => { if (ok) restoreDocumentRevision(doc.id, r.id); }); }}>{translate({ key: 'workspaces.documents.restore' })}</WsButton>
               </div>
             ))}

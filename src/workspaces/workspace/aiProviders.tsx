@@ -29,6 +29,7 @@ import { WsButton } from '../_components/primitives';
 import XtermTerminal, { disposeSession } from '../_components/XtermTerminal';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { AiConnection, AiProviderOption, CodingAgentConfig, CodingHarness, CodingSubscription, StageModelTier } from '../_data/types';
+import { useWorkspaceTimeZone } from '../_functions/wsTime';
 
 
 //? The escape hatch on the model picker: the catalog is a starting point, not a whitelist. A model
@@ -136,6 +137,8 @@ function EmbedderSection() {
 function ConnectionRow({ connection }: { connection: AiConnection }) {
   const translate = useTranslator();
   const { aiConnectionAction, aiOverrides } = useWorkspaces();
+  //? D55 — "last verified at" is a workspace fact; read it in the workspace's own zone.
+  const timeZone = useWorkspaceTimeZone();
   const [busy, setBusy] = useState<'test' | 'remove' | null>(null);
   const [result, setResult] = useState<{ ok: boolean; error?: string } | null>(null);
 
@@ -177,7 +180,7 @@ function ConnectionRow({ connection }: { connection: AiConnection }) {
           {connection.model.length > 0 && <span className={`font-mono text-xs text-meta`}>{connection.model}</span>}
         </span>
       )}
-      help={statusLine(connection, translate)}
+      help={statusLine(connection, translate, timeZone)}
       control={(
         <div className={`flex items-center gap-2 justify-end flex-wrap`}>
           {result !== null && (
@@ -198,9 +201,9 @@ function ConnectionRow({ connection }: { connection: AiConnection }) {
 }
 
 /** What the row says under the name: verified, never tested, or the last failure. */
-function statusLine(c: AiConnection, translate: ReturnType<typeof useTranslator>): string {
+function statusLine(c: AiConnection, translate: ReturnType<typeof useTranslator>, timeZone: string | undefined): string {
   if (c.lastError !== null) return translate({ key: 'workspaces.aiProviders.lastFailed', params: [{ key: 'error', value: c.lastError }] });
-  if (c.verifiedAt !== null) return translate({ key: 'workspaces.aiProviders.verifiedAt', params: [{ key: 'when', value: new Date(c.verifiedAt).toLocaleString() }] });
+  if (c.verifiedAt !== null) return translate({ key: 'workspaces.aiProviders.verifiedAt', params: [{ key: 'when', value: new Date(c.verifiedAt).toLocaleString(undefined, { timeZone }) }] });
   //? "A key is present" is NOT "it works" — say which one this is rather than implying the stronger one.
   return translate({ key: c.kind === 'subscription' ? 'workspaces.aiProviders.untestedCli' : 'workspaces.aiProviders.untested' });
 }

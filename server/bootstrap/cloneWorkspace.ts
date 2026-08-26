@@ -29,7 +29,7 @@ const isSecretKey = (key: string): boolean => SECRET_PREFIXES.some((p) => key.st
 export async function cloneWorkspace(
   prisma: PrismaClient, sourceWorkspaceId: string, ownerId: string, name: string,
 ): Promise<CloneResult> {
-  const source = await prisma.workspace.findUnique({ where: { id: sourceWorkspaceId }, select: { enabledSections: true, presetKey: true, aiInstruction: true, gitConfig: true, autonomyLevel: true, productContext: true } });
+  const source = await prisma.workspace.findUnique({ where: { id: sourceWorkspaceId }, select: { enabledSections: true, presetKey: true, aiInstruction: true, gitConfig: true, autonomyLevel: true, productContext: true, timezone: true, pricing: true } });
   if (!source) return { ok: false, copied: {}, error: 'workspace.notFound' };
 
   //? Start from the normal creation path so a clone is a fully-formed workspace (roles, budget row, owner
@@ -50,6 +50,10 @@ export async function cloneWorkspace(
       ...(source.gitConfig === null ? {} : { gitConfig: source.gitConfig }),
       ...(source.autonomyLevel ? { autonomyLevel: source.autonomyLevel } : {}),
       ...(source.productContext ? { productContext: source.productContext } : {}),
+      //? D55/D31 — a clone that silently reverted to the seed zone would re-date every window it shows,
+      //? and one that lost the price map would report € 0 for metered models. Both are tuned settings.
+      ...(source.timezone ? { timezone: source.timezone } : {}),
+      ...(source.pricing === null ? {} : { pricing: source.pricing }),
     },
   });
 

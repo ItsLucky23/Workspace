@@ -15,6 +15,9 @@ import { retrieve } from '../rag/index';
 import { retrieveMemory } from '../rag/memory';
 import { retrieveProductKnowledge } from '../rag/productKnowledge';
 import { renderUntrustedContext, UNTRUSTED_CONTEXT_POLICY } from './untrustedContext';
+//? The assistant's memory: persisted turns + the auto-compaction that keeps them inside the window.
+import { loadChatContext, type ChatSurface, type ChatTurn } from './chatCompaction';
+import { CHAT_CONTEXT_TOKENS } from './promptBudget';
 //? R3-b — repos are per-(workspace,project); the code-RAG must be scoped to the ACTIVE project
 //? or the chat grounds on whichever project indexed last (answering about the wrong codebase).
 import { resolveProjectId } from '../orchestrator/projectResolve';
@@ -329,11 +332,20 @@ export function systemPrompt(ctx: Ctx, codeContext: string, productContext = '',
   ].join('\n');
 }
 
-export function buildChatPrompt(message: string, history: { role: string; text: string }[] = []): string {
-  const historyText = history.slice(-8).map((entry) => `${entry.role === 'user' ? 'User' : 'Assistant'}: ${entry.text}`).join('\n');
+//? The conversation the model sees. `summary` is the compaction layer's stand-in for turns that no longer
+//? fit verbatim (server/ai/chatCompaction.ts) and always precedes the verbatim tail, so the thread reads
+//? oldest → newest. The history is NO LONGER clipped to 8 turns / 8k chars: the compaction layer decides
+//? what fits, and the per-feature prompt budget is sized to match (promptBudget.ts). Prior turns stay
+//? UNTRUSTED reference data — only the current message is an authoritative instruction (#112).
+export function buildChatPrompt(message: string, history: { role: string; text: string }[] = [], summary = ''): string {
+  const historyText = history.map((entry) => `${entry.role === 'user' ? 'User' : 'Assistant'}: ${entry.text}`).join('\n');
+  const conversation = [
+    ...(summary.length > 0 ? [`Summary of earlier turns in this conversation:\n${summary}`] : []),
+    ...(historyText.length > 0 ? [historyText] : []),
+  ].join('\n\n');
   return [
-    ...(historyText.length > 0
-      ? [renderUntrustedContext({ provenance: 'prior workspace chat history', content: historyText, maxChars: 8000 }), UNTRUSTED_CONTEXT_POLICY]
+    ...(conversation.length > 0
+      ? [renderUntrustedContext({ provenance: 'prior workspace chat history', content: conversation, maxChars: CHAT_CONTEXT_TOKENS * 4 }), UNTRUSTED_CONTEXT_POLICY]
       : []),
     `AUTHORITATIVE CURRENT USER REQUEST:\n${message}`,
   ].join('\n\n');
@@ -415,8 +427,19 @@ export function validatePlan(raw: unknown, ctx: Ctx): ChatPlan | null {
   return { summary, steps };
 }
 
+//? The turn record is written by the Conductor AFTER the reply is produced, so two messages sent in quick
+//? succession can reach here before the first pair has drained. The client still sends what IT saw; any of
+//? those turns the store does not have yet is appended, so a fast follow-up ("and the other one too") is
+//? never answered blind. Matched on text, which is what a duplicate would be.
+function mergePendingTurns(storedTurns: ChatTurn[], clientTurns: ChatTurn[]): ChatTurn[] {
+  if (clientTurns.length === 0) return storedTurns;
+  const known = new Set(storedTurns.slice(-24).map((turn) => turn.text));
+  const pending = clientTurns.filter((turn) => turn.text.length > 0 && !known.has(turn.text));
+  return pending.length > 0 ? [...storedTurns, ...pending] : storedTurns;
+}
+
 //? Interpret one chat message → a reply + an optional (validated) proposal OR multi-step plan.
-export async function interpretChat(prisma: PrismaClient, workspaceId: string, message: string, projectId?: string, history?: { role: string; text: string }[], userId?: string): Promise<ChatResult> {
+export async function interpretChat(prisma: PrismaClient, workspaceId: string, message: string, projectId?: string, history?: { role: string; text: string }[], userId?: string, surface: ChatSurface = 'assistant'): Promise<ChatResult> {
   if (!projectId) return { reply: '', proposal: null, error: 'project.notFound' };
   const ctx = await loadCtx(prisma, workspaceId, projectId, userId);
   if (!ctx) return { reply: '', proposal: null, error: 'project.notFound' };
@@ -437,7 +460,13 @@ export async function interpretChat(prisma: PrismaClient, workspaceId: string, m
   //? C1 — "why is X like this?" is a chat question; ground it in the institutional memory too.
   const [, mem] = await tryCatch(() => retrieveMemory(prisma, workspaceId, message, 4));
   const memoryContext = (mem ?? []).map((m) => `- ${m.content}`).join('\n').slice(0, 3000);
-  const fullPrompt = buildChatPrompt(message, history ?? []);
+  //? #112 → the assistant's real memory: the conversation comes from the PERSISTED turns (compacted when
+  //? it outgrows the ceiling), not from the browser tab's last 8 bubbles — so a reload, a second device or
+  //? a long thread no longer wipes what was already said. The client-supplied `history` is only a fallback
+  //? for a caller with no user identity (nothing to look the stored conversation up by).
+  const stored = userId ? await loadChatContext(prisma, workspaceId, userId, surface) : null;
+  const turns = stored ? mergePendingTurns(stored.turns, history ?? []) : (history ?? []);
+  const fullPrompt = buildChatPrompt(message, turns, stored?.summary ?? '');
   const res = await runAiCompletion('workspace-chat', { prompt: fullPrompt, system: systemPrompt(ctx, codeContext, productContext, memoryContext, message), timeoutMs: 90_000, workspaceId, label: 'Workspace-AI chat' });
   if (!res.ok) return { reply: '', proposal: null, error: res.error ?? 'ai.turnFailed' };
   const slice = extractJsonSlice(res.text);

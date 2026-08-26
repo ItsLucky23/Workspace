@@ -286,6 +286,9 @@ export interface WorkspacesCtx {
   saveSections: (enabledSections: string[]) => void;
   //? A4 — the workspace autonomy level ('gate-every' | 'gate-key-stages' | 'full-auto').
   saveAutonomy: (autonomyLevel: string) => void;
+  //? D55 + D31 — the workspace timezone (IANA, anchors every human-facing window) and the per-model
+  //? price map (€/1k tokens). Either field alone is a valid save; an unusable zone is refused server-side.
+  saveWorkspacePrefs: (input: { timezone?: string; pricing?: Record<string, number> }) => void;
   //? E5 — user-defined AI tasks: the list lives on the snapshot; these mutate/run it (run = generate output only).
   customTasks: { id: string; name: string; promptTemplate: string; lastOutput: string | null; lastRunAt: number | null }[];
   saveCustomTask: (input: { taskId?: string; name: string; promptTemplate: string }) => void;

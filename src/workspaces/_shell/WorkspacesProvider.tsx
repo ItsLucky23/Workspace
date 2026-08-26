@@ -25,7 +25,7 @@ import type { SessionLayout } from '../../../config';
 import { menuHandler } from 'src/_functions/menuHandler';
 import { isChatEnabledOp } from '../_data/chatOps';
 import { VIEW_CATEGORY, TRAIL_ROOTS } from '../_data/nav';
-import { executeTrackedChatDispatch, isChatProposalForProject } from '../_functions/chatDispatch';
+import { describeChatDispatchResults, executeTrackedChatDispatch, isChatProposalForProject, type ChatDispatchOutcome } from '../_functions/chatDispatch';
 import type {
   ActivityEvent, AiSuggestion, ChatMessage, ChatPlan, ChatProposal, EnvVar, GitConfig, InfoDoc, IntegrationTool, InviteEntry,
   Member, MrActionFields, MrActionKind, MrActionResult, MrView, MyInvite, NotificationItem, PermRole, PipelineStage,
@@ -670,6 +670,17 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       if (serverOutput.status !== 'success') return;
       const autonomyLevel = serverOutput.autonomyLevel;
       setSnap((s) => (s.activeWorkspaceId ? { ...s, workspaces: s.workspaces.map((w) => (w.id === s.activeWorkspaceId ? { ...w, autonomyLevel } : w)) } : s));
+    },
+  }), [upsertSyncEventCallback]);
+
+  //? D55 + D31 — timezone / model-pricing delta → replace both on the active workspace. The route echoes
+  //? the STORED values, so a refused zone snaps the UI back instead of leaving a phantom optimistic value.
+  useEffect(() => upsertSyncEventCallback({
+    name: 'workspaces/saveWorkspacePrefs', version: 'v1',
+    callback: ({ serverOutput }) => {
+      if (serverOutput.status !== 'success') return;
+      const { timezone, pricing } = serverOutput;
+      setSnap((s) => (s.activeWorkspaceId ? { ...s, workspaces: s.workspaces.map((w) => (w.id === s.activeWorkspaceId ? { ...w, timezone, pricing } : w)) } : s));
     },
   }), [upsertSyncEventCallback]);
 
@@ -1376,9 +1387,21 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
   //? mark the bubble consumed so its Accept button can't re-fire.
   //? Dispatch a SINGLE proposal to the existing `_sync` verb (never a new verb; Conductor stays the writer).
   //? Shared by acceptChatProposal (one op) and acceptChatPlan (O-A, each step in order).
-  const dispatchProposal = useCallback(async (p: ChatProposal): Promise<boolean> => {
+  //? Put what an executed op answered back into the conversation as an assistant turn. It is session-local:
+  //? the persisted `WorkspaceChatMessage` log is written by the aiChat route around a real message, so an
+  //? outcome bubble does not survive a reload the way a normal turn does — it exists to give the NEXT turn
+  //? its context, which is the half that was missing.
+  const recordOpOutcome = useCallback((summary: string, resultText: string) => {
+    const stamp = String(reqCounter + 1); reqCounter += 1;
+    setChat((prev) => [...prev, { id: `r${stamp}`, role: 'ai', text: translate({ key: 'workspaces.shell.opResult', params: [{ key: 'summary', value: summary }, { key: 'result', value: resultText }] }) }]);
+  }, [translate]);
+
+  //? Returns the outcome, not just a boolean: an op the assistant proposed can ANSWER something (the table
+  //? list from db-introspect, a connection test's verdict), and that answer has to travel back into the
+  //? conversation instead of dying in the receipt. `resultText` is '' for ops that only write.
+  const dispatchProposal = useCallback(async (p: ChatProposal): Promise<ChatDispatchOutcome> => {
     const scope = currentProjectScope();
-    if (!scope || !isChatProposalForProject(p, scope.projectId)) return false;
+    if (!scope || !isChatProposalForProject(p, scope.projectId)) return { ok: false, resultText: '' };
     const room = scope.workspaceId;
     if (p.op === 'bulk-move' && p.ticketKeys && p.stageId) {
       const { ticketKeys, stageId } = p;
@@ -1386,26 +1409,26 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       if (receipt.status === 'success') {
         setStageOverrides(() => Object.fromEntries(ticketKeys.map((ticketId) => [ticketId, stageId])));
       }
-      return receipt.status === 'success';
+      return { ok: receipt.status === 'success', resultText: '' };
     }
     if (p.op === 'assign' && p.ticketKeys && p.assigneeId) {
       const receipt = await syncRequest({ name: 'workspaces/bulkAssign', version: 'v1', data: { ticketIds: p.ticketKeys, assigneeId: p.assigneeId, clientRequestId: nextReqId() }, receiver: room });
-      return receipt.status === 'success';
+      return { ok: receipt.status === 'success', resultText: '' };
     }
     if (p.op === 'add-comment' && p.ticketKeys?.[0] && p.body) {
       const receipt = await syncRequest({ name: 'workspaces/addComment', version: 'v1', data: { ticketId: p.ticketKeys[0], body: p.body, clientRequestId: nextReqId() }, receiver: room });
-      return receipt.status === 'success';
+      return { ok: receipt.status === 'success', resultText: '' };
     }
     //? O-B — create ops route to the EXISTING verbs (quick-add / content-from-brief), not a new one.
     if (p.op === 'create-ticket' && p.title) {
       const receipt = await syncRequest({ name: 'workspaces/quickAdd', version: 'v1', data: { title: p.title, projectId: p.projectId, ...(p.description ? { description: p.description } : {}), clientRequestId: nextReqId() }, receiver: room });
       if (receipt.status === 'success') refetch();
-      return receipt.status === 'success';
+      return { ok: receipt.status === 'success', resultText: describeChatDispatchResults([receipt]) };
     }
     if (p.op === 'create-content' && p.title && p.brief) {
       const receipt = await syncRequest({ name: 'workspaces/contentControl', version: 'v1', data: { op: 'content-from-brief', title: p.title, brief: p.brief, format: p.format ?? 'faceless', clientRequestId: nextReqId() }, receiver: room });
       if (receipt.status === 'success') refetch();
-      return receipt.status === 'success';
+      return { ok: receipt.status === 'success', resultText: describeChatDispatchResults([receipt]) };
     }
     //? X1 — generic catalog ops: the CHAT_DISPATCH tranche routes each op through the same `_sync`
     //? route its manual UI (would) use — RBAC + Conductor single-writer intact.
@@ -1435,15 +1458,20 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         nextReqId, refetch,
       });
     }
-    return false;
+    return { ok: false, resultText: '' };
   }, [currentProjectScope, refetch]);
 
   const acceptChatProposal = useCallback((messageId: string, p: ChatProposal) => {
     const run = async (): Promise<void> => {
       setChat((prev) => prev.map((m) => (m.id === messageId ? { ...m, executing: true, executionError: false } : m)));
-      const [executionError, accepted] = await tryCatch(() => dispatchProposal(p));
-      const succeeded = !executionError && accepted === true;
+      const [executionError, outcome] = await tryCatch(() => dispatchProposal(p));
+      const succeeded = !executionError && outcome?.ok === true;
       setChat((prev) => prev.map((m) => (m.id === messageId ? { ...m, executing: false, ...(succeeded ? { accepted: true, executionError: false } : { executionError: true }) } : m)));
+      //? What the op ANSWERED becomes a turn in the conversation, so the assistant can talk about it on the
+      //? next message ("of those tables, which one holds the sessions?") instead of having proposed an
+      //? action and then forgotten that it ran at all. The client appends it; `mergePendingTurns` on the
+      //? server carries it into the very next turn even before the record has drained.
+      if (succeeded && outcome.resultText.length > 0) recordOpOutcome(p.summary, outcome.resultText);
     };
     //? X1 — destructive generic ops get an EXPLICIT extra confirm before dispatch (B-23
     //? confirm-on-important; user decision 2026-07-09). The project is rechecked AFTER
@@ -1456,7 +1484,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       return;
     }
     void run();
-  }, [dispatchProposal, translate]);
+  }, [dispatchProposal, recordOpOutcome, translate]);
 
   //? J5 — REJECT a proposal/plan: dismiss it (mark declined) WITHOUT dispatching anything. The AI proposes,
   //? the user disposes — declining is a first-class outcome, not just "ignore the bubble". No server write.
@@ -1476,8 +1504,9 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         //? Plans execute in order and stop at the first failed receipt, so dependent later steps cannot
         //? materialize on top of a rejected/failed prerequisite.
         for (const step of plan.steps) {
-          const [executionError, stepAccepted] = await tryCatch(() => dispatchProposal(step));
-          if (executionError || stepAccepted !== true) { accepted = false; break; }
+          const [executionError, outcome] = await tryCatch(() => dispatchProposal(step));
+          if (executionError || outcome?.ok !== true) { accepted = false; break; }
+          if (outcome.resultText.length > 0) recordOpOutcome(step.summary, outcome.resultText);
         }
       }
       setChat((prev) => prev.map((m) => (m.id === messageId ? { ...m, executing: false, ...(accepted ? { accepted: true, executionError: false } : { executionError: true }) } : m)));
@@ -1493,7 +1522,7 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
       return;
     }
     void run();
-  }, [currentProjectScope, dispatchProposal, translate]);
+  }, [currentProjectScope, dispatchProposal, recordOpOutcome, translate]);
 
   const activeSuggestions = useMemo(() => snap.suggestions.filter((s) => !localSuggestionsDismissed.includes(s.id)), [snap.suggestions, localSuggestionsDismissed]);
 
@@ -1995,6 +2024,13 @@ export function WorkspacesProvider({ children }: { children: React.ReactNode }) 
         if (!room) return;
         setSnap((s) => ({ ...s, workspaces: s.workspaces.map((w) => (w.id === room ? { ...w, autonomyLevel } : w)) }));
         observeSync(syncRequest({ name: 'workspaces/saveAutonomy', version: 'v1', data: { autonomyLevel, clientRequestId: nextReqId() }, receiver: room }));
+      },
+      //? D55 + D31 — timezone + per-model pricing. NOT optimistic: the server validates the zone and can
+      //? refuse it, and the broadcast carries the stored truth back to every client anyway.
+      saveWorkspacePrefs: ({ timezone, pricing }) => {
+        const room = snap.activeWorkspaceId;
+        if (!room) return;
+        observeSync(syncRequest({ name: 'workspaces/saveWorkspacePrefs', version: 'v1', data: { ...(timezone === undefined ? {} : { timezone }), ...(pricing === undefined ? {} : { pricing }), clientRequestId: nextReqId() }, receiver: room }));
       },
       //? Q4 + K4 — the workspace-wide AI-behaviour settings (optimistic flip + persist).
       saveAiInstruction: (aiInstruction, outputLanguage, assistantTokenBudget, handoffInstruction) => {

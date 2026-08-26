@@ -18,6 +18,7 @@ import { EmptyPicker } from '../_components/SetupNotice';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import type { ContentPieceSummary, ContentSnapshot, SocialCommentSummary } from '../_data/types';
 import { assetHref } from './[pieceId]/assetHref';
+import { useWorkspaceTimeZone } from '../_functions/wsTime';
 
 //? The library card's preview: image / silent video frame / a kind icon for audio-ish assets.
 function LibraryThumb({ asset, pieceTitle }: { asset: Pick<ContentSnapshot['assetLibrary'][number], 'kind' | 'url'>; pieceTitle: string }) {
@@ -142,6 +143,8 @@ type ContentView = 'board' | 'comments' | 'library' | 'archived';
 export default function Content() {
   const { content, navigate, focusSetup, createContentPiece, runContentOp, runContentOpAsync, copilotPrefill, consumeCopilotPrefill, refreshComments, markCommentsRead, replyToComment, activeWorkspace, setAssetStarred } = useWorkspaces();
   const translate = useTranslator();
+  //? D55 — comment timestamps read in workspace time, so the whole team quotes the same clock.
+  const timeZone = useWorkspaceTimeZone();
   const [view, setView] = useState<ContentView>('board');
   const openNewPiece = () => { void menuHandler.open(<NewPieceForm onCreate={createContentPiece} />, { dimBackground: true, background: 'bg-container1', size: 'sm' }); };
   //? #109 — an AI-drives-UI copilot directive that navigated here with a title/brief pre-fill auto-opens the
@@ -348,7 +351,7 @@ export default function Content() {
                     <div className={`flex items-center gap-2 text-xs text-muted`}>
                       <span className={`rounded-full bg-container2 px-1.5 py-0.5`}>{c.platform}</span>
                       <span className={`font-medium text-common truncate`}>{c.author}</span>
-                      <span className={`ml-auto shrink-0`}>{new Date(c.publishedAt).toLocaleString()}</span>
+                      <span className={`ml-auto shrink-0`}>{new Date(c.publishedAt).toLocaleString(undefined, { timeZone })}</span>
                     </div>
                     <div className={`text-sm text-common mt-1 whitespace-pre-wrap`}>{c.text}</div>
                     <div className={`flex items-center gap-3 mt-1.5`}>

@@ -63,6 +63,7 @@ import { publishAsset, isPublishPlatform, deletePlatformPost } from '../content/
 import { indexChannelBrand } from '../content/brandMemory';
 import { recordAiRun } from '../ai/activity';
 import { jsonInput } from '../util/json';
+import { isUsableTimeZone, parseDayInTz } from '../util/dateTz';
 import { cloneRepo, addWorktree, isLinked, listRepoDocs, initGreenfieldRepo, readRepoBranchFile, commitFilesToBranch } from '../git/repoStore';
 import { applyPublicCiComplete } from '../ci/publicWriter';
 import { postAiReviewFindings } from '../mr/reviewRole';
@@ -88,7 +89,7 @@ import {
   type WorkspaceLeaseGuard,
 } from './cluster';
 import { dockerAvailable, teardownExactTicketContainer, teardownWorkspaceContainers } from '../container/runtime';
-import { isSpendEnforcementActive } from '../spend/record';
+import { isSpendEnforcementActive, sanitizePriceMap } from '../spend/record';
 import { provisionServiceStack, teardownServiceStack, teardownWorkspaceServiceNetwork } from '../container/composeEngine';
 import { presetCompose, presetEnv } from '../container/servicePresets';
 import { sanitizeProblems, sanitizeScreenshots } from '../ui/uiReview';
@@ -1830,12 +1831,15 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const sprintId = str(target, 'sprintId') ?? str(payload, 'sprintId'); const name = str(payload, 'name');
       if (!sprintId) return;
       //? #1 — activate + rename + DATES. A date string ('YYYY-MM-DD') sets it; an empty string clears it.
+      //? D55 — a bare day is stored as MIDNIGHT IN THE WORKSPACE TIMEZONE, not midnight-UTC: the picker
+      //? emits a wall-clock day, and the snapshot reads it back in the same zone (round-trip stable).
+      const sprintWs = await prisma.workspace.findUnique({ where: { id: action.workspaceId }, select: { timezone: true } });
+      const sprintTz = sprintWs?.timezone ?? 'UTC';
       const parseDate = (key: string): Date | null | undefined => {
         if (!(key in payload)) return undefined;
         const raw = str(payload, key);
         if (!raw || raw.trim().length === 0) return null;
-        const ms = Date.parse(raw);
-        return Number.isFinite(ms) ? new Date(ms) : undefined;
+        return parseDayInTz(raw, sprintTz);
       };
       const startAt = parseDate('startAt'); const endAt = parseDate('endAt');
       await prisma.sprint.updateMany({ where: { workspaceId: action.workspaceId, id: sprintId }, data: {
@@ -2251,6 +2255,36 @@ async function executeAction(action: WriterAction): Promise<unknown> {
       const enabledSections = sanitizeSections(payload.enabledSections);
       await prisma.workspace.update({ where: { id: action.workspaceId }, data: { enabledSections } });
       return { enabledSections };
+    }
+    case 'save-workspace-prefs': {
+      //? D55 + pricing UI (owner 2026-08-26: "pricing moet een UI krijgen, timezone moet overal gebruikt
+      //? worden"). Two workspace-level preferences that had a READER but no write path:
+      //?  • timezone — the IANA zone every human-facing window is anchored to (server/util/dateTz.ts).
+      //?    An unusable zone is rejected outright rather than stored, because it would silently degrade
+      //?    every budget month / usage day / analytics week back to UTC.
+      //?  • pricing — €/1k tokens per model, merged OVER the defaults + env in spend/record.priceFor.
+      //?    The UI sends the whole map (`pricing`); the chat AI sets ONE model (`model` + `pricePer1k`,
+      //?    the catalog only speaks scalars). A negative/NaN price is dropped; 0 is legal and means
+      //?    "this model costs nothing" (subscription seats — the token counts still accrue).
+      const data: { timezone?: string; pricing?: Record<string, number> } = {};
+      const tzRaw = str(payload, 'timezone');
+      if (tzRaw !== undefined) {
+        if (!isUsableTimeZone(tzRaw)) return { ok: false, error: 'workspace.invalidTimezone' };
+        data.timezone = tzRaw;
+      }
+      const current = await prisma.workspace.findUnique({ where: { id: action.workspaceId }, select: { pricing: true } });
+      if ('pricing' in payload) {
+        data.pricing = sanitizePriceMap(payload.pricing);
+      } else {
+        const model = str(payload, 'model');
+        const price = num(payload, 'pricePer1k');
+        if (model && price !== undefined && Number.isFinite(price) && price >= 0) {
+          data.pricing = { ...sanitizePriceMap(current?.pricing), [model]: price };
+        }
+      }
+      if (Object.keys(data).length === 0) return { ok: false, error: 'workspace.invalidRequest' };
+      const saved = await prisma.workspace.update({ where: { id: action.workspaceId }, data, select: { timezone: true, pricing: true } });
+      return { timezone: saved.timezone, pricing: sanitizePriceMap(saved.pricing) };
     }
     case 'save-autonomy': {
       //? A4 — the workspace autonomy level modulating the per-stage human gate (stageRunner.resolveStageGate).

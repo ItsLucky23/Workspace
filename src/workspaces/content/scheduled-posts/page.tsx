@@ -13,6 +13,7 @@ import Icon from '../../_components/Icon';
 import { Collapse } from '../../_components/motion';
 import { EmptyState, InfoTip, WsButton } from '../../_components/primitives';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
+import { useWorkspaceTimeZone } from '../../_functions/wsTime';
 
 export const template = 'workspaces';
 
@@ -34,6 +35,9 @@ interface ScheduledRow {
 //? progressive — never a side panel or tooltip, so it stays phone-friendly).
 function RowCard({ row, onOpen }: { row: ScheduledRow; onOpen: () => void }) {
   const translate = useTranslator();
+  //? D55 — the queue fires on the WORKSPACE clock, so the time printed here has to be that clock:
+  //? a post scheduled for 09:00 must read 09:00 for every colleague, wherever they open the page.
+  const timeZone = useWorkspaceTimeZone();
   const [showDetail, setShowDetail] = useState(false);
   const hasDetail = row.failed && (row.error != null || row.attempts != null);
   return (
@@ -50,7 +54,7 @@ function RowCard({ row, onOpen }: { row: ScheduledRow; onOpen: () => void }) {
             {row.channelName ? ` · ${row.channelName}` : ''}
           </div>
         </div>
-        <div className={`text-xs text-muted shrink-0 tabular-nums`}>{new Date(row.when).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</div>
+        <div className={`text-xs text-muted shrink-0 tabular-nums`}>{new Date(row.when).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', timeZone })}</div>
       </button>
       {hasDetail && (
         <>
@@ -91,6 +95,7 @@ function RowCard({ row, onOpen }: { row: ScheduledRow; onOpen: () => void }) {
 export default function ScheduledPosts() {
   const translate = useTranslator();
   const { content, navigate } = useWorkspaces();
+  const timeZone = useWorkspaceTimeZone();
 
   //? Flatten every 'scheduled' publish job (with a future-or-any scheduledAt) into a sorted list.
   const rows = useMemo<ScheduledRow[]>(() => {
@@ -119,7 +124,9 @@ export default function ScheduledPosts() {
   //? `relation` flags the group the user actually cares about first (today, then tomorrow) so its
   //? label can stand out from the flat scroll of muted day strings.
   const groups = useMemo<{ day: string; items: ScheduledRow[]; relation: 'today' | 'tomorrow' | null }[]>(() => {
-    const dayKey = (d: Date): string => d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    //? D55 — grouped by the WORKSPACE's calendar day, so "today" is the team's today. Grouping on the
+    //? reader's device day would file a 23:30 workspace-time post under tomorrow for anyone further east.
+    const dayKey = (d: Date): string => d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone });
     const now = new Date();
     const todayKey = dayKey(now);
     const tomorrowKey = dayKey(new Date(now.getTime() + 24 * 60 * 60 * 1000));
@@ -134,7 +141,7 @@ export default function ScheduledPosts() {
       day, items,
       relation: day === todayKey ? 'today' : (day === tomorrowKey ? 'tomorrow' : null),
     }));
-  }, [rows]);
+  }, [rows, timeZone]);
 
   return (
     <div className={`h-full min-h-0 overflow-y-auto`}>

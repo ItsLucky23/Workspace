@@ -41,6 +41,106 @@ interface DiagnoseEntry {
   suggestionId: string | null;
 }
 
+//? D31 — the €/1k-token price editor (owner 2026-08-26: "pricing moet een UI krijgen"). `Workspace.pricing`
+//? had a reader (spend/record.priceFor merges it over the built-in defaults + WS_MODEL_PRICE_PER_1K_JSON)
+//? but no way to fill it, so every cost figure on this page was whatever the host operator had baked into
+//? env. Rows cover every model the API-key backends offer plus any model that already carries a stored
+//? price; an empty field means "no workspace price" and falls back to the default/env value, while an
+//? explicit 0 means "this model is free" — the honest setting for a subscription seat that still burns
+//? tokens. Prices are advisory: they only scale the token counts into the € shown here and in the caps.
+function ModelPricingPanel() {
+  const { activeWorkspace, aiProviderCatalog, saveWorkspacePrefs } = useWorkspaces();
+  const translate = useTranslator();
+  //? The stored map's SIGNATURE, not its identity: the snapshot object is rebuilt on every realtime
+  //? delta, and re-seeding the inputs on each of those would wipe what the operator is typing.
+  const storedSig = JSON.stringify(activeWorkspace.pricing ?? {});
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const [newModel, setNewModel] = useState('');
+  useEffect(() => {
+    const map = JSON.parse(storedSig) as Record<string, number>;
+    setDraft(Object.fromEntries(Object.entries(map).map(([model, price]) => [model, String(price)])));
+  }, [storedSig]);
+  const models = useMemo(() => {
+    const ids = new Set(Object.keys(JSON.parse(storedSig) as Record<string, number>));
+    //? Subscription backends are skipped: a seat has no per-token price (CLAUDE.md invariant 6), and
+    //? listing its models here would invite an operator to invent a € cost that nobody is billed.
+    for (const provider of aiProviderCatalog) { if (provider.kind !== 'subscription') for (const model of provider.models) ids.add(model.id); }
+    return [...ids].toSorted((a, b) => a.localeCompare(b));
+  }, [aiProviderCatalog, storedSig]);
+  const save = () => {
+    const pricing: Record<string, number> = {};
+    for (const [model, raw] of Object.entries(draft)) {
+      const trimmed = raw.trim();
+      if (trimmed.length === 0) continue;
+      const price = Number(trimmed);
+      if (Number.isFinite(price) && price >= 0) pricing[model] = price;
+    }
+    saveWorkspacePrefs({ pricing });
+  };
+  const priced = Object.values(draft).filter((v) => v.trim().length > 0).length;
+  //? Rows the operator SEES = the derived set plus anything added by hand this session (a model the
+  //? catalog doesn't list only enters `models` once its price is actually stored).
+  const rows = [...new Set([...models, ...Object.keys(draft)])].toSorted((a, b) => a.localeCompare(b));
+  return (
+    <Disclosure summary={
+      <span className={`flex items-center gap-2`}>
+        <span>{translate({ key: 'workspaces.usage.pricingTitle' })}</span>
+        <span className={`rounded-full bg-container2 px-2 text-xs font-normal text-muted tabular-nums`}>{priced}</span>
+      </span>
+    }>
+      <div className={`text-sm text-muted mb-3`}>{translate({ key: 'workspaces.usage.pricingDesc' })}</div>
+      <div className={`flex flex-wrap items-center gap-1.5 text-xs text-muted mb-3`}>
+        <Icon name="circle-info" />
+        <span>{translate({ key: 'workspaces.usage.pricingFallbackNote' })}</span>
+        <InfoTip
+          align="start"
+          label={translate({ key: 'workspaces.tips.insights.pricingAria' })}
+          title={translate({ key: 'workspaces.tips.insights.pricingTitle' })}
+          body={translate({ key: 'workspaces.tips.insights.pricingBody' })}
+        />
+      </div>
+      {rows.length === 0 ? (
+        <EmptyState icon="tags" title={translate({ key: 'workspaces.usage.pricingEmptyTitle' })} sub={translate({ key: 'workspaces.usage.pricingEmptySub' })} />
+      ) : (
+        <div className={`flex flex-col gap-1.5 mb-3`}>
+          {rows.map((model) => (
+            <div key={model} className={`flex items-center gap-2 rounded-lg border border-container1-border bg-container1 px-3 py-2`}>
+              <span className={`font-mono text-xs text-title flex-1 min-w-0 truncate`}>{model}</span>
+              <input
+                type="number" min="0" step="0.0001" inputMode="decimal"
+                value={draft[model] ?? ''}
+                onChange={(e) => { setDraft((d) => ({ ...d, [model]: e.target.value })); }}
+                placeholder={translate({ key: 'workspaces.usage.pricingDefaultPlaceholder' })}
+                aria-label={translate({ key: 'workspaces.usage.pricingPerModelAria', params: [{ key: 'model', value: model }] })}
+                className={`h-8 w-28 px-2 rounded-lg border border-container2-border bg-container2 text-sm text-title tabular-nums focus:outline-none focus:ring-2 focus:ring-focus-ring`}
+              />
+              <span className={`text-xs text-muted shrink-0`}>{translate({ key: 'workspaces.usage.pricingUnit' })}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className={`flex items-end gap-2 flex-wrap`}>
+        <label className={`flex flex-col gap-1 text-xs text-muted`}>{translate({ key: 'workspaces.usage.pricingAddLabel' })}
+          <input
+            value={newModel} onChange={(e) => { setNewModel(e.target.value); }}
+            placeholder={translate({ key: 'workspaces.usage.pricingAddPlaceholder' })}
+            className={`h-9 w-56 px-3 rounded-lg border border-container2-border bg-container2 text-sm text-title focus:outline-none focus:ring-2 focus:ring-focus-ring`}
+          />
+        </label>
+        <button
+          type="button" disabled={newModel.trim().length === 0 || draft[newModel.trim()] !== undefined}
+          onClick={() => { setDraft((d) => ({ ...d, [newModel.trim()]: '0' })); setNewModel(''); }}
+          className={`h-9 rounded-lg border border-container1-border bg-container1 px-3 text-sm text-common hover:bg-container2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer`}
+        >{translate({ key: 'workspaces.usage.pricingAdd' })}</button>
+        <button
+          type="button" onClick={save}
+          className={`h-9 rounded-lg bg-primary text-title-primary px-3 text-sm font-medium hover:bg-primary-hover cursor-pointer`}
+        >{translate({ key: 'workspaces.usage.pricingSave' })}</button>
+      </div>
+    </Disclosure>
+  );
+}
+
 export default function Usage() {
   const { openTicket, navigate, focusSetup, tickets, membersById, usage, insights, analytics, budget, budgets, editBudget, resumeSpend, diagnoseRootCause, suggestions, acceptSuggestion, dismissSuggestion, toggleAi } = useWorkspaces();
   const translate = useTranslator();
@@ -317,6 +417,10 @@ export default function Usage() {
                 </div>
               )}
             </Disclosure>
+
+            {/* D31 — what a token COSTS, directly above the caps that spend it: the € figures on this
+                page are token counts × this map, so the price editor belongs next to them. */}
+            <ModelPricingPanel />
 
             {/* AI/token €-budget (D81 + #103 multi-cap): summary visible while collapsed; the full
                 editor (label/cap/alert, Save, Add cap, per-cap enable, Resume) inside. */}

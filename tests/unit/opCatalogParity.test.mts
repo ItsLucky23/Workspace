@@ -193,6 +193,7 @@ try {
     ['save-ai-instruction', { aiInstruction: 'be terse' }, null],
     ['save-ai-provider', { feature: 'mr-review', providerId: 'gemini-api' }, { feature: 'coding-agent', providerId: 'gemini-api' }],
     ['save-autonomy', { autonomyLevel: 'full-auto' }, { autonomyLevel: 'yolo' }],
+    ['save-workspace-prefs', { timezone: 'Europe/Amsterdam' }, null],
     ['save-stage-config', { stageId: 'refined', name: 'Refined 2' }, { stageId: 'ghost' }],
     ['edit-budget', { cap: 50 }, null],
     ['resume-spend', {}, null],

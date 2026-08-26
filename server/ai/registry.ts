@@ -154,6 +154,7 @@ export async function runAiCompletion(
     workspaceInstruction: prefix,
     skills: skillsBlock,
     productCapabilities: capIdx,
+    feature,
   });
   //? Gap-fix: bounded retry with backoff around the SINGLE provider call-site (there was none anywhere
   //? in the AI layer — one transient blip failed the whole feature turn). Only failed results retry;

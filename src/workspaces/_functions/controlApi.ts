@@ -36,7 +36,7 @@ export type ControlOp =
   | 'service-provision' | 'service-teardown' | 'ui-review-create' | 'ui-review-to-ticket' | 'ui-review-dismiss'
   | 'gitlab-settings' | 'gitlab-resync'
   | 'forge-connect'
-  | 'save-git-config' | 'project-runtime-save' | 'save-sections' | 'save-ai-instruction' | 'save-ai-provider' | 'save-coding-agent' | 'ai-connection-add' | 'ai-connection-test' | 'ai-connection-remove' | 'save-autonomy'
+  | 'save-git-config' | 'project-runtime-save' | 'save-sections' | 'save-ai-instruction' | 'save-ai-provider' | 'save-coding-agent' | 'ai-connection-add' | 'ai-connection-test' | 'ai-connection-remove' | 'save-autonomy' | 'save-workspace-prefs'
   | 'link-repo' | 'scan-docs' | 'create-info-source' | 'info-source-archive' | 'info-source-delete' | 'scan-index'
   | 'mr-create' | 'mr-comment' | 'mr-approve' | 'mr-merge' | 'mr-rollback' | 'mr-resolve' | 'mr-review'
   | 'edit-budget' | 'resume-spend'

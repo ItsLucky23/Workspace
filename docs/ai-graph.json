@@ -2,10 +2,10 @@
   "version": 2,
   "note": "Dependency graph, ids relative to src/. File level: blastRadius[file] = files transitively importing it. Symbol level: callEdges are function->function calls; symbolBlastRadius['file::fn'] = symbols transitively calling it. <module> = file top-level scope. functions.* injection-proxy / dynamic-import / interface-typed calls are intentionally not resolved. See docs/decisions/0002,0004,0006.",
   "counts": {
-    "nodes": 463,
-    "edges": 724,
-    "symbols": 890,
-    "callEdges": 300
+    "nodes": 466,
+    "edges": 737,
+    "symbols": 897,
+    "callEdges": 303
   },
   "nodes": [
     {
@@ -1154,6 +1154,11 @@
       "route": null
     },
     {
+      "id": "workspaces/_functions/wsTime.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
       "id": "workspaces/_shell/MobileChrome.tsx",
       "kind": "other",
       "route": null
@@ -1717,6 +1722,16 @@
       "id": "workspaces/_sync/saveStageConfig_server_v1.ts",
       "kind": "sync",
       "route": "sync/workspaces/saveStageConfig/v1"
+    },
+    {
+      "id": "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts",
+      "kind": "other",
+      "route": null
+    },
+    {
+      "id": "workspaces/_sync/saveWorkspacePrefs_server_v1.ts",
+      "kind": "sync",
+      "route": "sync/workspaces/saveWorkspacePrefs/v1"
     },
     {
       "id": "workspaces/_sync/scanDocs_server_v1.tests.ts",
@@ -2930,6 +2945,10 @@
       "to": "workspaces/_data/types.ts"
     },
     {
+      "from": "workspaces/_functions/wsTime.ts",
+      "to": "workspaces/_shell/WorkspacesContext.tsx"
+    },
+    {
       "from": "workspaces/_shell/MobileChrome.tsx",
       "to": "_functions/menuHandler.ts"
     },
@@ -3036,6 +3055,10 @@
     {
       "from": "workspaces/_shell/Shell.tsx",
       "to": "workspaces/_functions/uploadMedia.ts"
+    },
+    {
+      "from": "workspaces/_shell/Shell.tsx",
+      "to": "workspaces/_functions/wsTime.ts"
     },
     {
       "from": "workspaces/_shell/Shell.tsx",
@@ -3311,6 +3334,10 @@
     },
     {
       "from": "workspaces/content/documents/[docId]/page.tsx",
+      "to": "workspaces/_functions/wsTime.ts"
+    },
+    {
+      "from": "workspaces/content/documents/[docId]/page.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
@@ -3419,6 +3446,10 @@
     },
     {
       "from": "workspaces/content/marketing/cards.tsx",
+      "to": "workspaces/_functions/wsTime.ts"
+    },
+    {
+      "from": "workspaces/content/marketing/cards.tsx",
       "to": "workspaces/content/studio/content.ts"
     },
     {
@@ -3519,6 +3550,10 @@
     },
     {
       "from": "workspaces/content/page.tsx",
+      "to": "workspaces/_functions/wsTime.ts"
+    },
+    {
+      "from": "workspaces/content/page.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
@@ -3536,6 +3571,10 @@
     {
       "from": "workspaces/content/scheduled-posts/page.tsx",
       "to": "workspaces/_components/primitives.tsx"
+    },
+    {
+      "from": "workspaces/content/scheduled-posts/page.tsx",
+      "to": "workspaces/_functions/wsTime.ts"
     },
     {
       "from": "workspaces/content/scheduled-posts/page.tsx",
@@ -3635,6 +3674,10 @@
     },
     {
       "from": "workspaces/content/settings/ChannelsTab.tsx",
+      "to": "workspaces/_functions/wsTime.ts"
+    },
+    {
+      "from": "workspaces/content/settings/ChannelsTab.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
@@ -3731,6 +3774,10 @@
     },
     {
       "from": "workspaces/content/studio/BrandPanel.tsx",
+      "to": "workspaces/_functions/wsTime.ts"
+    },
+    {
+      "from": "workspaces/content/studio/BrandPanel.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
@@ -3796,6 +3843,10 @@
     {
       "from": "workspaces/content/studio/page.tsx",
       "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/content/studio/page.tsx",
+      "to": "workspaces/_functions/wsTime.ts"
     },
     {
       "from": "workspaces/content/studio/page.tsx",
@@ -4699,6 +4750,10 @@
     },
     {
       "from": "workspaces/develop/interviewer/page.tsx",
+      "to": "workspaces/_functions/wsTime.ts"
+    },
+    {
+      "from": "workspaces/develop/interviewer/page.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
@@ -5035,6 +5090,10 @@
     },
     {
       "from": "workspaces/settings/page.tsx",
+      "to": "workspaces/_functions/wsTime.ts"
+    },
+    {
+      "from": "workspaces/settings/page.tsx",
       "to": "workspaces/_shell/WorkspacesContext.tsx"
     },
     {
@@ -5068,6 +5127,10 @@
     {
       "from": "workspaces/workspace/aiProviders.tsx",
       "to": "workspaces/_data/types.ts"
+    },
+    {
+      "from": "workspaces/workspace/aiProviders.tsx",
+      "to": "workspaces/_functions/wsTime.ts"
     },
     {
       "from": "workspaces/workspace/aiProviders.tsx",
@@ -5140,6 +5203,10 @@
     {
       "from": "workspaces/workspace/page.tsx",
       "to": "workspaces/_functions/aiLayers.ts"
+    },
+    {
+      "from": "workspaces/workspace/page.tsx",
+      "to": "workspaces/_functions/wsTime.ts"
     },
     {
       "from": "workspaces/workspace/page.tsx",
@@ -6862,6 +6929,28 @@
       "workspaces/_components/VideoTimelineEditor.tsx",
       "workspaces/content/[pieceId]/page.tsx"
     ],
+    "workspaces/_functions/wsTime.ts": [
+      "_components/templates/TemplateProvider.tsx",
+      "main.tsx",
+      "workspaces/_components/SearchPalette.tsx",
+      "workspaces/_shell/MobileChrome.tsx",
+      "workspaces/_shell/Shell.tsx",
+      "workspaces/_shell/WorkspacesShell.tsx",
+      "workspaces/_shell/WorkspacesTemplate.tsx",
+      "workspaces/content/documents/[docId]/page.tsx",
+      "workspaces/content/marketing/cards.tsx",
+      "workspaces/content/marketing/page.tsx",
+      "workspaces/content/page.tsx",
+      "workspaces/content/scheduled-posts/page.tsx",
+      "workspaces/content/settings/ChannelsTab.tsx",
+      "workspaces/content/settings/page.tsx",
+      "workspaces/content/studio/BrandPanel.tsx",
+      "workspaces/content/studio/page.tsx",
+      "workspaces/develop/interviewer/page.tsx",
+      "workspaces/settings/page.tsx",
+      "workspaces/workspace/aiProviders.tsx",
+      "workspaces/workspace/page.tsx"
+    ],
     "workspaces/_shell/MobileChrome.tsx": [
       "_components/templates/TemplateProvider.tsx",
       "main.tsx",
@@ -6902,6 +6991,7 @@
       "workspaces/_components/SetupWizard.tsx",
       "workspaces/_components/VideoTimelineEditor.tsx",
       "workspaces/_components/sections.tsx",
+      "workspaces/_functions/wsTime.ts",
       "workspaces/_shell/MobileChrome.tsx",
       "workspaces/_shell/Onboarding.tsx",
       "workspaces/_shell/Shell.tsx",
@@ -6913,6 +7003,7 @@
       "workspaces/content/documents/[docId]/page.tsx",
       "workspaces/content/documents/page.tsx",
       "workspaces/content/insights/page.tsx",
+      "workspaces/content/marketing/cards.tsx",
       "workspaces/content/marketing/page.tsx",
       "workspaces/content/page.tsx",
       "workspaces/content/scheduled-posts/page.tsx",
@@ -7308,8 +7399,8 @@
     {
       "id": "workspaces/_shell/WorkspacesContext.tsx",
       "kind": "other",
-      "dependents": 72,
-      "directDependents": 62
+      "dependents": 74,
+      "directDependents": 63
     },
     {
       "id": "_components/ConfirmMenu.tsx",
@@ -7360,6 +7451,12 @@
       "directDependents": 15
     },
     {
+      "id": "workspaces/_functions/wsTime.ts",
+      "kind": "other",
+      "dependents": 20,
+      "directDependents": 12
+    },
+    {
       "id": "workspaces/_functions/uploadMedia.ts",
       "kind": "other",
       "dependents": 17,
@@ -7394,12 +7491,6 @@
       "kind": "other",
       "dependents": 11,
       "directDependents": 3
-    },
-    {
-      "id": "workspaces/develop/designer/themes.ts",
-      "kind": "other",
-      "dependents": 11,
-      "directDependents": 8
     }
   ],
   "symbols": [
@@ -12000,6 +12091,48 @@
       "kind": "function"
     },
     {
+      "id": "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts::<module>",
+      "file": "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts::fn",
+      "file": "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts",
+      "name": "fn",
+      "kind": "fn"
+    },
+    {
+      "id": "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts::poll",
+      "file": "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts",
+      "name": "poll",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts::run",
+      "file": "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts",
+      "name": "run",
+      "kind": "method"
+    },
+    {
+      "id": "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts::wait",
+      "file": "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts",
+      "name": "wait",
+      "kind": "function"
+    },
+    {
+      "id": "workspaces/_sync/saveWorkspacePrefs_server_v1.ts::<module>",
+      "file": "workspaces/_sync/saveWorkspacePrefs_server_v1.ts",
+      "name": "<module>",
+      "kind": "module"
+    },
+    {
+      "id": "workspaces/_sync/saveWorkspacePrefs_server_v1.ts::main",
+      "file": "workspaces/_sync/saveWorkspacePrefs_server_v1.ts",
+      "name": "main",
+      "kind": "function"
+    },
+    {
       "id": "workspaces/_sync/scanDocs_server_v1.tests.ts::<module>",
       "file": "workspaces/_sync/scanDocs_server_v1.tests.ts",
       "name": "<module>",
@@ -13746,6 +13879,18 @@
       "to": "workspaces/_sync/saveStageConfig_server_v1.tests.ts::poll"
     },
     {
+      "from": "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts::poll",
+      "to": "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts::fn"
+    },
+    {
+      "from": "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts::poll",
+      "to": "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts::wait"
+    },
+    {
+      "from": "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts::run",
+      "to": "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts::poll"
+    },
+    {
       "from": "workspaces/_sync/serviceProvision_server_v1.ts::main",
       "to": "workspaces/_sync/serviceProvision_server_v1.ts::rejected"
     },
@@ -14820,6 +14965,17 @@
     "workspaces/_sync/saveStageConfig_server_v1.tests.ts::wait": [
       "workspaces/_sync/saveStageConfig_server_v1.tests.ts::poll",
       "workspaces/_sync/saveStageConfig_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts::fn": [
+      "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts::poll",
+      "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts::poll": [
+      "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts::run"
+    ],
+    "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts::wait": [
+      "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts::poll",
+      "workspaces/_sync/saveWorkspacePrefs_server_v1.tests.ts::run"
     ],
     "workspaces/_sync/serviceProvision_server_v1.ts::rejected": [
       "workspaces/_sync/serviceProvision_server_v1.ts::main"

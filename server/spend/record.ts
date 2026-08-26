@@ -9,6 +9,7 @@ import { tryCatchSync } from '@luckystack/core';
 import type { PrismaClient } from '@prisma/client';
 
 import type { AiUsage, UsageByTicket, UsageDay, WorkspaceUsage } from '../../src/workspaces/_data/types';
+import { dayKeyInTz, startOfDayInTz, startOfMonthInTz, weekdayInTz } from '../util/dateTz';
 
 //? Rough chars→tokens (~4 chars/token for English+code). Advisory, not billing-grade.
 const CHARS_PER_TOKEN = 4;
@@ -37,25 +38,34 @@ function priceMap(): Record<string, number> {
   return merged;
 }
 
+//? The stored `Workspace.pricing` Json is `unknown` at the type level and operator-editable at runtime:
+//? narrow it to a clean {model: €/1k} map, dropping anything non-numeric, negative or NaN. Shared by the
+//? price lookup, the snapshot mapper and the save-workspace-prefs writer so all three agree on what a
+//? valid price map is.
+export function sanitizePriceMap(raw: unknown): Record<string, number> {
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const out: Record<string, number> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (typeof value === 'number' && Number.isFinite(value) && value >= 0) out[key] = value;
+  }
+  return out;
+}
+
 //? D31 wired 2026-08-25 — `Workspace.pricing` (a Json {model: €/1k} map, previously stored-but-never-read)
 //? merges OVER defaults + env, per workspace. A 0 entry deliberately zeroes a model out (tokens-only chips).
 export function priceFor(model: string, workspacePricing?: unknown): number {
-  const merged = priceMap();
-  if (workspacePricing !== null && workspacePricing !== undefined && typeof workspacePricing === 'object' && !Array.isArray(workspacePricing)) {
-    for (const [k, v] of Object.entries(workspacePricing as Record<string, unknown>)) {
-      if (typeof v === 'number' && Number.isFinite(v) && v >= 0) merged[k] = v;
-    }
-  }
+  const merged = { ...priceMap(), ...sanitizePriceMap(workspacePricing) };
   return merged[model] ?? 0;
 }
 
 //? D82 wired 2026-08-25 — lazy calendar-month window roll (previously periodWindow was stored-but-never-
 //? read and `spent` accrued forever). No cron: whenever spend is recorded or a cap is checked, any
-//? enabled 'calendar-month' cap whose window started before the current month is reset. Month boundaries
-//? are UTC (the workspace-timezone anchor of D55 is a possible refinement, not wired here). A { rolling }
-//? window still has no consumer. Best-effort — callers wrap in tryCatch.
-export async function rollBudgetWindows(prisma: PrismaClient, workspaceId: string, now = new Date()): Promise<void> {
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+//? enabled 'calendar-month' cap whose window started before the current month is reset. The month
+//? boundary is anchored to the WORKSPACE timezone (D55, owner 2026-08-26) — "this month" must mean the
+//? team's month, not UTC's. A { rolling } window still has no consumer. Best-effort — callers wrap in
+//? tryCatch; an unusable stored zone degrades to UTC inside startOfMonthInTz.
+export async function rollBudgetWindows(prisma: PrismaClient, workspaceId: string, timezone = 'UTC', now = new Date()): Promise<void> {
+  const monthStart = startOfMonthInTz(timezone, now);
   await prisma.workspaceBudget.updateMany({
     where: { workspaceId, enabled: true, periodWindow: { equals: 'calendar-month' }, windowStartAt: { lt: monthStart } },
     data: { spent: 0, windowStartAt: monthStart },
@@ -78,7 +88,8 @@ export async function recordTurnSpend(prisma: PrismaClient, input: TurnSpendInpu
   const tokensIn = input.tokensIn ?? estTokens(input.inputChars);
   const tokensOut = input.tokensOut ?? estTokens(input.outputChars);
   //? D31 — the workspace's own price map (if any) overrides defaults + env for THIS workspace's turns.
-  const wsRow = await prisma.workspace.findUnique({ where: { id: input.workspaceId }, select: { pricing: true } });
+  //? The same read carries the timezone the D82 window roll below anchors on (one query, not two).
+  const wsRow = await prisma.workspace.findUnique({ where: { id: input.workspaceId }, select: { pricing: true, timezone: true } });
   const costEstimate = ((tokensIn + tokensOut) / 1000) * priceFor(input.model, wsRow?.pricing);
   await prisma.spendRecord.create({
     data: {
@@ -91,7 +102,7 @@ export async function recordTurnSpend(prisma: PrismaClient, input: TurnSpendInpu
   //? Rolling spend for the caps display (never enforced here — #16 is visibility only). D82: roll any
   //? stale calendar-month window first so the new spend accrues into the CURRENT month.
   if (costEstimate > 0) {
-    await rollBudgetWindows(prisma, input.workspaceId);
+    await rollBudgetWindows(prisma, input.workspaceId, wsRow?.timezone ?? 'UTC');
     await prisma.workspaceBudget.updateMany({ where: { workspaceId: input.workspaceId, enabled: true }, data: { spent: { increment: costEstimate } } });
   }
   return { tokensIn, tokensOut, costEstimate };
@@ -105,8 +116,10 @@ export async function recordTurnSpend(prisma: PrismaClient, input: TurnSpendInpu
 export async function isSpendEnforcementActive(prisma: PrismaClient, workspaceId: string): Promise<boolean> {
   //? luckystack-allow tenant-scope: called from the background provision loop (no runInTenant context, like
   //? the reaper/watchdog reads); explicitly filtered by the passed workspaceId, so it is tenant-safe.
-  //? D82 — a cap check first rolls stale calendar-month windows, so a NEW month unfreezes a capped workspace.
-  await rollBudgetWindows(prisma, workspaceId);
+  //? D82 — a cap check first rolls stale calendar-month windows, so a NEW month unfreezes a capped
+  //? workspace. Anchored to the workspace timezone (D55), so the unfreeze lands at the team's midnight.
+  const tzRow = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { timezone: true } });
+  await rollBudgetWindows(prisma, workspaceId, tzRow?.timezone ?? 'UTC');
   const caps = await prisma.workspaceBudget.findMany({
     where: { workspaceId, enabled: true },
     select: { cap: true, spent: true },
@@ -206,8 +219,11 @@ export function userBudgetExceeded(userTokens: number, capTokens: number): boole
 
 //? Aggregate SpendRecord rows → the Usage read (replaces the seed dummies). Pure + deterministic
 //? (`now` injected). `ticketKeyById` maps the stored ObjectId → the DEV-#### key the frontend renders.
-export function aggregateUsage(rows: SpendRow[], ticketKeyById: Map<string, string>, now: number): WorkspaceUsage {
-  const windowStart = new Date(now - 7 * 24 * 60 * 60 * 1000);
+export function aggregateUsage(rows: SpendRow[], ticketKeyById: Map<string, string>, now: number, timezone = 'UTC'): WorkspaceUsage {
+  //? D55 — the 7 buckets are the workspace's OWN calendar days: the window starts at midnight 6 days
+  //? ago in `timezone` (not now-minus-168h), so "today" is a full team-day and a turn at 01:00
+  //? Amsterdam lands on the Amsterdam date, not yesterday's UTC one.
+  const windowStart = new Date(startOfDayInTz(timezone, new Date(now)).getTime() - 6 * 86_400_000);
   const perTicket = new Map<string, UsageByTicket>();
   const perDay = new Map<string, number>();
   let totalTokens = 0;
@@ -222,7 +238,7 @@ export function aggregateUsage(rows: SpendRow[], ticketKeyById: Map<string, stri
       perTicket.set(key, cur);
     }
     if (r.createdAt >= windowStart) {
-      const dayKey = r.createdAt.toISOString().slice(0, 10);
+      const dayKey = dayKeyInTz(r.createdAt, timezone);
       perDay.set(dayKey, (perDay.get(dayKey) ?? 0) + r.tokensIn + r.tokensOut);
     }
   }
@@ -231,8 +247,7 @@ export function aggregateUsage(rows: SpendRow[], ticketKeyById: Map<string, stri
   const activity: UsageDay[] = [];
   for (let i = 6; i >= 0; i -= 1) {
     const d = new Date(now - i * 24 * 60 * 60 * 1000);
-    const dayKey = d.toISOString().slice(0, 10);
-    activity.push({ day: DAY_LABELS[d.getUTCDay()] ?? '', tokens: perDay.get(dayKey) ?? 0 });
+    activity.push({ day: DAY_LABELS[weekdayInTz(d, timezone)] ?? '', tokens: perDay.get(dayKeyInTz(d, timezone)) ?? 0 });
   }
 
   const byTicket = [...perTicket.values()].toSorted((a, b) => (b.tokensIn + b.tokensOut) - (a.tokensIn + a.tokensOut)).slice(0, 50);
@@ -245,5 +260,7 @@ export function aggregateUsage(rows: SpendRow[], ticketKeyById: Map<string, stri
 //? tenant-scoped snapshot (which feeds `aggregateUsage` its own tenant rows).
 export async function usageForWorkspace(prisma: PrismaClient, workspaceId: string, ticketKeyById: Map<string, string>, now: number): Promise<WorkspaceUsage> {
   const rows = await prisma.spendRecord.findMany({ where: { workspaceId }, orderBy: { createdAt: 'desc' }, take: 5000, select: { ticketId: true, tokensIn: true, tokensOut: true, createdAt: true, providerId: true, feature: true, costEstimate: true, userId: true } });
-  return aggregateUsage(rows, ticketKeyById, now);
+  //? D55 — bucket the days in the workspace's own zone (see aggregateUsage).
+  const tzRow = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { timezone: true } });
+  return aggregateUsage(rows, ticketKeyById, now, tzRow?.timezone ?? 'UTC');
 }

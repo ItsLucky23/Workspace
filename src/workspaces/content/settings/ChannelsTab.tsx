@@ -17,6 +17,7 @@ import { oauthCallbackBase } from '../../../../config';
 import { BrandLayerNote } from '../brandLayers';
 import { AccountConnectForm } from './portalForms';
 import { fieldCls, PUBLISH_PLATFORMS } from './shared';
+import { useWorkspaceTimeZone } from '../../_functions/wsTime';
 
 //? A5 — health state → icon/colour (tokens only, Rule 14).
 const HEALTH_ICON: Record<'ok' | 'warn' | 'down' | 'idle', string> = { ok: 'circle-check', warn: 'triangle-exclamation', down: 'circle-xmark', idle: 'circle-minus' };
@@ -254,6 +255,8 @@ function PublishingCard() {
 function HealthBody() {
   const translate = useTranslator();
   const { content } = useWorkspaces();
+  //? D55 — "last succeeded on" is a workspace fact; read it in the workspace's own zone.
+  const timeZone = useWorkspaceTimeZone();
   return (
     <div>
       <div className={`text-sm text-muted mb-3`}>{translate({ key: 'workspaces.content.healthDesc' })}</div>
@@ -269,7 +272,7 @@ function HealthBody() {
               <span>{translate({ key: `workspaces.content.health_${h.state}` })}</span>
               <span className={`tabular-nums`}>{translate({ key: 'workspaces.content.healthPosts' })}{': '}{String(h.posts)}</span>
               {h.failures > 0 && <span className={`tabular-nums text-wrong`}>{translate({ key: 'workspaces.content.healthFailures' })}{': '}{String(h.failures)}</span>}
-              <span>{h.lastSuccessAt === null ? translate({ key: 'workspaces.content.healthNever' }) : new Date(h.lastSuccessAt).toLocaleDateString()}</span>
+              <span>{h.lastSuccessAt === null ? translate({ key: 'workspaces.content.healthNever' }) : new Date(h.lastSuccessAt).toLocaleDateString(undefined, { timeZone })}</span>
             </div>
           </div>
         ))}

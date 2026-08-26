@@ -1,6 +1,6 @@
 {
-  "hash": "706be714432797e2",
-  "chunkCount": 262,
+  "hash": "a7a5f75e107a6303",
+  "chunkCount": 263,
   "chunks": [
     {
       "id": "cap-001",
@@ -1573,6 +1573,12 @@
       "kind": "decision",
       "title": "Stored-but-inert settings are wired or deleted — never left dormant",
       "text": "ADR 0327: Stored-but-inert settings are wired or deleted — never left dormant. The 0326 audit left a follow-up list of stored-but-inert surface: settings and columns that were persisted (some even editable) but that no runtime path ever read. The owner ruled per item on 2026-08-25: *\"ik wil maxturns helemaal weg halen … de pauseall mag ook weg net zoals die killswitch van eerder. prompt experiments paneel hoeft niet, fix die db introspect, fix die dode kolommen daar kan handige info in zitten\"*. The principle: a stored value either has a consumer or it does not exist — dormant columns mislead every future reader into assuming behavior. Decision: Split the list into DELETE (no plausible consumer) and WIRE (the stored info is useful — give it its missing consumer): **Deleted** — `maxTurns` (stored + resolved by modelSelect but never reached the agent argv; the owner never saw an AI get stuck), the budget `enforcement` field (`pauseNew`/`pauseAll` sat in the same server-side filter, so the choice changed nothing — every ENABLED cap now enforces pause-new-runs at 100%), the prompt-experiments feature (models, ops, panel, API — zero production call sites for variant selection), `PipelineStage.roleKey` (literally derived from `kind` at every write site — `kind` IS the role binding), `Workspace.reasonerTokenBudget` (no consumer concept), `Workspace.gemini{Model,Temperature,BaseUrl}` (superseded by the generic provider store, ADR 0007), `Project.dockerfilePath` (the reviewed on-disk "
+    },
+    {
+      "id": "adr-0328",
+      "kind": "decision",
+      "title": "0328-workspace-time-is-the-workspace-timezone-and-the-assistant-remembers",
+      "text": "ADR 0328: 0328-workspace-time-is-the-workspace-timezone-and-the-assistant-remembers. ADR 0327 wired the stored-but-inert columns it could reach and left three that needed real product work rather than a wiring fix. The owner named them on 2026-08-26: *\"pricing moet een UI krijgen, timezone moet overal gebruikt worden, assistant chat moet niet fire and forget zijn maar dus context hebben. en misschien kijken voor een chat history in die assistant en een auto compact layer voor zijn context window als die boven de e.g. 272k tokens komt\"*. Three separate failures with one shape — a value existed, but only one consumer honoured it: 1. **`Workspace.timezone`** was read by exactly one caller (the cron scheduler). Every other window a human reads — the budget month, the seven-day usage buckets, the analytics week, sprint start/end days, and roughly fifteen client-side date labels — ran on UTC or on the reader's device clock. Two people on the same team could read different answers to \"how much did we spend this month\". There was also no screen to set it; the in-app copy said so out loud (\"Er is nergens een scherm om dat te wijzigen\"). 2. **`Workspace.pricing`** got its reader in 0327 (`priceFor` merges it over the built-in defaults and the `WS_MODEL_PRICE_PER_1K_JSON` env), but nothing could write it, so the € figures on the Usage page were whatever the host operator had baked into env — per host, not per workspace. 3. **The Assistant chat** was fire-and-forget at both ends. Forward"
     }
   ]
 }

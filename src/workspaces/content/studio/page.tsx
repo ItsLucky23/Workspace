@@ -23,6 +23,7 @@ import { DESIGNER_KINDS, KIND_ICONS } from './kinds';
 import { ContentPromptPreview } from './promptStack';
 import { ArtifactBody } from './previews';
 import { asRecord, asStr, downloadHtmlAsPng, inputCls } from './content';
+import { useWorkspaceTimeZone } from '../../_functions/wsTime';
 
 export const template = 'workspaces';
 
@@ -356,7 +357,9 @@ function ArtifactCard({ artifact, busy, pendingRefine, onDelete, onRegenerate, o
   const translate = useTranslator();
   const { navigate } = useWorkspaces();
   const c = asRecord(artifact.content);
-  const when = new Date(artifact.createdAt).toLocaleString();
+  //? D55 — workspace time, not the reader's device time.
+  const timeZone = useWorkspaceTimeZone();
+  const when = new Date(artifact.createdAt).toLocaleString(undefined, { timeZone });
   const html = asStr(c.html);
   const htmlKind = artifact.kind === 'landing' || artifact.kind === 'component' || artifact.kind === 'thumbnail';
   //? I4 bug fix — the refine that PRODUCED this card (persisted, historical) vs. the refine that WILL

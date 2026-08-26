@@ -78,7 +78,7 @@
 | `api/workspaces/workspaceExport/v1` | POST | login | 6 | — | yes | — | Workspaces — [workspace-export] (H4) a tenant-scoped JSON export of the workspace's own data (portability / |
 | `api/workspaces/workspaceImport/v1` | POST | login | 3 | ItsLucky23 | yes | — | Workspaces — [workspace-import] (gap-fix) the missing counterpart of workspace-export: bring a |
 
-## Sync routes (72)
+## Sync routes (73)
 
 | Path | Server | Client | Auth | Owner | Tested | Tags | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -135,6 +135,7 @@
 | `sync/workspaces/saveIntegration/v1` | yes | — | login | — | yes | — | Workspaces — [save-integration] REALTIME write via `_sync`. Creates or (when |
 | `sync/workspaces/saveSections/v1` | yes | — | login | — | yes | — | Workspaces — [save-sections] REALTIME write via `_sync`. Persists the workspace's enabled |
 | `sync/workspaces/saveStageConfig/v1` | yes | — | login | — | yes | — | Workspaces — [save-stage-config] REALTIME write via `_sync`. Persists the full |
+| `sync/workspaces/saveWorkspacePrefs/v1` | yes | — | login | — | yes | — | Workspaces — [save-workspace-prefs] REALTIME write via `_sync` (D55 + D31, owner 2026-08-26: "pricing |
 | `sync/workspaces/scanDocs/v1` | yes | — | login | — | yes | — | Workspaces — [scan-docs] REALTIME write via `_sync` (docs-init scan). Scans the |
 | `sync/workspaces/scanIndex/v1` | yes | — | login | — | yes | — | Workspaces — [scan-index] REALTIME write via `_sync` (RAG code index, 07 §D). Reads the linked |
 | `sync/workspaces/serviceProvision/v1` | yes | — | login | — | yes | — | Workspaces — [service-provision] (K1) attach a third-party SERVICE STACK (docker-compose) to the workspace. |
@@ -162,9 +163,9 @@
 | Owner | Routes |
 | --- | --- |
 | `ItsLucky23` | 30 |
-| _(unowned)_ | 108 |
+| _(unowned)_ | 109 |
 
-**Test coverage**: 136/138 routes have a per-route `.tests.ts`.
+**Test coverage**: 137/139 routes have a per-route `.tests.ts`.
 
 _Untested routes — flag these to the user (Prioritize-tests rule), don't bulk-add unasked:_
 

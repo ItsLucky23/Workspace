@@ -12,6 +12,7 @@ import { PopMenu, WsButton } from '../../_components/primitives';
 import { BrandLayerNote } from '../brandLayers';
 import { useWorkspaces } from '../../_shell/WorkspacesContext';
 import { inputCls } from './content';
+import { useWorkspaceTimeZone } from '../../_functions/wsTime';
 
 //? #164 — paste a portable brand-kit JSON (from another workspace's Export) to import it. Rendered in
 //? the menuHandler overlay; on success it refetches so the imported palette/voice/taglines show.
@@ -43,6 +44,8 @@ function BrandImportForm({ workspaceId, onImported }: { workspaceId: string; onI
 export function BrandPanel() {
   const translate = useTranslator();
   const { studioBrand, saveBrand, activeWorkspace, refetch, focusSetup } = useWorkspaces();
+  //? D55 — the provenance date is a workspace fact, read in the workspace's own zone.
+  const timeZone = useWorkspaceTimeZone();
   //? #164 — portable brand-kit export (copy JSON to clipboard) + import (paste JSON).
   const exportBrand = () => {
     void apiRequest({ name: 'workspaces/brandExport', version: 'v1', data: { workspaceId: activeWorkspace.id } }).then((r) => {
@@ -92,7 +95,7 @@ export function BrandPanel() {
               key: 'workspaces.studio.brandProvenanceLabel',
               params: [
                 { key: 'source', value: provenance.source === 'manual' ? translate({ key: 'workspaces.studio.brandProvenanceManual' }) : provenance.source },
-                { key: 'date', value: provenance.at.length > 0 ? new Date(provenance.at).toLocaleDateString() : '' },
+                { key: 'date', value: provenance.at.length > 0 ? new Date(provenance.at).toLocaleDateString(undefined, { timeZone }) : '' },
               ],
             })}
           </div>

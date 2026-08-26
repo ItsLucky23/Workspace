@@ -35,6 +35,7 @@ import { resolveAiLayers } from '../_functions/aiLayers';
 import { INTEGRATION_TYPES, RBAC_CAPABILITIES, ROLE_DISPLAY } from '../_data/seed';
 import { GATEABLE_SECTIONS, WORKSPACE_MODULES, WORKSPACE_SECTIONS, isModuleEnabled } from '../_data/modules';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
+import { useWorkspaceTimeZone } from '../_functions/wsTime';
 import type { StageProcessCfg, BranchStrategyKind, EnvVar, GitConfig, IntegrationField, IntegrationTool, InviteEntry, Member, PushPolicy } from '../_data/types';
 
 //? `w-full` was missing, so every input built from this class rendered at the browser's intrinsic
@@ -210,6 +211,8 @@ function PermissionsTab() {
 function InvitesTab() {
   const translate = useTranslator();
   const { invites, permRoles, inviteMember, revokeInvite } = useWorkspaces();
+  //? D55 — workspace facts are dated in the workspace's own zone, not the reader's device zone.
+  const timeZone = useWorkspaceTimeZone();
   const [inviting, setInviting] = useState(false);
   const [email, setEmail] = useState('');
   const [roleKey, setRoleKey] = useState('');
@@ -242,7 +245,7 @@ function InvitesTab() {
       header: translate({ key: 'workspaces.workspaceSettings.sentColumn' }),
       cell: (i) => (
         <span className="text-muted">
-          {translate({ key: 'workspaces.workspaceSettings.sentAt', params: [{ key: 'when', value: new Date(i.sentAt).toLocaleDateString() }] })}
+          {translate({ key: 'workspaces.workspaceSettings.sentAt', params: [{ key: 'when', value: new Date(i.sentAt).toLocaleDateString(undefined, { timeZone }) }] })}
           {i.expiresAt !== null && ` · ${translate({ key: 'workspaces.workspaceSettings.expiresIn', params: [{ key: 'days', value: Math.max(0, Math.ceil((new Date(i.expiresAt).getTime() - Date.now()) / 86_400_000)) }] })}`}
         </span>
       ),
@@ -587,6 +590,8 @@ const forgeDefaultUrl = (forge: 'gitlab' | 'github'): string => (forge === 'gith
 function GitLabTab() {
   const translate = useTranslator();
   const { activeWorkspace, activeProject, saveGitlab, resyncForge, rotateWebhookSecret, focusSetup } = useWorkspaces();
+  //? D55 — workspace facts are dated in the workspace's own zone, not the reader's device zone.
+  const timeZone = useWorkspaceTimeZone();
   const [forge, setForge] = useState<'gitlab' | 'github'>(activeWorkspace.forgeType === 'github' ? 'github' : 'gitlab');
   //? F-025 — seeded from the STORED base URL (exposed in the snapshot; it is not a secret). The field used to
   //? start at the hardcoded default, so opening the tab to paste a new token and hitting Save overwrote a
@@ -678,7 +683,7 @@ function GitLabTab() {
         <SettingRow
           stacked
           label={translate({ key: 'workspaces.workspaceSettings.webhookSecretLabel' })}
-          help={webhookLastEventAt === '' ? translate({ key: 'workspaces.workspaceSettings.webhookNoEvent' }) : translate({ key: 'workspaces.workspaceSettings.webhookLastEvent', params: [{ key: 'when', value: new Date(webhookLastEventAt).toLocaleString() }] })}
+          help={webhookLastEventAt === '' ? translate({ key: 'workspaces.workspaceSettings.webhookNoEvent' }) : translate({ key: 'workspaces.workspaceSettings.webhookLastEvent', params: [{ key: 'when', value: new Date(webhookLastEventAt).toLocaleString(undefined, { timeZone }) }] })}
           control={(
             <div className="flex items-center gap-2">
               <code className="flex-1 min-w-0 truncate h-9 px-3 flex items-center rounded-lg border border-container1-border bg-container2/50 text-xs font-mono text-title">{webhookSecret ?? (webhookConfigured ? '••••••••••' : translate({ key: 'workspaces.workspaceSettings.webhookNoSecret' }))}</code>
@@ -971,6 +976,8 @@ function RuntimeSection({ workspaceId }: { workspaceId: string }) {
 //? that visible — there is deliberately no toggle here, a per-workspace switch would lie.
 function EgressPostureCard({ workspaceId }: { workspaceId: string }) {
   const translate = useTranslator();
+  //? D55 — workspace facts are dated in the workspace's own zone, not the reader's device zone.
+  const timeZone = useWorkspaceTimeZone();
   const [report, setReport] = useState<{ mode: string; unconfinedLaunches: number; lastAt: number; allowlist: string[] } | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -1010,7 +1017,7 @@ function EgressPostureCard({ workspaceId }: { workspaceId: string }) {
           control={(
             <span className={`text-sm text-title`}>
               {String(report.unconfinedLaunches)}
-              {report.lastAt > 0 && <span className={`text-xs text-muted ml-2`}>{translate({ key: 'workspaces.workspaceSettings.egressLastLaunch', params: [{ key: 'when', value: new Date(report.lastAt).toLocaleString() }] })}</span>}
+              {report.lastAt > 0 && <span className={`text-xs text-muted ml-2`}>{translate({ key: 'workspaces.workspaceSettings.egressLastLaunch', params: [{ key: 'when', value: new Date(report.lastAt).toLocaleString(undefined, { timeZone }) }] })}</span>}
             </span>
           )}
         />
@@ -1432,6 +1439,8 @@ function CustomTaskVarsForm({ vars, onRun }: { vars: string[]; onRun: (values: R
 function AiBehaviorTab() {
   const translate = useTranslator();
   const { activeWorkspace, saveAiInstruction, aiOverrides, aiConnections, aiProviderCatalog, aiFeatureDefaults, aiRuns, saveAiProvider, saveAutonomy, customTasks, saveCustomTask, runCustomTask, deleteCustomTask, aiSkills, navigate } = useWorkspaces();
+  //? D55 — workspace facts are dated in the workspace's own zone, not the reader's device zone.
+  const timeZone = useWorkspaceTimeZone();
   const [newTaskName, setNewTaskName] = useState('');
   //? P4-7 — the REAL availability probe per backend (Claude CLI on the host, a usable key for a metered
   //? one), fetched once per workspace. Until it answers, the connection row's own state stands in.
@@ -1524,7 +1533,7 @@ function AiBehaviorTab() {
                 { key: 'backend', value: backendLabel(last.providerId) },
                 { key: 'model', value: last.model ? ` · ${last.model}` : '' },
                 { key: 'error', value: last.error ?? '' },
-                { key: 'when', value: new Date(last.createdAt).toLocaleString() },
+                { key: 'when', value: new Date(last.createdAt).toLocaleString(undefined, { timeZone }) },
               ],
             })}
         </span>
@@ -1728,6 +1737,8 @@ interface AuditRow { id: string; action: string; target: string | null; actorNam
 function AuditTab() {
   const translate = useTranslator();
   const { activeWorkspace } = useWorkspaces();
+  //? D55 — workspace facts are dated in the workspace's own zone, not the reader's device zone.
+  const timeZone = useWorkspaceTimeZone();
   const [entries, setEntries] = useState<AuditRow[]>([]);
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
@@ -1749,7 +1760,7 @@ function AuditTab() {
         </div>
       ),
     },
-    { id: 'when', header: translate({ key: 'workspaces.workspaceSettings.auditWhen' }), className: 'w-44', cell: (e) => <span className="text-muted">{new Date(e.createdAt).toLocaleString()}</span> },
+    { id: 'when', header: translate({ key: 'workspaces.workspaceSettings.auditWhen' }), className: 'w-44', cell: (e) => <span className="text-muted">{new Date(e.createdAt).toLocaleString(undefined, { timeZone })}</span> },
   ];
 
   return (

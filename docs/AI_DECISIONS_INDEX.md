@@ -9,7 +9,7 @@
 > `branch-logs/` (what happened, per-prompt) and CLAUDE.md User Project Rules (always-on
 > imperatives). The AI records these automatically during sessions — see `docs/DECISION_MEMORY_PROTOCOL.md`.
 
-## Decisions (245)
+## Decisions (246)
 
 | # | Title | Status | Tags | Supersedes | File |
 | --- | --- | --- | --- | --- | --- |
@@ -258,6 +258,7 @@
 | 0325 | One provider catalog for text, media and embedding, with a per-workspace embedder | 🟢 accepted | ai, providers, rag, settings, migration | — | `docs/decisions/0325-one-provider-catalog-for-text-media-and-embedding-with-a-per-workspace-embedder.md` |
 | 0326 | Non-functional UI is removed, not kept as a promise | 🟢 accepted | ux, honesty, pipeline, cleanup | — | `docs/decisions/0326-non-functional-ui-is-removed-not-kept-as-promise.md` |
 | 0327 | Stored-but-inert settings are wired or deleted — never left dormant | 🟢 accepted | cleanup, honesty, schema, budget, self-handoff, spend | — | `docs/decisions/0327-stored-but-inert-settings-are-wired-or-deleted.md` |
+| 0328 | Workspace time is the workspace's timezone, and the Assistant remembers its own conversation | 🟢 accepted | timezone, pricing, assistant, chat, context, compaction, control-api, ui | — | `docs/decisions/0328-workspace-time-is-the-workspace-timezone-and-the-assistant-remembers.md` |
 
 ## Summaries
 
@@ -2254,6 +2255,14 @@ Delete non-functional UI rather than keeping it as an aspirational control. A co
 Split the list into DELETE (no plausible consumer) and WIRE (the stored info is useful — give it its missing consumer):
 
 → `docs/decisions/0327-stored-but-inert-settings-are-wired-or-deleted.md`
+
+### 0328 — Workspace time is the workspace's timezone, and the Assistant remembers its own conversation
+
+**0328** · accepted · tags: timezone, pricing, assistant, chat, context, compaction, control-api, ui · 2026-08-26
+
+*Timezone is the workspace's, everywhere.** One dependency-free module (`server/util/dateTz.ts`, Intl only, the house standard) owns the calendar math: `zonedDay` / `zonedToUtc` (two-pass, so a DST transition resolves to the right instant), `startOfMonthInTz`, `startOfDayInTz`, `dayKeyInTz`, `weekdayInTz`, `parseDayInTz`, `calendarDaysBetween`, plus the write-side guard `isUsableTimeZone`. Every human-facing window is anchored through it: the budget-month roll, the usage day buckets, the analytics weeks (boundaries built in CALENDAR space, so a DST shift cannot slide a bucket onto the neighbouring day), sprint dates on both the write (a bare `YYYY-MM-DD` stores the workspace's midnight) and the read (labels and days-left). On the client, `useWorkspaceTimeZone()` feeds `{ timeZone }` into every workspace-scoped `toLocale*` call.
+
+→ `docs/decisions/0328-workspace-time-is-the-workspace-timezone-and-the-assistant-remembers.md`
 
 ## Code governed by decisions
 

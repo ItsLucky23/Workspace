@@ -165,6 +165,7 @@ Every typed sync route in this project. Sourced from `_ProjectSyncTypeMap` in `s
 | `workspaces/saveIntegration/v1` | — | — | ✓ |
 | `workspaces/saveSections/v1` | — | — | ✓ |
 | `workspaces/saveStageConfig/v1` | — | — | ✓ |
+| `workspaces/saveWorkspacePrefs/v1` | — | — | ✓ |
 | `workspaces/scanDocs/v1` | — | — | ✓ |
 | `workspaces/scanIndex/v1` | — | — | ✓ |
 | `workspaces/serviceProvision/v1` | — | — | ✓ |

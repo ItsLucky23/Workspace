@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 
-import { i18nNotify as notify, tryCatch, useSession, useTranslator } from '@luckystack/core/client';
+import { i18nNotify as notify, tryCatch, tryCatchSync, useSession, useTranslator } from '@luckystack/core/client';
 
 import { menuHandler } from 'src/_functions/menuHandler';
 import Dropdown, { type DropdownItem } from 'src/_components/dropdown/Dropdown';
@@ -21,6 +21,7 @@ import { isModuleEnabled } from '../_data/modules';
 import type { EnvironmentSummary, PatSummary } from '../_data/types';
 import { useWorkspaces } from '../_shell/WorkspacesContext';
 import { enablePush, disablePush, hasPushSubscription } from '../_functions/pushSubscribe';
+import { useWorkspaceTimeZone } from '../_functions/wsTime';
 import { canInstall, isIosSafari, isStandalone, promptInstall, subscribeInstall } from '../_functions/installPrompt';
 import type { SessionLayout } from '../../../config';
 
@@ -114,6 +115,8 @@ function ForgeConnectForm({ projectId, onConnect }: { projectId: string; onConne
 //? was live before it?" — which is also what tells you whether a rollback will help.
 function DeployHistoryFold({ environments }: { environments: EnvironmentSummary[] }) {
   const translate = useTranslator();
+  //? D55 — "when did this go live" is a workspace fact; read it in the workspace's own zone.
+  const timeZone = useWorkspaceTimeZone();
   const withHistory = environments.filter((env) => (env.deploys ?? []).length > 0);
   if (withHistory.length === 0) return null;
 
@@ -136,7 +139,7 @@ function DeployHistoryFold({ environments }: { environments: EnvironmentSummary[
                 </span>
                 <span className="flex items-center gap-2 shrink-0">
                   {deploy.error !== undefined && <span className="text-xs text-wrong truncate max-w-40">{deploy.error}</span>}
-                  <span className="text-xs text-muted">{new Date(deploy.at).toLocaleString()}</span>
+                  <span className="text-xs text-muted">{new Date(deploy.at).toLocaleString(undefined, { timeZone })}</span>
                 </span>
               </Row>
             ))}
@@ -292,6 +295,52 @@ function PatPanel({ workspaceId }: { workspaceId: string }) {
         <Table columns={columns} rows={pats} rowKey={(t) => t.id} empty={translate({ key: 'workspaces.pat.empty' })} />
       </div>
     </Card>
+  );
+}
+
+//? D55 — the workspace timezone (owner 2026-08-26: "timezone moet overal gebruikt worden"). The column
+//? existed and the cron scheduler read it, but nothing could SET it, so every other window a human reads —
+//? the budget month, the 7-day usage buckets, the analytics week, sprint days — silently ran on UTC.
+//? The zone list comes from the runtime's own ICU data, so it can never drift from what the server accepts;
+//? the live clock underneath is the check that you picked the right one.
+function TimezonePanel() {
+  const { activeWorkspace, saveWorkspacePrefs } = useWorkspaces();
+  const translate = useTranslator();
+  const stored = activeWorkspace.timezone ?? '';
+  const current = stored.length > 0 ? stored : 'UTC';
+  const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const zones = useMemo(() => {
+    const [, supported] = tryCatchSync(() => Intl.supportedValuesOf('timeZone'));
+    //? An engine without `supportedValuesOf` still gets a usable picker: the stored zone, the browser's
+    //? own zone and UTC are the three answers that actually matter.
+    const list = supported && supported.length > 0 ? supported : [current, browserZone, 'UTC'];
+    return [...new Set([...list, current])].toSorted((a, b) => a.localeCompare(b));
+  }, [current, browserZone]);
+  const items: DropdownItem[] = zones.map((zone) => ({ id: zone, value: zone, item: zone }));
+  const [, nowLabel] = tryCatchSync(() => new Date().toLocaleString(undefined, { timeZone: current, dateStyle: 'medium', timeStyle: 'short' }));
+  return (
+    <FormSection title={translate({ key: 'workspaces.timezone.title' })} desc={translate({ key: 'workspaces.timezone.desc' })}>
+      <SettingRow
+        label={translate({ key: 'workspaces.timezone.label' })}
+        help={translate({ key: 'workspaces.timezone.help', params: [{ key: 'now', value: nowLabel ?? '—' }] })}
+        infoTitle={translate({ key: 'workspaces.tips.settings.timezoneTitle' })}
+        info={translate({ key: 'workspaces.tips.settings.timezoneBody' })}
+        control={(
+          <div className="flex items-center justify-end gap-2 flex-wrap">
+            <Dropdown
+              width="full" showSearch searchPlaceholder={translate({ key: 'workspaces.timezone.searchPlaceholder' })}
+              value={items.find((z) => z.id === current)} items={items}
+              onChange={(it) => { saveWorkspacePrefs({ timezone: String(it.id) }); }}
+            />
+            {browserZone !== current && (
+              <WsButton variant="secondary" onClick={() => { saveWorkspacePrefs({ timezone: browserZone }); }}>
+                {translate({ key: 'workspaces.timezone.useBrowser', params: [{ key: 'zone', value: browserZone }] })}
+              </WsButton>
+            )}
+          </div>
+        )}
+      />
+    </FormSection>
   );
 }
 
@@ -507,7 +556,11 @@ export default function AccountSettings() {
           </>)}
 
           {tab === 'workspace' && (<>
-{/* X3 — API tokens (issue/list/revoke) for the public API. */}
+{/* D55 — the zone every date the workspace shows is read in; first because it silently changes
+              what every other number on the other pages means. */}
+          <TimezonePanel />
+
+          {/* X3 — API tokens (issue/list/revoke) for the public API. */}
           <PatPanel workspaceId={activeWorkspace.id} />
 
           {/* F48/F06 — the media BIN + what this workspace occupies on disk. Deleting media no longer
