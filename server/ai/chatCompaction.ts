@@ -87,11 +87,7 @@ export async function loadChatContext(
   prisma: PrismaClient, workspaceId: string, userId: string, surface: ChatSurface = 'assistant',
 ): Promise<ChatContext> {
   const sessionKey = sessionKeyFor(userId, surface);
-  const handoff = await prisma.handoff.findFirst({
-    where: { workspaceId, sessionKey },
-    orderBy: { createdAt: 'desc' },
-    select: { body: true, createdAt: true },
-  });
+  const handoff = await prisma.handoff.findFirst({ where: { workspaceId, sessionKey }, orderBy: { createdAt: 'desc' }, select: { body: true, createdAt: true } });
   let summary = handoff ? summaryOf(handoff.body) : '';
 
   const rows = await prisma.workspaceChatMessage.findMany({
@@ -117,9 +113,8 @@ export async function loadChatContext(
   if (folded !== null && watermark !== undefined) {
     //? `createdAt` is stamped to the last summarised message, NOT to now: it is the watermark the next
     //? load reads from, and messages that arrived while we were summarising must not be swallowed by it.
-    await tryCatch(() => prisma.handoff.create({
-      data: { workspaceId, sessionKey, body: { summary: folded, decisions: [], state: '', next: [], gotchas: [] }, reason: 'budget', createdAt: watermark },
-    }));
+    const body = { summary: folded, decisions: [], state: '', next: [], gotchas: [] };
+    await tryCatch(() => prisma.handoff.create({ data: { workspaceId, sessionKey, body, reason: 'budget', createdAt: watermark } }));
     summary = folded;
   }
   //? Whether or not the summary was written, this turn continues on the tail alone — dropping the oldest

@@ -8,6 +8,8 @@
 //? Two shapes, one route: the settings UI sends the whole `pricing` map; the chat AI sends a single
 //? `model` + `pricePer1k` pair, which the Conductor merges into the stored map.
 
+/** @docs owner ItsLucky23 */
+
 import { AuthProps, SessionLayout } from '../../../config';
 import { Functions, SyncServerResponse } from '../../../src/_sockets/apiTypes.generated';
 import { dispatchControlSync } from '../../../server/control/dispatchSync';
